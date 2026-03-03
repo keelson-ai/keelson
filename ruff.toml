@@ -1,0 +1,11 @@
+[lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[lint.isort]
+known-first-party = ["pentis"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
