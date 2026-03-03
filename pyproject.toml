@@ -44,7 +44,7 @@ dev = [
 pentis = "pentis.cli:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["pentis"]
+packages = ["src/pentis"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
