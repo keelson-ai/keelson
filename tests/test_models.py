@@ -82,6 +82,12 @@ class TestTargetInfo:
         assert info.supports_tools is False
         assert info.supports_history is True
         assert info.response_format == "openai"
+        assert info.permissions_detected == []
+        assert info.memory_detected == []
+        assert info.delegation_detected == []
+        assert info.dangerous_combos == []
+        assert info.tool_chain_nodes == []
+        assert info.tool_chain_edges == []
 
     def test_with_tools(self):
         info = TargetInfo(

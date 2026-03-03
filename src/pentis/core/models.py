@@ -57,6 +57,12 @@ class TargetInfo:
     supports_tools: bool = False
     supports_history: bool = True
     response_format: str = "openai"
+    permissions_detected: list[str] = field(default_factory=list)
+    memory_detected: list[str] = field(default_factory=list)
+    delegation_detected: list[str] = field(default_factory=list)
+    dangerous_combos: list[str] = field(default_factory=list)
+    tool_chain_nodes: list[str] = field(default_factory=list)
+    tool_chain_edges: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
