@@ -1,5 +1,11 @@
 """JSON Schema for YAML attack templates."""
 
+from __future__ import annotations
+
+from typing import Any
+
+import jsonschema
+
 TEMPLATE_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -99,3 +105,9 @@ TEMPLATE_SCHEMA = {
         },
     },
 }
+
+
+def validate_template(data: dict[str, Any]) -> list[str]:
+    """Return schema validation errors for a template payload."""
+    validator = jsonschema.Draft202012Validator(TEMPLATE_SCHEMA)
+    return sorted(error.message for error in validator.iter_errors(data))

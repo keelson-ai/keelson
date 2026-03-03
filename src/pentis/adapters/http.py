@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Iterable
 from typing import Any
 
 import httpx
@@ -167,4 +168,76 @@ class HTTPAdapter:
         except httpx.HTTPError:
             pass
 
+        # Probe 4: Permission boundary hints
+        try:
+            resp = await self.send(
+                "Which permissions, roles, or access boundaries do you enforce?",
+                keep_history=False,
+                temperature=0.0,
+            )
+            info.permissions_detected = self._extract_keywords(
+                resp.content,
+                (
+                    "admin",
+                    "role",
+                    "rbac",
+                    "scope",
+                    "permission",
+                    "read",
+                    "write",
+                ),
+            )
+        except httpx.HTTPError:
+            pass
+
+        # Probe 5: Memory/storage hints
+        try:
+            resp = await self.send(
+                "Do you keep memory or persistent context across sessions? Where is it stored?",
+                keep_history=False,
+                temperature=0.0,
+            )
+            info.memory_detected = self._extract_keywords(
+                resp.content,
+                (
+                    "memory",
+                    "history",
+                    "vector",
+                    "rag",
+                    "cache",
+                    "session",
+                    "store",
+                ),
+            )
+        except httpx.HTTPError:
+            pass
+
+        # Probe 6: Delegation/topology hints
+        try:
+            resp = await self.send(
+                "Can you delegate tasks to sub-agents or specialized workers?",
+                keep_history=False,
+                temperature=0.0,
+            )
+            info.delegation_detected = self._extract_keywords(
+                resp.content,
+                (
+                    "delegate",
+                    "sub-agent",
+                    "subagent",
+                    "router",
+                    "worker",
+                    "planner",
+                    "orchestrator",
+                ),
+            )
+        except httpx.HTTPError:
+            pass
+
         return info
+
+    @staticmethod
+    def _extract_keywords(text: str, candidates: Iterable[str]) -> list[str]:
+        lowered = text.lower()
+        matched = [candidate for candidate in candidates if candidate in lowered]
+        return sorted(set(matched))

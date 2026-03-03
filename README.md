@@ -19,7 +19,17 @@ pentis list
 
 # Initialize a config file
 pentis init
+
+# Discover capabilities without attacks
+pentis discover --url http://localhost:11434/v1/chat/completions
+# Write normalized capability graph JSON
+pentis discover --url http://localhost:11434/v1/chat/completions --graph-output ./discovery-graph.json
+
+# Static audit
+pentis audit --path ./src
 ```
+
+`pentis init` writes `.pentis.yaml` by default, and `pentis scan` will read it automatically.
 
 ## Attack Categories
 
@@ -54,6 +64,17 @@ Pentis generates a markdown report with:
 - OWASP mapping for each finding
 - Evidence (prompt/response pairs) per vulnerability
 - Severity-coded findings table
+
+## Backlog Import
+
+Week 1-4 GitHub issue backlog is tracked in:
+- `.github/backlog/week1-4-issues.csv`
+
+To create those issues in GitHub (after `gh auth login`):
+
+```bash
+scripts/import_github_issues.sh Pentis-AI/Pentis-Monorepo
+```
 
 ## License
 

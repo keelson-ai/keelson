@@ -102,16 +102,23 @@ class TestDiscoverTarget:
             if call_count <= 2:
                 return httpx.Response(200, json=create_mock_response("I can help!", model="test"))
             resp = create_mock_response("Let me check.")
-            resp["choices"][0]["message"]["tool_calls"] = [
-                {"id": "1", "type": "function", "function": {"name": "search_db", "arguments": "{}"}},
-            ]
+            if call_count == 3:
+                resp["choices"][0]["message"]["tool_calls"] = [
+                    {"id": "1", "type": "function", "function": {"name": "read_file", "arguments": "{}"}},
+                    {"id": "2", "type": "function", "function": {"name": "http_request", "arguments": "{}"}},
+                ]
+            else:
+                resp["choices"][0]["message"]["tool_calls"] = []
             return httpx.Response(200, json=resp)
 
         respx.post(MOCK_URL).mock(side_effect=respond)
         adapter = HTTPAdapter(url=MOCK_URL)
         info = await discover_target(adapter)
         assert info.supports_tools is True
-        assert "search_db" in info.tools_detected
+        assert "read_file" in info.tools_detected
+        assert "http_request" in info.tools_detected
+        assert "data_exfiltration" in info.dangerous_combos
+        assert "agent" in info.tool_chain_nodes
         await adapter.close()
 
     @respx.mock

@@ -57,14 +57,14 @@ class TestCLIInit:
         result = runner.invoke(app, ["init", str(tmp_path)])
         assert result.exit_code == 0
         assert "Created config" in result.output
-        config = tmp_path / "pentis.yaml"
+        config = tmp_path / ".pentis.yaml"
         assert config.exists()
         content = config.read_text()
         assert "target:" in content
         assert "behaviors:" in content
 
     def test_init_refuses_existing_config(self, tmp_path):
-        config = tmp_path / "pentis.yaml"
+        config = tmp_path / ".pentis.yaml"
         config.write_text("existing")
         result = runner.invoke(app, ["init", str(tmp_path)])
         assert result.exit_code == 1
@@ -74,14 +74,14 @@ class TestCLIInit:
         nested = tmp_path / "a" / "b" / "c"
         result = runner.invoke(app, ["init", str(nested)])
         assert result.exit_code == 0
-        assert (nested / "pentis.yaml").exists()
+        assert (nested / ".pentis.yaml").exists()
 
 
 class TestCLIScan:
     def test_scan_requires_url(self):
         result = runner.invoke(app, ["scan"])
         assert result.exit_code != 0
-        assert "Missing" in result.output or "required" in result.output.lower()
+        assert "target.url" in result.output or "Provide --url" in result.output
 
     def test_scan_help(self):
         result = runner.invoke(app, ["scan", "--help"])
@@ -101,5 +101,10 @@ class TestCLINoArgs:
         # Typer with no_args_is_help=True exits with code 0 or 2
         assert result.exit_code in (0, 2)
         assert "scan" in result.output
+        assert "discover" in result.output
+        assert "audit" in result.output
+        assert "report" in result.output
+        assert "ci" in result.output
+        assert "validate" in result.output
         assert "list" in result.output
         assert "init" in result.output
