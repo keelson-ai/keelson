@@ -5,8 +5,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from pentis.core.models import CampaignConfig, ConcurrencyConfig, ScanTier
 from pentis.campaign.tiers import get_tier_config
+from pentis.core.models import CampaignConfig, ConcurrencyConfig, ScanTier
 
 
 def parse_campaign_config(toml_path: str | Path) -> CampaignConfig:

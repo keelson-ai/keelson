@@ -1,20 +1,19 @@
 """Tests for LLM-powered attack generator."""
 
-import pytest
+from typing import Any
+
 import httpx
+import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
 from pentis.adapters.attacker import AttackerAdapter
+from pentis.adapters.openai import OpenAIAdapter
 from pentis.attacker.generator import (
     _parse_generated_eval,  # type: ignore[reportPrivateUsage]
     generate_attack,
     generate_attack_template,
 )
 from pentis.core.models import Category, Severity
-
-
-from typing import Any
 
 
 def _chat_response(content: str) -> dict[str, Any]:

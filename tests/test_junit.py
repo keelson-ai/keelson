@@ -5,6 +5,11 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
+from pentis.core.junit import (
+    campaign_to_junit,
+    scan_to_junit,
+    to_junit_xml,
+)
 from pentis.core.models import (
     CampaignConfig,
     CampaignResult,
@@ -17,11 +22,6 @@ from pentis.core.models import (
     Target,
     TrialResult,
     Verdict,
-)
-from pentis.core.junit import (
-    campaign_to_junit,
-    scan_to_junit,
-    to_junit_xml,
 )
 
 

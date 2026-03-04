@@ -8,7 +8,6 @@ from typing import Any
 from pentis.adapters.base import BaseAdapter
 from pentis.core.models import AgentProfile, AttackChain, AttackStep, Category, Severity
 
-
 # Static compound attack chain templates keyed by required capability combos
 CHAIN_TEMPLATES: list[dict[str, Any]] = [
     {

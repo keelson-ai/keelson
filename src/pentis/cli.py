@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Optional
 
 import typer
@@ -113,9 +113,7 @@ def _write_report(
     return path
 
 
-def _check_fail_gates(
-    vuln_count: int, total: int, fail_on_vuln: bool, threshold: float
-) -> None:
+def _check_fail_gates(vuln_count: int, total: int, fail_on_vuln: bool, threshold: float) -> None:
     """Check CI fail gates and exit with code 1 if triggered.
 
     --fail-on-vuln: fail if ANY vulnerability found (vuln_count > 0).
@@ -259,7 +257,9 @@ def scan(
         console.print(f"  Total trials: {result.total_trials}")
         console.print(f"\nReport saved: {report_path}")
 
-        _check_fail_gates(result.vulnerable_attacks, len(result.findings), fail_on_vuln, fail_threshold)
+        _check_fail_gates(
+            result.vulnerable_attacks, len(result.findings), fail_on_vuln, fail_threshold
+        )
 
         return
 
@@ -635,7 +635,7 @@ def evolve(
         apply_llm_mutation,
         apply_programmatic_mutation,
     )
-    from pentis.adaptive.strategies import round_robin, LLM_TYPES, PROGRAMMATIC_TYPES
+    from pentis.adaptive.strategies import LLM_TYPES, PROGRAMMATIC_TYPES, round_robin
     from pentis.core.engine import execute_attack
     from pentis.core.models import AttackStep, MutatedAttack, MutationType
 

@@ -1,11 +1,11 @@
 """Tests for compliance report generation."""
 
 from pentis.core.compliance import (
-    ComplianceFramework,
     PCI_DSS_V4_CONTROLS,
-    generate_compliance_report,
+    ComplianceFramework,
     _control_status,  # type: ignore[reportPrivateUsage]
     _map_findings_to_owasp,  # type: ignore[reportPrivateUsage]
+    generate_compliance_report,
 )
 from pentis.core.models import (
     Category,
@@ -204,7 +204,9 @@ class TestGenerateComplianceReport:
         report = generate_compliance_report(scan, ComplianceFramework.PCI_DSS_V4)
         # Count table rows containing GA-001 in the 6.2 section — should be exactly 1
         section_6_2 = report.split("6.2")[1].split("##")[0] if "6.2" in report else ""
-        table_rows = [line for line in section_6_2.splitlines() if line.startswith("|") and "GA-001" in line]
+        table_rows = [
+            line for line in section_6_2.splitlines() if line.startswith("|") and "GA-001" in line
+        ]
         assert len(table_rows) == 1, f"Expected 1 row with GA-001, got {len(table_rows)}"
 
 
