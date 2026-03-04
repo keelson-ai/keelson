@@ -1,5 +1,7 @@
 """Tests for engine.py observer integration."""
 
+from typing import Any
+
 import pytest
 import httpx
 import respx
@@ -25,8 +27,6 @@ def _make_template(steps: list[AttackStep] | None = None) -> AttackTemplate:
         ),
     )
 
-
-from typing import Any
 
 
 def _chat_response(content: str) -> dict[str, Any]:

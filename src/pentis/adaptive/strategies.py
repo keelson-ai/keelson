@@ -88,9 +88,9 @@ def should_mutate(success_rate: float, low_threshold: float = 0.05, high_thresho
         high_threshold: Above this the attack already saturates — skip mutations.
 
     Returns:
-        True iff ``low_threshold <= success_rate <= high_threshold``.
+        True iff ``low_threshold < success_rate < high_threshold``.
     """
-    return low_threshold <= success_rate <= high_threshold
+    return low_threshold < success_rate < high_threshold
 
 
 def select_mutation(

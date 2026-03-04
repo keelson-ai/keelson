@@ -6,12 +6,12 @@ from pentis.adaptive.strategies import should_mutate
 
 
 class TestShouldMutate:
-    # --- rates in the "sweet spot" window ---
-    def test_at_low_threshold_included(self) -> None:
-        assert should_mutate(0.05) is True
+    # --- rates at boundary (excluded — no signal / saturated) ---
+    def test_at_low_threshold_excluded(self) -> None:
+        assert should_mutate(0.05) is False
 
-    def test_at_high_threshold_included(self) -> None:
-        assert should_mutate(0.80) is True
+    def test_at_high_threshold_excluded(self) -> None:
+        assert should_mutate(0.80) is False
 
     def test_mid_range_returns_true(self) -> None:
         assert should_mutate(0.40) is True

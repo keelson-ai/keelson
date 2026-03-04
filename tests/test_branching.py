@@ -1,5 +1,7 @@
 """Tests for the branching engine."""
 
+from typing import Any
+
 import pytest
 import httpx
 import respx
@@ -37,8 +39,6 @@ def _make_template() -> AttackTemplate:
         ),
     )
 
-
-from typing import Any
 
 
 def _chat_response(content: str) -> dict[str, Any]:
