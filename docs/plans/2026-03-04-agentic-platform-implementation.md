@@ -18,19 +18,19 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1.1 | Statistical Runner core (`run_statistical`, Wilson score) | ⬜ TODO | |
-| 1.2 | `StatisticalFinding` model + DB schema | ⬜ TODO | |
-| 1.3 | Scan tiers config (`fast` / `deep` / `continuous`) | ⬜ TODO | |
-| 1.4 | CLI `--tier` flag + tier-aware scan pipeline | ⬜ TODO | |
-| 1.5 | Store abstraction layer (`BaseStore` protocol) | ⬜ TODO | |
-| 1.6 | `discovery.py` — endpoint capability probing | ⬜ TODO | |
-| 1.7 | Anthropic Messages API adapter | ⬜ TODO | |
-| 1.8 | Generic HTTP adapter (any OpenAI-compatible endpoint) | ⬜ TODO | |
-| 1.9 | YAML template format + loader | ⬜ TODO | |
-| 1.10 | Conversation tree branching engine | ⬜ TODO | |
+| 1.1 | Statistical Runner core (`run_statistical`, Wilson score) | ✅ DONE | `campaign/runner.py` |
+| 1.2 | `StatisticalFinding` model + DB schema | ✅ DONE | `core/models.py` + `state/store.py` |
+| 1.3 | Scan tiers config (`fast` / `deep` / `continuous`) | ✅ DONE | `campaign/tiers.py` |
+| 1.4 | CLI `--tier` flag + tier-aware scan pipeline | ✅ DONE | `cli.py` |
+| 1.5 | Store abstraction layer (`BaseStore` protocol) | ✅ DONE | `state/base.py` |
+| 1.6 | `discovery.py` — endpoint capability probing | ✅ DONE | `attacker/discovery.py` |
+| 1.7 | Anthropic Messages API adapter | ✅ DONE | `adapters/anthropic.py` |
+| 1.8 | Generic HTTP adapter (any OpenAI-compatible endpoint) | ✅ DONE | `adapters/http.py` |
+| 1.9 | YAML template format + loader | ✅ DONE | `core/yaml_templates.py` + `attacks/yaml/` |
+| 1.10 | Conversation tree branching engine | ✅ DONE | `adaptive/branching.py` |
 | 1.11 | PostgreSQL store + pgvector | ⬜ TODO | |
 | 1.12 | Dramatiq + Redis task queue (deep scan workers) | ⬜ TODO | |
-| 1.13 | Streaming observer (gradual leakage detection) | ⬜ TODO | |
+| 1.13 | Streaming observer (gradual leakage detection) | ✅ DONE | `core/observer.py` |
 
 ### Phase 2 — Generation Layer
 
