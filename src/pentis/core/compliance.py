@@ -322,6 +322,35 @@ def _control_status(findings: list[Finding]) -> str:
     return "PARTIAL"
 
 
+def _render_report(
+    framework_name: str,
+    scan: ScanResult,
+    controls: dict[str, Any],
+    summary: str,
+) -> str:
+    """Render a compliance report from pre-built controls and summary.
+
+    Computes coverage/pass metrics and delegates to the Jinja2 template.
+    """
+    total = len(controls)
+    tested = sum(1 for c in controls.values() if c["status"] != "NOT TESTED")
+    passed = sum(1 for c in controls.values() if c["status"] == "PASS")
+    coverage_pct = round((tested / total) * 100) if total else 0
+    pass_pct = round((passed / tested) * 100) if tested else 0
+
+    return COMPLIANCE_REPORT_TEMPLATE.render(
+        framework_name=framework_name,
+        target=scan.target,
+        date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        scan=scan,
+        summary=summary,
+        coverage_pct=coverage_pct,
+        pass_pct=pass_pct,
+        controls=controls,
+        recommendations=_compliance_recommendations(controls),
+    )
+
+
 def generate_compliance_report(
     scan: ScanResult,
     framework: ComplianceFramework = ComplianceFramework.OWASP_LLM_TOP_10,
@@ -348,21 +377,17 @@ def generate_compliance_report(
     elif framework == ComplianceFramework.PCI_DSS_V4:
         return _generate_pci_dss_report(scan)
 
+    raise ValueError(f"Unsupported compliance framework: {framework.value}")
+
 
 def _generate_owasp_report(scan: ScanResult) -> str:
     """Generate OWASP LLM Top 10 compliance report."""
     mapping = _map_findings_to_owasp(scan.findings)
 
     controls: dict[str, Any] = {}
-    tested = 0
-    passed = 0
     for ctrl_id, ctrl_data in OWASP_LLM_CONTROLS.items():
         ctrl_findings = mapping.get(ctrl_id, [])
         status = _control_status(ctrl_findings)
-        if status != "NOT TESTED":
-            tested += 1
-        if status == "PASS":
-            passed += 1
         controls[ctrl_id] = {
             "name": ctrl_data["name"],
             "description": ctrl_data["description"],
@@ -370,10 +395,6 @@ def _generate_owasp_report(scan: ScanResult) -> str:
             "findings": ctrl_findings,
             "remediation": ctrl_data["remediation"] if status == "FAIL" else "",
         }
-
-    total_controls = len(OWASP_LLM_CONTROLS)
-    coverage_pct = round((tested / total_controls) * 100) if total_controls else 0
-    pass_pct = round((passed / tested) * 100) if tested else 0
 
     vuln_count = scan.vulnerable_count
     if vuln_count == 0:
@@ -384,19 +405,7 @@ def _generate_owasp_report(scan: ScanResult) -> str:
             f"OWASP LLM Top 10 controls. Remediation is recommended."
         )
 
-    recs = _compliance_recommendations(controls)
-
-    return COMPLIANCE_REPORT_TEMPLATE.render(
-        framework_name="OWASP LLM Top 10",
-        target=scan.target,
-        date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        scan=scan,
-        summary=summary,
-        coverage_pct=coverage_pct,
-        pass_pct=pass_pct,
-        controls=controls,
-        recommendations=recs,
-    )
+    return _render_report("OWASP LLM Top 10", scan, controls, summary)
 
 
 def _generate_nist_report(scan: ScanResult) -> str:
@@ -420,27 +429,13 @@ def _generate_nist_report(scan: ScanResult) -> str:
         }
 
     tested = sum(1 for c in controls.values() if c["status"] != "NOT TESTED")
-    passed = sum(1 for c in controls.values() if c["status"] == "PASS")
     total = len(controls)
-    coverage_pct = round((tested / total) * 100) if total else 0
-    pass_pct = round((passed / tested) * 100) if tested else 0
-
     summary = (
         f"NIST AI RMF assessment: {tested} of {total} functions evaluated. "
         f"Security testing (MEASURE) {'passed' if scan.vulnerable_count == 0 else 'identified issues'}."
     )
 
-    return COMPLIANCE_REPORT_TEMPLATE.render(
-        framework_name="NIST AI RMF",
-        target=scan.target,
-        date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        scan=scan,
-        summary=summary,
-        coverage_pct=coverage_pct,
-        pass_pct=pass_pct,
-        controls=controls,
-        recommendations=_compliance_recommendations(controls),
-    )
+    return _render_report("NIST AI RMF", scan, controls, summary)
 
 
 def _generate_eu_ai_act_report(scan: ScanResult) -> str:
@@ -462,29 +457,13 @@ def _generate_eu_ai_act_report(scan: ScanResult) -> str:
             ),
         }
 
-    tested = sum(1 for c in controls.values() if c["findings"])
-    passed = sum(1 for c in controls.values() if c["status"] == "PASS" and c["findings"])
-    total = len(controls)
-    coverage_pct = round((tested / total) * 100) if total else 0
-    pass_pct = round((passed / tested) * 100) if tested else 0
-
     summary = (
         f"EU AI Act assessment: {scan.vulnerable_count} vulnerabilities found. "
         f"{'Meets' if scan.vulnerable_count == 0 else 'Does not meet'} "
         f"Article 15 cybersecurity requirements."
     )
 
-    return COMPLIANCE_REPORT_TEMPLATE.render(
-        framework_name="EU AI Act",
-        target=scan.target,
-        date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        scan=scan,
-        summary=summary,
-        coverage_pct=coverage_pct,
-        pass_pct=pass_pct,
-        controls=controls,
-        recommendations=_compliance_recommendations(controls),
-    )
+    return _render_report("EU AI Act", scan, controls, summary)
 
 
 def _generate_iso_42001_report(scan: ScanResult) -> str:
@@ -501,24 +480,9 @@ def _generate_iso_42001_report(scan: ScanResult) -> str:
         },
     }
 
-    tested = 1
-    passed = 1 if scan.vulnerable_count == 0 else 0
-    coverage_pct = 100
-    pass_pct = round((passed / tested) * 100)
-
     summary = f"ISO 42001 security assessment: {scan.vulnerable_count} vulnerabilities identified."
 
-    return COMPLIANCE_REPORT_TEMPLATE.render(
-        framework_name="ISO 42001",
-        target=scan.target,
-        date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        scan=scan,
-        summary=summary,
-        coverage_pct=coverage_pct,
-        pass_pct=pass_pct,
-        controls=controls,
-        recommendations=_compliance_recommendations(controls),
-    )
+    return _render_report("ISO 42001", scan, controls, summary)
 
 
 def _generate_soc2_report(scan: ScanResult) -> str:
@@ -554,25 +518,9 @@ def _generate_soc2_report(scan: ScanResult) -> str:
         },
     }
 
-    tested = sum(1 for c in controls.values() if c["findings"])
-    passed = sum(1 for c in controls.values() if c["status"] == "PASS" and c["findings"])
-    total = len(controls)
-    coverage_pct = round((tested / total) * 100) if total else 0
-    pass_pct = round((passed / tested) * 100) if tested else 0
-
     summary = f"SOC2 AI security assessment: {scan.vulnerable_count} vulnerabilities identified."
 
-    return COMPLIANCE_REPORT_TEMPLATE.render(
-        framework_name="SOC2",
-        target=scan.target,
-        date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        scan=scan,
-        summary=summary,
-        coverage_pct=coverage_pct,
-        pass_pct=pass_pct,
-        controls=controls,
-        recommendations=_compliance_recommendations(controls),
-    )
+    return _render_report("SOC2", scan, controls, summary)
 
 
 def _generate_pci_dss_report(scan: ScanResult) -> str:
@@ -594,12 +542,6 @@ def _generate_pci_dss_report(scan: ScanResult) -> str:
             "remediation": req_data["remediation"] if status == "FAIL" else "",
         }
 
-    tested = sum(1 for c in controls.values() if c["status"] != "NOT TESTED")
-    passed = sum(1 for c in controls.values() if c["status"] == "PASS")
-    total = len(controls)
-    coverage_pct = round((tested / total) * 100) if total else 0
-    pass_pct = round((passed / tested) * 100) if tested else 0
-
     vuln_count = scan.vulnerable_count
     if vuln_count == 0:
         summary = "All tested PCI DSS 4.0 AI controls passed security validation."
@@ -609,17 +551,7 @@ def _generate_pci_dss_report(scan: ScanResult) -> str:
             f"PCI DSS 4.0 AI-relevant controls. Remediation is recommended."
         )
 
-    return COMPLIANCE_REPORT_TEMPLATE.render(
-        framework_name="PCI DSS 4.0",
-        target=scan.target,
-        date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        scan=scan,
-        summary=summary,
-        coverage_pct=coverage_pct,
-        pass_pct=pass_pct,
-        controls=controls,
-        recommendations=_compliance_recommendations(controls),
-    )
+    return _render_report("PCI DSS 4.0", scan, controls, summary)
 
 
 def _compliance_recommendations(controls: dict[str, Any]) -> list[str]:

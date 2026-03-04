@@ -27,8 +27,8 @@ class MCPAdapter(BaseAdapter):
         tool_name: str = "chat",
         timeout: float = 60.0,
     ):
-        self.url = url.rstrip("/")
-        self.api_key = api_key
+        self._url = url.rstrip("/")
+        self._api_key = api_key
         self.tool_name = tool_name
         self._initialized = False
         self._request_id = 0
@@ -57,7 +57,7 @@ class MCPAdapter(BaseAdapter):
                 "clientInfo": {"name": "pentis", "version": "1.0.0"},
             },
         }
-        resp = await self._client.post(self.url, json=init_payload)
+        resp = await self._client.post(self._url, json=init_payload)
         resp.raise_for_status()
 
         # Step 2: send initialized notification (no id — it's a notification)
@@ -65,7 +65,7 @@ class MCPAdapter(BaseAdapter):
             "jsonrpc": MCP_JSONRPC_VERSION,
             "method": "notifications/initialized",
         }
-        await self._client.post(self.url, json=notification)
+        await self._client.post(self._url, json=notification)
 
         self._initialized = True
 
@@ -90,7 +90,7 @@ class MCPAdapter(BaseAdapter):
         }
 
         start = time.monotonic()
-        resp = await self._client.post(self.url, json=payload)
+        resp = await self._client.post(self._url, json=payload)
         elapsed_ms = int((time.monotonic() - start) * 1000)
         resp.raise_for_status()
         data: dict[str, Any] = resp.json()
@@ -117,22 +117,19 @@ class MCPAdapter(BaseAdapter):
 
     async def health_check(self) -> bool:
         """Attempt the MCP initialize handshake to verify reachability."""
+        # Reset state so we actually send the handshake
+        old_initialized = self._initialized
+        old_id = self._request_id
+        self._initialized = False
         try:
-            # Reset state so we actually send the handshake
-            old_initialized = self._initialized
-            old_id = self._request_id
-            self._initialized = False
-            try:
-                await self._ensure_initialized()
-                return True
-            except Exception:
-                return False
-            finally:
-                # Restore state so next real call re-initializes if needed
-                self._initialized = old_initialized
-                self._request_id = old_id
+            await self._ensure_initialized()
+            return True
         except Exception:
             return False
+        finally:
+            # Restore state so next real call re-initializes if needed
+            self._initialized = old_initialized
+            self._request_id = old_id
 
     async def close(self) -> None:
         await self._client.aclose()

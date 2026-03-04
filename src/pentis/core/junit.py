@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from datetime import timezone
-from typing import Union
+from typing import Any
 
 from pentis.core.models import (
     CampaignResult,
@@ -53,10 +53,7 @@ def _finding_to_testcase(finding: Finding) -> ET.Element:
 
 def _stat_finding_to_testcase(sf: StatisticalFinding) -> ET.Element:
     """Convert a StatisticalFinding to a JUnit test case element."""
-    # Compute time from all trial evidence
-    total_ms = 0
-    for trial in sf.trials:
-        total_ms += trial.response_time_ms
+    total_ms = sum(t.response_time_ms for t in sf.trials)
     time_sec = total_ms / 1000.0
 
     tc = ET.Element(
@@ -94,75 +91,95 @@ def _stat_finding_to_testcase(sf: StatisticalFinding) -> ET.Element:
     return tc
 
 
-def scan_to_junit(result: ScanResult) -> str:
-    """Convert a ScanResult to JUnit XML string."""
-    failures = sum(1 for f in result.findings if f.verdict == Verdict.VULNERABLE)
-    skipped = sum(1 for f in result.findings if f.verdict == Verdict.INCONCLUSIVE)
-    total_time_ms = sum(sum(ev.response_time_ms for ev in f.evidence) for f in result.findings)
+def _build_testsuite(
+    name: str,
+    findings: list[Any],
+    total_time_ms: int,
+    timestamp_iso: str,
+    properties: list[tuple[str, str]],
+    to_testcase: Any,
+) -> ET.Element:
+    """Build the shared JUnit testsuite element."""
+    failures = sum(1 for f in findings if f.verdict == Verdict.VULNERABLE)
+    skipped = sum(1 for f in findings if f.verdict == Verdict.INCONCLUSIVE)
 
     ts = ET.Element(
         "testsuite",
-        name=f"pentis-scan-{result.scan_id}",
-        tests=str(len(result.findings)),
+        name=name,
+        tests=str(len(findings)),
         failures=str(failures),
         skipped=str(skipped),
         errors="0",
         time=f"{total_time_ms / 1000.0:.3f}",
-        timestamp=result.started_at.astimezone(timezone.utc).isoformat(),
+        timestamp=timestamp_iso,
     )
 
-    if result.target.url:
+    if properties:
         props = ET.SubElement(ts, "properties")
-        ET.SubElement(props, "property", name="target", value=result.target.url)
-        ET.SubElement(props, "property", name="model", value=result.target.model)
-        ET.SubElement(props, "property", name="scan_id", value=result.scan_id)
+        for prop_name, prop_value in properties:
+            ET.SubElement(props, "property", name=prop_name, value=prop_value)
 
-    for finding in result.findings:
-        ts.append(_finding_to_testcase(finding))
+    for finding in findings:
+        ts.append(to_testcase(finding))
 
+    return ts
+
+
+def _element_to_xml(ts: ET.Element) -> str:
+    """Convert an Element to indented XML string."""
     tree = ET.ElementTree(ts)
     ET.indent(tree, space="  ")
     return ET.tostring(ts, encoding="unicode", xml_declaration=True)
+
+
+def scan_to_junit(result: ScanResult) -> str:
+    """Convert a ScanResult to JUnit XML string."""
+    total_time_ms = sum(sum(ev.response_time_ms for ev in f.evidence) for f in result.findings)
+
+    properties: list[tuple[str, str]] = []
+    if result.target.url:
+        properties = [
+            ("target", result.target.url),
+            ("model", result.target.model),
+            ("scan_id", result.scan_id),
+        ]
+
+    ts = _build_testsuite(
+        name=f"pentis-scan-{result.scan_id}",
+        findings=result.findings,
+        total_time_ms=total_time_ms,
+        timestamp_iso=result.started_at.astimezone(timezone.utc).isoformat(),
+        properties=properties,
+        to_testcase=_finding_to_testcase,
+    )
+    return _element_to_xml(ts)
 
 
 def campaign_to_junit(result: CampaignResult) -> str:
     """Convert a CampaignResult to JUnit XML string."""
-    failures = sum(1 for f in result.findings if f.verdict == Verdict.VULNERABLE)
-    skipped = sum(1 for f in result.findings if f.verdict == Verdict.INCONCLUSIVE)
     total_time_ms = sum(sum(t.response_time_ms for t in f.trials) for f in result.findings)
 
-    ts = ET.Element(
-        "testsuite",
-        name=f"pentis-campaign-{result.campaign_id}",
-        tests=str(len(result.findings)),
-        failures=str(failures),
-        skipped=str(skipped),
-        errors="0",
-        time=f"{total_time_ms / 1000.0:.3f}",
-        timestamp=result.started_at.astimezone(timezone.utc).isoformat(),
-    )
-
+    properties: list[tuple[str, str]] = []
     if result.target.url:
-        props = ET.SubElement(ts, "properties")
-        ET.SubElement(props, "property", name="target", value=result.target.url)
-        ET.SubElement(props, "property", name="model", value=result.target.model)
-        ET.SubElement(props, "property", name="campaign_id", value=result.campaign_id)
-        ET.SubElement(
-            props,
-            "property",
-            name="total_trials",
-            value=str(result.total_trials),
-        )
+        properties = [
+            ("target", result.target.url),
+            ("model", result.target.model),
+            ("campaign_id", result.campaign_id),
+            ("total_trials", str(result.total_trials)),
+        ]
 
-    for sf in result.findings:
-        ts.append(_stat_finding_to_testcase(sf))
+    ts = _build_testsuite(
+        name=f"pentis-campaign-{result.campaign_id}",
+        findings=result.findings,
+        total_time_ms=total_time_ms,
+        timestamp_iso=result.started_at.astimezone(timezone.utc).isoformat(),
+        properties=properties,
+        to_testcase=_stat_finding_to_testcase,
+    )
+    return _element_to_xml(ts)
 
-    tree = ET.ElementTree(ts)
-    ET.indent(tree, space="  ")
-    return ET.tostring(ts, encoding="unicode", xml_declaration=True)
 
-
-def to_junit_xml(data: Union[ScanResult, CampaignResult]) -> str:
+def to_junit_xml(data: ScanResult | CampaignResult) -> str:
     """Convert a ScanResult or CampaignResult to JUnit XML string."""
     if isinstance(data, CampaignResult):
         return campaign_to_junit(data)
