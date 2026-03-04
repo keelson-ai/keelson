@@ -1,29 +1,26 @@
 """Tests for attack chain synthesis."""
 
 import pytest
-import httpx
 import respx
 
 from pentis.adapters.openai import OpenAIAdapter
 from pentis.adapters.attacker import AttackerAdapter
 from pentis.attacker.chains import (
     CHAIN_TEMPLATES,
-    _parse_llm_chains,
+    _parse_llm_chains,  # type: ignore[reportPrivateUsage]
     synthesize_chains,
     synthesize_chains_llm,
 )
 from pentis.core.models import (
     AgentCapability,
     AgentProfile,
-    AttackChain,
-    Category,
     Severity,
 )
 
 
 def _make_profile(capabilities: list[str]) -> AgentProfile:
     """Create a profile with specified capabilities detected."""
-    caps = []
+    caps: list[AgentCapability] = []
     for name in ["file_access", "web_access", "code_execution", "database_access",
                   "email_messaging", "tool_usage", "memory_persistence", "system_access"]:
         caps.append(AgentCapability(
@@ -113,7 +110,7 @@ STEP 3: Third step
 class TestSynthesizeChainsLlm:
     @respx.mock
     async def test_llm_chain_generation(self):
-        respx.post("https://attacker.example.com/v1/chat").respond(
+        respx.post("https://attacker.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json={"choices": [{"message": {"content": """
 CHAIN: LLM Generated Chain
 SEVERITY: High

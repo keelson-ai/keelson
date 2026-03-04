@@ -1,13 +1,10 @@
 """Tests for enhanced regression alerts and campaign diff."""
 
-import pytest
-
 from pentis.core.models import (
     Category,
     CampaignConfig,
     CampaignResult,
     Finding,
-    RegressionAlert,
     ScanDiffItem,
     ScanResult,
     Severity,
@@ -95,7 +92,7 @@ class TestEnhancedDiffScans:
     def test_regression_produces_alert(self):
         scan_a = _make_scan("a", [_make_finding("GA-001", Verdict.SAFE)])
         scan_b = _make_scan("b", [_make_finding("GA-001", Verdict.VULNERABLE)])
-        diff, alerts = enhanced_diff_scans(scan_a, scan_b)
+        _, alerts = enhanced_diff_scans(scan_a, scan_b)
         assert len(alerts) == 1
         assert alerts[0].alert_severity == "critical"
         assert alerts[0].template_id == "GA-001"
@@ -103,13 +100,13 @@ class TestEnhancedDiffScans:
     def test_improvement_no_alert(self):
         scan_a = _make_scan("a", [_make_finding("GA-001", Verdict.VULNERABLE)])
         scan_b = _make_scan("b", [_make_finding("GA-001", Verdict.SAFE)])
-        diff, alerts = enhanced_diff_scans(scan_a, scan_b)
+        _, alerts = enhanced_diff_scans(scan_a, scan_b)
         assert len(alerts) == 0
 
     def test_no_change_no_alert(self):
         scan_a = _make_scan("a", [_make_finding("GA-001", Verdict.SAFE)])
         scan_b = _make_scan("b", [_make_finding("GA-001", Verdict.SAFE)])
-        diff, alerts = enhanced_diff_scans(scan_a, scan_b)
+        _, alerts = enhanced_diff_scans(scan_a, scan_b)
         assert len(alerts) == 0
 
     def test_alerts_sorted_by_severity(self):
@@ -121,7 +118,7 @@ class TestEnhancedDiffScans:
             _make_finding("GA-001", Verdict.VULNERABLE, Severity.HIGH),
             _make_finding("GA-002", Verdict.VULNERABLE, Severity.MEDIUM),
         ])
-        diff, alerts = enhanced_diff_scans(scan_a, scan_b)
+        _, alerts = enhanced_diff_scans(scan_a, scan_b)
         assert len(alerts) == 2
         assert alerts[0].alert_severity == "critical"
         assert alerts[1].alert_severity == "medium"
