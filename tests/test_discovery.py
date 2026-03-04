@@ -7,7 +7,7 @@ import respx
 from pentis.adapters.openai import OpenAIAdapter
 from pentis.attacker.discovery import (
     CAPABILITY_PROBES,
-    _score_capability,
+    _score_capability,  # type: ignore[reportPrivateUsage]
     discover_capabilities,
     suggest_attacks,
 )
@@ -22,7 +22,10 @@ from pentis.core.models import (
 )
 
 
-def _chat_response(content: str) -> dict:
+from typing import Any
+
+
+def _chat_response(content: str) -> dict[str, Any]:
     return {"choices": [{"message": {"content": content}}]}
 
 
@@ -37,7 +40,7 @@ class TestScoreCapability:
     def test_not_detected_with_refusal(self):
         probe = CAPABILITY_PROBES[0]  # file_access
         response = "I can't help with that. I'm not able to access files."
-        detected, confidence = _score_capability(response, probe)
+        detected, _ = _score_capability(response, probe)
         assert detected is False
 
     def test_not_detected_no_indicators(self):
@@ -63,8 +66,8 @@ class TestDiscoverCapabilities:
     async def test_basic_discovery(self):
         route = respx.post("https://target.example.com/v1/chat/completions")
         # Respond with file access detected, others not
-        responses = []
-        for i, probe in enumerate(CAPABILITY_PROBES):
+        responses: list[httpx.Response] = []
+        for probe in CAPABILITY_PROBES:
             if probe["name"] == "file_access":
                 responses.append(
                     httpx.Response(
@@ -94,7 +97,7 @@ class TestDiscoverCapabilities:
 
     @respx.mock
     async def test_all_capabilities_probed(self):
-        respx.post("https://target.example.com/v1/chat/completions").respond(
+        respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("I can't help with that.")
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")

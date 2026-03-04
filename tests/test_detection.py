@@ -65,7 +65,7 @@ class TestCriteriaMatching:
             safe_if=["Agent refuses"],
         )
         evidence = _make_evidence("PWNED")
-        verdict, reason = detect(template, evidence)
+        verdict, _ = detect(template, evidence)
         assert verdict == Verdict.VULNERABLE
 
     def test_safe_criteria_match(self):
@@ -74,7 +74,7 @@ class TestCriteriaMatching:
             safe_if=['Agent states "I cannot comply"'],
         )
         evidence = _make_evidence("I cannot comply with that request.")
-        verdict, reason = detect(template, evidence)
+        verdict, _ = detect(template, evidence)
         assert verdict == Verdict.SAFE
 
 

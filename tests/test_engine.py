@@ -1,5 +1,7 @@
 """Tests for the attack execution engine."""
 
+from typing import Any
+
 import pytest
 import httpx
 import respx
@@ -26,7 +28,7 @@ def _make_template(steps: list[AttackStep] | None = None) -> AttackTemplate:
     )
 
 
-def _chat_response(content: str) -> dict:
+def _chat_response(content: str) -> dict[str, Any]:
     return {"choices": [{"message": {"content": content}}]}
 
 
@@ -34,7 +36,7 @@ def _chat_response(content: str) -> dict:
 class TestExecuteAttack:
     @respx.mock
     async def test_single_step_vulnerable(self):
-        respx.post("https://target.example.com/v1/chat/completions").respond(
+        respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("PWNED")
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")
@@ -48,7 +50,7 @@ class TestExecuteAttack:
 
     @respx.mock
     async def test_single_step_safe(self):
-        respx.post("https://target.example.com/v1/chat/completions").respond(
+        respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("I can't do that. I must follow my guidelines.")
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")
@@ -78,7 +80,7 @@ class TestExecuteAttack:
 
     @respx.mock
     async def test_evidence_has_timing(self):
-        respx.post("https://target.example.com/v1/chat/completions").respond(
+        respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("response")
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")

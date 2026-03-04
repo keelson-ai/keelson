@@ -1,7 +1,7 @@
 """Tests for the report generator."""
 
 from datetime import datetime, timezone
-
+from pathlib import Path
 
 from pentis.core.models import (
     Category,
@@ -109,7 +109,7 @@ class TestReporter:
         assert "Recommendations" in report
         assert "system prompt boundaries" in report
 
-    def test_save_report(self, tmp_path):
+    def test_save_report(self, tmp_path: Path) -> None:
         scan = _make_scan()
         path = save_report(scan, reports_dir=tmp_path)
         assert path.exists()
