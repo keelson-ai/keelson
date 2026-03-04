@@ -24,8 +24,8 @@ class LangGraphAdapter(BaseAdapter):
         thread_id: str | None = None,
         timeout: float = 120.0,
     ):
-        self.url = url.rstrip("/")
-        self.api_key = api_key
+        self._url = url.rstrip("/")
+        self._api_key = api_key
         self.assistant_id = assistant_id
         self.thread_id = thread_id
         headers: dict[str, str] = {"Content-Type": "application/json"}
@@ -47,7 +47,7 @@ class LangGraphAdapter(BaseAdapter):
             payload["config"] = {"configurable": {"model": model}}
 
         start = time.monotonic()
-        resp = await self._client.post(f"{self.url}/runs/wait", json=payload)
+        resp = await self._client.post(f"{self._url}/runs/wait", json=payload)
         elapsed_ms = int((time.monotonic() - start) * 1000)
         resp.raise_for_status()
         data: dict[str, Any] = resp.json()
@@ -93,7 +93,7 @@ class LangGraphAdapter(BaseAdapter):
         """Send a minimal run to verify the endpoint is reachable."""
         try:
             resp = await self._client.post(
-                f"{self.url}/runs/wait",
+                f"{self._url}/runs/wait",
                 json={
                     "input": {"messages": [{"role": "user", "content": "ping"}]},
                     "assistant_id": self.assistant_id,

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pentis.core.models import EvidenceItem, LeakageSignal
 
-
 # Indicators of structured/sensitive data in responses
 STRUCTURED_DATA_PATTERNS = [
     "```",

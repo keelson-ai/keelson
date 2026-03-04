@@ -43,8 +43,8 @@ def _verdict_to_kind(verdict: Verdict) -> str:
     }[verdict]
 
 
-def _finding_to_rule(finding: Finding) -> dict[str, Any]:
-    """Convert a Finding to a SARIF reportingDescriptor (rule)."""
+def _to_rule(finding: Finding | StatisticalFinding) -> dict[str, Any]:
+    """Convert a Finding or StatisticalFinding to a SARIF reportingDescriptor (rule)."""
     return {
         "id": finding.template_id,
         "name": finding.template_name.replace(" ", ""),
@@ -88,22 +88,6 @@ def _finding_to_result(finding: Finding, rule_index: int) -> dict[str, Any]:
     return result
 
 
-def _stat_finding_to_rule(sf: StatisticalFinding) -> dict[str, Any]:
-    """Convert a StatisticalFinding to a SARIF reportingDescriptor."""
-    return {
-        "id": sf.template_id,
-        "name": sf.template_name.replace(" ", ""),
-        "shortDescription": {"text": sf.template_name},
-        "fullDescription": {"text": f"{sf.template_name} ({sf.owasp})"},
-        "defaultConfiguration": {"level": _severity_to_level(sf.severity)},
-        "properties": {
-            "category": sf.category.value,
-            "owasp": sf.owasp,
-            "severity": sf.severity.value,
-        },
-    }
-
-
 def _stat_finding_to_result(sf: StatisticalFinding, rule_index: int) -> dict[str, Any]:
     """Convert a StatisticalFinding to a SARIF result."""
     return {
@@ -130,20 +114,14 @@ def _stat_finding_to_result(sf: StatisticalFinding, rule_index: int) -> dict[str
     }
 
 
-def scan_to_sarif(scan: ScanResult) -> dict[str, Any]:
-    """Generate SARIF v2.1.0 JSON from a ScanResult."""
-    # Deduplicate rules by template_id
-    seen_rules: dict[str, int] = {}
-    rules: list[dict[str, Any]] = []
-    results: list[dict[str, Any]] = []
-
-    for finding in scan.findings:
-        if finding.template_id not in seen_rules:
-            seen_rules[finding.template_id] = len(rules)
-            rules.append(_finding_to_rule(finding))
-        rule_index = seen_rules[finding.template_id]
-        results.append(_finding_to_result(finding, rule_index))
-
+def _build_sarif_run(
+    rules: list[dict[str, Any]],
+    results: list[dict[str, Any]],
+    started_at_iso: str,
+    finished_at_iso: str | None,
+    properties: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Build the shared SARIF run object."""
     run: dict[str, Any] = {
         "tool": {
             "driver": {
@@ -157,20 +135,51 @@ def scan_to_sarif(scan: ScanResult) -> dict[str, Any]:
         "invocations": [
             {
                 "executionSuccessful": True,
-                "startTimeUtc": scan.started_at.astimezone(timezone.utc).isoformat(),
+                "startTimeUtc": started_at_iso,
             }
         ],
     }
 
-    if scan.finished_at:
-        run["invocations"][0]["endTimeUtc"] = scan.finished_at.astimezone(timezone.utc).isoformat()
+    if finished_at_iso is not None:
+        run["invocations"][0]["endTimeUtc"] = finished_at_iso
 
+    if properties is not None:
+        run["properties"] = properties
+
+    return run
+
+
+def scan_to_sarif(scan: ScanResult) -> dict[str, Any]:
+    """Generate SARIF v2.1.0 JSON from a ScanResult."""
+    seen_rules: dict[str, int] = {}
+    rules: list[dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
+
+    for finding in scan.findings:
+        if finding.template_id not in seen_rules:
+            seen_rules[finding.template_id] = len(rules)
+            rules.append(_to_rule(finding))
+        rule_index = seen_rules[finding.template_id]
+        results.append(_finding_to_result(finding, rule_index))
+
+    finished_at_iso = (
+        scan.finished_at.astimezone(timezone.utc).isoformat() if scan.finished_at else None
+    )
+    properties: dict[str, Any] | None = None
     if scan.target.url:
-        run["properties"] = {
+        properties = {
             "target": scan.target.url,
             "model": scan.target.model,
             "scanId": scan.scan_id,
         }
+
+    run = _build_sarif_run(
+        rules=rules,
+        results=results,
+        started_at_iso=scan.started_at.astimezone(timezone.utc).isoformat(),
+        finished_at_iso=finished_at_iso,
+        properties=properties,
+    )
 
     return {
         "$schema": SARIF_SCHEMA,
@@ -188,40 +197,29 @@ def campaign_to_sarif(campaign: CampaignResult) -> dict[str, Any]:
     for sf in campaign.findings:
         if sf.template_id not in seen_rules:
             seen_rules[sf.template_id] = len(rules)
-            rules.append(_stat_finding_to_rule(sf))
+            rules.append(_to_rule(sf))
         rule_index = seen_rules[sf.template_id]
         results.append(_stat_finding_to_result(sf, rule_index))
 
-    run: dict[str, Any] = {
-        "tool": {
-            "driver": {
-                "name": TOOL_NAME,
-                "semanticVersion": TOOL_SEMANTIC_VERSION,
-                "informationUri": TOOL_INFO_URI,
-                "rules": rules,
-            },
-        },
-        "results": results,
-        "invocations": [
-            {
-                "executionSuccessful": True,
-                "startTimeUtc": campaign.started_at.astimezone(timezone.utc).isoformat(),
-            }
-        ],
-    }
-
-    if campaign.finished_at:
-        run["invocations"][0]["endTimeUtc"] = campaign.finished_at.astimezone(
-            timezone.utc
-        ).isoformat()
-
+    finished_at_iso = (
+        campaign.finished_at.astimezone(timezone.utc).isoformat() if campaign.finished_at else None
+    )
+    properties: dict[str, Any] | None = None
     if campaign.target.url:
-        run["properties"] = {
+        properties = {
             "target": campaign.target.url,
             "model": campaign.target.model,
             "campaignId": campaign.campaign_id,
             "totalTrials": campaign.total_trials,
         }
+
+    run = _build_sarif_run(
+        rules=rules,
+        results=results,
+        started_at_iso=campaign.started_at.astimezone(timezone.utc).isoformat(),
+        finished_at_iso=finished_at_iso,
+        properties=properties,
+    )
 
     return {
         "$schema": SARIF_SCHEMA,

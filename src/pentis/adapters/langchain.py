@@ -42,12 +42,7 @@ class LangChainAdapter(BaseAdapter):
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         """Send messages by invoking the LangChain agent/runnable."""
-        # Extract the latest user message
-        user_message = ""
-        for msg in reversed(messages):
-            if msg.get("role") == "user":
-                user_message = msg["content"]
-                break
+        user_message = self._last_user_message(messages)
 
         start = time.monotonic()
 
