@@ -19,6 +19,12 @@
 - ADRs follow MADR format as specified in the task; they can be rendered by the `adr-tools` CLI or browsed directly on GitHub
 - `HealthResponse` dataclass in `routers/health.py` should be migrated to a Pydantic `BaseModel` in Phase 2 so FastAPI generates an accurate JSON Schema (noted in ADR-001)
 
+### QA Review Fixes (automated)
+| File | Fix |
+|------|-----|
+| `docs/openapi.yaml` | Replaced 4 instances of `nullable: true` (OpenAPI 3.0.x syntax) with `type: ["T", "null"]` (valid OpenAPI 3.1.0 JSON Schema syntax) |
+| `README.md` | Updated project structure tree to include `docs/adr/` directory and `docs/openapi.yaml` file |
+
 ---
 
 ## YvHKkjLC — Create Dockerfile and docker-compose.yml

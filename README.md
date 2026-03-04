@@ -396,7 +396,12 @@ pentis/
 │       └── store.py                # SQLite storage
 ├── tests/                          # 472 tests
 ├── docs/                           # Documentation
+│   ├── adr/                        # Architecture Decision Records
+│   │   ├── ADR-001-framework.md    # FastAPI selection
+│   │   ├── ADR-002-dependency-management.md  # uv selection
+│   │   └── ADR-003-observability.md  # Structured logging + OTel plan
 │   ├── plans/                      # Roadmap
+│   ├── openapi.yaml                # OpenAPI 3.1.0 API contract
 │   └── github-action-spec.md       # GitHub Action design
 ├── pyproject.toml                  # Python packaging
 └── LICENSE                         # Apache 2.0
