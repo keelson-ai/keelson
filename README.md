@@ -3,9 +3,9 @@
 [![PyPI version](https://img.shields.io/pypi/v/pentis)](https://pypi.org/project/pentis/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-345%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-458%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 72 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 7 target adapters (OpenAI, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF output for CI/CD integration, and a statistical campaign engine with confidence intervals.
+**Autonomous red team agent for AI systems.** Pentis ships 72 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 7 target adapters (OpenAI, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
 
 ```
 pip install pentis
@@ -29,6 +29,12 @@ pentis scan https://api.example.com/v1/chat/completions --tier deep --api-key $K
 # SARIF output for GitHub Code Scanning
 pentis scan https://api.example.com/v1/chat/completions --format sarif --api-key $KEY
 
+# JUnit XML output for CI/CD
+pentis scan https://api.example.com/v1/chat/completions --format junit --api-key $KEY
+
+# Fail CI if vulnerabilities found
+pentis scan https://api.example.com/v1/chat/completions --fail-on-vuln --api-key $KEY
+
 # Scan a CrewAI agent directly
 pentis test-crew my_crew.py
 
@@ -48,8 +54,8 @@ Playbooks (.md)     Target Agent        Pentis Engine
                                                │
                                     ┌──────────┴──────────┐
                                     │  Reports             │
-                                    │  Markdown / SARIF    │
-                                    │  Compliance mapping  │
+                                    │  Markdown / SARIF /  │
+                                    │  JUnit / Compliance  │
                                     └─────────────────────┘
 ```
 
@@ -148,6 +154,25 @@ pentis scan <url> --format sarif --api-key $KEY
 
 SARIF v2.1.0 output integrates with GitHub Code Scanning, VS Code SARIF Viewer, and other SARIF-compatible tools.
 
+### JUnit XML (for CI/CD)
+
+```bash
+pentis scan <url> --format junit --api-key $KEY
+# -> reports/scan-2026-03-04-120000.junit.xml
+```
+
+JUnit XML integrates with Jenkins, GitLab CI, GitHub Actions, and any CI system that supports JUnit test reports.
+
+### CI/CD Fail Gates
+
+```bash
+# Fail pipeline if any vulnerability found
+pentis scan <url> --fail-on-vuln --api-key $KEY
+
+# Fail if vulnerability rate exceeds threshold (0.0–1.0)
+pentis scan <url> --fail-threshold 0.1 --api-key $KEY
+```
+
 ### Compliance Reports
 
 ```bash
@@ -156,6 +181,7 @@ pentis compliance <scan-id> --framework nist-ai-rmf
 pentis compliance <scan-id> --framework eu-ai-act
 pentis compliance <scan-id> --framework iso-42001
 pentis compliance <scan-id> --framework soc2
+pentis compliance <scan-id> --framework pci-dss-v4
 ```
 
 ## GitHub Actions
@@ -177,7 +203,7 @@ jobs:
 
       - run: pip install pentis
 
-      - run: pentis scan ${{ vars.AGENT_URL }} --api-key ${{ secrets.AGENT_KEY }} --format sarif --output results/ --no-save
+      - run: pentis scan ${{ vars.AGENT_URL }} --api-key ${{ secrets.AGENT_KEY }} --format sarif --output results/ --fail-on-vuln --no-save
 
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -215,6 +241,57 @@ api_key = "sk-..."
 [concurrency]
 max_concurrent_trials = 5
 early_termination_threshold = 3
+```
+
+## Pentis Defend (Runtime Protection)
+
+Pentis Defend is a policy engine that intercepts unsafe tool calls and content at runtime, integrating directly with CrewAI and LangChain agents.
+
+### Policy Configuration
+
+```yaml
+# defend-policy.yaml
+tool_rules:
+  - pattern: "delete_*"
+    action: deny
+    reason: "File deletion blocked by policy"
+  - pattern: "execute_command"
+    action: deny
+    reason: "Shell execution not permitted"
+  - pattern: "send_email"
+    action: log
+    reason: "Email sending logged for audit"
+
+content_rules:
+  - pattern: "password|secret|api_key|token"
+    action: deny
+    check_input: true
+    check_output: true
+
+default_tool_action: allow
+log_all: false
+```
+
+### CrewAI Integration
+
+```python
+from pentis.defend import load_policy, PolicyEngine, register_crewai_hooks
+
+policy = load_policy("defend-policy.yaml")
+engine = PolicyEngine(policy)
+register_crewai_hooks(engine)
+# All CrewAI tool calls are now policy-enforced
+```
+
+### LangChain Integration
+
+```python
+from pentis.defend import load_policy, PolicyEngine, PentisDefendMiddleware
+
+policy = load_policy("defend-policy.yaml")
+engine = PolicyEngine(policy)
+middleware = PentisDefendMiddleware(engine)
+# Wrap your agent's tool and model calls
 ```
 
 ## Adding Custom Attacks
@@ -268,7 +345,8 @@ pentis/
 ├── src/pentis/                     # Python engine
 │   ├── cli.py                      # Typer CLI (15 commands)
 │   ├── adapters/                   # 7 target adapters
-│   │   ├── openai.py               # OpenAI Chat Completions
+│   │   ├── base.py                 # BaseAdapter interface
+│   │   ├── http.py                 # GenericHTTPAdapter (OpenAI-compat)
 │   │   ├── anthropic.py            # Anthropic Messages API
 │   │   ├── langgraph.py            # LangGraph Platform
 │   │   ├── mcp.py                  # Model Context Protocol
@@ -285,11 +363,19 @@ pentis/
 │   │   ├── templates.py            # Playbook parser
 │   │   ├── reporter.py             # Markdown report generation
 │   │   ├── sarif.py                # SARIF v2.1.0 output
-│   │   └── compliance.py           # OWASP/NIST/EU AI Act/ISO/SOC2
+│   │   ├── junit.py                # JUnit XML output
+│   │   └── compliance.py           # 6 compliance frameworks
+│   ├── defend/                     # Runtime protection
+│   │   ├── engine.py               # Policy evaluation engine
+│   │   ├── models.py               # Policy, rules, actions
+│   │   ├── loader.py               # YAML policy loader
+│   │   ├── crewai_hook.py          # CrewAI middleware hooks
+│   │   └── langchain_hook.py       # LangChain middleware hooks
 │   ├── attacker/                   # Attack generation
 │   │   ├── generator.py            # LLM-powered prompt generation
 │   │   ├── discovery.py            # Agent capability fingerprinting
-│   │   └── chains.py               # Compound attack chain synthesis
+│   │   ├── chains.py               # Compound attack chain synthesis
+│   │   └── provider.py             # Cross-provider attacker selection
 │   ├── adaptive/                   # Mutation engine
 │   │   ├── mutations.py            # Programmatic + LLM mutations
 │   │   ├── branching.py            # Conversation tree exploration
@@ -302,7 +388,7 @@ pentis/
 │   │   └── comparator.py           # Regression detection
 │   └── state/                      # Persistence
 │       └── store.py                # SQLite storage
-├── tests/                          # 345+ tests
+├── tests/                          # 458 tests
 ├── docs/                           # Documentation
 │   ├── plans/                      # Roadmap
 │   └── github-action-spec.md       # GitHub Action design
@@ -329,8 +415,8 @@ pytest -v
 # Lint
 ruff check .
 
-# Type check (optional)
-mypy src/pentis
+# Type check (strict mode, 0 errors)
+pyright
 ```
 
 ### Optional Dependencies
@@ -369,13 +455,13 @@ This tool is for **authorized security testing only**. Do not use Pentis against
 
 ## Roadmap
 
-See [docs/plans/2026-03-04-agentsec-v2-roadmap.md](docs/plans/2026-03-04-agentsec-v2-roadmap.md) for the full roadmap.
+See [docs/plans/](docs/plans/) for the full roadmap.
 
 **Next up:**
-- Pentis Defend — runtime hooks for CrewAI and LangChain (intercept unsafe tool calls)
 - Drift detection and continuous monitoring
-- REST API and web dashboard
 - Semantic coverage tracking
+- REST API and web dashboard
+- GitHub Action (`pentis-ai/pentis-action`)
 
 ## License
 
