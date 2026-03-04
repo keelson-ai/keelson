@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   lint:
-    runs-on: [self-hosted, railway-runner-1]
+    runs-on: [self-hosted, Linux, X64, railway]
     steps:
       - uses: actions/checkout@v4
 
@@ -30,7 +30,7 @@ jobs:
         run: ruff format --check src/ tests/
 
   test:
-    runs-on: [self-hosted, railway-runner-1]
+    runs-on: [self-hosted, Linux, X64, railway]
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
