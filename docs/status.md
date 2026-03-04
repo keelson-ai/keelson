@@ -99,8 +99,15 @@ python -m pentis_service.main
 | `test_health_async_status_is_ok` | async | `response.json()["status"] == "ok"` |
 | `test_health_async_version_present` | async | `"version" in response.json()` |
 
+### QA Review Fixes (automated)
+| File | Fix |
+|------|-----|
+| `tests/test_health.py` | Removed unused `import pytest` (ruff F401 — no `@pytest.mark.asyncio` or pytest usage in file) |
+| `tests/conftest.py` | Added `-> FastAPI` return type annotation to `app` fixture (required by python-standards.md) |
+
 ### Notes
-- Python runtime unavailable in this environment; tests verified by manual review only
+- Python runtime unavailable in this environment; tests verified by static analysis only
 - `asyncio_mode = "auto"` in `pyproject.toml` means async test functions don't need `@pytest.mark.asyncio`
 - `conftest.py` `app` fixture is shadowed by local `app` fixture in `test_health_service.py` (expected pytest behaviour)
 - `TestClient` from `fastapi.testclient` (backed by `httpx`) is already available via `httpx>=0.27` in dependencies
+- `client` fixture in `conftest.py` creates a separate `create_app()` instance rather than using the `app` fixture — harmless but minor DRY concern
