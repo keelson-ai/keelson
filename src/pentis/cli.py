@@ -45,6 +45,10 @@ def _make_adapter(
         from pentis.adapters.mcp import MCPAdapter
 
         base = MCPAdapter(url=url, api_key=api_key, tool_name=tool_name)
+    elif adapter_type == "a2a":
+        from pentis.adapters.a2a import A2AAdapter
+
+        base = A2AAdapter(url=url, api_key=api_key)
     else:
         base = OpenAIAdapter(url=url, api_key=api_key)
 
@@ -66,11 +70,14 @@ def scan(
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
     adapter: str = typer.Option(
-        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
     ),
     use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
     tier: Optional[str] = typer.Option(
         None, "--tier", "-t", help="Scan tier: fast, deep, or continuous"
+    ),
+    format: str = typer.Option(
+        "markdown", "--format", "-f", help="Output format: markdown or sarif"
     ),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
@@ -129,10 +136,17 @@ def scan(
             store.save_campaign(result)
             store.close()
 
-        report_text = generate_campaign_report(result)
         out_dir = output or Path("reports")
         out_dir.mkdir(parents=True, exist_ok=True)
-        report_path = out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
+
+        if format == "sarif":
+            from pentis.core.sarif import to_sarif_json
+
+            report_text = to_sarif_json(result)
+            report_path = out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+        else:
+            report_text = generate_campaign_report(result)
+            report_path = out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
         report_path.write_text(report_text)
 
         _print_cache_stats(target_adapter)
@@ -186,7 +200,16 @@ def scan(
         store.close()
 
     # Generate report
-    report_path = save_report(result, reports_dir=output)
+    if format == "sarif":
+        from pentis.core.sarif import to_sarif_json
+
+        report_text = to_sarif_json(result)
+        out_dir = output or Path("reports")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        report_path = out_dir / f"scan-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+        report_path.write_text(report_text)
+    else:
+        report_path = save_report(result, reports_dir=output)
 
     _print_cache_stats(target_adapter)
 
@@ -204,7 +227,7 @@ def attack(
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
     adapter: str = typer.Option(
-        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
     ),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
@@ -329,7 +352,7 @@ def campaign(
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
     adapter: str = typer.Option(
-        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
     ),
     use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
@@ -404,7 +427,7 @@ def discover(
     model: str = typer.Option("default", "--model", "-m"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
     adapter: str = typer.Option(
-        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
     ),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
@@ -520,7 +543,7 @@ def evolve(
     attacker_key: str = typer.Option("", "--attacker-key", help="Attacker LLM API key"),
     mutations: int = typer.Option(5, "--mutations", "-n", help="Number of mutations to try"),
     adapter: str = typer.Option(
-        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
     ),
     use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
@@ -644,7 +667,7 @@ def chain(
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
     adapter: str = typer.Option(
-        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
     ),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
@@ -748,6 +771,250 @@ def chain(
     console.print("\n[bold]Chain Results[/bold]")
     console.print(f"  Chains tested: {len(results)}")
     console.print(f"  Vulnerable: [red]{vuln_count}[/]")
+
+
+@app.command(name="test-crew")
+def test_crew(
+    crew_module: str = typer.Argument(help="Python module path or file with CrewAI crew/agent"),
+    category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
+    delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
+    format: str = typer.Option("markdown", "--format", "-f", help="Output format: markdown or sarif"),
+) -> None:
+    """Run a security scan against a CrewAI agent/crew."""
+    import importlib.util
+
+    from pentis.adapters.crewai import CrewAIAdapter
+
+    # Load the crew module
+    spec = importlib.util.spec_from_file_location("crew_module", crew_module)
+    if not spec or not spec.loader:
+        console.print(f"[red]Cannot load module: {crew_module}[/]")
+        raise typer.Exit(1)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    # Look for crew or agent in the module
+    crew = getattr(mod, "crew", None)
+    agent = getattr(mod, "agent", None)
+    if crew is None and agent is None:
+        console.print("[red]Module must export 'crew' or 'agent'[/]")
+        raise typer.Exit(1)
+
+    adapter = CrewAIAdapter(agent=agent, crew=crew)
+    target = Target(url=f"crewai://{crew_module}", model="crewai")
+
+    def on_finding(finding, current, total):
+        icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+        console.print(
+            f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
+            f"{icon.get(finding.verdict.value, finding.verdict.value)}"
+        )
+
+    console.print(f"\n[bold]Pentis CrewAI Security Scan[/bold]")
+    console.print(f"Module: {crew_module}")
+    console.print()
+
+    async def _run():
+        return await run_scan(target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding)
+
+    result = asyncio.run(_run())
+
+    if format == "sarif":
+        from pentis.core.sarif import to_sarif_json
+        report_text = to_sarif_json(result)
+        out_dir = output or Path("reports")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        report_path = out_dir / f"crewai-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+        report_path.write_text(report_text)
+    else:
+        report_path = save_report(result, reports_dir=output)
+
+    console.print("\n[bold]Results[/bold]")
+    console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
+    console.print(f"  Safe: [green]{result.safe_count}[/]")
+    console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
+    console.print(f"\nReport saved: {report_path}")
+
+
+@app.command(name="test-chain")
+def test_chain_cmd(
+    chain_module: str = typer.Argument(help="Python module path or file with LangChain agent/chain"),
+    category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
+    delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
+    format: str = typer.Option("markdown", "--format", "-f", help="Output format: markdown or sarif"),
+    input_key: str = typer.Option("input", "--input-key", help="Input key for the chain"),
+    output_key: str = typer.Option("output", "--output-key", help="Output key for the chain"),
+) -> None:
+    """Run a security scan against a LangChain agent/chain."""
+    import importlib.util
+
+    from pentis.adapters.langchain import LangChainAdapter
+
+    spec = importlib.util.spec_from_file_location("chain_module", chain_module)
+    if not spec or not spec.loader:
+        console.print(f"[red]Cannot load module: {chain_module}[/]")
+        raise typer.Exit(1)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    agent = getattr(mod, "agent", None)
+    runnable = getattr(mod, "chain", None) or getattr(mod, "runnable", None)
+    if agent is None and runnable is None:
+        console.print("[red]Module must export 'agent', 'chain', or 'runnable'[/]")
+        raise typer.Exit(1)
+
+    adapter = LangChainAdapter(agent=agent, runnable=runnable, input_key=input_key, output_key=output_key)
+    target = Target(url=f"langchain://{chain_module}", model="langchain")
+
+    def on_finding(finding, current, total):
+        icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+        console.print(
+            f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
+            f"{icon.get(finding.verdict.value, finding.verdict.value)}"
+        )
+
+    console.print(f"\n[bold]Pentis LangChain Security Scan[/bold]")
+    console.print(f"Module: {chain_module}")
+    console.print()
+
+    async def _run():
+        return await run_scan(target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding)
+
+    result = asyncio.run(_run())
+
+    if format == "sarif":
+        from pentis.core.sarif import to_sarif_json
+        report_text = to_sarif_json(result)
+        out_dir = output or Path("reports")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        report_path = out_dir / f"langchain-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+        report_path.write_text(report_text)
+    else:
+        report_path = save_report(result, reports_dir=output)
+
+    console.print("\n[bold]Results[/bold]")
+    console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
+    console.print(f"  Safe: [green]{result.safe_count}[/]")
+    console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
+    console.print(f"\nReport saved: {report_path}")
+
+
+@app.command()
+def generate(
+    attacker_url: str = typer.Argument(help="Attacker LLM endpoint URL"),
+    attacker_key: str = typer.Option("", "--api-key", "-k", help="Attacker API key"),
+    model: str = typer.Option("default", "--model", "-m"),
+    category: Optional[str] = typer.Option(
+        None, "--category", "-c", help="Specific category to generate for"
+    ),
+    count: int = typer.Option(3, "--count", "-n", help="Attacks per category"),
+    multi_step: bool = typer.Option(False, "--multi-step", help="Generate multi-step attacks"),
+    profile_id: Optional[str] = typer.Option(
+        None, "--profile", "-p", help="Agent profile ID for capability-informed generation"
+    ),
+    output_dir: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Directory to save generated playbooks"
+    ),
+) -> None:
+    """Generate novel attack templates using an attacker LLM."""
+    from pentis.attacker.generator import (
+        generate_batch,
+        generate_capability_informed_attacks,
+    )
+    from pentis.core.models import Category as Cat
+
+    attacker_adapter = OpenAIAdapter(url=attacker_url, api_key=attacker_key)
+
+    console.print("\n[bold]Pentis Attack Generator[/bold]")
+    console.print(f"Attacker: {attacker_url}")
+    console.print()
+
+    async def _run():
+        try:
+            if profile_id:
+                store = Store()
+                profile = store.get_agent_profile(profile_id)
+                store.close()
+                if not profile:
+                    console.print(f"[red]Profile {profile_id} not found[/]")
+                    raise typer.Exit(1)
+                return await generate_capability_informed_attacks(
+                    attacker_adapter, profile, model=model, max_attacks=count
+                )
+            else:
+                categories = None
+                if category:
+                    from pentis.core.templates import CATEGORY_MAP
+
+                    cat_enum = CATEGORY_MAP.get(category.lower())
+                    if cat_enum:
+                        categories = [cat_enum]
+                    else:
+                        console.print(f"[red]Unknown category: {category}[/]")
+                        raise typer.Exit(1)
+                return await generate_batch(
+                    attacker_adapter,
+                    categories=categories,
+                    count_per_category=count,
+                    model=model,
+                )
+        finally:
+            await attacker_adapter.close()
+
+    templates = asyncio.run(_run())
+
+    table = Table(title=f"Generated {len(templates)} Attack Templates")
+    table.add_column("ID", style="bold")
+    table.add_column("Name")
+    table.add_column("Category")
+    table.add_column("Steps", justify="right")
+
+    for t in templates:
+        table.add_row(t.id, t.name[:50], t.category.value, str(len(t.steps)))
+    console.print(table)
+
+    if output_dir:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        for t in templates:
+            path = output_dir / f"{t.id}.md"
+            path.write_text(_template_to_markdown(t))
+            console.print(f"  Saved: {path}")
+
+
+def _template_to_markdown(t: "AttackTemplate") -> str:
+    """Convert an AttackTemplate to markdown playbook format."""
+    lines = [
+        f"# {t.id}: {t.name}",
+        "",
+        f"**Severity**: {t.severity.value} | **Category**: {t.category.value} | **OWASP**: {t.owasp}",
+        "",
+        "## Objective",
+        t.objective,
+        "",
+        "## Attack Steps",
+    ]
+    for step in t.steps:
+        label = " (follow-up)" if step.is_followup else ""
+        lines.append(f"### Step {step.index}{label}")
+        lines.append("Send to target:")
+        for prompt_line in step.prompt.split("\n"):
+            lines.append(f"> {prompt_line}")
+        lines.append("")
+    lines.append("## Evaluation")
+    lines.append("**Vulnerable if**:")
+    for v in t.eval_criteria.vulnerable_if:
+        lines.append(f"- {v}")
+    lines.append("")
+    lines.append("**Safe if**:")
+    for s in t.eval_criteria.safe_if:
+        lines.append(f"- {s}")
+    lines.append("")
+    lines.append("**Inconclusive if**:")
+    for i in t.eval_criteria.inconclusive_if:
+        lines.append(f"- {i}")
+    return "\n".join(lines) + "\n"
 
 
 @app.command(name="compliance")
