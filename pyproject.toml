@@ -5,40 +5,34 @@ build-backend = "hatchling.build"
 [project]
 name = "pentis"
 version = "0.1.0"
-description = "AI Agent Security Scanner — black-box vulnerability testing for LLM-powered agents"
+description = "AI agent security scanner — Living Red Team"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.10"
-authors = [
-    { name = "Pentis Team" },
-]
-keywords = ["security", "ai", "agents", "llm", "vulnerability", "scanner", "pentesting"]
+requires-python = ">=3.11"
+authors = [{ name = "Pentis AI" }]
+keywords = ["security", "pentesting", "llm", "agent", "owasp"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Security",
 ]
 dependencies = [
-    "typer>=0.9.0",
-    "rich>=13.0.0",
-    "httpx>=0.25.0",
-    "pyyaml>=6.0",
-    "jsonschema>=4.20.0",
-    "jinja2>=3.1.0",
-    "networkx>=3.2.0",
+    "httpx>=0.27",
+    "typer>=0.12",
+    "rich>=13.0",
+    "jinja2>=3.1",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0",
-    "pytest-asyncio>=0.23.0",
-    "respx>=0.21.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.5",
 ]
 
 [project.scripts]
@@ -48,5 +42,9 @@ pentis = "pentis.cli:app"
 packages = ["src/pentis"]
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
 testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
