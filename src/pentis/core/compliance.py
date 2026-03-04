@@ -527,12 +527,12 @@ def _generate_pci_dss_report(scan: ScanResult) -> str:
     """Generate PCI DSS 4.0 AI controls compliance report."""
     controls: dict[str, Any] = {}
     for req_id, req_data in PCI_DSS_V4_CONTROLS.items():
-        req_findings = [
-            f
+        req_findings = list({
+            f.template_id: f
             for f in scan.findings
             if f.category.value in req_data["categories"]
             or any(f.template_id.startswith(p) for p in req_data["attack_prefixes"])
-        ]
+        }.values())
         status = _control_status(req_findings)
         controls[req_id] = {
             "name": req_data["name"],

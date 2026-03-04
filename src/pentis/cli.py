@@ -113,17 +113,29 @@ def _write_report(
     return path
 
 
-def _check_fail_threshold(vuln_count: int, total: int, threshold: float) -> None:
-    """Check vulnerability rate and exit with code 1 if threshold exceeded."""
-    if total == 0:
-        return
-    rate = vuln_count / total
-    if rate > threshold:
+def _check_fail_gates(
+    vuln_count: int, total: int, fail_on_vuln: bool, threshold: float
+) -> None:
+    """Check CI fail gates and exit with code 1 if triggered.
+
+    --fail-on-vuln: fail if ANY vulnerability found (vuln_count > 0).
+    --fail-threshold: fail if vulnerability RATE exceeds threshold.
+    Both are independent — either can trigger failure.
+    """
+    if fail_on_vuln and vuln_count > 0:
         console.print(
-            f"\n[red bold]CI FAILURE: vulnerability rate {rate:.0%} "
-            f"exceeds threshold {threshold:.0%}[/]"
+            f"\n[red bold]CI FAILURE: {vuln_count} "
+            f"{'vulnerability' if vuln_count == 1 else 'vulnerabilities'} found[/]"
         )
         raise typer.Exit(1)
+    if threshold > 0.0 and total > 0:
+        rate = vuln_count / total
+        if rate > threshold:
+            console.print(
+                f"\n[red bold]CI FAILURE: vulnerability rate {rate:.0%} "
+                f"exceeds threshold {threshold:.0%}[/]"
+            )
+            raise typer.Exit(1)
 
 
 def _make_adapter(
@@ -247,8 +259,7 @@ def scan(
         console.print(f"  Total trials: {result.total_trials}")
         console.print(f"\nReport saved: {report_path}")
 
-        if fail_on_vuln:
-            _check_fail_threshold(result.vulnerable_attacks, len(result.findings), fail_threshold)
+        _check_fail_gates(result.vulnerable_attacks, len(result.findings), fail_on_vuln, fail_threshold)
 
         return
 
@@ -293,8 +304,7 @@ def scan(
     console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
     console.print(f"\nReport saved: {report_path}")
 
-    if fail_on_vuln:
-        _check_fail_threshold(result.vulnerable_count, len(result.findings), fail_threshold)
+    _check_fail_gates(result.vulnerable_count, len(result.findings), fail_on_vuln, fail_threshold)
 
 
 @app.command()
@@ -487,8 +497,7 @@ def campaign(
     console.print(f"  Total trials: {result.total_trials}")
     console.print(f"\nReport saved: {report_path}")
 
-    if fail_on_vuln:
-        _check_fail_threshold(result.vulnerable_attacks, len(result.findings), fail_threshold)
+    _check_fail_gates(result.vulnerable_attacks, len(result.findings), fail_on_vuln, fail_threshold)
 
 
 @app.command()
