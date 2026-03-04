@@ -19,7 +19,7 @@ claude --plugin-dir /path/to/Pentis-Monorepo
 
 ## Structure
 
-```
+```text
 Pentis-Monorepo/
 ├── .claude-plugin/
 │   └── plugin.json              # Plugin manifest
