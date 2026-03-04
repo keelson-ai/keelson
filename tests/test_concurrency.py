@@ -1,7 +1,6 @@
 """Tests for campaign concurrency and early termination."""
 
 import pytest
-import httpx
 import respx
 
 from pentis.adapters.openai import OpenAIAdapter

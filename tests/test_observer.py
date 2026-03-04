@@ -1,6 +1,5 @@
 """Tests for the streaming leakage observer."""
 
-import pytest
 
 from pentis.core.models import EvidenceItem
 from pentis.core.observer import StreamingObserver

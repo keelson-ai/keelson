@@ -8,7 +8,6 @@ from pentis.core.models import (
     ComplianceFramework,
     Finding,
     ScanResult,
-    Severity,
     Verdict,
 )
 

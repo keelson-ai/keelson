@@ -134,7 +134,7 @@ def scan(
 
         _print_cache_stats(target_adapter)
 
-        console.print(f"\n[bold]Results[/bold]")
+        console.print("\n[bold]Results[/bold]")
         console.print(f"  Attacks tested: {len(result.findings)}")
         console.print(f"  Vulnerable: [red]{result.vulnerable_attacks}[/]")
         console.print(f"  Total trials: {result.total_trials}")
@@ -155,7 +155,7 @@ def scan(
             f"{icon.get(finding.verdict.value, finding.verdict.value)}"
         )
 
-    console.print(f"\n[bold]Pentis Security Scan[/bold]")
+    console.print("\n[bold]Pentis Security Scan[/bold]")
     console.print(f"Target: {url}")
     console.print(f"Model: {model}")
     if category:
@@ -184,7 +184,7 @@ def scan(
 
     _print_cache_stats(target_adapter)
 
-    console.print(f"\n[bold]Results[/bold]")
+    console.print("\n[bold]Results[/bold]")
     console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
     console.print(f"  Safe: [green]{result.safe_count}[/]")
     console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
@@ -347,7 +347,7 @@ def campaign(
             f"({sf.success_rate:.0%} rate, {sf.num_trials} trials)"
         )
 
-    console.print(f"\n[bold]Pentis Statistical Campaign[/bold]")
+    console.print("\n[bold]Pentis Statistical Campaign[/bold]")
     console.print(f"Config: {config.name}")
     console.print(f"Target: {config.target_url}")
     console.print(f"Trials/attack: {config.trials_per_attack}")
@@ -374,7 +374,7 @@ def campaign(
 
     _print_cache_stats(target_adapter)
 
-    console.print(f"\n[bold]Campaign Results[/bold]")
+    console.print("\n[bold]Campaign Results[/bold]")
     console.print(f"  Attacks tested: {len(result.findings)}")
     console.print(f"  Vulnerable: [red]{result.vulnerable_attacks}[/]")
     console.print(f"  Total trials: {result.total_trials}")
@@ -400,7 +400,7 @@ def discover(
         url, api_key, adapter, assistant_id=assistant_id, tool_name=tool_name
     )
 
-    console.print(f"\n[bold]Pentis Agent Discovery[/bold]")
+    console.print("\n[bold]Pentis Agent Discovery[/bold]")
     console.print(f"Target: {url}")
     console.print()
 
@@ -588,7 +588,7 @@ def evolve(
     _print_cache_stats(target_adapter)
 
     vuln_count = sum(1 for _, f in results if f.verdict.value == "VULNERABLE")
-    console.print(f"\n[bold]Evolve Results[/bold]")
+    console.print("\n[bold]Evolve Results[/bold]")
     console.print(f"  Mutations tried: {len(results)}")
     console.print(f"  Bypasses found: [red]{vuln_count}[/]")
 
@@ -644,7 +644,7 @@ def chain(
         console.print(f"[red]Profile {profile_id} not found[/]")
         raise typer.Exit(1)
 
-    console.print(f"\n[bold]Pentis Attack Chain Synthesis[/bold]")
+    console.print("\n[bold]Pentis Attack Chain Synthesis[/bold]")
     console.print(f"Target: {url}")
     console.print(f"Profile: {profile_id}")
     console.print(
@@ -712,7 +712,7 @@ def chain(
     store.close()
 
     vuln_count = sum(1 for _, f in results if f.verdict.value == "VULNERABLE")
-    console.print(f"\n[bold]Chain Results[/bold]")
+    console.print("\n[bold]Chain Results[/bold]")
     console.print(f"  Chains tested: {len(results)}")
     console.print(f"  Vulnerable: [red]{vuln_count}[/]")
 

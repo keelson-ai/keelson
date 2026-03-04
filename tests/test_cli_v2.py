@@ -2,7 +2,6 @@
 
 from datetime import datetime, timezone
 
-import pytest
 from typer.testing import CliRunner
 
 from pentis.cli import app

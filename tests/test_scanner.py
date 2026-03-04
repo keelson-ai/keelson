@@ -1,11 +1,10 @@
 """Tests for the scanner pipeline."""
 
 import pytest
-import httpx
 import respx
 
 from pentis.adapters.openai import OpenAIAdapter
-from pentis.core.models import Target, Verdict
+from pentis.core.models import Target
 from pentis.core.scanner import run_scan
 
 
@@ -56,7 +55,7 @@ class TestScanner:
         def on_finding(finding, current, total):
             progress.append((finding.template_id, current, total))
 
-        result = await run_scan(
+        await run_scan(
             target=target,
             adapter=adapter,
             attacks_dir=attacks_dir,

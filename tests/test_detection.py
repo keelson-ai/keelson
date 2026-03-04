@@ -1,6 +1,5 @@
 """Tests for the detection pipeline."""
 
-import pytest
 
 from pentis.core.detection import detect
 from pentis.core.models import (

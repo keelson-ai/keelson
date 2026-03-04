@@ -1,6 +1,5 @@
 """Tests for Phase 3 model additions."""
 
-import pytest
 
 from pentis.core.models import (
     AttackChain,

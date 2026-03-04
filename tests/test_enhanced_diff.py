@@ -1,13 +1,11 @@
 """Tests for enhanced regression alerts and campaign diff."""
 
-import pytest
 
 from pentis.core.models import (
     Category,
     CampaignConfig,
     CampaignResult,
     Finding,
-    RegressionAlert,
     ScanDiffItem,
     ScanResult,
     Severity,

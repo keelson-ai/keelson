@@ -1,10 +1,9 @@
 """Tests for the caching adapter."""
 
 import pytest
-import httpx
 import respx
 
-from pentis.adapters.cache import CachingAdapter, CacheStats
+from pentis.adapters.cache import CachingAdapter
 from pentis.adapters.openai import OpenAIAdapter
 
 
@@ -81,8 +80,6 @@ class TestCachingAdapter:
 
     @respx.mock
     async def test_ttl_expiry(self):
-        import time
-        from unittest.mock import patch
 
         respx.post("https://target.example.com/v1/chat").respond(
             json=_chat_response("resp")

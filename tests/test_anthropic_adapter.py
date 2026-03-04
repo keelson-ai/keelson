@@ -1,7 +1,6 @@
 """Tests for the Anthropic Messages API adapter."""
 
 import pytest
-import httpx
 import respx
 
 from pentis.adapters.anthropic import AnthropicAdapter, ANTHROPIC_API_URL

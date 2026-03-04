@@ -1,7 +1,6 @@
 """Tests for attack chain synthesis."""
 
 import pytest
-import httpx
 import respx
 
 from pentis.adapters.openai import OpenAIAdapter
@@ -15,8 +14,6 @@ from pentis.attacker.chains import (
 from pentis.core.models import (
     AgentCapability,
     AgentProfile,
-    AttackChain,
-    Category,
     Severity,
 )
 
