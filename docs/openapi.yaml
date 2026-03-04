@@ -1,0 +1,370 @@
+openapi: "3.1.0"
+
+info:
+  title: Pentis Service API
+  version: "0.1.0"
+  description: >
+    REST API for the Pentis autonomous AI security scanner service.
+    Exposes health, scan, attack, and report endpoints for orchestrating
+    LLM security assessments.
+  contact:
+    name: Pentis
+    url: https://github.com/Othentic-Labs/Pentis
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.pentis.example.com
+    description: Production server (placeholder)
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      description: >
+        Returns the service status and current version. Used by load balancers,
+        container orchestration healthchecks, and monitoring systems.
+      tags:
+        - Observability
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                version: "0.1.0"
+
+  # ── Phase 2 placeholders ──────────────────────────────────────────────────
+  # The paths below are stubs. Schemas and detailed responses will be filled in
+  # once Phase 2 implementation begins.
+
+  /scans:
+    post:
+      operationId: createScan
+      summary: Start a new security scan
+      description: >
+        Enqueue a full security scan against the specified target endpoint.
+        Returns a scan ID that can be polled for results.
+      tags:
+        - Scans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanRequest"
+      responses:
+        "202":
+          description: Scan accepted and enqueued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanCreated"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /scans/{scan_id}:
+    get:
+      operationId: getScan
+      summary: Get scan status and results
+      description: >
+        Retrieve the current status and findings of a scan by its ID.
+      tags:
+        - Scans
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique scan identifier returned by POST /scans
+      responses:
+        "200":
+          description: Scan details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanResult"
+        "404":
+          description: Scan not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /attacks:
+    post:
+      operationId: runAttack
+      summary: Run a single attack
+      description: >
+        Execute a single named attack playbook against the specified target.
+        Returns the verdict synchronously for quick one-off testing.
+      tags:
+        - Attacks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttackRequest"
+      responses:
+        "200":
+          description: Attack result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttackResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Attack playbook not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/{scan_id}:
+    get:
+      operationId: getReport
+      summary: Get scan report
+      description: >
+        Download the full report for a completed scan in the requested format.
+      tags:
+        - Reports
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [markdown, sarif, junit]
+            default: markdown
+          description: Output format for the report
+      responses:
+        "200":
+          description: Report content
+          content:
+            text/markdown:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: object
+                description: SARIF v2.1.0 document or JUnit XML wrapped in JSON
+            application/xml:
+              schema:
+                type: string
+        "404":
+          description: Scan or report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    # ── Health ────────────────────────────────────────────────────────────────
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          description: Always "ok" when the service is healthy
+          example: ok
+        version:
+          type: string
+          description: Service version string (semver)
+          example: "0.1.0"
+
+    # ── Scans (Phase 2 stubs) ─────────────────────────────────────────────────
+    ScanRequest:
+      type: object
+      required:
+        - target_url
+      properties:
+        target_url:
+          type: string
+          format: uri
+          description: Base URL of the OpenAI-compatible chat completions endpoint
+          example: https://api.example.com/v1/chat/completions
+        api_key:
+          type: string
+          description: API key for the target endpoint (omit for unauthenticated targets)
+        adapter:
+          type: string
+          enum: [openai, http, anthropic, langgraph, mcp, a2a]
+          default: http
+          description: Target adapter to use
+        category:
+          type: string
+          enum: [goal-adherence, tool-safety, memory-integrity, permission-boundaries, delegation-integrity, execution-safety, session-isolation]
+          description: Restrict scan to a single attack category (omit for full scan)
+        tier:
+          type: string
+          enum: [fast, standard, deep]
+          default: standard
+          description: >
+            Scan depth tier. fast=1 trial, standard=3 trials, deep=10 trials per attack.
+
+    ScanCreated:
+      type: object
+      required:
+        - scan_id
+        - status
+      properties:
+        scan_id:
+          type: string
+          format: uuid
+          description: Unique identifier for the created scan
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+
+    ScanResult:
+      type: object
+      required:
+        - scan_id
+        - status
+      properties:
+        scan_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        summary:
+          type: object
+          description: Aggregated findings summary (present when status=completed)
+          nullable: true
+          properties:
+            total_attacks:
+              type: integer
+            vulnerable:
+              type: integer
+            safe:
+              type: integer
+            inconclusive:
+              type: integer
+
+    # ── Attacks (Phase 2 stubs) ───────────────────────────────────────────────
+    AttackRequest:
+      type: object
+      required:
+        - target_url
+        - attack_id
+      properties:
+        target_url:
+          type: string
+          format: uri
+        attack_id:
+          type: string
+          description: Attack playbook ID (e.g. GA-001, TS-012, MI-005)
+          example: GA-001
+        api_key:
+          type: string
+        adapter:
+          type: string
+          enum: [openai, http, anthropic, langgraph, mcp, a2a]
+          default: http
+
+    AttackResult:
+      type: object
+      required:
+        - attack_id
+        - verdict
+      properties:
+        attack_id:
+          type: string
+          example: GA-001
+        verdict:
+          type: string
+          enum: [VULNERABLE, SAFE, INCONCLUSIVE]
+        evidence:
+          type: object
+          nullable: true
+          properties:
+            prompt:
+              type: string
+            response:
+              type: string
+            reasoning:
+              type: string
+
+    # ── Errors ────────────────────────────────────────────────────────────────
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              description: Human-readable error message
+              example: "target_url is required"
+            details:
+              type: array
+              nullable: true
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+
+  securitySchemes:
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authenticating requests to the Pentis service
+
+security: []
