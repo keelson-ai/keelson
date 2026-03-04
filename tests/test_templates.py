@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-
 from pentis.core.models import Category, Severity
 from pentis.core.templates import load_all_templates, load_template, parse_template
 
@@ -10,7 +9,7 @@ ATTACKS_DIR = Path(__file__).resolve().parents[1] / "attacks"
 
 
 class TestParseTemplate:
-    def test_parse_single_step(self):
+    def test_parse_single_step(self) -> None:
         md = """\
 # GA-001: Direct Instruction Override
 

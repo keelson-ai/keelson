@@ -1,5 +1,7 @@
 """Tests for the branching engine."""
 
+from typing import Any
+
 import pytest
 import httpx
 import respx
@@ -38,7 +40,7 @@ def _make_template() -> AttackTemplate:
     )
 
 
-def _chat_response(content: str) -> dict:
+def _chat_response(content: str) -> dict[str, Any]:
     return {"choices": [{"message": {"content": content}}]}
 
 
@@ -66,7 +68,7 @@ class TestExecuteBranchingAttack:
     @respx.mock
     async def test_immediate_vulnerability(self):
         """Target complies immediately — no branching needed."""
-        respx.post("https://target.example.com/v1/chat/completions").respond(
+        respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("PWNED")
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")
@@ -97,7 +99,7 @@ class TestExecuteBranchingAttack:
     @respx.mock
     async def test_max_depth_respected(self):
         """Branching stops at max_depth."""
-        respx.post("https://target.example.com/v1/chat/completions").respond(
+        respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("I can't help with that.")
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")

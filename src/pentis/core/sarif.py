@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import timezone
+from typing import Any
 
 from pentis.core.models import (
     CampaignResult,
@@ -15,7 +16,9 @@ from pentis.core.models import (
 )
 
 SARIF_VERSION = "2.1.0"
-SARIF_SCHEMA = "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json"
+SARIF_SCHEMA = (
+    "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json"
+)
 TOOL_NAME = "pentis"
 TOOL_SEMANTIC_VERSION = "0.4.0"
 TOOL_INFO_URI = "https://github.com/pentis-ai/pentis"
@@ -40,7 +43,7 @@ def _verdict_to_kind(verdict: Verdict) -> str:
     }[verdict]
 
 
-def _finding_to_rule(finding: Finding) -> dict:
+def _finding_to_rule(finding: Finding) -> dict[str, Any]:
     """Convert a Finding to a SARIF reportingDescriptor (rule)."""
     return {
         "id": finding.template_id,
@@ -56,14 +59,18 @@ def _finding_to_rule(finding: Finding) -> dict:
     }
 
 
-def _finding_to_result(finding: Finding, rule_index: int) -> dict:
+def _finding_to_result(finding: Finding, rule_index: int) -> dict[str, Any]:
     """Convert a Finding to a SARIF result."""
-    result = {
+    result: dict[str, Any] = {
         "ruleId": finding.template_id,
         "ruleIndex": rule_index,
         "kind": _verdict_to_kind(finding.verdict),
-        "level": _severity_to_level(finding.severity) if finding.verdict == Verdict.VULNERABLE else "none",
-        "message": {"text": finding.reasoning or f"{finding.template_name}: {finding.verdict.value}"},
+        "level": _severity_to_level(finding.severity)
+        if finding.verdict == Verdict.VULNERABLE
+        else "none",
+        "message": {
+            "text": finding.reasoning or f"{finding.template_name}: {finding.verdict.value}"
+        },
         "properties": {
             "verdict": finding.verdict.value,
             "category": finding.category.value,
@@ -81,7 +88,7 @@ def _finding_to_result(finding: Finding, rule_index: int) -> dict:
     return result
 
 
-def _stat_finding_to_rule(sf: StatisticalFinding) -> dict:
+def _stat_finding_to_rule(sf: StatisticalFinding) -> dict[str, Any]:
     """Convert a StatisticalFinding to a SARIF reportingDescriptor."""
     return {
         "id": sf.template_id,
@@ -97,7 +104,7 @@ def _stat_finding_to_rule(sf: StatisticalFinding) -> dict:
     }
 
 
-def _stat_finding_to_result(sf: StatisticalFinding, rule_index: int) -> dict:
+def _stat_finding_to_result(sf: StatisticalFinding, rule_index: int) -> dict[str, Any]:
     """Convert a StatisticalFinding to a SARIF result."""
     return {
         "ruleId": sf.template_id,
@@ -123,12 +130,12 @@ def _stat_finding_to_result(sf: StatisticalFinding, rule_index: int) -> dict:
     }
 
 
-def scan_to_sarif(scan: ScanResult) -> dict:
+def scan_to_sarif(scan: ScanResult) -> dict[str, Any]:
     """Generate SARIF v2.1.0 JSON from a ScanResult."""
     # Deduplicate rules by template_id
     seen_rules: dict[str, int] = {}
-    rules: list[dict] = []
-    results: list[dict] = []
+    rules: list[dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     for finding in scan.findings:
         if finding.template_id not in seen_rules:
@@ -137,7 +144,7 @@ def scan_to_sarif(scan: ScanResult) -> dict:
         rule_index = seen_rules[finding.template_id]
         results.append(_finding_to_result(finding, rule_index))
 
-    run = {
+    run: dict[str, Any] = {
         "tool": {
             "driver": {
                 "name": TOOL_NAME,
@@ -156,9 +163,7 @@ def scan_to_sarif(scan: ScanResult) -> dict:
     }
 
     if scan.finished_at:
-        run["invocations"][0]["endTimeUtc"] = (
-            scan.finished_at.astimezone(timezone.utc).isoformat()
-        )
+        run["invocations"][0]["endTimeUtc"] = scan.finished_at.astimezone(timezone.utc).isoformat()
 
     if scan.target.url:
         run["properties"] = {
@@ -174,11 +179,11 @@ def scan_to_sarif(scan: ScanResult) -> dict:
     }
 
 
-def campaign_to_sarif(campaign: CampaignResult) -> dict:
+def campaign_to_sarif(campaign: CampaignResult) -> dict[str, Any]:
     """Generate SARIF v2.1.0 JSON from a CampaignResult."""
     seen_rules: dict[str, int] = {}
-    rules: list[dict] = []
-    results: list[dict] = []
+    rules: list[dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     for sf in campaign.findings:
         if sf.template_id not in seen_rules:
@@ -187,7 +192,7 @@ def campaign_to_sarif(campaign: CampaignResult) -> dict:
         rule_index = seen_rules[sf.template_id]
         results.append(_stat_finding_to_result(sf, rule_index))
 
-    run = {
+    run: dict[str, Any] = {
         "tool": {
             "driver": {
                 "name": TOOL_NAME,
@@ -206,9 +211,9 @@ def campaign_to_sarif(campaign: CampaignResult) -> dict:
     }
 
     if campaign.finished_at:
-        run["invocations"][0]["endTimeUtc"] = (
-            campaign.finished_at.astimezone(timezone.utc).isoformat()
-        )
+        run["invocations"][0]["endTimeUtc"] = campaign.finished_at.astimezone(
+            timezone.utc
+        ).isoformat()
 
     if campaign.target.url:
         run["properties"] = {
@@ -227,6 +232,7 @@ def campaign_to_sarif(campaign: CampaignResult) -> dict:
 
 def to_sarif_json(data: ScanResult | CampaignResult, indent: int = 2) -> str:
     """Convert a ScanResult or CampaignResult to SARIF JSON string."""
+    sarif: dict[str, Any]
     if isinstance(data, CampaignResult):
         sarif = campaign_to_sarif(data)
     else:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from typing import Any
 
 import httpx
 
@@ -30,14 +31,14 @@ class A2AAdapter(BaseAdapter):
         self._api_key = api_key
         self._timeout = timeout
         self._client = httpx.AsyncClient(timeout=timeout)
-        self._agent_card: dict | None = None
+        self._agent_card: dict[str, Any] | None = None
 
-    async def _discover_agent(self) -> dict:
+    async def _discover_agent(self) -> dict[str, Any]:
         """Discover agent capabilities via /.well-known/agent.json."""
-        if self._agent_card:
+        if self._agent_card is not None:
             return self._agent_card
 
-        headers = {}
+        headers: dict[str, str] = {}
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
 
@@ -46,11 +47,14 @@ class A2AAdapter(BaseAdapter):
             headers=headers,
         )
         resp.raise_for_status()
-        self._agent_card = resp.json()
-        return self._agent_card
+        card: dict[str, Any] = resp.json()
+        self._agent_card = card
+        return card
 
     async def send_messages(
-        self, messages: list[dict[str, str]], model: str = "default"
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",  # noqa: ARG002
     ) -> tuple[str, int]:
         """Send messages via A2A tasks/send JSON-RPC method."""
         # Extract the latest user message
@@ -61,12 +65,12 @@ class A2AAdapter(BaseAdapter):
                 break
 
         task_id = uuid.uuid4().hex[:16]
-        headers = {"Content-Type": "application/json"}
+        headers: dict[str, str] = {"Content-Type": "application/json"}
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
 
         # A2A JSON-RPC 2.0 request — tasks/send
-        payload = {
+        payload: dict[str, Any] = {
             "jsonrpc": "2.0",
             "id": uuid.uuid4().hex[:8],
             "method": "tasks/send",
@@ -88,38 +92,42 @@ class A2AAdapter(BaseAdapter):
         elapsed_ms = int((time.monotonic() - start) * 1000)
         resp.raise_for_status()
 
-        data = resp.json()
+        data: dict[str, Any] = resp.json()
 
         # Parse JSON-RPC response
         if "error" in data:
-            error = data["error"]
-            return f"A2A Error {error.get('code', -1)}: {error.get('message', 'Unknown')}", elapsed_ms
+            error: dict[str, Any] = data["error"]
+            return (
+                f"A2A Error {error.get('code', -1)}: {error.get('message', 'Unknown')}",
+                elapsed_ms,
+            )
 
-        result = data.get("result", {})
+        result: dict[str, Any] = data.get("result", {})
 
         # Extract text from task result artifacts or status message
         response_text = self._extract_response(result)
         return response_text, elapsed_ms
 
-    def _extract_response(self, result: dict) -> str:
+    def _extract_response(self, result: dict[str, Any]) -> str:
         """Extract text response from A2A task result."""
         # Check for artifacts first (completed tasks)
-        artifacts = result.get("artifacts", [])
+        artifacts: list[dict[str, Any]] = result.get("artifacts", [])
         if artifacts:
             parts_text: list[str] = []
             for artifact in artifacts:
-                for part in artifact.get("parts", []):
+                parts: list[dict[str, Any]] = artifact.get("parts", [])
+                for part in parts:
                     if part.get("type") == "text":
-                        parts_text.append(part["text"])
+                        parts_text.append(str(part["text"]))
             if parts_text:
                 return "\n".join(parts_text)
 
         # Fall back to status message
-        status = result.get("status", {})
-        message = status.get("message", {})
+        status: dict[str, Any] = result.get("status", {})
+        message: dict[str, Any] = status.get("message", {})
         if message:
-            parts = message.get("parts", [])
-            texts = [p["text"] for p in parts if p.get("type") == "text"]
+            msg_parts: list[dict[str, Any]] = message.get("parts", [])
+            texts: list[str] = [str(p["text"]) for p in msg_parts if p.get("type") == "text"]
             if texts:
                 return "\n".join(texts)
 

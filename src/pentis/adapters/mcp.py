@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 import httpx
 
@@ -46,7 +47,7 @@ class MCPAdapter(BaseAdapter):
             return
 
         # Step 1: initialize request
-        init_payload = {
+        init_payload: dict[str, Any] = {
             "jsonrpc": MCP_JSONRPC_VERSION,
             "id": self._next_id(),
             "method": "initialize",
@@ -60,7 +61,7 @@ class MCPAdapter(BaseAdapter):
         resp.raise_for_status()
 
         # Step 2: send initialized notification (no id — it's a notification)
-        notification = {
+        notification: dict[str, str] = {
             "jsonrpc": MCP_JSONRPC_VERSION,
             "method": "notifications/initialized",
         }
@@ -74,11 +75,11 @@ class MCPAdapter(BaseAdapter):
         """Call tools/call on the MCP server and return (response_text, response_time_ms)."""
         await self._ensure_initialized()
 
-        arguments: dict = {"messages": messages}
+        arguments: dict[str, Any] = {"messages": messages}
         if model != "default":
             arguments["model"] = model
 
-        payload = {
+        payload: dict[str, Any] = {
             "jsonrpc": MCP_JSONRPC_VERSION,
             "id": self._next_id(),
             "method": "tools/call",
@@ -92,26 +93,26 @@ class MCPAdapter(BaseAdapter):
         resp = await self._client.post(self.url, json=payload)
         elapsed_ms = int((time.monotonic() - start) * 1000)
         resp.raise_for_status()
-        data = resp.json()
+        data: dict[str, Any] = resp.json()
 
         # Check for JSON-RPC error
         if "error" in data:
-            error = data["error"]
+            error: dict[str, Any] = data["error"]
             raise RuntimeError(
                 f"MCP error {error.get('code', '?')}: {error.get('message', 'unknown')}"
             )
 
-        result = data.get("result", {})
-        content_blocks = result.get("content", [])
+        result: dict[str, Any] = data.get("result", {})
+        content_blocks: list[dict[str, Any]] = result.get("content", [])
         return self._extract_content(content_blocks), elapsed_ms
 
     @staticmethod
-    def _extract_content(content_blocks: list) -> str:
+    def _extract_content(content_blocks: list[dict[str, Any]]) -> str:
         """Parse MCP content blocks into a plain text string."""
-        parts = []
+        parts: list[str] = []
         for block in content_blocks:
-            if isinstance(block, dict) and block.get("type") == "text":
-                parts.append(block.get("text", ""))
+            if block.get("type") == "text":
+                parts.append(str(block.get("text", "")))
         return "".join(parts)
 
     async def health_check(self) -> bool:

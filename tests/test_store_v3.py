@@ -1,5 +1,8 @@
 """Tests for Phase 3 store extensions (cache, regression alerts, attack chains)."""
 
+from collections.abc import Generator
+from pathlib import Path
+
 import pytest
 
 from pentis.core.models import (
@@ -13,7 +16,7 @@ from pentis.state.store import Store
 
 
 @pytest.fixture
-def store(tmp_path):
+def store(tmp_path: Path) -> Generator[Store, None, None]:
     db_path = tmp_path / "test.db"
     s = Store(db_path=db_path)
     yield s
@@ -21,7 +24,7 @@ def store(tmp_path):
 
 
 class TestResponseCachePersistence:
-    def test_save_and_get_cache_entry(self, store):
+    def test_save_and_get_cache_entry(self, store: Store) -> None:
         store.save_cache_entry(
             cache_key="abc123",
             messages=[{"role": "user", "content": "test"}],
@@ -35,11 +38,11 @@ class TestResponseCachePersistence:
         assert entry["model"] == "gpt-4"
         assert entry["response_time_ms"] == 150
 
-    def test_cache_miss(self, store):
+    def test_cache_miss(self, store: Store) -> None:
         entry = store.get_cache_entry("nonexistent")
         assert entry is None
 
-    def test_hit_count_increments(self, store):
+    def test_hit_count_increments(self, store: Store) -> None:
         store.save_cache_entry(
             cache_key="key1",
             messages=[],
@@ -50,14 +53,14 @@ class TestResponseCachePersistence:
         store.get_cache_entry("key1")  # hit_count becomes 1
         store.get_cache_entry("key1")  # hit_count becomes 2
         # Read the raw row to check final count
-        row = store._conn.execute(
+        row = store._conn.execute(  # type: ignore[reportPrivateUsage]
             "SELECT hit_count FROM response_cache WHERE cache_key = ?", ("key1",)
         ).fetchone()
         assert row["hit_count"] == 2
 
 
 class TestRegressionAlertsPersistence:
-    def test_save_and_list_alerts(self, store):
+    def test_save_and_list_alerts(self, store: Store) -> None:
         alerts = [
             RegressionAlert(
                 template_id="GA-001",
@@ -77,7 +80,7 @@ class TestRegressionAlertsPersistence:
         assert len(rows) == 2
         assert rows[0]["template_id"] in ("GA-001", "GA-002")
 
-    def test_acknowledge_alert(self, store):
+    def test_acknowledge_alert(self, store: Store) -> None:
         alerts = [
             RegressionAlert(
                 template_id="GA-001",
@@ -97,7 +100,7 @@ class TestRegressionAlertsPersistence:
 
 
 class TestAttackChainPersistence:
-    def test_save_and_get_chain(self, store):
+    def test_save_and_get_chain(self, store: Store) -> None:
         chain = AttackChain(
             chain_id="chain-001",
             name="Data Exfiltration",
@@ -120,10 +123,10 @@ class TestAttackChainPersistence:
         assert loaded.steps[1].is_followup is True
         assert loaded.severity == Severity.CRITICAL
 
-    def test_get_nonexistent_chain(self, store):
+    def test_get_nonexistent_chain(self, store: Store) -> None:
         assert store.get_attack_chain("nonexistent") is None
 
-    def test_list_chains(self, store):
+    def test_list_chains(self, store: Store) -> None:
         # Insert a profile first to satisfy FK constraint
         from pentis.core.models import AgentProfile, AgentCapability
 
@@ -152,7 +155,7 @@ class TestAttackChainPersistence:
         profile_chains = store.list_attack_chains(profile_id="profile-1")
         assert len(profile_chains) == 3
 
-    def test_upsert_chain(self, store):
+    def test_upsert_chain(self, store: Store) -> None:
         chain = AttackChain(
             chain_id="chain-001",
             name="Original",
@@ -168,4 +171,5 @@ class TestAttackChainPersistence:
         store.save_attack_chain(chain)
 
         loaded = store.get_attack_chain("chain-001")
+        assert loaded is not None
         assert loaded.name == "Updated"
