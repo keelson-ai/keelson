@@ -9,8 +9,8 @@ RUN pip install --no-cache-dir uv
 # Copy dependency manifests for layer caching
 COPY pyproject.toml uv.lock ./
 
-# Install all dependencies (including dev extras) into a venv
-RUN uv sync
+# Install all dependencies including dev extras (pytest, ruff, pyright)
+RUN uv sync --extra dev
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app/src"
