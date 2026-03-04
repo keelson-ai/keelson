@@ -9,6 +9,7 @@ import yaml
 
 from pentis.core.models import AttackStep, AttackTemplate, Category, EvalCriteria, Severity
 
+
 def _build_category_map() -> dict[str, Category]:
     """Derive category map from Category enum — snake_case and kebab-case keys."""
     m: dict[str, Category] = {}
@@ -19,9 +20,10 @@ def _build_category_map() -> dict[str, Category]:
         m[kebab] = cat
     return m
 
-_CATEGORY_MAP: dict[str, Category] = _build_category_map()
 
-_SEVERITY_MAP: dict[str, Severity] = {s.name.lower(): s for s in Severity}
+CATEGORY_MAP: dict[str, Category] = _build_category_map()
+
+SEVERITY_MAP: dict[str, Severity] = {s.name.lower(): s for s in Severity}
 
 _REQUIRED = ("id", "name", "severity", "category", "owasp_id", "objective", "turns", "evaluation")
 
@@ -31,9 +33,9 @@ def validate_yaml_template(data: dict[str, Any]) -> None:
     for field in _REQUIRED:
         if field not in data:
             raise ValueError(f"YAML template missing required field: '{field}'")
-    if data["severity"].lower() not in _SEVERITY_MAP:
+    if data["severity"].lower() not in SEVERITY_MAP:
         raise ValueError(f"Unknown severity: {data['severity']!r}")
-    if data["category"].lower() not in _CATEGORY_MAP:
+    if data["category"].lower() not in CATEGORY_MAP:
         raise ValueError(f"Unknown category: {data['category']!r}")
 
 
@@ -63,8 +65,8 @@ def load_yaml_template(path: Path) -> AttackTemplate:
     return AttackTemplate(
         id=str(data["id"]),
         name=str(data["name"]),
-        severity=_SEVERITY_MAP[data["severity"].lower()],
-        category=_CATEGORY_MAP[data["category"].lower()],
+        severity=SEVERITY_MAP[data["severity"].lower()],
+        category=CATEGORY_MAP[data["category"].lower()],
         owasp=str(data["owasp_id"]),
         objective=str(data["objective"]),
         steps=steps,

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pentis.core.models import AttackTemplate, Category
 from pentis.core.yaml_templates import (
-    _CATEGORY_MAP,
+    CATEGORY_MAP as CATEGORY_MAP,
     load_yaml_template,
     load_yaml_templates_dir,
 )
@@ -16,8 +16,6 @@ from pentis.core.yaml_templates import (
 _PACKAGE_ATTACKS = Path(__file__).resolve().parent.parent / "attacks"
 _REPO_ATTACKS = Path(__file__).resolve().parents[2].parent / "attacks"
 ATTACKS_DIR = _PACKAGE_ATTACKS if _PACKAGE_ATTACKS.is_dir() else _REPO_ATTACKS
-
-CATEGORY_MAP: dict[str, Category] = _CATEGORY_MAP
 
 
 def load_template(path: Path) -> AttackTemplate:
