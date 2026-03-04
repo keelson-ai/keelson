@@ -170,8 +170,8 @@ Send to target:
 class TestLoadTemplates:
     def test_load_all_templates(self):
         templates = load_all_templates(attacks_dir=ATTACKS_DIR)
-        # At minimum: 15 GA + 16 TS + 11 MI = 42
-        assert len(templates) >= 42
+        # At minimum: 30 GA + 24 TS + 17 MI = 71
+        assert len(templates) >= 71
 
     def test_all_templates_have_required_fields(self):
         templates = load_all_templates(attacks_dir=ATTACKS_DIR)
@@ -199,20 +199,20 @@ class TestLoadTemplates:
         ga = [t for t in templates if t.category == Category.GOAL_ADHERENCE]
         ts = [t for t in templates if t.category == Category.TOOL_SAFETY]
         mi = [t for t in templates if t.category == Category.MEMORY_INTEGRITY]
-        assert len(ga) == 15
-        assert len(ts) == 16
-        assert len(mi) == 11
+        assert len(ga) == 30
+        assert len(ts) == 24
+        assert len(mi) == 17
 
     def test_filter_by_category(self):
         ga = load_all_templates(attacks_dir=ATTACKS_DIR, category="goal-adherence")
-        assert len(ga) == 15
+        assert len(ga) == 30
         assert all(t.category == Category.GOAL_ADHERENCE for t in ga)
 
         ts = load_all_templates(attacks_dir=ATTACKS_DIR, category="tool-safety")
-        assert len(ts) == 16
+        assert len(ts) == 24
 
         mi = load_all_templates(attacks_dir=ATTACKS_DIR, category="memory-integrity")
-        assert len(mi) == 11
+        assert len(mi) == 17
 
     def test_load_single_template(self):
         path = ATTACKS_DIR / "goal-adherence" / "GA-001.md"
