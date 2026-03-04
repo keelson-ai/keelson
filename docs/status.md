@@ -24,6 +24,12 @@ docker compose up
 ```
 The API will be available at `http://localhost:8000` and the health endpoint at `http://localhost:8000/health`.
 
+### QA Review Fixes (automated)
+| File | Fix |
+|------|-----|
+| `Dockerfile.dev` | Changed `uv sync` → `uv sync --extra dev` so dev tools (pytest, ruff, pyright) are actually installed |
+| `docker-compose.yml` | Added `extra_hosts: host.docker.internal:host-gateway` for Linux Docker compatibility with the default `PENTIS_TARGET_URL` |
+
 ### Notes
 - `uv.lock` will need to be regenerated after adding `fastapi`/`uvicorn` to dependencies (`uv lock` locally)
 - The healthcheck uses Python's stdlib `urllib` to avoid requiring `curl` in the minimal runtime image
