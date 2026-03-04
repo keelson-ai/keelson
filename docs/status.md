@@ -58,8 +58,16 @@ pentis-service
 python -m pentis_service.main
 ```
 
+### QA Review Fixes (automated)
+| File | Fix |
+|------|-----|
+| `src/pentis_service/routers/health.py` | Removed redundant `response_class=JSONResponse` (FastAPI default) and unused `JSONResponse` import |
+| `tests/test_health_service.py` | Created — 7 tests covering status 200, `status: ok`, version field, content-type, response keys, `create_app()` type, and 404 on unknown route |
+
 ### Notes
 - `create_app()` factory makes the app importable and testable without starting the server
 - JSON log format uses stdlib `logging.Formatter` (no extra dependencies)
 - `LOG_LEVEL` env var controls log verbosity (default: `INFO`)
 - `PENTIS_PORT` env var controls server port (default: `8000`)
+- JSON log formatter does not serialize `extra={}` kwargs — `logger.info(..., extra={"version": ...})` version field is silently dropped from output (stdlib limitation; acceptable for skeleton)
+- `pentis_service.__version__` (`0.1.0`) is intentionally separate from the top-level `pentis` package version (`0.4.0`)

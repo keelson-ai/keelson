@@ -4,7 +4,6 @@ import logging
 from dataclasses import dataclass
 
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
 
 from pentis_service import __version__
 
@@ -19,7 +18,7 @@ class HealthResponse:
     version: str
 
 
-@router.get("/health", response_class=JSONResponse)
+@router.get("/health")
 async def health() -> dict[str, str]:
     logger.info("health check requested")
     response = HealthResponse(status="ok", version=__version__)
