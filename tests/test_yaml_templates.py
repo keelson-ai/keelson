@@ -133,3 +133,17 @@ def test_load_yaml_templates_dir(tmp_path: Path) -> None:
 
 def test_load_yaml_templates_dir_empty(tmp_path: Path) -> None:
     assert load_yaml_templates_dir(tmp_path) == []
+
+
+def test_all_categories_supported() -> None:
+    """Every Category enum member must be loadable from YAML."""
+    from pentis.core.models import Category
+    from pentis.core.yaml_templates import CATEGORY_MAP
+
+    for cat in Category:
+        snake = cat.name.lower()
+        kebab = snake.replace("_", "-")
+        assert snake in CATEGORY_MAP, f"{snake} not in CATEGORY_MAP"
+        assert kebab in CATEGORY_MAP, f"{kebab} not in CATEGORY_MAP"
+        assert CATEGORY_MAP[snake] == cat
+        assert CATEGORY_MAP[kebab] == cat
