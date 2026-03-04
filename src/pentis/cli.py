@@ -182,5 +182,233 @@ def history(
     console.print(table)
 
 
+# --- Phase 2 Commands ---
+
+
+@app.command()
+def campaign(
+    config_path: str = typer.Argument(help="Path to TOML campaign configuration file"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
+    no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
+) -> None:
+    """Run a statistical campaign (N trials per attack)."""
+    from pentis.campaign.config import parse_campaign_config
+    from pentis.campaign.runner import run_campaign
+    from pentis.core.models import CampaignConfig
+    from pentis.core.reporter import generate_campaign_report
+
+    config = parse_campaign_config(config_path)
+    target = Target(url=config.target_url, api_key=config.api_key, model=config.model)
+    adapter = OpenAIAdapter(url=config.target_url, api_key=config.api_key)
+
+    def on_finding(sf, current, total):
+        icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+        console.print(
+            f"  [{current}/{total}] {sf.template_id}: {sf.template_name} — "
+            f"{icon.get(sf.verdict.value, sf.verdict.value)} "
+            f"({sf.success_rate:.0%} rate, {sf.num_trials} trials)"
+        )
+
+    console.print(f"\n[bold]Pentis Statistical Campaign[/bold]")
+    console.print(f"Config: {config.name}")
+    console.print(f"Target: {config.target_url}")
+    console.print(f"Trials/attack: {config.trials_per_attack}")
+    console.print()
+
+    result = asyncio.run(
+        run_campaign(target=target, adapter=adapter, config=config, on_finding=on_finding)
+    )
+    asyncio.run(adapter.close())
+
+    if not no_save:
+        store = Store()
+        store.save_campaign(result)
+        store.close()
+
+    # Generate campaign report
+    report_text = generate_campaign_report(result)
+    out_dir = output or Path("reports")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report_path = out_dir / f"campaign-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
+    report_path.write_text(report_text)
+
+    console.print(f"\n[bold]Campaign Results[/bold]")
+    console.print(f"  Attacks tested: {len(result.findings)}")
+    console.print(f"  Vulnerable: [red]{result.vulnerable_attacks}[/]")
+    console.print(f"  Total trials: {result.total_trials}")
+    console.print(f"\nReport saved: {report_path}")
+
+
+@app.command()
+def discover(
+    url: str = typer.Argument(help="Target endpoint URL"),
+    api_key: str = typer.Option("", "--api-key", "-k"),
+    model: str = typer.Option("default", "--model", "-m"),
+    no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
+) -> None:
+    """Fingerprint agent capabilities."""
+    from pentis.attacker.discovery import discover_capabilities
+
+    adapter = OpenAIAdapter(url=url, api_key=api_key)
+
+    console.print(f"\n[bold]Pentis Agent Discovery[/bold]")
+    console.print(f"Target: {url}")
+    console.print()
+
+    profile = asyncio.run(discover_capabilities(adapter, model=model, target_url=url))
+    asyncio.run(adapter.close())
+
+    if not no_save:
+        store = Store()
+        store.save_agent_profile(profile)
+        store.close()
+
+    table = Table(title="Agent Capabilities")
+    table.add_column("Capability", style="bold")
+    table.add_column("Detected")
+    table.add_column("Confidence", justify="right")
+    for cap in profile.capabilities:
+        detected_str = "[green]Yes[/]" if cap.detected else "[dim]No[/]"
+        table.add_row(cap.name, detected_str, f"{cap.confidence:.0%}")
+    console.print(table)
+    console.print(f"\nProfile ID: {profile.profile_id}")
+    console.print(f"Detected: {len(profile.detected_capabilities)} of {len(profile.capabilities)}")
+
+
+@app.command()
+def diff(
+    scan_a: str = typer.Argument(help="First scan ID (before)"),
+    scan_b: str = typer.Argument(help="Second scan ID (after)"),
+) -> None:
+    """Compare two scans and show regressions/improvements."""
+    from pentis.diff.comparator import diff_scans, format_diff_report
+
+    store = Store()
+    result_a = store.get_scan(scan_a)
+    result_b = store.get_scan(scan_b)
+    store.close()
+
+    if not result_a:
+        console.print(f"[red]Scan {scan_a} not found[/]")
+        raise typer.Exit(1)
+    if not result_b:
+        console.print(f"[red]Scan {scan_b} not found[/]")
+        raise typer.Exit(1)
+
+    scan_diff = diff_scans(result_a, result_b)
+    report = format_diff_report(scan_diff)
+    console.print(report)
+
+    if scan_diff.regressions:
+        console.print(f"\n[red bold]WARNING: {len(scan_diff.regressions)} regressions detected![/]")
+
+
+@app.command()
+def evolve(
+    url: str = typer.Argument(help="Target endpoint URL"),
+    attack_id: str = typer.Argument(help="Attack template ID to mutate"),
+    api_key: str = typer.Option("", "--api-key", "-k"),
+    model: str = typer.Option("default", "--model", "-m"),
+    attacker_url: Optional[str] = typer.Option(None, "--attacker-url", help="Attacker LLM endpoint"),
+    attacker_key: str = typer.Option("", "--attacker-key", help="Attacker LLM API key"),
+    mutations: int = typer.Option(5, "--mutations", "-n", help="Number of mutations to try"),
+) -> None:
+    """Mutate an attack to find bypasses (evolve mode)."""
+    from pentis.adaptive.mutations import (
+        PROGRAMMATIC_MUTATIONS,
+        apply_llm_mutation,
+        apply_programmatic_mutation,
+    )
+    from pentis.adaptive.strategies import round_robin, LLM_TYPES, PROGRAMMATIC_TYPES
+    from pentis.core.engine import execute_attack
+    from pentis.core.models import AttackStep, MutationType
+
+    templates = load_all_templates()
+    template = next((t for t in templates if t.id == attack_id), None)
+    if not template:
+        console.print(f"[red]Attack {attack_id} not found[/]")
+        raise typer.Exit(1)
+
+    target_adapter = OpenAIAdapter(url=url, api_key=api_key)
+    attacker_adapter = None
+    if attacker_url:
+        from pentis.adapters.attacker import AttackerAdapter
+        raw_attacker = OpenAIAdapter(url=attacker_url, api_key=attacker_key)
+        attacker_adapter = AttackerAdapter(raw_attacker)
+
+    console.print(f"\n[bold]Pentis Evolve: {attack_id}[/bold]")
+    console.print(f"Target: {url}")
+    console.print(f"Mutations: {mutations}")
+    console.print()
+
+    original_prompt = template.steps[0].prompt
+    history: list[MutationType] = []
+    available = PROGRAMMATIC_TYPES + (LLM_TYPES if attacker_adapter else [])
+
+    async def _run():
+        results = []
+        for i in range(mutations):
+            mt = round_robin(history, available=available)
+            history.append(mt)
+
+            if mt in PROGRAMMATIC_MUTATIONS:
+                mutated = apply_programmatic_mutation(original_prompt, mt, attack_id)
+            elif attacker_adapter:
+                mutated = await apply_llm_mutation(
+                    original_prompt, mt, attacker_adapter, model=model, original_id=attack_id
+                )
+            else:
+                continue
+
+            # Create a variant template with the mutated prompt
+            variant = AttackTemplate(
+                id=f"{attack_id}-mut{i+1}",
+                name=f"{template.name} ({mt.value})",
+                severity=template.severity,
+                category=template.category,
+                owasp=template.owasp,
+                objective=template.objective,
+                steps=[AttackStep(index=1, prompt=mutated.mutated_prompt)],
+                eval_criteria=template.eval_criteria,
+            )
+            finding = await execute_attack(variant, target_adapter, model=model, delay=0.5)
+            results.append((mutated, finding))
+
+            icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+            console.print(
+                f"  [{i+1}/{mutations}] {mt.value}: "
+                f"{icon.get(finding.verdict.value, finding.verdict.value)}"
+            )
+        return results
+
+    results = asyncio.run(_run())
+    asyncio.run(target_adapter.close())
+    if attacker_adapter:
+        asyncio.run(attacker_adapter.close())
+
+    vuln_count = sum(1 for _, f in results if f.verdict.value == "VULNERABLE")
+    console.print(f"\n[bold]Evolve Results[/bold]")
+    console.print(f"  Mutations tried: {len(results)}")
+    console.print(f"  Bypasses found: [red]{vuln_count}[/]")
+
+
+@app.command()
+def baseline(
+    scan_id: str = typer.Argument(help="Scan ID to set as baseline"),
+    label: str = typer.Option("", "--label", "-l", help="Label for this baseline"),
+) -> None:
+    """Set a scan as a regression baseline."""
+    store = Store()
+    result = store.get_scan(scan_id)
+    if not result:
+        store.close()
+        console.print(f"[red]Scan {scan_id} not found[/]")
+        raise typer.Exit(1)
+    store.save_baseline(scan_id, label=label)
+    store.close()
+    label_str = f' (label: "{label}")' if label else ""
+    console.print(f"Baseline set: {scan_id}{label_str}")
+
+
 if __name__ == "__main__":
     app()
