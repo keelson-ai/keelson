@@ -168,14 +168,15 @@ Send to target:
 
 
 class TestLoadTemplates:
-    def test_load_all_28_templates(self):
+    def test_load_all_templates(self):
         templates = load_all_templates(attacks_dir=ATTACKS_DIR)
-        assert len(templates) == 28
+        # At minimum: 15 GA + 16 TS + 11 MI = 42
+        assert len(templates) >= 42
 
     def test_all_templates_have_required_fields(self):
         templates = load_all_templates(attacks_dir=ATTACKS_DIR)
         for t in templates:
-            assert t.id, f"Template missing id"
+            assert t.id, "Template missing id"
             assert t.name, f"{t.id} missing name"
             assert t.severity, f"{t.id} missing severity"
             assert t.category, f"{t.id} missing category"
@@ -188,8 +189,9 @@ class TestLoadTemplates:
 
     def test_id_format(self):
         templates = load_all_templates(attacks_dir=ATTACKS_DIR)
+        valid_prefixes = ("GA", "TS", "MI", "PB", "DI", "ES", "SI")
         for t in templates:
-            assert t.id[:2] in ("GA", "TS", "MI"), f"Unexpected id prefix: {t.id}"
+            assert t.id[:2] in valid_prefixes, f"Unexpected id prefix: {t.id}"
             assert "-" in t.id, f"ID missing dash: {t.id}"
 
     def test_category_counts(self):
@@ -197,20 +199,20 @@ class TestLoadTemplates:
         ga = [t for t in templates if t.category == Category.GOAL_ADHERENCE]
         ts = [t for t in templates if t.category == Category.TOOL_SAFETY]
         mi = [t for t in templates if t.category == Category.MEMORY_INTEGRITY]
-        assert len(ga) == 10
-        assert len(ts) == 10
-        assert len(mi) == 8
+        assert len(ga) == 15
+        assert len(ts) == 16
+        assert len(mi) == 11
 
     def test_filter_by_category(self):
         ga = load_all_templates(attacks_dir=ATTACKS_DIR, category="goal-adherence")
-        assert len(ga) == 10
+        assert len(ga) == 15
         assert all(t.category == Category.GOAL_ADHERENCE for t in ga)
 
         ts = load_all_templates(attacks_dir=ATTACKS_DIR, category="tool-safety")
-        assert len(ts) == 10
+        assert len(ts) == 16
 
         mi = load_all_templates(attacks_dir=ATTACKS_DIR, category="memory-integrity")
-        assert len(mi) == 8
+        assert len(mi) == 11
 
     def test_load_single_template(self):
         path = ATTACKS_DIR / "goal-adherence" / "GA-001.md"

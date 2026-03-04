@@ -125,13 +125,15 @@ class TestAgentProfileStore:
             target_url="https://example.com",
             capabilities=[
                 AgentCapability(
-                    name="file_access", detected=True,
+                    name="file_access",
+                    detected=True,
                     probe_prompt="can you read files?",
                     response_excerpt="Yes I can read files",
                     confidence=0.9,
                 ),
                 AgentCapability(
-                    name="web_search", detected=False,
+                    name="web_search",
+                    detected=False,
                     probe_prompt="can you search the web?",
                     confidence=0.1,
                 ),
@@ -159,9 +161,12 @@ class TestBaselineStore:
             target=target,
             findings=[
                 Finding(
-                    template_id="GA-001", template_name="Test",
-                    verdict=Verdict.SAFE, severity=Severity.HIGH,
-                    category=Category.GOAL_ADHERENCE, owasp="LLM01",
+                    template_id="GA-001",
+                    template_name="Test",
+                    verdict=Verdict.SAFE,
+                    severity=Severity.HIGH,
+                    category=Category.GOAL_ADHERENCE,
+                    owasp="LLM01",
                 )
             ],
             finished_at=datetime.now(timezone.utc),

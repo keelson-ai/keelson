@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pentis"
-version = "0.3.0"
+version = "0.4.0"
 description = "AI agent security scanner — Living Red Team"
 readme = "README.md"
 license = "Apache-2.0"
@@ -12,13 +12,15 @@ requires-python = ">=3.11"
 authors = [{ name = "Pentis AI" }]
 keywords = ["security", "pentesting", "llm", "agent", "owasp"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Security",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
 ]
 dependencies = [
     "httpx>=0.27",
@@ -28,6 +30,12 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/pentis-ai/pentis"
+Documentation = "https://github.com/pentis-ai/pentis#readme"
+Repository = "https://github.com/pentis-ai/pentis"
+Issues = "https://github.com/pentis-ai/pentis/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
@@ -35,12 +43,18 @@ dev = [
     "respx>=0.21",
     "ruff>=0.5",
 ]
+crewai = ["crewai>=0.80"]
+langchain = ["langchain-core>=0.3"]
+all = ["pentis[crewai,langchain]"]
 
 [project.scripts]
 pentis = "pentis.cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pentis"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/pentis/attacks" = "pentis/attacks"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

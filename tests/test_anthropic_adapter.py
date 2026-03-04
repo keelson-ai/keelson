@@ -69,9 +69,7 @@ class TestAnthropicAdapter:
     async def test_default_model(self) -> None:
         route = respx.post(ANTHROPIC_API_URL).respond(json=_anthropic_response("ok"))  # type: ignore[reportUnknownMemberType]
         adapter = AnthropicAdapter(api_key="test-key")
-        await adapter.send_messages(
-            [{"role": "user", "content": "Hi"}], model="default"
-        )
+        await adapter.send_messages([{"role": "user", "content": "Hi"}], model="default")
         await adapter.close()
         body = json.loads(route.calls[0].request.content)  # type: ignore[reportUnknownMemberType]
         assert body["model"] == "claude-sonnet-4-20250514"

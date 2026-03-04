@@ -102,9 +102,7 @@ class TestLLMMutations:
         )
         adapter = OpenAIAdapter("https://attacker.example.com/v1/chat/completions")
         attacker = AttackerAdapter(adapter)
-        result = await apply_llm_mutation(
-            SAMPLE_PROMPT, MutationType.GRADUAL_ESCALATION, attacker
-        )
+        result = await apply_llm_mutation(SAMPLE_PROMPT, MutationType.GRADUAL_ESCALATION, attacker)
         await adapter.close()
         assert result.mutation_type == MutationType.GRADUAL_ESCALATION
 
@@ -168,8 +166,7 @@ class TestStrategies:
         # Run many times — LEETSPEAK should win most
         results = [
             weighted_by_history(
-                [MutationType.LEETSPEAK, MutationType.BASE64_ENCODE],
-                success_map, available=pool
+                [MutationType.LEETSPEAK, MutationType.BASE64_ENCODE], success_map, available=pool
             )
             for _ in range(100)
         ]

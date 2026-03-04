@@ -8,16 +8,28 @@ from pentis.adapters.base import BaseAdapter
 from pentis.core.models import MutatedAttack, MutationType
 
 # Leetspeak mapping
-_LEET_MAP = str.maketrans({
-    "a": "4", "e": "3", "i": "1", "o": "0", "s": "5",
-    "t": "7", "l": "1", "A": "4", "E": "3", "I": "1",
-    "O": "0", "S": "5", "T": "7", "L": "1",
-})
+_LEET_MAP = str.maketrans(
+    {
+        "a": "4",
+        "e": "3",
+        "i": "1",
+        "o": "0",
+        "s": "5",
+        "t": "7",
+        "l": "1",
+        "A": "4",
+        "E": "3",
+        "I": "1",
+        "O": "0",
+        "S": "5",
+        "T": "7",
+        "L": "1",
+    }
+)
 
 # Context overflow: pad with filler text to exceed typical context attention
 _OVERFLOW_PREFIX = (
-    "Please carefully consider the following important context before responding. "
-    * 20
+    "Please carefully consider the following important context before responding. " * 20
 )
 
 
@@ -62,7 +74,9 @@ PROGRAMMATIC_MUTATIONS = {
 }
 
 
-async def mutate_paraphrase(prompt: str, attacker: BaseAdapter, model: str = "default") -> MutatedAttack:
+async def mutate_paraphrase(
+    prompt: str, attacker: BaseAdapter, model: str = "default"
+) -> MutatedAttack:
     """Use an LLM to paraphrase the attack prompt while preserving intent."""
     messages = [
         {
@@ -84,7 +98,9 @@ async def mutate_paraphrase(prompt: str, attacker: BaseAdapter, model: str = "de
     )
 
 
-async def mutate_roleplay(prompt: str, attacker: BaseAdapter, model: str = "default") -> MutatedAttack:
+async def mutate_roleplay(
+    prompt: str, attacker: BaseAdapter, model: str = "default"
+) -> MutatedAttack:
     """Use an LLM to wrap the attack in a roleplay scenario."""
     messages = [
         {
@@ -106,7 +122,9 @@ async def mutate_roleplay(prompt: str, attacker: BaseAdapter, model: str = "defa
     )
 
 
-async def mutate_gradual(prompt: str, attacker: BaseAdapter, model: str = "default") -> MutatedAttack:
+async def mutate_gradual(
+    prompt: str, attacker: BaseAdapter, model: str = "default"
+) -> MutatedAttack:
     """Use an LLM to create a gradual escalation version of the attack."""
     messages = [
         {

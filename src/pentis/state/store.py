@@ -259,9 +259,7 @@ class Store:
             name=target_row["name"],
         )
         findings = self._load_findings(scan_id)
-        finished = (
-            datetime.fromisoformat(row["finished_at"]) if row["finished_at"] else None
-        )
+        finished = datetime.fromisoformat(row["finished_at"]) if row["finished_at"] else None
         return ScanResult(
             scan_id=scan_id,
             target=target,
@@ -337,13 +335,15 @@ class Store:
             (
                 campaign.campaign_id,
                 campaign.target.url,
-                json.dumps({
-                    "name": campaign.config.name,
-                    "trials_per_attack": campaign.config.trials_per_attack,
-                    "confidence_level": campaign.config.confidence_level,
-                    "category": campaign.config.category,
-                    "attack_ids": campaign.config.attack_ids,
-                }),
+                json.dumps(
+                    {
+                        "name": campaign.config.name,
+                        "trials_per_attack": campaign.config.trials_per_attack,
+                        "confidence_level": campaign.config.confidence_level,
+                        "category": campaign.config.category,
+                        "attack_ids": campaign.config.attack_ids,
+                    }
+                ),
                 campaign.started_at.isoformat(),
                 campaign.finished_at.isoformat() if campaign.finished_at else None,
             ),
@@ -373,7 +373,13 @@ class Store:
                     "INSERT INTO trials "
                     "(statistical_finding_id, trial_index, verdict, reasoning, response_time_ms) "
                     "VALUES (?, ?, ?, ?, ?)",
-                    (sf_id, trial.trial_index, trial.verdict.value, trial.reasoning, trial.response_time_ms),
+                    (
+                        sf_id,
+                        trial.trial_index,
+                        trial.verdict.value,
+                        trial.reasoning,
+                        trial.response_time_ms,
+                    ),
                 )
                 trial_id = tcursor.lastrowid
                 for ev in trial.evidence:
@@ -383,10 +389,13 @@ class Store:
                         "VALUES (?, ?, ?, ?, ?)",
                         (trial_id, ev.step_index, ev.prompt, ev.response, ev.response_time_ms),
                     )
-        self._log_event("campaign_completed", {
-            "campaign_id": campaign.campaign_id,
-            "target": campaign.target.url,
-        })
+        self._log_event(
+            "campaign_completed",
+            {
+                "campaign_id": campaign.campaign_id,
+                "target": campaign.target.url,
+            },
+        )
         c.commit()
 
     def get_campaign(self, campaign_id: str) -> CampaignResult | None:
@@ -432,18 +441,20 @@ class Store:
         findings: list[StatisticalFinding] = []
         for row in rows:
             trials = self._load_trials(row["id"])
-            findings.append(StatisticalFinding(
-                template_id=row["template_id"],
-                template_name=row["template_name"],
-                severity=Severity(row["severity"]),
-                category=Category(row["category"]),
-                owasp=row["owasp"],
-                trials=trials,
-                success_rate=row["success_rate"],
-                ci_lower=row["ci_lower"],
-                ci_upper=row["ci_upper"],
-                verdict=Verdict(row["verdict"]),
-            ))
+            findings.append(
+                StatisticalFinding(
+                    template_id=row["template_id"],
+                    template_name=row["template_name"],
+                    severity=Severity(row["severity"]),
+                    category=Category(row["category"]),
+                    owasp=row["owasp"],
+                    trials=trials,
+                    success_rate=row["success_rate"],
+                    ci_lower=row["ci_lower"],
+                    ci_upper=row["ci_upper"],
+                    verdict=Verdict(row["verdict"]),
+                )
+            )
         return findings
 
     def _load_trials(self, sf_id: int) -> list[TrialResult]:
@@ -466,13 +477,15 @@ class Store:
                 )
                 for er in ev_rows
             ]
-            trials.append(TrialResult(
-                trial_index=row["trial_index"],
-                verdict=Verdict(row["verdict"]),
-                evidence=evidence,
-                reasoning=row["reasoning"],
-                response_time_ms=row["response_time_ms"],
-            ))
+            trials.append(
+                TrialResult(
+                    trial_index=row["trial_index"],
+                    verdict=Verdict(row["verdict"]),
+                    evidence=evidence,
+                    reasoning=row["reasoning"],
+                    response_time_ms=row["response_time_ms"],
+                )
+            )
         return trials
 
     def list_campaigns(self, limit: int = 20) -> list[dict[str, Any]]:
@@ -497,23 +510,28 @@ class Store:
             (
                 profile.profile_id,
                 profile.target_url,
-                json.dumps([
-                    {
-                        "name": c.name,
-                        "detected": c.detected,
-                        "probe_prompt": c.probe_prompt,
-                        "response_excerpt": c.response_excerpt,
-                        "confidence": c.confidence,
-                    }
-                    for c in profile.capabilities
-                ]),
+                json.dumps(
+                    [
+                        {
+                            "name": c.name,
+                            "detected": c.detected,
+                            "probe_prompt": c.probe_prompt,
+                            "response_excerpt": c.response_excerpt,
+                            "confidence": c.confidence,
+                        }
+                        for c in profile.capabilities
+                    ]
+                ),
                 profile.created_at.isoformat(),
             ),
         )
-        self._log_event("profile_saved", {
-            "profile_id": profile.profile_id,
-            "target": profile.target_url,
-        })
+        self._log_event(
+            "profile_saved",
+            {
+                "profile_id": profile.profile_id,
+                "target": profile.target_url,
+            },
+        )
         self._conn.commit()
 
     def get_agent_profile(self, profile_id: str) -> AgentProfile | None:
@@ -627,11 +645,14 @@ class Store:
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
-        self._log_event("regression_alerts_saved", {
-            "scan_a_id": scan_a_id,
-            "scan_b_id": scan_b_id,
-            "count": len(alerts),
-        })
+        self._log_event(
+            "regression_alerts_saved",
+            {
+                "scan_a_id": scan_a_id,
+                "scan_b_id": scan_b_id,
+                "count": len(alerts),
+            },
+        )
         self._conn.commit()
 
     def list_regression_alerts(self, limit: int = 50) -> list[dict[str, Any]]:
@@ -663,7 +684,12 @@ class Store:
                 profile_id,
                 chain.name,
                 json.dumps(chain.capabilities),
-                json.dumps([{"index": s.index, "prompt": s.prompt, "is_followup": s.is_followup} for s in chain.steps]),
+                json.dumps(
+                    [
+                        {"index": s.index, "prompt": s.prompt, "is_followup": s.is_followup}
+                        for s in chain.steps
+                    ]
+                ),
                 chain.severity.value,
                 chain.category.value,
                 chain.owasp,
@@ -682,7 +708,9 @@ class Store:
             return None
         steps_data = json.loads(row["steps_json"])
         steps = [
-            AttackStep(index=s["index"], prompt=s["prompt"], is_followup=s.get("is_followup", False))
+            AttackStep(
+                index=s["index"], prompt=s["prompt"], is_followup=s.get("is_followup", False)
+            )
             for s in steps_data
         ]
         return AttackChain(

@@ -140,8 +140,12 @@ class TestFindVulnerablePaths:
         assert len(paths[0]) == 1
 
     def test_deep_vulnerable_path(self):
-        child = ConversationNode(prompt="follow-up", response="PWNED", verdict=Verdict.VULNERABLE, depth=1)
-        root = ConversationNode(prompt="p", response="refused", verdict=Verdict.SAFE, children=[child], depth=0)
+        child = ConversationNode(
+            prompt="follow-up", response="PWNED", verdict=Verdict.VULNERABLE, depth=1
+        )
+        root = ConversationNode(
+            prompt="p", response="refused", verdict=Verdict.SAFE, children=[child], depth=0
+        )
         paths = find_vulnerable_paths(root)
         assert len(paths) == 1
         assert len(paths[0]) == 2  # root → child
@@ -149,8 +153,14 @@ class TestFindVulnerablePaths:
         assert paths[0][1].verdict == Verdict.VULNERABLE
 
     def test_multiple_vulnerable_paths(self):
-        child1 = ConversationNode(prompt="f1", response="PWNED", verdict=Verdict.VULNERABLE, depth=1)
-        child2 = ConversationNode(prompt="f2", response="PWNED", verdict=Verdict.VULNERABLE, depth=1)
-        root = ConversationNode(prompt="p", response="refused", verdict=Verdict.SAFE, children=[child1, child2])
+        child1 = ConversationNode(
+            prompt="f1", response="PWNED", verdict=Verdict.VULNERABLE, depth=1
+        )
+        child2 = ConversationNode(
+            prompt="f2", response="PWNED", verdict=Verdict.VULNERABLE, depth=1
+        )
+        root = ConversationNode(
+            prompt="p", response="refused", verdict=Verdict.SAFE, children=[child1, child2]
+        )
         paths = find_vulnerable_paths(root)
         assert len(paths) == 2

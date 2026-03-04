@@ -26,7 +26,7 @@ OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
         "name": "Insecure Output Handling",
         "description": "Failure to validate/sanitize LLM outputs before passing to downstream systems.",
         "remediation": "Apply output encoding, input validation on downstream systems, and least privilege.",
-        "attack_prefixes": ["TS-"],
+        "attack_prefixes": ["TS-", "PB-"],
     },
     "LLM03": {
         "name": "Training Data Poisoning",
@@ -44,13 +44,13 @@ OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
         "name": "Supply Chain Vulnerabilities",
         "description": "Vulnerabilities in third-party components, plugins, or pre-trained models.",
         "remediation": "Vet third-party components, maintain SBOM, and monitor for CVEs.",
-        "attack_prefixes": ["MI-"],
+        "attack_prefixes": ["MI-", "SI-"],
     },
     "LLM06": {
         "name": "Sensitive Information Disclosure",
         "description": "LLM revealing sensitive data through responses.",
         "remediation": "Apply data sanitization, PII filtering, and access controls on training data.",
-        "attack_prefixes": ["CS-"],
+        "attack_prefixes": ["CS-", "ES-"],
     },
     "LLM07": {
         "name": "Insecure Plugin Design",
@@ -62,13 +62,13 @@ OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
         "name": "Excessive Agency",
         "description": "LLM granted excessive capabilities, permissions, or autonomy.",
         "remediation": "Limit LLM permissions, implement function-level authorization, require human approval.",
-        "attack_prefixes": ["AS-"],
+        "attack_prefixes": ["AS-", "DI-"],
     },
     "LLM09": {
         "name": "Overreliance",
         "description": "Excessive dependence on LLM output without verification.",
         "remediation": "Implement human oversight, output verification, and confidence scoring.",
-        "attack_prefixes": ["AS-"],
+        "attack_prefixes": ["AS-", "DI-"],
     },
     "LLM10": {
         "name": "Model Theft",
@@ -299,7 +299,9 @@ def _generate_nist_report(scan: ScanResult) -> str:
                 "description": func_data["description"],
                 "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
                 "findings": scan.findings,
-                "remediation": "Address identified vulnerabilities and re-test." if scan.vulnerable_count > 0 else "",
+                "remediation": "Address identified vulnerabilities and re-test."
+                if scan.vulnerable_count > 0
+                else "",
             }
         else:
             controls[func_id] = {
@@ -345,7 +347,8 @@ def _generate_eu_ai_act_report(scan: ScanResult) -> str:
             "findings": scan.findings if "15" in art_id else [],
             "remediation": (
                 "Address cybersecurity vulnerabilities to meet Article 15 requirements."
-                if scan.vulnerable_count > 0 and "15" in art_id else ""
+                if scan.vulnerable_count > 0 and "15" in art_id
+                else ""
             ),
         }
 
@@ -382,7 +385,9 @@ def _generate_iso_42001_report(scan: ScanResult) -> str:
             "description": "Controls for securing AI systems against adversarial attacks.",
             "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
             "findings": scan.findings,
-            "remediation": "Implement security controls for identified AI vulnerabilities." if scan.vulnerable_count > 0 else "",
+            "remediation": "Implement security controls for identified AI vulnerabilities."
+            if scan.vulnerable_count > 0
+            else "",
         },
     }
 
@@ -413,15 +418,29 @@ def _generate_soc2_report(scan: ScanResult) -> str:
             "name": "Logical and Physical Access Controls",
             "description": "The entity implements logical access security measures.",
             "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
-            "findings": [f for f in scan.findings if f.category.value in ("Tool Safety", "Agentic Security")],
-            "remediation": "Strengthen AI agent access controls." if scan.vulnerable_count > 0 else "",
+            "findings": [
+                f
+                for f in scan.findings
+                if f.category.value
+                in (
+                    "Tool Safety",
+                    "Agentic Security",
+                    "Permission Boundaries",
+                    "Execution Safety",
+                )
+            ],
+            "remediation": "Strengthen AI agent access controls."
+            if scan.vulnerable_count > 0
+            else "",
         },
         "CC7.2": {
             "name": "System Monitoring",
             "description": "The entity monitors system components for anomalies.",
             "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
             "findings": scan.findings,
-            "remediation": "Implement monitoring for AI-specific attack patterns." if scan.vulnerable_count > 0 else "",
+            "remediation": "Implement monitoring for AI-specific attack patterns."
+            if scan.vulnerable_count > 0
+            else "",
         },
     }
 

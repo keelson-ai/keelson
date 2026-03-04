@@ -113,6 +113,70 @@ REPORT_TEMPLATE = Template("""\
 **Reasoning**: {{ f.reasoning }}
 
 {% endfor %}
+### Permission Boundaries (PB)
+{% for f in pb_findings %}
+#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
+
+**Severity**: {{ f.severity.value }}
+**OWASP**: {{ f.owasp }}
+
+{% for e in f.evidence %}
+**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
+
+**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+
+{% endfor %}
+**Reasoning**: {{ f.reasoning }}
+
+{% endfor %}
+### Delegation Integrity (DI)
+{% for f in di_findings %}
+#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
+
+**Severity**: {{ f.severity.value }}
+**OWASP**: {{ f.owasp }}
+
+{% for e in f.evidence %}
+**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
+
+**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+
+{% endfor %}
+**Reasoning**: {{ f.reasoning }}
+
+{% endfor %}
+### Execution Safety (ES)
+{% for f in es_findings %}
+#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
+
+**Severity**: {{ f.severity.value }}
+**OWASP**: {{ f.owasp }}
+
+{% for e in f.evidence %}
+**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
+
+**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+
+{% endfor %}
+**Reasoning**: {{ f.reasoning }}
+
+{% endfor %}
+### Session Isolation (SI)
+{% for f in si_findings %}
+#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
+
+**Severity**: {{ f.severity.value }}
+**OWASP**: {{ f.owasp }}
+
+{% for e in f.evidence %}
+**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
+
+**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+
+{% endfor %}
+**Reasoning**: {{ f.reasoning }}
+
+{% endfor %}
 ## Recommendations
 
 {% for rec in recommendations %}
@@ -153,8 +217,20 @@ def _generate_recommendations(scan: ScanResult) -> list[str]:
         recs.append("Implement content filtering for bias, toxicity, and PII leakage prevention.")
     if Category.AGENTIC_SECURITY in categories_hit:
         recs.append("Enforce object-level and function-level authorization in agentic workflows.")
-    if any(f.verdict == Verdict.VULNERABLE and f.severity.value == "Critical" for f in scan.findings):
-        recs.append("Address critical vulnerabilities as highest priority before production deployment.")
+    if Category.PERMISSION_BOUNDARIES in categories_hit:
+        recs.append("Enforce strict role-based access controls and permission scoping for agents.")
+    if Category.DELEGATION_INTEGRITY in categories_hit:
+        recs.append("Validate sub-agent delegation chains and enforce trust boundaries.")
+    if Category.EXECUTION_SAFETY in categories_hit:
+        recs.append("Implement execution sandboxing, resource limits, and audit logging.")
+    if Category.SESSION_ISOLATION in categories_hit:
+        recs.append("Enforce session isolation boundaries and prevent cross-tenant data leakage.")
+    if any(
+        f.verdict == Verdict.VULNERABLE and f.severity.value == "Critical" for f in scan.findings
+    ):
+        recs.append(
+            "Address critical vulnerabilities as highest priority before production deployment."
+        )
     if not recs:
         recs.append("Continue regular security testing to maintain security posture.")
     return recs
@@ -162,7 +238,11 @@ def _generate_recommendations(scan: ScanResult) -> list[str]:
 
 def generate_report(scan: ScanResult) -> str:
     """Generate a markdown report from scan results."""
-    critical = [f for f in scan.findings if f.verdict == Verdict.VULNERABLE and f.severity.value == "Critical"]
+    critical = [
+        f
+        for f in scan.findings
+        if f.verdict == Verdict.VULNERABLE and f.severity.value == "Critical"
+    ]
     return REPORT_TEMPLATE.render(
         scan=scan,
         target=scan.target,
@@ -174,6 +254,10 @@ def generate_report(scan: ScanResult) -> str:
         mi_findings=_by_category(scan.findings, Category.MEMORY_INTEGRITY),
         cs_findings=_by_category(scan.findings, Category.CONTENT_SAFETY),
         as_findings=_by_category(scan.findings, Category.AGENTIC_SECURITY),
+        pb_findings=_by_category(scan.findings, Category.PERMISSION_BOUNDARIES),
+        di_findings=_by_category(scan.findings, Category.DELEGATION_INTEGRITY),
+        es_findings=_by_category(scan.findings, Category.EXECUTION_SAFETY),
+        si_findings=_by_category(scan.findings, Category.SESSION_ISOLATION),
         recommendations=_generate_recommendations(scan),
     )
 
@@ -271,6 +355,7 @@ def _generate_campaign_recommendations(campaign: CampaignResult) -> list[str]:
 def generate_diff_section(diff: ScanDiff) -> str:
     """Generate a markdown section for a scan diff."""
     from pentis.diff.comparator import format_diff_report
+
     return format_diff_report(diff)
 
 
