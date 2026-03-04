@@ -275,9 +275,13 @@ Pentis/
 │   ├── attack.md                # /pentis:attack
 │   └── report.md                # /pentis:report
 ├── attacks/                     # 105 attack playbooks (.yaml)
-│   ├── goal-adherence/          # GA-001..035
-│   ├── tool-safety/             # TS-001..035
-│   └── memory-integrity/        # MI-001..035
+│   ├── goal-adherence/          # GA-001..030
+│   ├── tool-safety/             # TS-001..024
+│   ├── memory-integrity/        # MI-001..017
+│   ├── delegation-integrity/    # DI-001..008
+│   ├── execution-safety/        # ES-001..008
+│   ├── permission-boundaries/   # PB-001..008
+│   └── session-isolation/       # SI-001..010
 ├── src/
 │   └── pentis_service/          # FastAPI service
 │       ├── main.py              # App factory + uvicorn entrypoint

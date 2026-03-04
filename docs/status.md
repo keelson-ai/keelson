@@ -22,6 +22,7 @@
 | `README.md` | Fixed env var `PENTIS_LOG_LEVEL` → `LOG_LEVEL` in Environment Variables table (code at `main.py:12` reads `LOG_LEVEL`) |
 | `README.md` | Expanded attack categories table from 3 to 7 categories; corrected per-category counts (GA:30, TS:24, MI:17, DI:8, ES:8, PB:8, SI:10) |
 | `README.md` | Added all 7 valid values for `PENTIS_CATEGORIES` after env vars table |
+| `README.md` | Fixed project structure tree: expanded attacks/ from 3 subdirs to all 7 (GA/TS/MI/DI/ES/PB/SI) with corrected ID ranges |
 | `.env.example` | Fixed `PENTIS_LOG_LEVEL` → `LOG_LEVEL` to match `main.py` |
 | `.env.example` | Updated `PENTIS_CATEGORIES` comment to list all 7 category values |
 
