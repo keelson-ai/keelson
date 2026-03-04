@@ -10,11 +10,14 @@ from pathlib import Path
 from pentis.core.models import (
     AgentCapability,
     AgentProfile,
+    AttackChain,
+    AttackStep,
     CampaignConfig,
     CampaignResult,
     Category,
     EvidenceItem,
     Finding,
+    RegressionAlert,
     ScanResult,
     Severity,
     StatisticalFinding,
@@ -140,6 +143,42 @@ CREATE TABLE IF NOT EXISTS scan_baselines (
     label TEXT DEFAULT '',
     created_at TEXT NOT NULL,
     FOREIGN KEY (scan_id) REFERENCES scans(scan_id)
+);
+
+CREATE TABLE IF NOT EXISTS response_cache (
+    cache_key TEXT PRIMARY KEY,
+    messages_json TEXT NOT NULL,
+    model TEXT NOT NULL,
+    response_text TEXT NOT NULL,
+    response_time_ms INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    hit_count INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS regression_alerts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_a_id TEXT,
+    scan_b_id TEXT,
+    template_id TEXT NOT NULL,
+    alert_severity TEXT NOT NULL,
+    change_type TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    acknowledged INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS attack_chains (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chain_id TEXT UNIQUE NOT NULL,
+    profile_id TEXT,
+    name TEXT NOT NULL,
+    capabilities_json TEXT NOT NULL DEFAULT '[]',
+    steps_json TEXT NOT NULL DEFAULT '[]',
+    severity TEXT NOT NULL,
+    category TEXT NOT NULL,
+    owasp TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (profile_id) REFERENCES agent_profiles(profile_id)
 );
 """
 
@@ -520,6 +559,153 @@ class Store:
             "ORDER BY b.created_at DESC LIMIT ?",
             (limit,),
         ).fetchall()
+        return [dict(r) for r in rows]
+
+    # --- Phase 3: Response cache persistence ---
+
+    def save_cache_entry(
+        self,
+        cache_key: str,
+        messages: list[dict],
+        model: str,
+        response_text: str,
+        response_time_ms: int,
+    ) -> None:
+        """Save a response to the persistent cache."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO response_cache "
+            "(cache_key, messages_json, model, response_text, response_time_ms, created_at, hit_count) "
+            "VALUES (?, ?, ?, ?, ?, ?, 0)",
+            (
+                cache_key,
+                json.dumps(messages),
+                model,
+                response_text,
+                response_time_ms,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def get_cache_entry(self, cache_key: str) -> dict | None:
+        """Load a cached response by key."""
+        row = self._conn.execute(
+            "SELECT * FROM response_cache WHERE cache_key = ?", (cache_key,)
+        ).fetchone()
+        if not row:
+            return None
+        # Increment hit count
+        self._conn.execute(
+            "UPDATE response_cache SET hit_count = hit_count + 1 WHERE cache_key = ?",
+            (cache_key,),
+        )
+        self._conn.commit()
+        return dict(row)
+
+    # --- Phase 3: Regression alerts persistence ---
+
+    def save_regression_alerts(
+        self,
+        scan_a_id: str,
+        scan_b_id: str,
+        alerts: list[RegressionAlert],
+    ) -> None:
+        """Persist regression alerts from a scan diff."""
+        for alert in alerts:
+            self._conn.execute(
+                "INSERT INTO regression_alerts "
+                "(scan_a_id, scan_b_id, template_id, alert_severity, change_type, description, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    scan_a_id,
+                    scan_b_id,
+                    alert.template_id,
+                    alert.alert_severity,
+                    alert.change_type,
+                    alert.description,
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
+        self._log_event("regression_alerts_saved", {
+            "scan_a_id": scan_a_id,
+            "scan_b_id": scan_b_id,
+            "count": len(alerts),
+        })
+        self._conn.commit()
+
+    def list_regression_alerts(self, limit: int = 50) -> list[dict]:
+        """List recent regression alerts."""
+        rows = self._conn.execute(
+            "SELECT * FROM regression_alerts ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def acknowledge_alert(self, alert_id: int) -> None:
+        """Mark a regression alert as acknowledged."""
+        self._conn.execute(
+            "UPDATE regression_alerts SET acknowledged = 1 WHERE id = ?",
+            (alert_id,),
+        )
+        self._conn.commit()
+
+    # --- Phase 3: Attack chain persistence ---
+
+    def save_attack_chain(self, chain: AttackChain, profile_id: str | None = None) -> None:
+        """Persist an attack chain."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO attack_chains "
+            "(chain_id, profile_id, name, capabilities_json, steps_json, severity, category, owasp, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                chain.chain_id,
+                profile_id,
+                chain.name,
+                json.dumps(chain.capabilities),
+                json.dumps([{"index": s.index, "prompt": s.prompt, "is_followup": s.is_followup} for s in chain.steps]),
+                chain.severity.value,
+                chain.category.value,
+                chain.owasp,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        self._log_event("attack_chain_saved", {"chain_id": chain.chain_id, "name": chain.name})
+        self._conn.commit()
+
+    def get_attack_chain(self, chain_id: str) -> AttackChain | None:
+        """Load an attack chain by ID."""
+        row = self._conn.execute(
+            "SELECT * FROM attack_chains WHERE chain_id = ?", (chain_id,)
+        ).fetchone()
+        if not row:
+            return None
+        steps_data = json.loads(row["steps_json"])
+        steps = [
+            AttackStep(index=s["index"], prompt=s["prompt"], is_followup=s.get("is_followup", False))
+            for s in steps_data
+        ]
+        return AttackChain(
+            chain_id=row["chain_id"],
+            name=row["name"],
+            capabilities=json.loads(row["capabilities_json"]),
+            steps=steps,
+            severity=Severity(row["severity"]),
+            category=Category(row["category"]),
+            owasp=row["owasp"],
+        )
+
+    def list_attack_chains(self, profile_id: str | None = None, limit: int = 50) -> list[dict]:
+        """List attack chains, optionally filtered by profile."""
+        if profile_id:
+            rows = self._conn.execute(
+                "SELECT * FROM attack_chains WHERE profile_id = ? ORDER BY created_at DESC LIMIT ?",
+                (profile_id, limit),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM attack_chains ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
         return [dict(r) for r in rows]
 
     def _log_event(self, event_type: str, data: dict) -> None:

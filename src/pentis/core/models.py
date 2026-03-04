@@ -25,6 +25,8 @@ class Category(str, Enum):
     GOAL_ADHERENCE = "Goal Adherence"
     TOOL_SAFETY = "Tool Safety"
     MEMORY_INTEGRITY = "Memory Integrity"
+    CONTENT_SAFETY = "Content Safety"
+    AGENTIC_SECURITY = "Agentic Security"
 
 
 class MutationType(str, Enum):
@@ -42,6 +44,22 @@ class ResponseClass(str, Enum):
     REFUSAL = "refusal"
     PARTIAL = "partial"
     COMPLIANCE = "compliance"
+
+
+class ScanTier(str, Enum):
+    """Scan tier presets for campaign execution."""
+    FAST = "fast"
+    DEEP = "deep"
+    CONTINUOUS = "continuous"
+
+
+class ComplianceFramework(str, Enum):
+    """Compliance frameworks for report generation."""
+    OWASP_LLM_TOP_10 = "owasp-llm-top10"
+    NIST_AI_RMF = "nist-ai-rmf"
+    EU_AI_ACT = "eu-ai-act"
+    ISO_42001 = "iso-42001"
+    SOC2 = "soc2"
 
 
 @dataclass
@@ -80,6 +98,16 @@ class EvidenceItem:
 
 
 @dataclass
+class LeakageSignal:
+    """A per-step leakage signal detected by the streaming observer."""
+    step_index: int
+    signal_type: str  # "progressive_disclosure", "boundary_erosion", "partial_leak"
+    severity: str  # "high", "medium", "low"
+    description: str = ""
+    confidence: float = 0.0
+
+
+@dataclass
 class Finding:
     template_id: str
     template_name: str
@@ -90,6 +118,7 @@ class Finding:
     evidence: list[EvidenceItem] = field(default_factory=list)
     reasoning: str = ""
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    leakage_signals: list[LeakageSignal] = field(default_factory=list)
 
 
 @dataclass
@@ -162,6 +191,13 @@ class StatisticalFinding:
 
 
 @dataclass
+class ConcurrencyConfig:
+    """Concurrency settings for campaign execution."""
+    max_concurrent_trials: int = 5
+    early_termination_threshold: int = 3
+
+
+@dataclass
 class CampaignConfig:
     """Configuration for a statistical campaign."""
     name: str = "default"
@@ -174,6 +210,7 @@ class CampaignConfig:
     target_url: str = ""
     api_key: str = ""
     model: str = "default"
+    concurrency: ConcurrencyConfig = field(default_factory=ConcurrencyConfig)
 
 
 @dataclass
@@ -263,3 +300,31 @@ class ConversationNode:
     children: list[ConversationNode] = field(default_factory=list)
     depth: int = 0
     verdict: Verdict | None = None
+
+
+# --- Phase 3 Models ---
+
+
+@dataclass
+class RegressionAlert:
+    """A severity-classified regression alert from scan comparison."""
+    template_id: str
+    alert_severity: str  # "critical", "high", "medium", "low"
+    change_type: str  # "regression", "new_vulnerable"
+    description: str = ""
+    old_verdict: Verdict | None = None
+    new_verdict: Verdict | None = None
+    attack_severity: Severity | None = None
+
+
+@dataclass
+class AttackChain:
+    """A compound attack chain combining multiple capabilities."""
+    chain_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    name: str = ""
+    capabilities: list[str] = field(default_factory=list)
+    steps: list[AttackStep] = field(default_factory=list)
+    severity: Severity = Severity.HIGH
+    category: Category = Category.AGENTIC_SECURITY
+    owasp: str = ""
+    description: str = ""
