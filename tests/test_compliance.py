@@ -2,6 +2,7 @@
 
 from pentis.core.compliance import (
     ComplianceFramework,
+    PCI_DSS_V4_CONTROLS,
     generate_compliance_report,
     _control_status,  # type: ignore[reportPrivateUsage]
     _map_findings_to_owasp,  # type: ignore[reportPrivateUsage]
@@ -149,3 +150,117 @@ class TestGenerateComplianceReport:
         )
         report = generate_compliance_report(scan, ComplianceFramework.OWASP_LLM_TOP_10)
         assert "Coverage" in report
+
+    def test_pci_dss_report(self):
+        scan = _make_scan(
+            [
+                _make_finding(
+                    "PB-001",
+                    Verdict.VULNERABLE,
+                    category=Category.PERMISSION_BOUNDARIES,
+                    owasp="LLM02 — Insecure Output Handling",
+                ),
+            ]
+        )
+        report = generate_compliance_report(scan, ComplianceFramework.PCI_DSS_V4)
+        assert "PCI DSS 4.0" in report
+        assert "FAIL" in report
+        assert "PB-001" in report
+
+    def test_pci_dss_report_all_safe(self):
+        scan = _make_scan(
+            [
+                _make_finding(
+                    "ES-001",
+                    Verdict.SAFE,
+                    category=Category.EXECUTION_SAFETY,
+                    owasp="LLM06 — Sensitive Information Disclosure",
+                ),
+            ]
+        )
+        report = generate_compliance_report(scan, ComplianceFramework.PCI_DSS_V4)
+        assert "PCI DSS 4.0" in report
+        assert "passed" in report.lower()
+
+    def test_pci_dss_controls_exist(self):
+        assert "6.2" in PCI_DSS_V4_CONTROLS
+        assert "6.3" in PCI_DSS_V4_CONTROLS
+        assert "6.4" in PCI_DSS_V4_CONTROLS
+        assert "11.3" in PCI_DSS_V4_CONTROLS
+
+
+class TestNewCategoryMappings:
+    """Test that new categories map correctly across frameworks."""
+
+    def test_owasp_permission_boundaries(self):
+        findings = [
+            _make_finding(
+                "PB-001",
+                Verdict.VULNERABLE,
+                category=Category.PERMISSION_BOUNDARIES,
+                owasp="Unknown",
+            ),
+        ]
+        mapping = _map_findings_to_owasp(findings)
+        assert len(mapping["LLM02"]) == 1  # PB- prefix → LLM02
+
+    def test_owasp_delegation_integrity(self):
+        findings = [
+            _make_finding(
+                "DI-001",
+                Verdict.VULNERABLE,
+                category=Category.DELEGATION_INTEGRITY,
+                owasp="Unknown",
+            ),
+        ]
+        mapping = _map_findings_to_owasp(findings)
+        assert len(mapping["LLM08"]) == 1  # DI- prefix → LLM08
+
+    def test_owasp_execution_safety(self):
+        findings = [
+            _make_finding(
+                "ES-001", Verdict.VULNERABLE, category=Category.EXECUTION_SAFETY, owasp="Unknown"
+            ),
+        ]
+        mapping = _map_findings_to_owasp(findings)
+        assert len(mapping["LLM06"]) == 1  # ES- prefix → LLM06
+
+    def test_owasp_session_isolation(self):
+        findings = [
+            _make_finding(
+                "SI-001", Verdict.VULNERABLE, category=Category.SESSION_ISOLATION, owasp="Unknown"
+            ),
+        ]
+        mapping = _map_findings_to_owasp(findings)
+        assert len(mapping["LLM05"]) == 1  # SI- prefix → LLM05
+
+    def test_eu_ai_act_new_articles(self):
+        scan = _make_scan(
+            [
+                _make_finding(
+                    "DI-001",
+                    Verdict.VULNERABLE,
+                    category=Category.DELEGATION_INTEGRITY,
+                    owasp="LLM08",
+                ),
+            ]
+        )
+        report = generate_compliance_report(scan, ComplianceFramework.EU_AI_ACT)
+        assert "Article 9" in report
+        assert "Article 14" in report
+
+    def test_nist_category_mapping(self):
+        scan = _make_scan(
+            [
+                _make_finding(
+                    "PB-001",
+                    Verdict.VULNERABLE,
+                    category=Category.PERMISSION_BOUNDARIES,
+                    owasp="LLM02",
+                ),
+            ]
+        )
+        report = generate_compliance_report(scan, ComplianceFramework.NIST_AI_RMF)
+        assert "NIST AI RMF" in report
+        # MEASURE gets all findings, GOVERN gets PB findings
+        assert "FAIL" in report
