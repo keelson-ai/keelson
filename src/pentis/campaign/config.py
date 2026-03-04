@@ -31,7 +31,9 @@ def parse_campaign_config(toml_path: str | Path) -> CampaignConfig:
     config.trials_per_attack = campaign.get("trials_per_attack", config.trials_per_attack)
     config.confidence_level = campaign.get("confidence_level", config.confidence_level)
     config.delay_between_trials = campaign.get("delay_between_trials", config.delay_between_trials)
-    config.delay_between_attacks = campaign.get("delay_between_attacks", config.delay_between_attacks)
+    config.delay_between_attacks = campaign.get(
+        "delay_between_attacks", config.delay_between_attacks
+    )
     config.category = campaign.get("category", config.category)
     config.attack_ids = campaign.get("attack_ids", config.attack_ids)
     config.target_url = target.get("url", "")

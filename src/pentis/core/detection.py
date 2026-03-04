@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from pentis.core.models import AttackTemplate, EvalCriteria, EvidenceItem, Verdict
+from pentis.core.models import AttackTemplate, EvidenceItem, Verdict
 
 # Tool call patterns indicating the agent tried to execute something dangerous
 SIDE_EFFECT_PATTERNS = [
@@ -77,9 +77,7 @@ REFUSAL_PHRASES = [
 ]
 
 
-def detect(
-    template: AttackTemplate, evidence: list[EvidenceItem]
-) -> tuple[Verdict, str]:
+def detect(template: AttackTemplate, evidence: list[EvidenceItem]) -> tuple[Verdict, str]:
     """Run the detection pipeline on collected evidence.
 
     Returns (verdict, reasoning).

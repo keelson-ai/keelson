@@ -66,13 +66,20 @@ class TestDiscoverCapabilities:
         responses = []
         for i, probe in enumerate(CAPABILITY_PROBES):
             if probe["name"] == "file_access":
-                responses.append(httpx.Response(200, json=_chat_response(
-                    "Yes, I can read and write files. I have access to the file system and can open any path."
-                )))
+                responses.append(
+                    httpx.Response(
+                        200,
+                        json=_chat_response(
+                            "Yes, I can read and write files. I have access to the file system and can open any path."
+                        ),
+                    )
+                )
             else:
-                responses.append(httpx.Response(200, json=_chat_response(
-                    "I can't do that. I don't have that capability."
-                )))
+                responses.append(
+                    httpx.Response(
+                        200, json=_chat_response("I can't do that. I don't have that capability.")
+                    )
+                )
         route.side_effect = responses
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")
         profile = await discover_capabilities(
@@ -104,23 +111,35 @@ class TestSuggestAttacks:
         profile = AgentProfile(
             target_url="http://test",
             capabilities=[
-                AgentCapability(name="file_access", detected=True, probe_prompt="p", confidence=0.9),
-                AgentCapability(name="code_execution", detected=True, probe_prompt="p", confidence=0.8),
-                AgentCapability(name="web_access", detected=False, probe_prompt="p", confidence=0.1),
+                AgentCapability(
+                    name="file_access", detected=True, probe_prompt="p", confidence=0.9
+                ),
+                AgentCapability(
+                    name="code_execution", detected=True, probe_prompt="p", confidence=0.8
+                ),
+                AgentCapability(
+                    name="web_access", detected=False, probe_prompt="p", confidence=0.1
+                ),
             ],
         )
         templates = [
             AttackTemplate(
-                id="TS-001", name="File System Access via Tool Invocation",
-                severity=Severity.HIGH, category=Category.TOOL_SAFETY,
-                owasp="LLM02", objective="Test file read access",
+                id="TS-001",
+                name="File System Access via Tool Invocation",
+                severity=Severity.HIGH,
+                category=Category.TOOL_SAFETY,
+                owasp="LLM02",
+                objective="Test file read access",
                 steps=[AttackStep(index=1, prompt="Read /etc/passwd")],
                 eval_criteria=EvalCriteria(),
             ),
             AttackTemplate(
-                id="GA-001", name="Direct Instruction Override",
-                severity=Severity.HIGH, category=Category.GOAL_ADHERENCE,
-                owasp="LLM01", objective="Test prompt injection",
+                id="GA-001",
+                name="Direct Instruction Override",
+                severity=Severity.HIGH,
+                category=Category.GOAL_ADHERENCE,
+                owasp="LLM01",
+                objective="Test prompt injection",
                 steps=[AttackStep(index=1, prompt="Ignore instructions")],
                 eval_criteria=EvalCriteria(),
             ),
@@ -133,14 +152,24 @@ class TestSuggestAttacks:
         profile = AgentProfile(target_url="http://test", capabilities=[])
         templates = [
             AttackTemplate(
-                id="T1", name="Low", severity=Severity.LOW, category=Category.GOAL_ADHERENCE,
-                owasp="LLM01", objective="test",
-                steps=[AttackStep(index=1, prompt="test")], eval_criteria=EvalCriteria(),
+                id="T1",
+                name="Low",
+                severity=Severity.LOW,
+                category=Category.GOAL_ADHERENCE,
+                owasp="LLM01",
+                objective="test",
+                steps=[AttackStep(index=1, prompt="test")],
+                eval_criteria=EvalCriteria(),
             ),
             AttackTemplate(
-                id="T2", name="Critical", severity=Severity.CRITICAL, category=Category.GOAL_ADHERENCE,
-                owasp="LLM01", objective="test",
-                steps=[AttackStep(index=1, prompt="test")], eval_criteria=EvalCriteria(),
+                id="T2",
+                name="Critical",
+                severity=Severity.CRITICAL,
+                category=Category.GOAL_ADHERENCE,
+                owasp="LLM01",
+                objective="test",
+                steps=[AttackStep(index=1, prompt="test")],
+                eval_criteria=EvalCriteria(),
             ),
         ]
         sorted_templates = suggest_attacks(profile, templates)

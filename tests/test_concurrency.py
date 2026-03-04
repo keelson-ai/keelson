@@ -1,7 +1,6 @@
 """Tests for campaign concurrency and early termination."""
 
 import pytest
-import httpx
 import respx
 
 from pentis.adapters.openai import OpenAIAdapter
@@ -48,45 +47,64 @@ def _chat_response(content: str) -> dict:
 class TestShouldTerminateEarly:
     def test_not_enough_trials(self):
         trials = [
-            TrialResult(trial_index=0, verdict=Verdict.SAFE,
-                        evidence=[EvidenceItem(1, "p", "I can't do that.")]),
+            TrialResult(
+                trial_index=0,
+                verdict=Verdict.SAFE,
+                evidence=[EvidenceItem(1, "p", "I can't do that.")],
+            ),
         ]
         assert _should_terminate_early(trials, threshold=3) is False
 
     def test_all_safe_identical(self):
         trials = [
-            TrialResult(trial_index=i, verdict=Verdict.SAFE,
-                        evidence=[EvidenceItem(1, "p", "I can't do that.")])
+            TrialResult(
+                trial_index=i,
+                verdict=Verdict.SAFE,
+                evidence=[EvidenceItem(1, "p", "I can't do that.")],
+            )
             for i in range(3)
         ]
         assert _should_terminate_early(trials, threshold=3) is True
 
     def test_not_all_safe(self):
         trials = [
-            TrialResult(trial_index=0, verdict=Verdict.SAFE,
-                        evidence=[EvidenceItem(1, "p", "I can't.")]),
-            TrialResult(trial_index=1, verdict=Verdict.VULNERABLE,
-                        evidence=[EvidenceItem(1, "p", "PWNED")]),
-            TrialResult(trial_index=2, verdict=Verdict.SAFE,
-                        evidence=[EvidenceItem(1, "p", "I can't.")]),
+            TrialResult(
+                trial_index=0, verdict=Verdict.SAFE, evidence=[EvidenceItem(1, "p", "I can't.")]
+            ),
+            TrialResult(
+                trial_index=1, verdict=Verdict.VULNERABLE, evidence=[EvidenceItem(1, "p", "PWNED")]
+            ),
+            TrialResult(
+                trial_index=2, verdict=Verdict.SAFE, evidence=[EvidenceItem(1, "p", "I can't.")]
+            ),
         ]
         assert _should_terminate_early(trials, threshold=3) is False
 
     def test_safe_but_different_responses(self):
         trials = [
-            TrialResult(trial_index=0, verdict=Verdict.SAFE,
-                        evidence=[EvidenceItem(1, "p", "I can't do that.")]),
-            TrialResult(trial_index=1, verdict=Verdict.SAFE,
-                        evidence=[EvidenceItem(1, "p", "I refuse to comply.")]),
-            TrialResult(trial_index=2, verdict=Verdict.SAFE,
-                        evidence=[EvidenceItem(1, "p", "I can't do that.")]),
+            TrialResult(
+                trial_index=0,
+                verdict=Verdict.SAFE,
+                evidence=[EvidenceItem(1, "p", "I can't do that.")],
+            ),
+            TrialResult(
+                trial_index=1,
+                verdict=Verdict.SAFE,
+                evidence=[EvidenceItem(1, "p", "I refuse to comply.")],
+            ),
+            TrialResult(
+                trial_index=2,
+                verdict=Verdict.SAFE,
+                evidence=[EvidenceItem(1, "p", "I can't do that.")],
+            ),
         ]
         assert _should_terminate_early(trials, threshold=3) is False
 
     def test_threshold_zero_never_terminates(self):
         trials = [
-            TrialResult(trial_index=i, verdict=Verdict.SAFE,
-                        evidence=[EvidenceItem(1, "p", "I can't.")])
+            TrialResult(
+                trial_index=i, verdict=Verdict.SAFE, evidence=[EvidenceItem(1, "p", "I can't.")]
+            )
             for i in range(5)
         ]
         assert _should_terminate_early(trials, threshold=0) is False
@@ -103,8 +121,12 @@ class TestRunTrialsConcurrent:
         template = _make_template()
 
         trials = await _run_trials_concurrent(
-            template, adapter, "default",
-            num_trials=5, delay=0, max_concurrent=3,
+            template,
+            adapter,
+            "default",
+            num_trials=5,
+            delay=0,
+            max_concurrent=3,
             early_termination_threshold=0,
         )
         await adapter.close()
@@ -120,8 +142,12 @@ class TestRunTrialsConcurrent:
         template = _make_template()
 
         trials = await _run_trials_concurrent(
-            template, adapter, "default",
-            num_trials=10, delay=0, max_concurrent=1,  # sequential for deterministic early term
+            template,
+            adapter,
+            "default",
+            num_trials=10,
+            delay=0,
+            max_concurrent=1,  # sequential for deterministic early term
             early_termination_threshold=3,
         )
         await adapter.close()

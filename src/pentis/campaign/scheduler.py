@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import re
-from datetime import datetime, timezone
 from typing import Callable
 
 from pentis.adapters.base import BaseAdapter

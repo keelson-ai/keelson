@@ -1,6 +1,5 @@
 """Tests for the CLI commands."""
 
-import pytest
 from typer.testing import CliRunner
 
 from pentis.cli import app

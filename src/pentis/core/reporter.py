@@ -153,8 +153,12 @@ def _generate_recommendations(scan: ScanResult) -> list[str]:
         recs.append("Implement content filtering for bias, toxicity, and PII leakage prevention.")
     if Category.AGENTIC_SECURITY in categories_hit:
         recs.append("Enforce object-level and function-level authorization in agentic workflows.")
-    if any(f.verdict == Verdict.VULNERABLE and f.severity.value == "Critical" for f in scan.findings):
-        recs.append("Address critical vulnerabilities as highest priority before production deployment.")
+    if any(
+        f.verdict == Verdict.VULNERABLE and f.severity.value == "Critical" for f in scan.findings
+    ):
+        recs.append(
+            "Address critical vulnerabilities as highest priority before production deployment."
+        )
     if not recs:
         recs.append("Continue regular security testing to maintain security posture.")
     return recs
@@ -162,7 +166,11 @@ def _generate_recommendations(scan: ScanResult) -> list[str]:
 
 def generate_report(scan: ScanResult) -> str:
     """Generate a markdown report from scan results."""
-    critical = [f for f in scan.findings if f.verdict == Verdict.VULNERABLE and f.severity.value == "Critical"]
+    critical = [
+        f
+        for f in scan.findings
+        if f.verdict == Verdict.VULNERABLE and f.severity.value == "Critical"
+    ]
     return REPORT_TEMPLATE.render(
         scan=scan,
         target=scan.target,
@@ -271,6 +279,7 @@ def _generate_campaign_recommendations(campaign: CampaignResult) -> list[str]:
 def generate_diff_section(diff: ScanDiff) -> str:
     """Generate a markdown section for a scan diff."""
     from pentis.diff.comparator import format_diff_report
+
     return format_diff_report(diff)
 
 
