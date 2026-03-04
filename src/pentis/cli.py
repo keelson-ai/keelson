@@ -811,7 +811,7 @@ def test_crew(
             f"{icon.get(finding.verdict.value, finding.verdict.value)}"
         )
 
-    console.print(f"\n[bold]Pentis CrewAI Security Scan[/bold]")
+    console.print("\n[bold]Pentis CrewAI Security Scan[/bold]")
     console.print(f"Module: {crew_module}")
     console.print()
 
@@ -875,7 +875,7 @@ def test_chain_cmd(
             f"{icon.get(finding.verdict.value, finding.verdict.value)}"
         )
 
-    console.print(f"\n[bold]Pentis LangChain Security Scan[/bold]")
+    console.print("\n[bold]Pentis LangChain Security Scan[/bold]")
     console.print(f"Module: {chain_module}")
     console.print()
 
