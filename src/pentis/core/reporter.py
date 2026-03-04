@@ -6,7 +6,7 @@ from pathlib import Path
 
 from jinja2 import Template
 
-from pentis.core.models import Category, Finding, ScanResult, Verdict
+from pentis.core.models import CampaignResult, Category, Finding, ScanDiff, ScanResult, Verdict
 
 REPORT_TEMPLATE = Template("""\
 # Pentis Security Scan Report
@@ -149,3 +149,88 @@ def save_report(scan: ScanResult, reports_dir: Path | None = None) -> Path:
     path = out_dir / filename
     path.write_text(report_text)
     return path
+
+
+# --- Phase 2: Campaign report ---
+
+CAMPAIGN_TEMPLATE = Template("""\
+# Pentis Campaign Report
+
+**Target**: {{ target.url }}
+**Model**: {{ target.model }}
+**Date**: {{ date }}
+**Campaign ID**: {{ campaign.campaign_id }}
+**Config**: {{ campaign.config.name }} ({{ campaign.config.trials_per_attack }} trials/attack, \
+{{ "%.0f"|format(campaign.config.confidence_level * 100) }}% CI)
+**Attacks Tested**: {{ campaign.findings | length }} | \
+**Vulnerable**: {{ campaign.vulnerable_attacks }} | \
+**Total Trials**: {{ campaign.total_trials }}
+
+## Summary
+
+{{ summary }}
+
+## Statistical Results
+
+| Attack | Severity | Success Rate | 95% CI | Verdict |
+|--------|----------|-------------|--------|---------|
+{% for f in campaign.findings %}\
+| {{ f.template_id }}: {{ f.template_name[:30] }} | {{ f.severity.value }} | \
+{{ "%.1f"|format(f.success_rate * 100) }}% | \
+[{{ "%.1f"|format(f.ci_lower * 100) }}%, {{ "%.1f"|format(f.ci_upper * 100) }}%] | \
+{{ f.verdict.value }} |
+{% endfor %}
+
+## Recommendations
+
+{% for rec in recommendations %}
+{{ loop.index }}. {{ rec }}
+{% endfor %}
+""")
+
+
+def generate_campaign_report(campaign: CampaignResult) -> str:
+    """Generate a markdown report from campaign results."""
+    return CAMPAIGN_TEMPLATE.render(
+        campaign=campaign,
+        target=campaign.target,
+        date=campaign.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        summary=_generate_campaign_summary(campaign),
+        recommendations=_generate_campaign_recommendations(campaign),
+    )
+
+
+def _generate_campaign_summary(campaign: CampaignResult) -> str:
+    total = len(campaign.findings)
+    if total == 0:
+        return "No attacks were tested."
+    vuln_pct = (campaign.vulnerable_attacks / total) * 100
+    if vuln_pct == 0:
+        return (
+            f"Target passed all {total} statistical security tests across "
+            f"{campaign.total_trials} total trials."
+        )
+    return (
+        f"Statistical analysis across {campaign.total_trials} trials found "
+        f"{campaign.vulnerable_attacks} of {total} attacks with statistically "
+        f"significant vulnerability rates ({vuln_pct:.0f}%)."
+    )
+
+
+def _generate_campaign_recommendations(campaign: CampaignResult) -> list[str]:
+    recs: list[str] = []
+    high_rate = [f for f in campaign.findings if f.success_rate > 0.5]
+    if high_rate:
+        ids = ", ".join(f.template_id for f in high_rate[:5])
+        recs.append(f"Prioritize fixing high-rate vulnerabilities: {ids}")
+    if campaign.vulnerable_attacks > 0:
+        recs.append("Run follow-up campaign after remediations to verify fixes.")
+    if not recs:
+        recs.append("Continue regular campaign testing to maintain security posture.")
+    return recs
+
+
+def generate_diff_section(diff: ScanDiff) -> str:
+    """Generate a markdown section for a scan diff."""
+    from pentis.diff.comparator import format_diff_report
+    return format_diff_report(diff)
