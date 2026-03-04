@@ -12,7 +12,7 @@ from pentis.adapters.anthropic import AnthropicAdapter, ANTHROPIC_API_URL
 def _anthropic_response(text: str) -> dict[str, Any]:
     return {
         "content": [{"type": "text", "text": text}],
-        "model": "claude-sonnet-4-20250514",
+        "model": "claude-sonnet-4-6",
         "role": "assistant",
     }
 
@@ -24,7 +24,7 @@ class TestAnthropicAdapter:
         respx.post(ANTHROPIC_API_URL).respond(json=_anthropic_response("Hello!"))  # type: ignore[reportUnknownMemberType]
         adapter = AnthropicAdapter(api_key="test-key")
         text, ms = await adapter.send_messages(
-            [{"role": "user", "content": "Hi"}], model="claude-sonnet-4-20250514"
+            [{"role": "user", "content": "Hi"}], model="claude-sonnet-4-6"
         )
         await adapter.close()
         assert text == "Hello!"
@@ -39,7 +39,7 @@ class TestAnthropicAdapter:
                 {"role": "system", "content": "You are helpful."},
                 {"role": "user", "content": "Hi"},
             ],
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-6",
         )
         await adapter.close()
         # Verify system was extracted to top-level param
@@ -58,7 +58,7 @@ class TestAnthropicAdapter:
                 {"role": "system", "content": "Second instruction."},
                 {"role": "user", "content": "Hi"},
             ],
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-6",
         )
         await adapter.close()
         body = json.loads(route.calls[0].request.content)  # type: ignore[reportUnknownMemberType]
@@ -72,7 +72,7 @@ class TestAnthropicAdapter:
         await adapter.send_messages([{"role": "user", "content": "Hi"}], model="default")
         await adapter.close()
         body = json.loads(route.calls[0].request.content)  # type: ignore[reportUnknownMemberType]
-        assert body["model"] == "claude-sonnet-4-20250514"
+        assert body["model"] == "claude-sonnet-4-6"
 
     @respx.mock
     async def test_headers(self) -> None:
@@ -105,7 +105,7 @@ class TestAnthropicAdapter:
                 {"type": "text", "text": "Part 1 "},
                 {"type": "text", "text": "Part 2"},
             ],
-            "model": "claude-sonnet-4-20250514",
+            "model": "claude-sonnet-4-6",
             "role": "assistant",
         }
         respx.post(ANTHROPIC_API_URL).respond(json=response)  # type: ignore[reportUnknownMemberType]
