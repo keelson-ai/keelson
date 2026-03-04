@@ -1,34 +1,36 @@
 # Task Status
 
-## F-c3ddId — Configure Ruff, Pyright, and pre-commit hooks
+## YvHKkjLC — Create Dockerfile and docker-compose.yml
 
-**Status**: ✅ Complete
+**Status**: Complete
 
-### Changes Made
+### Files Created / Modified
+| File | Action | Notes |
+|------|--------|-------|
+| `src/pentis_service/__init__.py` | Created | Skeleton package, `__version__ = "0.1.0"` |
+| `src/pentis_service/main.py` | Created | FastAPI app with `GET /health` endpoint |
+| `Dockerfile` | Created | Multi-stage production build (builder → runtime) |
+| `Dockerfile.dev` | Created | Single-stage dev image with hot-reload |
+| `docker-compose.yml` | Created | `api` service with port 8000, volume mount, env_file, healthcheck |
+| `.env.example` | Created | All required variables documented |
+| `pyproject.toml` | Modified | Added `fastapi>=0.111`, `uvicorn[standard]>=0.30`; added `pentis_service` to build targets |
 
-1. **`pyproject.toml`** — Added `[tool.ruff.lint]` section with `select = ["E", "F", "I", "UP"]`. The `[tool.ruff]` (line-length 100, target py311) and `[tool.pyright]` (strict mode, pythonVersion 3.11) sections were already present from prior initialization.
-
-2. **`.pre-commit-config.yaml`** (created) — Configures three hook repos:
-   - `pre-commit/pre-commit-hooks` v4.6.0: trailing-whitespace, end-of-file-fixer, check-yaml, check-toml
-   - `astral-sh/ruff-pre-commit` v0.5.0: ruff-format + ruff --fix
-   - `RobertCraigie/pyright-python` v1.1.377: pyright
-
-3. **`Makefile`** — Already had `make lint` (`ruff check src/ tests/`) and `make typecheck` (`pyright`) targets from prior work. No changes needed.
-
-### Setup Instructions
-
+### Usage
 ```bash
-# Install pre-commit (requires pre-commit package)
-pip install pre-commit
-pre-commit install
-
-# Manual invocation
-make lint
-make typecheck
-make check  # runs lint + typecheck + test
+# Copy environment file
+cp .env.example .env
+# Edit .env with your values, then:
+docker compose up
 ```
+The API will be available at `http://localhost:8000` and the health endpoint at `http://localhost:8000/health`.
+
+### QA Review Fixes (automated)
+| File | Fix |
+|------|-----|
+| `Dockerfile.dev` | Changed `uv sync` → `uv sync --extra dev` so dev tools (pytest, ruff, pyright) are actually installed |
+| `docker-compose.yml` | Added `extra_hosts: host.docker.internal:host-gateway` for Linux Docker compatibility with the default `PENTIS_TARGET_URL` |
 
 ### Notes
-
-- `uv` is not available in the CI execution environment; install locally with `pip install uv` or use `pip install -e ".[dev]"` directly.
-- Pre-commit hooks run on staged files only; use `pre-commit run --all-files` for a full check.
+- `uv.lock` will need to be regenerated after adding `fastapi`/`uvicorn` to dependencies (`uv lock` locally)
+- The healthcheck uses Python's stdlib `urllib` to avoid requiring `curl` in the minimal runtime image
+- Hot-reload works because `./src` is bind-mounted into the container in development mode

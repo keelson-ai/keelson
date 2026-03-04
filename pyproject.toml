@@ -28,6 +28,8 @@ dependencies = [
     "rich>=13.0",
     "jinja2>=3.1",
     "pyyaml>=6.0",
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
 ]
 
 [project.urls]
@@ -53,7 +55,7 @@ all = ["pentis[crewai,langchain]"]
 pentis = "pentis.cli:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/pentis"]
+packages = ["src/pentis", "src/pentis_service"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "src/pentis/attacks" = "pentis/attacks"
