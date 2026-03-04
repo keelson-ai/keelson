@@ -3,8 +3,8 @@
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
 from pentis.adapters.attacker import AttackerAdapter
+from pentis.adapters.openai import OpenAIAdapter
 from pentis.attacker.chains import (
     CHAIN_TEMPLATES,
     _parse_llm_chains,  # type: ignore[reportPrivateUsage]

@@ -2,8 +2,8 @@
 
 from typing import Any
 
-import pytest
 import httpx
+import pytest
 import respx
 
 from pentis.adapters.openai import OpenAIAdapter

@@ -21,3 +21,11 @@ class BaseAdapter(ABC):
     @abstractmethod
     async def close(self) -> None:
         """Clean up resources."""
+
+    @staticmethod
+    def _last_user_message(messages: list[dict[str, str]]) -> str:
+        """Extract the last user message from a messages list."""
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                return msg["content"]
+        return ""
