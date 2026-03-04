@@ -74,7 +74,5 @@ class TestCrewAIAdapter:
         mock_crew.kickoff.return_value = "Simple string result"
 
         adapter = CrewAIAdapter(crew=mock_crew)
-        response, _ = await adapter.send_messages(
-            [{"role": "user", "content": "test"}]
-        )
+        response, _ = await adapter.send_messages([{"role": "user", "content": "test"}])
         assert response == "Simple string result"

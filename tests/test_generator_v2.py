@@ -23,7 +23,9 @@ class MockAdapter(BaseAdapter):
         self._responses = responses or ["Generated attack prompt"]
         self._call_idx = 0
 
-    async def send_messages(self, messages: list[dict[str, str]], model: str = "default") -> tuple[str, int]:
+    async def send_messages(
+        self, messages: list[dict[str, str]], model: str = "default"
+    ) -> tuple[str, int]:
         resp = self._responses[self._call_idx % len(self._responses)]
         self._call_idx += 1
         return resp, 100
@@ -44,8 +46,14 @@ class TestOWASPMap:
 class TestCapabilityCategoryMap:
     def test_known_capabilities(self) -> None:
         expected = {
-            "file_access", "web_access", "code_execution", "database_access",
-            "email_messaging", "tool_usage", "memory_persistence", "system_access",
+            "file_access",
+            "web_access",
+            "code_execution",
+            "database_access",
+            "email_messaging",
+            "tool_usage",
+            "memory_persistence",
+            "system_access",
         }
         assert set(CAPABILITY_CATEGORY_MAP.keys()) == expected
 
@@ -94,35 +102,31 @@ class TestGenerateAttackTemplate:
             ]
         )
         template = await generate_attack_template(
-            adapter, "GEN-002", Category.MEMORY_INTEGRITY, "Test memory",
-            multi_step=True, num_steps=2,
+            adapter,
+            "GEN-002",
+            Category.MEMORY_INTEGRITY,
+            "Test memory",
+            multi_step=True,
+            num_steps=2,
         )
         assert len(template.steps) == 2
         assert template.steps[1].is_followup is True
 
     async def test_all_categories_produce_valid_owasp(self) -> None:
         for cat in Category:
-            adapter = MockAdapter(
-                responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"]
-            )
-            template = await generate_attack_template(
-                adapter, "GEN-X", cat, "Test"
-            )
+            adapter = MockAdapter(responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"])
+            template = await generate_attack_template(adapter, "GEN-X", cat, "Test")
             assert template.owasp != "LLM01" or cat == Category.GOAL_ADHERENCE
 
 
 class TestGenerateBatch:
     async def test_batch_default_categories(self) -> None:
-        adapter = MockAdapter(
-            responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"]
-        )
+        adapter = MockAdapter(responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"])
         templates = await generate_batch(adapter, count_per_category=1)
         assert len(templates) == len(Category)  # 1 per category
 
     async def test_batch_specific_category(self) -> None:
-        adapter = MockAdapter(
-            responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"]
-        )
+        adapter = MockAdapter(responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"])
         templates = await generate_batch(
             adapter, categories=[Category.TOOL_SAFETY], count_per_category=2
         )
@@ -130,9 +134,7 @@ class TestGenerateBatch:
         assert all(t.category == Category.TOOL_SAFETY for t in templates)
 
     async def test_batch_ids_are_sequential(self) -> None:
-        adapter = MockAdapter(
-            responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"]
-        )
+        adapter = MockAdapter(responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"])
         templates = await generate_batch(
             adapter, categories=[Category.GOAL_ADHERENCE], count_per_category=3
         )
@@ -143,20 +145,18 @@ class TestGenerateBatch:
 
 class TestCapabilityInformedGeneration:
     async def test_generates_for_detected_capabilities(self) -> None:
-        adapter = MockAdapter(
-            responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"]
-        )
+        adapter = MockAdapter(responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"])
         profile = AgentProfile(
             target_url="http://test",
             capabilities=[
                 AgentCapability(name="file_access", detected=True, probe_prompt="", confidence=0.9),
                 AgentCapability(name="web_access", detected=False, probe_prompt="", confidence=0.1),
-                AgentCapability(name="code_execution", detected=True, probe_prompt="", confidence=0.8),
+                AgentCapability(
+                    name="code_execution", detected=True, probe_prompt="", confidence=0.8
+                ),
             ],
         )
-        templates = await generate_capability_informed_attacks(
-            adapter, profile, max_attacks=5
-        )
+        templates = await generate_capability_informed_attacks(adapter, profile, max_attacks=5)
         assert len(templates) >= 1
         # All templates should target categories relevant to file_access or code_execution
         relevant_cats: set[Category] = set()
@@ -166,17 +166,13 @@ class TestCapabilityInformedGeneration:
             assert t.category in relevant_cats
 
     async def test_empty_profile_uses_defaults(self) -> None:
-        adapter = MockAdapter(
-            responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"]
-        )
+        adapter = MockAdapter(responses=["Attack prompt", "VULNERABLE: test\nSAFE: test"])
         profile = AgentProfile(
             target_url="http://test",
             capabilities=[
                 AgentCapability(name="unknown_cap", detected=False, probe_prompt=""),
             ],
         )
-        templates = await generate_capability_informed_attacks(
-            adapter, profile, max_attacks=2
-        )
+        templates = await generate_capability_informed_attacks(adapter, profile, max_attacks=2)
         # Should use default categories (GOAL_ADHERENCE, TOOL_SAFETY)
         assert len(templates) >= 1

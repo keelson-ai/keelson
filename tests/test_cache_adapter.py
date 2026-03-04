@@ -22,9 +22,7 @@ class TestCachingAdapter:
         )
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
         adapter = CachingAdapter(inner)
-        text, _ = await adapter.send_messages(
-            [{"role": "user", "content": "Hi"}], model="default"
-        )
+        text, _ = await adapter.send_messages([{"role": "user", "content": "Hi"}], model="default")
         await adapter.close()
         assert text == "Hello!"
         assert adapter.stats.misses == 1
