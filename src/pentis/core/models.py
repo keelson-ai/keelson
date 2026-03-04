@@ -68,6 +68,7 @@ class ComplianceFramework(str, Enum):
     EU_AI_ACT = "eu-ai-act"
     ISO_42001 = "iso-42001"
     SOC2 = "soc2"
+    PCI_DSS_V4 = "pci-dss-v4"
 
 
 @dataclass
