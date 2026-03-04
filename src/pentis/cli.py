@@ -11,7 +11,15 @@ from rich.console import Console
 from rich.table import Table
 
 from pentis.adapters.openai import OpenAIAdapter
-from pentis.core.models import AttackTemplate, Finding, ScanTier, StatisticalFinding, Target
+from pentis.core.models import (
+    AttackTemplate,
+    CampaignResult,
+    Finding,
+    ScanResult,
+    ScanTier,
+    StatisticalFinding,
+    Target,
+)
 from pentis.core.reporter import save_report
 from pentis.core.scanner import run_scan
 from pentis.core.templates import load_all_templates
@@ -77,7 +85,15 @@ def scan(
         None, "--tier", "-t", help="Scan tier: fast, deep, or continuous"
     ),
     format: str = typer.Option(
-        "markdown", "--format", "-f", help="Output format: markdown or sarif"
+        "markdown", "--format", "-f", help="Output format: markdown, sarif, or junit"
+    ),
+    fail_on_vuln: bool = typer.Option(
+        False, "--fail-on-vuln", help="Exit with code 1 if any vulnerabilities found"
+    ),
+    fail_threshold: float = typer.Option(
+        0.0,
+        "--fail-threshold",
+        help="Vulnerability rate threshold (0.0-1.0) above which to fail (requires --fail-on-vuln)",
     ),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
@@ -146,6 +162,13 @@ def scan(
             report_path = (
                 out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
             )
+        elif format == "junit":
+            from pentis.core.junit import to_junit_xml
+
+            report_text = to_junit_xml(result)
+            report_path = (
+                out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.junit.xml"
+            )
         else:
             report_text = generate_campaign_report(result)
             report_path = (
@@ -160,6 +183,10 @@ def scan(
         console.print(f"  Vulnerable: [red]{result.vulnerable_attacks}[/]")
         console.print(f"  Total trials: {result.total_trials}")
         console.print(f"\nReport saved: {report_path}")
+
+        if fail_on_vuln:
+            _check_fail_threshold_campaign(result, fail_threshold)
+
         return
 
     # Standard single-pass scan
@@ -212,6 +239,14 @@ def scan(
         out_dir.mkdir(parents=True, exist_ok=True)
         report_path = out_dir / f"scan-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
         report_path.write_text(report_text)
+    elif format == "junit":
+        from pentis.core.junit import to_junit_xml
+
+        report_text = to_junit_xml(result)
+        out_dir = output or Path("reports")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        report_path = out_dir / f"scan-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.junit.xml"
+        report_path.write_text(report_text)
     else:
         report_path = save_report(result, reports_dir=output)
 
@@ -222,6 +257,9 @@ def scan(
     console.print(f"  Safe: [green]{result.safe_count}[/]")
     console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
     console.print(f"\nReport saved: {report_path}")
+
+    if fail_on_vuln:
+        _check_fail_threshold_scan(result, fail_threshold)
 
 
 @app.command()
@@ -359,6 +397,17 @@ def campaign(
         "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
     ),
     use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
+    format: str = typer.Option(
+        "markdown", "--format", "-f", help="Output format: markdown, sarif, or junit"
+    ),
+    fail_on_vuln: bool = typer.Option(
+        False, "--fail-on-vuln", help="Exit with code 1 if any vulnerabilities found"
+    ),
+    fail_threshold: float = typer.Option(
+        0.0,
+        "--fail-threshold",
+        help="Vulnerability rate threshold (0.0-1.0) above which to fail (requires --fail-on-vuln)",
+    ),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
@@ -409,10 +458,26 @@ def campaign(
         store.close()
 
     # Generate campaign report
-    report_text = generate_campaign_report(result)
     out_dir = output or Path("reports")
     out_dir.mkdir(parents=True, exist_ok=True)
-    report_path = out_dir / f"campaign-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
+
+    if format == "sarif":
+        from pentis.core.sarif import to_sarif_json
+
+        report_text = to_sarif_json(result)
+        report_path = (
+            out_dir / f"campaign-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+        )
+    elif format == "junit":
+        from pentis.core.junit import to_junit_xml
+
+        report_text = to_junit_xml(result)
+        report_path = (
+            out_dir / f"campaign-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.junit.xml"
+        )
+    else:
+        report_text = generate_campaign_report(result)
+        report_path = out_dir / f"campaign-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
     report_path.write_text(report_text)
 
     _print_cache_stats(target_adapter)
@@ -422,6 +487,9 @@ def campaign(
     console.print(f"  Vulnerable: [red]{result.vulnerable_attacks}[/]")
     console.print(f"  Total trials: {result.total_trials}")
     console.print(f"\nReport saved: {report_path}")
+
+    if fail_on_vuln:
+        _check_fail_threshold_campaign(result, fail_threshold)
 
 
 @app.command()
@@ -1076,6 +1144,34 @@ def compliance_report(
     console.print(f"[bold]Compliance Report: {framework}[/bold]")
     console.print(f"Scan: {scan_id}")
     console.print(f"Report saved: {report_path}")
+
+
+def _check_fail_threshold_scan(result: ScanResult, threshold: float) -> None:
+    """Check vulnerability rate and exit with code 1 if threshold exceeded."""
+    total = len(result.findings)
+    if total == 0:
+        return
+    vuln_rate = result.vulnerable_count / total
+    if vuln_rate > threshold:
+        console.print(
+            f"\n[red bold]CI FAILURE: vulnerability rate {vuln_rate:.0%} "
+            f"exceeds threshold {threshold:.0%}[/]"
+        )
+        raise typer.Exit(1)
+
+
+def _check_fail_threshold_campaign(result: CampaignResult, threshold: float) -> None:
+    """Check vulnerability rate and exit with code 1 if threshold exceeded."""
+    total = len(result.findings)
+    if total == 0:
+        return
+    vuln_rate = result.vulnerable_attacks / total
+    if vuln_rate > threshold:
+        console.print(
+            f"\n[red bold]CI FAILURE: vulnerability rate {vuln_rate:.0%} "
+            f"exceeds threshold {threshold:.0%}[/]"
+        )
+        raise typer.Exit(1)
 
 
 def _print_cache_stats(adapter: Any) -> None:
