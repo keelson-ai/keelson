@@ -1,12 +1,12 @@
 """Tests for TOML campaign config parser."""
 
-import pytest
+from pathlib import Path
 
 from pentis.campaign.config import parse_campaign_config
 
 
 class TestCampaignConfig:
-    def test_parse_full_config(self, tmp_path):
+    def test_parse_full_config(self, tmp_path: Path) -> None:
         config_file = tmp_path / "campaign.toml"
         config_file.write_text("""\
 [campaign]
@@ -35,7 +35,7 @@ model = "gpt-4"
         assert cfg.api_key == "sk-test-key"
         assert cfg.model == "gpt-4"
 
-    def test_parse_minimal_config(self, tmp_path):
+    def test_parse_minimal_config(self, tmp_path: Path) -> None:
         config_file = tmp_path / "minimal.toml"
         config_file.write_text("""\
 [target]
@@ -48,7 +48,7 @@ url = "https://api.example.com/v1/chat/completions"
         assert cfg.target_url == "https://api.example.com/v1/chat/completions"
         assert cfg.model == "default"
 
-    def test_parse_empty_campaign_section(self, tmp_path):
+    def test_parse_empty_campaign_section(self, tmp_path: Path) -> None:
         config_file = tmp_path / "empty.toml"
         config_file.write_text("""\
 [campaign]

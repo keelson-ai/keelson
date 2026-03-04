@@ -165,7 +165,7 @@ def load_all_templates(
     root = attacks_dir or ATTACKS_DIR
     if category:
         root = root / category
-    templates = []
+    templates: list[AttackTemplate] = []
     for path in sorted(root.rglob("*.md")):
         templates.append(load_template(path))
     return templates

@@ -9,7 +9,7 @@ from typing import Callable
 
 from pentis.adapters.base import BaseAdapter
 from pentis.core.engine import execute_attack
-from pentis.core.models import AttackTemplate, Finding, ScanResult, Target
+from pentis.core.models import Finding, ScanResult, Target
 from pentis.core.templates import load_all_templates
 
 

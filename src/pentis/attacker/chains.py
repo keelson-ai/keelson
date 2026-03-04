@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from pentis.adapters.base import BaseAdapter
 from pentis.core.models import AgentProfile, AttackChain, AttackStep, Category, Severity
 
 
 # Static compound attack chain templates keyed by required capability combos
-CHAIN_TEMPLATES: list[dict] = [
+CHAIN_TEMPLATES: list[dict[str, Any]] = [
     {
         "name": "Data Exfiltration via File + Web",
         "capabilities": ["file_access", "web_access"],

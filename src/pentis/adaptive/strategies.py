@@ -60,7 +60,7 @@ def weighted_by_history(
     tried = Counter(history)
     max_success = max(success_map.values()) if success_map else 1
 
-    weights = []
+    weights: list[float] = []
     for mt in pool:
         successes = success_map.get(mt, 0)
         times_tried = tried.get(mt, 0)

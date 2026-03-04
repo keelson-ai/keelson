@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pentis.core.detection import REFUSAL_PHRASES
 from pentis.core.models import EvidenceItem, LeakageSignal
 
 

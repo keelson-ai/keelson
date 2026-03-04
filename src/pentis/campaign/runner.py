@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import math
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable
 
 from pentis.adapters.base import BaseAdapter
@@ -148,7 +149,7 @@ async def run_campaign(
     target: Target,
     adapter: BaseAdapter,
     config: CampaignConfig,
-    attacks_dir=None,
+    attacks_dir: Path | None = None,
     on_finding: Callable[[StatisticalFinding, int, int], None] | None = None,
 ) -> CampaignResult:
     """Run a statistical campaign: each attack executed N times with Wilson CI scoring.
@@ -183,7 +184,7 @@ async def run_campaign(
                 config.concurrency.early_termination_threshold,
             )
         else:
-            trials = []
+            trials: list[TrialResult] = []
             for trial_idx in range(config.trials_per_attack):
                 trial = await _run_single_trial(
                     template, adapter, target.model, trial_idx, config.delay_between_trials,

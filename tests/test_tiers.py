@@ -1,7 +1,5 @@
 """Tests for scan tier presets."""
 
-import pytest
-
 from pentis.campaign.tiers import TIER_PRESETS, get_tier_config
 from pentis.core.models import ScanTier
 

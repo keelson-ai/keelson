@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from jinja2 import Template
 
 from pentis.core.models import (
     ComplianceFramework,
     Finding,
     ScanResult,
-    Severity,
     Verdict,
 )
 
 
 # OWASP LLM Top 10 (2025) control mappings
-OWASP_LLM_CONTROLS: dict[str, dict] = {
+OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
     "LLM01": {
         "name": "Prompt Injection",
         "description": "Direct and indirect prompt injection attacks that manipulate LLM behavior.",
@@ -79,7 +80,7 @@ OWASP_LLM_CONTROLS: dict[str, dict] = {
 
 
 # NIST AI RMF function mappings
-NIST_AI_RMF_FUNCTIONS: dict[str, dict] = {
+NIST_AI_RMF_FUNCTIONS: dict[str, dict[str, Any]] = {
     "GOVERN": {
         "name": "Govern",
         "description": "Establish and maintain organizational AI risk management policies.",
@@ -120,7 +121,7 @@ NIST_AI_RMF_FUNCTIONS: dict[str, dict] = {
 
 
 # EU AI Act article mappings
-EU_AI_ACT_ARTICLES: dict[str, dict] = {
+EU_AI_ACT_ARTICLES: dict[str, dict[str, Any]] = {
     "Article 9": {
         "name": "Risk Management System",
         "description": "High-risk AI systems shall have a risk management system.",
@@ -241,7 +242,7 @@ def _generate_owasp_report(scan: ScanResult) -> str:
     """Generate OWASP LLM Top 10 compliance report."""
     mapping = _map_findings_to_owasp(scan.findings)
 
-    controls = {}
+    controls: dict[str, Any] = {}
     tested = 0
     passed = 0
     for ctrl_id, ctrl_data in OWASP_LLM_CONTROLS.items():
@@ -290,7 +291,7 @@ def _generate_owasp_report(scan: ScanResult) -> str:
 def _generate_nist_report(scan: ScanResult) -> str:
     """Generate NIST AI RMF compliance report."""
     # Map findings to MEASURE function (security testing)
-    controls = {}
+    controls: dict[str, Any] = {}
     for func_id, func_data in NIST_AI_RMF_FUNCTIONS.items():
         if func_id == "MEASURE":
             controls[func_id] = {
@@ -335,7 +336,7 @@ def _generate_nist_report(scan: ScanResult) -> str:
 
 def _generate_eu_ai_act_report(scan: ScanResult) -> str:
     """Generate EU AI Act compliance report."""
-    controls = {}
+    controls: dict[str, Any] = {}
     for art_id, art_data in EU_AI_ACT_ARTICLES.items():
         controls[art_id] = {
             "name": art_data["name"],
@@ -375,7 +376,7 @@ def _generate_eu_ai_act_report(scan: ScanResult) -> str:
 
 def _generate_iso_42001_report(scan: ScanResult) -> str:
     """Generate ISO 42001 compliance report."""
-    controls = {
+    controls: dict[str, Any] = {
         "A.6": {
             "name": "AI System Security",
             "description": "Controls for securing AI systems against adversarial attacks.",
@@ -407,7 +408,7 @@ def _generate_iso_42001_report(scan: ScanResult) -> str:
 
 def _generate_soc2_report(scan: ScanResult) -> str:
     """Generate SOC2 compliance report."""
-    controls = {
+    controls: dict[str, Any] = {
         "CC6.1": {
             "name": "Logical and Physical Access Controls",
             "description": "The entity implements logical access security measures.",
@@ -445,7 +446,7 @@ def _generate_soc2_report(scan: ScanResult) -> str:
     )
 
 
-def _compliance_recommendations(controls: dict) -> list[str]:
+def _compliance_recommendations(controls: dict[str, Any]) -> list[str]:
     """Generate recommendations from control assessment results."""
     recs: list[str] = []
     failed = [cid for cid, c in controls.items() if c["status"] == "FAIL"]

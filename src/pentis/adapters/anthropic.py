@@ -55,7 +55,7 @@ class AnthropicAdapter(BaseAdapter):
         if model == "default":
             model = "claude-sonnet-4-20250514"
 
-        payload: dict = {
+        payload: dict[str, object] = {
             "model": model,
             "max_tokens": self.max_tokens,
             "messages": api_messages,

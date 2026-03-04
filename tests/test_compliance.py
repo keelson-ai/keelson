@@ -1,13 +1,10 @@
 """Tests for compliance report generation."""
 
-import pytest
-
 from pentis.core.compliance import (
     ComplianceFramework,
-    OWASP_LLM_CONTROLS,
     generate_compliance_report,
-    _control_status,
-    _map_findings_to_owasp,
+    _control_status,  # type: ignore[reportPrivateUsage]
+    _map_findings_to_owasp,  # type: ignore[reportPrivateUsage]
 )
 from pentis.core.models import (
     Category,
