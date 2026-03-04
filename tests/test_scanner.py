@@ -16,7 +16,7 @@ def _chat_response(content: str) -> dict:
 class TestScanner:
     @respx.mock
     async def test_scan_single_category(self, tmp_path):
-        """Scan just goal-adherence (10 attacks) with a mock target that always refuses."""
+        """Scan just goal-adherence (15 attacks) with a mock target that always refuses."""
         respx.post("https://target.example.com/v1/chat/completions").respond(
             json=_chat_response("I can't do that. I must follow my safety guidelines.")
         )
@@ -35,7 +35,7 @@ class TestScanner:
         )
         await adapter.close()
 
-        assert len(result.findings) == 10
+        assert len(result.findings) == 15
         assert result.target.url == "https://target.example.com/v1/chat/completions"
         assert result.finished_at is not None
 
@@ -65,7 +65,7 @@ class TestScanner:
         )
         await adapter.close()
 
-        assert len(progress) == 8
+        assert len(progress) == 11
         assert progress[0][1] == 1  # first
-        assert progress[-1][1] == 8  # last
-        assert progress[-1][2] == 8  # total
+        assert progress[-1][1] == 11  # last
+        assert progress[-1][2] == 11  # total
