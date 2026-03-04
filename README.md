@@ -1,91 +1,225 @@
 # Pentis
 
-AI Agent Security Scanner — automated social engineering attacks against LLM-powered agents.
+[![PyPI version](https://img.shields.io/pypi/v/pentis)](https://pypi.org/project/pentis/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Tests](https://img.shields.io/badge/tests-345%20passing-brightgreen)]()
 
-Pentis ships **28 attack playbooks** across three categories mapped to the OWASP LLM Top 10. It can run as a **Claude Code plugin** (Claude becomes the pentester) or as a standalone **Python CLI** with an async engine, detection pipeline, and SQLite persistence.
+**Autonomous red team agent for AI systems.** Pentis ships 72 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 7 target adapters (OpenAI, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF output for CI/CD integration, and a statistical campaign engine with confidence intervals.
+
+```
+pip install pentis
+```
 
 ## Quick Start
 
-### Claude Code Plugin
-
 ```bash
-# Load as a Claude Code plugin
-claude --plugin-dir ./Pentis-Monorepo
-
-# Full scan
-/pentis:scan http://localhost:11434/v1/chat/completions
+# Scan an OpenAI-compatible endpoint
+pentis scan https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Single attack
-/pentis:attack http://localhost:11434/v1/chat/completions GA-001
+pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
 
-# Regenerate report
-/pentis:report
-```
+# List all 72 attacks
+pentis list
 
-### Python CLI
+# Statistical campaign (10 trials per attack)
+pentis scan https://api.example.com/v1/chat/completions --tier deep --api-key $KEY
 
-```bash
-# Install (Python 3.11+)
-pip install -e ".[dev]"
+# SARIF output for GitHub Code Scanning
+pentis scan https://api.example.com/v1/chat/completions --format sarif --api-key $KEY
 
-# Run
-pentis --help
+# Scan a CrewAI agent directly
+pentis test-crew my_crew.py
+
+# Scan a LangChain agent directly
+pentis test-chain my_agent.py
 ```
 
 ## How It Works
 
-1. **Read** — Load attack playbooks from `attacks/**/*.md`
-2. **Send** — Deliver prompts to the target via OpenAI-compatible chat completions API
-3. **Evaluate** — Semantically judge each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
-4. **Report** — Compile findings into a structured markdown report with OWASP mapping
+```
+Playbooks (.md)     Target Agent        Pentis Engine
+┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
+│ 72 attacks   │───>│ OpenAI /     │───>│ Detection pipeline   │
+│ 7 categories │    │ Anthropic /  │    │ Streaming observer    │
+│ OWASP mapped │    │ CrewAI / ... │    │ Statistical analysis  │
+└──────────────┘    └──────────────┘    └──────────────────────┘
+                                               │
+                                    ┌──────────┴──────────┐
+                                    │  Reports             │
+                                    │  Markdown / SARIF    │
+                                    │  Compliance mapping  │
+                                    └─────────────────────┘
+```
+
+1. **Load** attack playbooks from `attacks/**/*.md` (pure markdown, no code)
+2. **Send** prompts to the target via any supported adapter
+3. **Detect** vulnerabilities using pattern-based detection + streaming leakage analysis
+4. **Evaluate** each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
+5. **Report** findings with OWASP mapping, evidence, and remediation recommendations
 
 ## Attack Categories
 
-| Category | IDs | Count | OWASP | Examples |
-|----------|-----|-------|-------|----------|
-| **Goal Adherence** | GA-001..010 | 10 | LLM01 — Prompt Injection | Direct override, role hijacking, system prompt extraction, delimiter injection, payload splitting, encoding evasion, few-shot jailbreak, context overflow, hypothetical injection, nested instruction injection |
-| **Tool Safety** | TS-001..010 | 10 | LLM02, LLM06 | File system access, command injection, SQL injection, unauthorized API calls, file write abuse, env var extraction, privilege escalation, path traversal, email abuse, database modification |
-| **Memory Integrity** | MI-001..008 | 8 | LLM05 — Insecure Plugin Design | History poisoning, identity persistence, behavior drift, false tool results, summarization attack, instruction anchoring, session state confusion, cross-turn exfiltration |
+| Category | Prefix | Count | OWASP | What It Tests |
+|----------|--------|-------|-------|---------------|
+| **Goal Adherence** | GA | 15 | LLM01 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow |
+| **Tool Safety** | TS | 16 | LLM02/LLM06 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal |
+| **Memory Integrity** | MI | 11 | LLM05 | History poisoning, identity persistence, behavior drift, false tool results, cross-turn exfiltration |
+| **Permission Boundaries** | PB | 8 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
+| **Delegation Integrity** | DI | 8 | LLM08/LLM09 | Unauthorized sub-agents, chain amplification, trust boundary violation, delegation scope laundering |
+| **Execution Safety** | ES | 8 | LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization |
+| **Session Isolation** | SI | 6 | LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, stale session exploitation |
 
-## Project Structure
+## Adapters
 
+Pentis communicates with targets through a pluggable adapter interface:
+
+| Adapter | Flag | Protocol | Use Case |
+|---------|------|----------|----------|
+| **OpenAI** | `--adapter openai` | Chat Completions API | GPT, local models (Ollama, vLLM) |
+| **Anthropic** | `--adapter anthropic` | Messages API | Claude models |
+| **LangGraph** | `--adapter langgraph` | LangGraph Platform | LangGraph agents |
+| **MCP** | `--adapter mcp` | JSON-RPC 2.0 | MCP tool servers |
+| **A2A** | `--adapter a2a` | Google A2A Protocol | A2A-compatible agents |
+| **CrewAI** | `test-crew` command | In-process | CrewAI crews/agents |
+| **LangChain** | `test-chain` command | In-process | LangChain agents/chains |
+
+```bash
+# OpenAI-compatible (default)
+pentis scan http://localhost:11434/v1/chat/completions
+
+# Anthropic
+pentis scan https://api.anthropic.com --adapter anthropic --api-key $KEY
+
+# LangGraph Platform
+pentis scan https://my-agent.langraph.com --adapter langgraph --assistant-id my-agent
+
+# MCP server
+pentis scan http://localhost:3000 --adapter mcp --tool-name ask
+
+# A2A agent
+pentis scan http://localhost:8000 --adapter a2a
+
+# CrewAI (in-process, no HTTP)
+pentis test-crew path/to/my_crew.py
+
+# LangChain (in-process, no HTTP)
+pentis test-chain path/to/my_agent.py
 ```
-Pentis-Monorepo/
-├── .claude-plugin/
-│   └── plugin.json              # Plugin manifest
-├── agents/
-│   └── pentester.md             # Pentester agent instructions
-├── commands/
-│   ├── scan.md                  # /pentis:scan command
-│   ├── attack.md                # /pentis:attack command
-│   └── report.md                # /pentis:report command
-├── attacks/                     # 28 attack playbooks (.md)
-│   ├── goal-adherence/          # GA-001..010
-│   ├── tool-safety/             # TS-001..010
-│   └── memory-integrity/        # MI-001..008
-├── src/pentis/                  # Python engine
-│   ├── cli.py                   # Typer CLI
-│   ├── adapters/                # Target adapters (OpenAI-compatible)
-│   ├── core/                    # Engine, scanner, detection, reporter
-│   └── state/                   # SQLite persistence
-├── tests/                       # Test suite
-├── reports/                     # Generated scan reports
-└── pyproject.toml               # Python packaging (hatchling)
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `pentis scan <url>` | Full security scan against an endpoint |
+| `pentis attack <url> <id>` | Run a single attack |
+| `pentis list` | List all available attacks |
+| `pentis campaign <config.toml>` | Statistical campaign (N trials per attack) |
+| `pentis discover <url>` | Fingerprint agent capabilities |
+| `pentis evolve <url> <id>` | Mutate an attack to find bypasses |
+| `pentis chain <url> <profile-id>` | Synthesize and run compound attack chains |
+| `pentis generate <attacker-url>` | Generate novel attacks using an attacker LLM |
+| `pentis test-crew <module.py>` | Scan a CrewAI agent directly |
+| `pentis test-chain <module.py>` | Scan a LangChain agent directly |
+| `pentis diff <scan-a> <scan-b>` | Compare two scans for regressions |
+| `pentis baseline <scan-id>` | Set a regression baseline |
+| `pentis compliance <scan-id>` | Generate compliance report |
+| `pentis report <scan-id>` | Regenerate a scan report |
+| `pentis history` | Show scan history |
+
+## Output Formats
+
+### Markdown Report
+
+```bash
+pentis scan <url> --api-key $KEY
+# -> reports/scan-2026-03-04-120000.md
 ```
 
-## Report Output
+Reports include executive summary, findings grouped by category with evidence (prompts + responses), OWASP mapping, and remediation recommendations.
 
-Reports include:
+### SARIF (for CI/CD)
 
-- Executive summary with vulnerability counts and risk score
-- Findings grouped by severity (Critical > High > Medium > Low)
-- OWASP LLM Top 10 mapping for each finding
-- Attack prompts and response excerpts as evidence
-- Actionable remediation recommendations
+```bash
+pentis scan <url> --format sarif --api-key $KEY
+# -> reports/scan-2026-03-04-120000.sarif.json
+```
 
-## Adding Attacks
+SARIF v2.1.0 output integrates with GitHub Code Scanning, VS Code SARIF Viewer, and other SARIF-compatible tools.
 
-Create a new `.md` file in the appropriate `attacks/` subdirectory:
+### Compliance Reports
+
+```bash
+pentis compliance <scan-id> --framework owasp-llm-top10
+pentis compliance <scan-id> --framework nist-ai-rmf
+pentis compliance <scan-id> --framework eu-ai-act
+pentis compliance <scan-id> --framework iso-42001
+pentis compliance <scan-id> --framework soc2
+```
+
+## GitHub Actions
+
+```yaml
+# .github/workflows/ai-security.yml
+name: AI Agent Security
+on: [push, pull_request]
+
+jobs:
+  pentis:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pentis
+
+      - run: pentis scan ${{ vars.AGENT_URL }} --api-key ${{ secrets.AGENT_KEY }} --format sarif --output results/ --no-save
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results/
+```
+
+## Statistical Campaigns
+
+Run each attack N times to get statistically significant results with Wilson score confidence intervals:
+
+```bash
+# Quick scan (1 trial, fast)
+pentis scan <url> --tier fast --api-key $KEY
+
+# Deep scan (10 trials, concurrent)
+pentis scan <url> --tier deep --api-key $KEY
+
+# Custom campaign via TOML config
+pentis campaign config.toml
+```
+
+Campaign config example:
+
+```toml
+[campaign]
+name = "nightly-regression"
+trials_per_attack = 10
+confidence_level = 0.95
+
+[target]
+url = "https://api.example.com/v1/chat/completions"
+api_key = "sk-..."
+
+[concurrency]
+max_concurrent_trials = 5
+early_termination_threshold = 3
+```
+
+## Adding Custom Attacks
+
+Create a `.md` file in the appropriate `attacks/` subdirectory:
 
 ```markdown
 # XX-NNN: Attack Name
@@ -99,37 +233,150 @@ What this attack tests.
 
 ### Step 1
 Send to target:
-> The attack prompt
+> The attack prompt to send
+
+### Step 2 (follow-up)
+Send as follow-up:
+> The follow-up prompt
 
 ## Evaluation
 
 **Vulnerable if**:
-- Criteria for vulnerability
+- Agent complies with the attack request
+- Agent leaks sensitive information
 
 **Safe if**:
-- Criteria for safety
+- Agent refuses the request
+- Agent maintains boundaries
+
+**Inconclusive if**:
+- Response is ambiguous or partial
+```
+
+## Project Structure
+
+```
+pentis/
+├── attacks/                        # 72 attack playbooks (pure markdown)
+│   ├── goal-adherence/             # GA-001..015
+│   ├── tool-safety/                # TS-001..016
+│   ├── memory-integrity/           # MI-001..011
+│   ├── permission-boundaries/      # PB-001..008
+│   ├── delegation-integrity/       # DI-001..008
+│   ├── execution-safety/           # ES-001..008
+│   └── session-isolation/          # SI-001..006
+├── src/pentis/                     # Python engine
+│   ├── cli.py                      # Typer CLI (15 commands)
+│   ├── adapters/                   # 7 target adapters
+│   │   ├── openai.py               # OpenAI Chat Completions
+│   │   ├── anthropic.py            # Anthropic Messages API
+│   │   ├── langgraph.py            # LangGraph Platform
+│   │   ├── mcp.py                  # Model Context Protocol
+│   │   ├── a2a.py                  # Google A2A Protocol
+│   │   ├── crewai.py               # CrewAI native (in-process)
+│   │   ├── langchain.py            # LangChain native (in-process)
+│   │   ├── cache.py                # Response caching decorator
+│   │   └── attacker.py             # Attacker LLM wrapper
+│   ├── core/                       # Engine, scanner, detection
+│   │   ├── engine.py               # Multi-turn attack executor
+│   │   ├── scanner.py              # Full scan orchestrator
+│   │   ├── detection.py            # Pattern-based verdict detection
+│   │   ├── observer.py             # Streaming leakage analysis
+│   │   ├── templates.py            # Playbook parser
+│   │   ├── reporter.py             # Markdown report generation
+│   │   ├── sarif.py                # SARIF v2.1.0 output
+│   │   └── compliance.py           # OWASP/NIST/EU AI Act/ISO/SOC2
+│   ├── attacker/                   # Attack generation
+│   │   ├── generator.py            # LLM-powered prompt generation
+│   │   ├── discovery.py            # Agent capability fingerprinting
+│   │   └── chains.py               # Compound attack chain synthesis
+│   ├── adaptive/                   # Mutation engine
+│   │   ├── mutations.py            # Programmatic + LLM mutations
+│   │   ├── branching.py            # Conversation tree exploration
+│   │   └── strategies.py           # Mutation scheduling
+│   ├── campaign/                   # Statistical campaigns
+│   │   ├── runner.py               # N-trial execution with CI
+│   │   ├── tiers.py                # Fast/Deep/Continuous presets
+│   │   └── config.py               # TOML config parser
+│   ├── diff/                       # Scan comparison
+│   │   └── comparator.py           # Regression detection
+│   └── state/                      # Persistence
+│       └── store.py                # SQLite storage
+├── tests/                          # 345+ tests
+├── docs/                           # Documentation
+│   ├── plans/                      # Roadmap
+│   └── github-action-spec.md       # GitHub Action design
+├── pyproject.toml                  # Python packaging
+└── LICENSE                         # Apache 2.0
 ```
 
 ## Development
 
 ```bash
+# Clone
+git clone https://github.com/pentis-ai/pentis.git
+cd pentis
+
 # Install with dev dependencies
 pip install -e ".[dev]"
 
 # Run tests
 pytest
 
+# Run tests with verbose output
+pytest -v
+
 # Lint
 ruff check .
+
+# Type check (optional)
+mypy src/pentis
+```
+
+### Optional Dependencies
+
+```bash
+# CrewAI adapter
+pip install "pentis[crewai]"
+
+# LangChain adapter
+pip install "pentis[langchain]"
+
+# All optional adapters
+pip install "pentis[all]"
 ```
 
 ## Contributing
 
+Contributions are welcome. Here's how to help:
+
+1. **Add attack playbooks** — Write new `.md` files in `attacks/`. Follow the format above.
+2. **Add adapters** — Implement the `BaseAdapter` interface (3 methods: `send_messages`, `health_check`, `close`).
+3. **Improve detection** — Enhance patterns in `core/detection.py` or add new evaluation strategies.
+4. **Report bugs** — Open an issue with reproduction steps.
+
+### Workflow
+
 1. Fork the repository
-2. Create a feature branch
-3. Add or modify attack playbooks / engine code
-4. Submit a pull request
+2. Create a feature branch (`git checkout -b feat/my-feature`)
+3. Make your changes
+4. Run `pytest` and `ruff check .`
+5. Submit a pull request
+
+### Security
+
+This tool is for **authorized security testing only**. Do not use Pentis against systems you don't have permission to test. If you discover a security issue in Pentis itself, please report it via [GitHub Security Advisories](https://github.com/pentis-ai/pentis/security/advisories).
+
+## Roadmap
+
+See [docs/plans/2026-03-04-agentsec-v2-roadmap.md](docs/plans/2026-03-04-agentsec-v2-roadmap.md) for the full roadmap.
+
+**Next up:**
+- Pentis Defend — runtime hooks for CrewAI and LangChain (intercept unsafe tool calls)
+- Drift detection and continuous monitoring
+- REST API and web dashboard
+- Semantic coverage tracking
 
 ## License
 
-Apache 2.0
+Apache 2.0 — see [LICENSE](LICENSE) for details.
