@@ -268,13 +268,11 @@ components:
           type: string
           format: date-time
         completed_at:
-          type: string
+          type: ["string", "null"]
           format: date-time
-          nullable: true
         summary:
-          type: object
+          type: ["object", "null"]
           description: Aggregated findings summary (present when status=completed)
-          nullable: true
           properties:
             total_attacks:
               type: integer
@@ -319,8 +317,7 @@ components:
           type: string
           enum: [VULNERABLE, SAFE, INCONCLUSIVE]
         evidence:
-          type: object
-          nullable: true
+          type: ["object", "null"]
           properties:
             prompt:
               type: string
@@ -350,8 +347,7 @@ components:
               description: Human-readable error message
               example: "target_url is required"
             details:
-              type: array
-              nullable: true
+              type: ["array", "null"]
               items:
                 type: object
                 properties:
