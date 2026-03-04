@@ -34,3 +34,40 @@ The API will be available at `http://localhost:8000` and the health endpoint at 
 - `uv.lock` will need to be regenerated after adding `fastapi`/`uvicorn` to dependencies (`uv lock` locally)
 - The healthcheck uses Python's stdlib `urllib` to avoid requiring `curl` in the minimal runtime image
 - Hot-reload works because `./src` is bind-mounted into the container in development mode
+
+---
+
+## WGoV69RB — Implement skeleton FastAPI application with GET /health endpoint
+
+**Status**: Complete
+
+### Files Created / Modified
+| File | Action | Notes |
+|------|--------|-------|
+| `src/pentis_service/routers/__init__.py` | Created | Empty router package marker |
+| `src/pentis_service/routers/health.py` | Created | `HealthResponse` dataclass, `GET /health` route returning `{"status":"ok","version":"<version>"}` |
+| `src/pentis_service/main.py` | Modified | `create_app()` factory, JSON structured logging via `logging.config.dictConfig`, `serve()` entrypoint |
+| `pyproject.toml` | Modified | Added `pentis-service = "pentis_service.main:serve"` to `[project.scripts]` |
+
+### Usage
+```bash
+# Run directly (after uv sync)
+pentis-service
+
+# Or via Python module
+python -m pentis_service.main
+```
+
+### QA Review Fixes (automated)
+| File | Fix |
+|------|-----|
+| `src/pentis_service/routers/health.py` | Removed redundant `response_class=JSONResponse` (FastAPI default) and unused `JSONResponse` import |
+| `tests/test_health_service.py` | Created — 7 tests covering status 200, `status: ok`, version field, content-type, response keys, `create_app()` type, and 404 on unknown route |
+
+### Notes
+- `create_app()` factory makes the app importable and testable without starting the server
+- JSON log format uses stdlib `logging.Formatter` (no extra dependencies)
+- `LOG_LEVEL` env var controls log verbosity (default: `INFO`)
+- `PENTIS_PORT` env var controls server port (default: `8000`)
+- JSON log formatter does not serialize `extra={}` kwargs — `logger.info(..., extra={"version": ...})` version field is silently dropped from output (stdlib limitation; acceptable for skeleton)
+- `pentis_service.__version__` (`0.1.0`) is intentionally separate from the top-level `pentis` package version (`0.4.0`)
