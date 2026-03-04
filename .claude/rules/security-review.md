@@ -1,19 +1,17 @@
 # Security Review
 
-When security-sensitive changes are detected, suggest security review.
+When modifying attack playbooks or plugin behavior, consider security implications.
 
 ## When
-- Changes to HTTP adapter (auth, headers, credentials)
-- Changes to detection pipeline (input parsing, response handling)
-- Changes to CLI (user input handling)
-- Changes to report generation (evidence rendering)
-- New dependencies added
+- Adding or modifying attack playbooks
+- Changing the pentester agent's evaluation logic
+- Modifying command files (scan, attack, report)
+- Changes to how targets are communicated with
 
 ## Security Checklist
-- No hardcoded secrets or API keys
-- Input validation on all external data
-- Safe response handling (no eval, no injection)
-- Proper error messages (no stack traces to users)
-- Secure HTTP defaults (timeouts, TLS)
-- Template loading validates against schema
-- Dependencies free of known CVEs
+- No hardcoded secrets or API keys in attack templates
+- Attack prompts are clearly for authorized security testing only
+- No real credentials, URLs, or PII in example payloads
+- Reports don't leak target credentials or sensitive data
+- curl commands use proper escaping and quoting
+- Rate limiting is respected between requests
