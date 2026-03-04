@@ -43,6 +43,7 @@ dev = [
     "respx>=0.21",
     "ruff>=0.5",
     "pyright>=1.1",
+    "pre-commit>=3.0",
 ]
 crewai = ["crewai>=0.80"]
 langchain = ["langchain-core>=0.3"]
