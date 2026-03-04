@@ -47,11 +47,13 @@ def load_yaml_template(path: Path) -> AttackTemplate:
 
     steps: list[AttackStep] = []
     for i, turn in enumerate(data["turns"]):
+        new_session = bool(turn.get("new_session", False))
         steps.append(
             AttackStep(
                 index=i + 1,
                 prompt=str(turn["content"]),
                 is_followup=i > 0,
+                new_session=new_session,
             )
         )
 
