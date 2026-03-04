@@ -1,9 +1,9 @@
 """Tests for enhanced regression alerts and campaign diff."""
 
 from pentis.core.models import (
-    Category,
     CampaignConfig,
     CampaignResult,
+    Category,
     Finding,
     ScanDiffItem,
     ScanResult,

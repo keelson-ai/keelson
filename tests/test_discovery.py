@@ -1,7 +1,9 @@
 """Tests for agent capability discovery."""
 
-import pytest
+from typing import Any
+
 import httpx
+import pytest
 import respx
 
 from pentis.adapters.openai import OpenAIAdapter
@@ -20,9 +22,6 @@ from pentis.core.models import (
     EvalCriteria,
     Severity,
 )
-
-
-from typing import Any
 
 
 def _chat_response(content: str) -> dict[str, Any]:

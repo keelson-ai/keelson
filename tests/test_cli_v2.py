@@ -1,12 +1,16 @@
 """Tests for Phase 2 CLI commands."""
 
 from datetime import datetime, timezone
-
 from pathlib import Path
 
+import click.exceptions
+import pytest
 from typer.testing import CliRunner
 
-from pentis.cli import app
+from pentis.cli import (
+    _check_fail_gates,  # type: ignore[reportPrivateUsage]
+    app,
+)
 from pentis.core.models import (
     Category,
     Finding,
@@ -95,6 +99,32 @@ class TestBaselineCommand:
         store.close()
         assert len(baselines) == 1
         assert baselines[0]["label"] == "test-baseline"
+
+
+class TestFailGates:
+    """Test _check_fail_gates logic for CI/CD fail conditions."""
+
+    def test_fail_on_vuln_with_vulns(self) -> None:
+        with pytest.raises(click.exceptions.Exit):
+            _check_fail_gates(vuln_count=1, total=100, fail_on_vuln=True, threshold=0.0)
+
+    def test_fail_on_vuln_no_vulns(self) -> None:
+        _check_fail_gates(vuln_count=0, total=100, fail_on_vuln=True, threshold=0.0)
+
+    def test_threshold_exceeded(self) -> None:
+        with pytest.raises(click.exceptions.Exit):
+            _check_fail_gates(vuln_count=20, total=100, fail_on_vuln=False, threshold=0.1)
+
+    def test_threshold_not_exceeded(self) -> None:
+        _check_fail_gates(vuln_count=5, total=100, fail_on_vuln=False, threshold=0.1)
+
+    def test_fail_on_vuln_independent_of_threshold(self) -> None:
+        """--fail-on-vuln should fail even when rate is below --fail-threshold."""
+        with pytest.raises(click.exceptions.Exit):
+            _check_fail_gates(vuln_count=1, total=100, fail_on_vuln=True, threshold=0.5)
+
+    def test_neither_flag_does_not_fail(self) -> None:
+        _check_fail_gates(vuln_count=50, total=100, fail_on_vuln=False, threshold=0.0)
 
 
 class TestExistingCommandsStillWork:

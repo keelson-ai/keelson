@@ -8,7 +8,7 @@ from pentis.core.models import (
     Target,
     Verdict,
 )
-from pentis.diff.comparator import diff_scans, diff_from_baseline, format_diff_report
+from pentis.diff.comparator import diff_from_baseline, diff_scans, format_diff_report
 
 
 def _make_finding(tid: str, name: str, verdict: Verdict) -> Finding:

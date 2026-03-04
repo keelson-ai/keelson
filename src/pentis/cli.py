@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Optional
 
@@ -11,7 +12,15 @@ from rich.console import Console
 from rich.table import Table
 
 from pentis.adapters.openai import OpenAIAdapter
-from pentis.core.models import AttackTemplate, Finding, ScanTier, StatisticalFinding, Target
+from pentis.core.models import (
+    AttackTemplate,
+    CampaignResult,
+    Finding,
+    ScanResult,
+    ScanTier,
+    StatisticalFinding,
+    Target,
+)
 from pentis.core.reporter import save_report
 from pentis.core.scanner import run_scan
 from pentis.core.templates import load_all_templates
@@ -19,6 +28,112 @@ from pentis.state.store import Store
 
 app = typer.Typer(name="pentis", help="AI agent security scanner — Living Red Team")
 console = Console()
+
+# --- Shared constants ---
+
+VERDICT_ICONS: dict[str, str] = {
+    "VULNERABLE": "[red]VULN[/]",
+    "SAFE": "[green]SAFE[/]",
+    "INCONCLUSIVE": "[yellow]????[/]",
+}
+
+VERDICT_ICONS_FULL: dict[str, str] = {
+    "VULNERABLE": "[red]VULNERABLE[/]",
+    "SAFE": "[green]SAFE[/]",
+    "INCONCLUSIVE": "[yellow]INCONCLUSIVE[/]",
+}
+
+SEVERITY_COLORS: dict[str, str] = {
+    "Critical": "red",
+    "High": "red",
+    "Medium": "yellow",
+    "Low": "green",
+}
+
+
+# --- Callback factories ---
+
+
+def _make_finding_callback() -> Callable[[Finding, int, int], None]:
+    """Create a standard on_finding callback for single-pass scans."""
+
+    def on_finding(finding: Finding, current: int, total: int) -> None:
+        console.print(
+            f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
+            f"{VERDICT_ICONS.get(finding.verdict.value, finding.verdict.value)}"
+        )
+
+    return on_finding
+
+
+def _make_stat_finding_callback() -> Callable[[StatisticalFinding, int, int], None]:
+    """Create a standard on_finding callback for statistical campaigns."""
+
+    def on_finding(sf: StatisticalFinding, current: int, total: int) -> None:
+        console.print(
+            f"  [{current}/{total}] {sf.template_id}: {sf.template_name} — "
+            f"{VERDICT_ICONS.get(sf.verdict.value, sf.verdict.value)} "
+            f"({sf.success_rate:.0%} rate, {sf.num_trials} trials)"
+        )
+
+    return on_finding
+
+
+# --- Report helpers ---
+
+
+def _write_report(
+    result: ScanResult | CampaignResult, fmt: str, output: Path | None, prefix: str
+) -> Path:
+    """Write a report in the requested format and return the output path."""
+    out_dir = output or Path("reports")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = result.started_at.strftime("%Y-%m-%d-%H%M%S")
+
+    if fmt == "sarif":
+        from pentis.core.sarif import to_sarif_json
+
+        text = to_sarif_json(result)
+        path = out_dir / f"{prefix}-{timestamp}.sarif.json"
+    elif fmt == "junit":
+        from pentis.core.junit import to_junit_xml
+
+        text = to_junit_xml(result)
+        path = out_dir / f"{prefix}-{timestamp}.junit.xml"
+    else:
+        from pentis.core.reporter import generate_campaign_report, generate_report
+
+        if isinstance(result, CampaignResult):
+            text = generate_campaign_report(result)
+        else:
+            text = generate_report(result)
+        path = out_dir / f"{prefix}-{timestamp}.md"
+
+    path.write_text(text)
+    return path
+
+
+def _check_fail_gates(vuln_count: int, total: int, fail_on_vuln: bool, threshold: float) -> None:
+    """Check CI fail gates and exit with code 1 if triggered.
+
+    --fail-on-vuln: fail if ANY vulnerability found (vuln_count > 0).
+    --fail-threshold: fail if vulnerability RATE exceeds threshold.
+    Both are independent — either can trigger failure.
+    """
+    if fail_on_vuln and vuln_count > 0:
+        console.print(
+            f"\n[red bold]CI FAILURE: {vuln_count} "
+            f"{'vulnerability' if vuln_count == 1 else 'vulnerabilities'} found[/]"
+        )
+        raise typer.Exit(1)
+    if threshold > 0.0 and total > 0:
+        rate = vuln_count / total
+        if rate > threshold:
+            console.print(
+                f"\n[red bold]CI FAILURE: vulnerability rate {rate:.0%} "
+                f"exceeds threshold {threshold:.0%}[/]"
+            )
+            raise typer.Exit(1)
 
 
 def _make_adapter(
@@ -36,7 +151,7 @@ def _make_adapter(
     if adapter_type == "anthropic":
         from pentis.adapters.anthropic import AnthropicAdapter
 
-        base = AnthropicAdapter(api_key=api_key, url=url if "anthropic" not in url else url)
+        base = AnthropicAdapter(api_key=api_key, url=url)
     elif adapter_type == "langgraph":
         from pentis.adapters.langgraph import LangGraphAdapter
 
@@ -77,7 +192,15 @@ def scan(
         None, "--tier", "-t", help="Scan tier: fast, deep, or continuous"
     ),
     format: str = typer.Option(
-        "markdown", "--format", "-f", help="Output format: markdown or sarif"
+        "markdown", "--format", "-f", help="Output format: markdown, sarif, or junit"
+    ),
+    fail_on_vuln: bool = typer.Option(
+        False, "--fail-on-vuln", help="Exit with code 1 if any vulnerabilities found"
+    ),
+    fail_threshold: float = typer.Option(
+        0.0,
+        "--fail-threshold",
+        help="Vulnerability rate threshold (0.0-1.0) above which to fail (requires --fail-on-vuln)",
     ),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
@@ -89,7 +212,6 @@ def scan(
         # Tier-based scan delegates to campaign runner
         from pentis.campaign.runner import run_campaign
         from pentis.campaign.tiers import get_tier_config
-        from pentis.core.reporter import generate_campaign_report
 
         scan_tier = ScanTier(tier)
         overrides: dict[str, Any] = {}
@@ -101,18 +223,7 @@ def scan(
         config.model = model
 
         target_adapter = _make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
-
-        def on_finding_tier(sf: StatisticalFinding, current: int, total: int) -> None:
-            icon = {
-                "VULNERABLE": "[red]VULN[/]",
-                "SAFE": "[green]SAFE[/]",
-                "INCONCLUSIVE": "[yellow]????[/]",
-            }
-            console.print(
-                f"  [{current}/{total}] {sf.template_id}: {sf.template_name} — "
-                f"{icon.get(sf.verdict.value, sf.verdict.value)} "
-                f"({sf.success_rate:.0%} rate, {sf.num_trials} trials)"
-            )
+        on_finding_tier = _make_stat_finding_callback()
 
         console.print(f"\n[bold]Pentis Security Scan (tier: {tier})[/bold]")
         console.print(f"Target: {url}")
@@ -136,22 +247,7 @@ def scan(
             store.save_campaign(result)
             store.close()
 
-        out_dir = output or Path("reports")
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-        if format == "sarif":
-            from pentis.core.sarif import to_sarif_json
-
-            report_text = to_sarif_json(result)
-            report_path = (
-                out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
-            )
-        else:
-            report_text = generate_campaign_report(result)
-            report_path = (
-                out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
-            )
-        report_path.write_text(report_text)
+        report_path = _write_report(result, format, output, f"scan-{tier}")
 
         _print_cache_stats(target_adapter)
 
@@ -160,21 +256,16 @@ def scan(
         console.print(f"  Vulnerable: [red]{result.vulnerable_attacks}[/]")
         console.print(f"  Total trials: {result.total_trials}")
         console.print(f"\nReport saved: {report_path}")
+
+        _check_fail_gates(
+            result.vulnerable_attacks, len(result.findings), fail_on_vuln, fail_threshold
+        )
+
         return
 
     # Standard single-pass scan
     target_adapter = _make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
-
-    def on_finding(finding: Finding, current: int, total: int) -> None:
-        icon = {
-            "VULNERABLE": "[red]VULN[/]",
-            "SAFE": "[green]SAFE[/]",
-            "INCONCLUSIVE": "[yellow]????[/]",
-        }
-        console.print(
-            f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
-            f"{icon.get(finding.verdict.value, finding.verdict.value)}"
-        )
+    on_finding = _make_finding_callback()
 
     console.print("\n[bold]Pentis Security Scan[/bold]")
     console.print(f"Target: {url}")
@@ -203,17 +294,7 @@ def scan(
         store.save_scan(result)
         store.close()
 
-    # Generate report
-    if format == "sarif":
-        from pentis.core.sarif import to_sarif_json
-
-        report_text = to_sarif_json(result)
-        out_dir = output or Path("reports")
-        out_dir.mkdir(parents=True, exist_ok=True)
-        report_path = out_dir / f"scan-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
-        report_path.write_text(report_text)
-    else:
-        report_path = save_report(result, reports_dir=output)
+    report_path = _write_report(result, format, output, "scan")
 
     _print_cache_stats(target_adapter)
 
@@ -222,6 +303,8 @@ def scan(
     console.print(f"  Safe: [green]{result.safe_count}[/]")
     console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
     console.print(f"\nReport saved: {report_path}")
+
+    _check_fail_gates(result.vulnerable_count, len(result.findings), fail_on_vuln, fail_threshold)
 
 
 @app.command()
@@ -261,12 +344,9 @@ def attack(
 
     finding = asyncio.run(_run())
 
-    icon = {
-        "VULNERABLE": "[red]VULNERABLE[/]",
-        "SAFE": "[green]SAFE[/]",
-        "INCONCLUSIVE": "[yellow]INCONCLUSIVE[/]",
-    }
-    console.print(f"Verdict: {icon.get(finding.verdict.value, finding.verdict.value)}")
+    console.print(
+        f"Verdict: {VERDICT_ICONS_FULL.get(finding.verdict.value, finding.verdict.value)}"
+    )
     console.print(f"Reasoning: {finding.reasoning}")
     for ev in finding.evidence:
         console.print(f"\n  Step {ev.step_index}:")
@@ -289,11 +369,10 @@ def list_attacks(
     table.add_column("Steps", justify="right")
 
     for t in templates:
-        sev_color = {"Critical": "red", "High": "red", "Medium": "yellow", "Low": "green"}
         table.add_row(
             t.id,
             t.name,
-            f"[{sev_color.get(t.severity.value, 'white')}]{t.severity.value}[/]",
+            f"[{SEVERITY_COLORS.get(t.severity.value, 'white')}]{t.severity.value}[/]",
             t.category.value,
             t.owasp,
             str(len(t.steps)),
@@ -359,13 +438,23 @@ def campaign(
         "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
     ),
     use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
+    format: str = typer.Option(
+        "markdown", "--format", "-f", help="Output format: markdown, sarif, or junit"
+    ),
+    fail_on_vuln: bool = typer.Option(
+        False, "--fail-on-vuln", help="Exit with code 1 if any vulnerabilities found"
+    ),
+    fail_threshold: float = typer.Option(
+        0.0,
+        "--fail-threshold",
+        help="Vulnerability rate threshold (0.0-1.0) above which to fail (requires --fail-on-vuln)",
+    ),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
     """Run a statistical campaign (N trials per attack)."""
     from pentis.campaign.config import parse_campaign_config
     from pentis.campaign.runner import run_campaign
-    from pentis.core.reporter import generate_campaign_report
 
     config = parse_campaign_config(config_path)
     target = Target(url=config.target_url, api_key=config.api_key, model=config.model)
@@ -373,17 +462,7 @@ def campaign(
         config.target_url, config.api_key, adapter, use_cache, assistant_id, tool_name
     )
 
-    def on_finding(sf: StatisticalFinding, current: int, total: int) -> None:
-        icon = {
-            "VULNERABLE": "[red]VULN[/]",
-            "SAFE": "[green]SAFE[/]",
-            "INCONCLUSIVE": "[yellow]????[/]",
-        }
-        console.print(
-            f"  [{current}/{total}] {sf.template_id}: {sf.template_name} — "
-            f"{icon.get(sf.verdict.value, sf.verdict.value)} "
-            f"({sf.success_rate:.0%} rate, {sf.num_trials} trials)"
-        )
+    on_finding = _make_stat_finding_callback()
 
     console.print("\n[bold]Pentis Statistical Campaign[/bold]")
     console.print(f"Config: {config.name}")
@@ -408,12 +487,7 @@ def campaign(
         store.save_campaign(result)
         store.close()
 
-    # Generate campaign report
-    report_text = generate_campaign_report(result)
-    out_dir = output or Path("reports")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    report_path = out_dir / f"campaign-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
-    report_path.write_text(report_text)
+    report_path = _write_report(result, format, output, "campaign")
 
     _print_cache_stats(target_adapter)
 
@@ -422,6 +496,8 @@ def campaign(
     console.print(f"  Vulnerable: [red]{result.vulnerable_attacks}[/]")
     console.print(f"  Total trials: {result.total_trials}")
     console.print(f"\nReport saved: {report_path}")
+
+    _check_fail_gates(result.vulnerable_attacks, len(result.findings), fail_on_vuln, fail_threshold)
 
 
 @app.command()
@@ -509,9 +585,9 @@ def diff(
             alert_table.add_column("Change")
             alert_table.add_column("Description")
 
-            sev_color = {"critical": "red", "high": "red", "medium": "yellow", "low": "dim"}
+            alert_sev_colors = {"critical": "red", "high": "red", "medium": "yellow", "low": "dim"}
             for alert in alerts:
-                table_color = sev_color.get(alert.alert_severity, "white")
+                table_color = alert_sev_colors.get(alert.alert_severity, "white")
                 alert_table.add_row(
                     f"[{table_color}]{alert.alert_severity.upper()}[/]",
                     alert.template_id,
@@ -559,7 +635,7 @@ def evolve(
         apply_llm_mutation,
         apply_programmatic_mutation,
     )
-    from pentis.adaptive.strategies import round_robin, LLM_TYPES, PROGRAMMATIC_TYPES
+    from pentis.adaptive.strategies import LLM_TYPES, PROGRAMMATIC_TYPES, round_robin
     from pentis.core.engine import execute_attack
     from pentis.core.models import AttackStep, MutatedAttack, MutationType
 
@@ -568,8 +644,6 @@ def evolve(
     if not template:
         console.print(f"[red]Attack {attack_id} not found[/]")
         raise typer.Exit(1)
-
-    from pentis.core.models import AttackTemplate
 
     target_adapter = _make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
     attacker_adapter = None
@@ -618,14 +692,9 @@ def evolve(
                 finding = await execute_attack(variant, target_adapter, model=model, delay=0.5)
                 results.append((mutated, finding))
 
-                icon = {
-                    "VULNERABLE": "[red]VULN[/]",
-                    "SAFE": "[green]SAFE[/]",
-                    "INCONCLUSIVE": "[yellow]????[/]",
-                }
                 console.print(
                     f"  [{i + 1}/{mutations}] {mt.value}: "
-                    f"{icon.get(finding.verdict.value, finding.verdict.value)}"
+                    f"{VERDICT_ICONS.get(finding.verdict.value, finding.verdict.value)}"
                 )
             return results
         finally:
@@ -752,13 +821,8 @@ def chain(
                 finding = await execute_attack(template, target_adapter, model=model, delay=1.0)
                 results.append((ch, finding))
 
-                icon = {
-                    "VULNERABLE": "[red]VULN[/]",
-                    "SAFE": "[green]SAFE[/]",
-                    "INCONCLUSIVE": "[yellow]????[/]",
-                }
                 console.print(
-                    f"    Verdict: {icon.get(finding.verdict.value, finding.verdict.value)}"
+                    f"    Verdict: {VERDICT_ICONS.get(finding.verdict.value, finding.verdict.value)}"
                 )
 
                 if not no_save:
@@ -784,7 +848,7 @@ def test_crew(
     delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
     format: str = typer.Option(
-        "markdown", "--format", "-f", help="Output format: markdown or sarif"
+        "markdown", "--format", "-f", help="Output format: markdown, sarif, or junit"
     ),
 ) -> None:
     """Run a security scan against a CrewAI agent/crew."""
@@ -807,41 +871,29 @@ def test_crew(
         console.print("[red]Module must export 'crew' or 'agent'[/]")
         raise typer.Exit(1)
 
-    adapter = CrewAIAdapter(agent=agent, crew=crew)
+    crew_adapter = CrewAIAdapter(agent=agent, crew=crew)
     target = Target(url=f"crewai://{crew_module}", model="crewai")
-
-    def on_finding(finding: Finding, current: int, total: int) -> None:
-        icon = {
-            "VULNERABLE": "[red]VULN[/]",
-            "SAFE": "[green]SAFE[/]",
-            "INCONCLUSIVE": "[yellow]????[/]",
-        }
-        console.print(
-            f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
-            f"{icon.get(finding.verdict.value, finding.verdict.value)}"
-        )
+    on_finding = _make_finding_callback()
 
     console.print("\n[bold]Pentis CrewAI Security Scan[/bold]")
     console.print(f"Module: {crew_module}")
     console.print()
 
     async def _run():
-        return await run_scan(
-            target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding
-        )
+        try:
+            return await run_scan(
+                target=target,
+                adapter=crew_adapter,
+                category=category,
+                delay=delay,
+                on_finding=on_finding,
+            )
+        finally:
+            await crew_adapter.close()
 
     result = asyncio.run(_run())
 
-    if format == "sarif":
-        from pentis.core.sarif import to_sarif_json
-
-        report_text = to_sarif_json(result)
-        out_dir = output or Path("reports")
-        out_dir.mkdir(parents=True, exist_ok=True)
-        report_path = out_dir / f"crewai-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
-        report_path.write_text(report_text)
-    else:
-        report_path = save_report(result, reports_dir=output)
+    report_path = _write_report(result, format, output, "crewai")
 
     console.print("\n[bold]Results[/bold]")
     console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
@@ -859,7 +911,7 @@ def test_chain_cmd(
     delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
     format: str = typer.Option(
-        "markdown", "--format", "-f", help="Output format: markdown or sarif"
+        "markdown", "--format", "-f", help="Output format: markdown, sarif, or junit"
     ),
     input_key: str = typer.Option("input", "--input-key", help="Input key for the chain"),
     output_key: str = typer.Option("output", "--output-key", help="Output key for the chain"),
@@ -882,45 +934,31 @@ def test_chain_cmd(
         console.print("[red]Module must export 'agent', 'chain', or 'runnable'[/]")
         raise typer.Exit(1)
 
-    adapter = LangChainAdapter(
+    chain_adapter = LangChainAdapter(
         agent=agent, runnable=runnable, input_key=input_key, output_key=output_key
     )
     target = Target(url=f"langchain://{chain_module}", model="langchain")
-
-    def on_finding(finding: Finding, current: int, total: int) -> None:
-        icon = {
-            "VULNERABLE": "[red]VULN[/]",
-            "SAFE": "[green]SAFE[/]",
-            "INCONCLUSIVE": "[yellow]????[/]",
-        }
-        console.print(
-            f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
-            f"{icon.get(finding.verdict.value, finding.verdict.value)}"
-        )
+    on_finding = _make_finding_callback()
 
     console.print("\n[bold]Pentis LangChain Security Scan[/bold]")
     console.print(f"Module: {chain_module}")
     console.print()
 
     async def _run():
-        return await run_scan(
-            target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding
-        )
+        try:
+            return await run_scan(
+                target=target,
+                adapter=chain_adapter,
+                category=category,
+                delay=delay,
+                on_finding=on_finding,
+            )
+        finally:
+            await chain_adapter.close()
 
     result = asyncio.run(_run())
 
-    if format == "sarif":
-        from pentis.core.sarif import to_sarif_json
-
-        report_text = to_sarif_json(result)
-        out_dir = output or Path("reports")
-        out_dir.mkdir(parents=True, exist_ok=True)
-        report_path = (
-            out_dir / f"langchain-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
-        )
-        report_path.write_text(report_text)
-    else:
-        report_path = save_report(result, reports_dir=output)
+    report_path = _write_report(result, format, output, "langchain")
 
     console.print("\n[bold]Results[/bold]")
     console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
