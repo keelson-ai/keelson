@@ -23,3 +23,4 @@ venv/
 
 # Pentis state
 ~/.pentis/
+.worktrees/
