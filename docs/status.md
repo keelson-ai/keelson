@@ -71,3 +71,36 @@ python -m pentis_service.main
 - `PENTIS_PORT` env var controls server port (default: `8000`)
 - JSON log formatter does not serialize `extra={}` kwargs — `logger.info(..., extra={"version": ...})` version field is silently dropped from output (stdlib limitation; acceptable for skeleton)
 - `pentis_service.__version__` (`0.1.0`) is intentionally separate from the top-level `pentis` package version (`0.4.0`)
+
+---
+
+## _A4JU-mo — Write pytest test suite for health endpoint and application factory
+
+**Status**: Complete
+
+### Files Created / Modified
+| File | Action | Notes |
+|------|--------|-------|
+| `tests/conftest.py` | Created | Shared `app` and `client` fixtures; `client` uses `TestClient(create_app())` |
+| `tests/test_health.py` | Created | 11 tests: 8 sync (TestClient) + 3 async (httpx.AsyncClient + ASGITransport) |
+
+### Test Coverage
+| Test | Type | Asserts |
+|------|------|---------|
+| `test_health_status_code` | sync | `response.status_code == 200` |
+| `test_health_status_is_ok` | sync | `response.json()["status"] == "ok"` |
+| `test_health_version_key_present` | sync | `"version" in response.json()` |
+| `test_health_version_value` | sync | `response.json()["version"] == __version__` |
+| `test_health_content_type_json` | sync | content-type contains `application/json` |
+| `test_health_response_shape` | sync | response keys == `{"status", "version"}` |
+| `test_unknown_route_returns_404` | sync | `response.status_code == 404` |
+| `test_create_app_returns_fastapi_instance` | sync | `isinstance(app, FastAPI)` |
+| `test_health_async_status_code` | async | `response.status_code == 200` |
+| `test_health_async_status_is_ok` | async | `response.json()["status"] == "ok"` |
+| `test_health_async_version_present` | async | `"version" in response.json()` |
+
+### Notes
+- Python runtime unavailable in this environment; tests verified by manual review only
+- `asyncio_mode = "auto"` in `pyproject.toml` means async test functions don't need `@pytest.mark.asyncio`
+- `conftest.py` `app` fixture is shadowed by local `app` fixture in `test_health_service.py` (expected pytest behaviour)
+- `TestClient` from `fastapi.testclient` (backed by `httpx`) is already available via `httpx>=0.27` in dependencies
