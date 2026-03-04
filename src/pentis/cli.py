@@ -21,19 +21,36 @@ app = typer.Typer(name="pentis", help="AI agent security scanner — Living Red 
 console = Console()
 
 
-def _make_adapter(url: str, api_key: str, adapter_type: str = "openai", cache: bool = False):
+def _make_adapter(
+    url: str,
+    api_key: str,
+    adapter_type: str = "openai",
+    cache: bool = False,
+    assistant_id: str = "agent",
+    tool_name: str = "chat",
+):
     """Create the appropriate adapter stack based on CLI flags."""
     from pentis.adapters.base import BaseAdapter
 
     base: BaseAdapter
     if adapter_type == "anthropic":
         from pentis.adapters.anthropic import AnthropicAdapter
+
         base = AnthropicAdapter(api_key=api_key, url=url if "anthropic" not in url else url)
+    elif adapter_type == "langgraph":
+        from pentis.adapters.langgraph import LangGraphAdapter
+
+        base = LangGraphAdapter(url=url, api_key=api_key, assistant_id=assistant_id)
+    elif adapter_type == "mcp":
+        from pentis.adapters.mcp import MCPAdapter
+
+        base = MCPAdapter(url=url, api_key=api_key, tool_name=tool_name)
     else:
         base = OpenAIAdapter(url=url, api_key=api_key)
 
     if cache:
         from pentis.adapters.cache import CachingAdapter
+
         base = CachingAdapter(base)
 
     return base
@@ -48,9 +65,15 @@ def scan(
     delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
-    adapter: str = typer.Option("openai", "--adapter", "-a", help="Adapter type: openai or anthropic"),
+    adapter: str = typer.Option(
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+    ),
     use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
-    tier: Optional[str] = typer.Option(None, "--tier", "-t", help="Scan tier: fast, deep, or continuous"),
+    tier: Optional[str] = typer.Option(
+        None, "--tier", "-t", help="Scan tier: fast, deep, or continuous"
+    ),
+    assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
+    tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
     """Run a full security scan against an AI agent endpoint."""
     target = Target(url=url, api_key=api_key, model=model)
@@ -70,10 +93,14 @@ def scan(
         config.api_key = api_key
         config.model = model
 
-        target_adapter = _make_adapter(url, api_key, adapter, use_cache)
+        target_adapter = _make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
 
         def on_finding(sf, current, total):
-            icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+            icon = {
+                "VULNERABLE": "[red]VULN[/]",
+                "SAFE": "[green]SAFE[/]",
+                "INCONCLUSIVE": "[yellow]????[/]",
+            }
             console.print(
                 f"  [{current}/{total}] {sf.template_id}: {sf.template_name} — "
                 f"{icon.get(sf.verdict.value, sf.verdict.value)} "
@@ -82,11 +109,15 @@ def scan(
 
         console.print(f"\n[bold]Pentis Security Scan (tier: {tier})[/bold]")
         console.print(f"Target: {url}")
-        console.print(f"Trials/attack: {config.trials_per_attack} | Concurrency: {config.concurrency.max_concurrent_trials}")
+        console.print(
+            f"Trials/attack: {config.trials_per_attack} | Concurrency: {config.concurrency.max_concurrent_trials}"
+        )
         console.print()
 
         result = asyncio.run(
-            run_campaign(target=target, adapter=target_adapter, config=config, on_finding=on_finding)
+            run_campaign(
+                target=target, adapter=target_adapter, config=config, on_finding=on_finding
+            )
         )
         asyncio.run(target_adapter.close())
 
@@ -111,10 +142,14 @@ def scan(
         return
 
     # Standard single-pass scan
-    target_adapter = _make_adapter(url, api_key, adapter, use_cache)
+    target_adapter = _make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
 
     def on_finding(finding, current, total):
-        icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+        icon = {
+            "VULNERABLE": "[red]VULN[/]",
+            "SAFE": "[green]SAFE[/]",
+            "INCONCLUSIVE": "[yellow]????[/]",
+        }
         console.print(
             f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
             f"{icon.get(finding.verdict.value, finding.verdict.value)}"
@@ -162,7 +197,11 @@ def attack(
     attack_id: str = typer.Argument(help="Attack template ID (e.g., GA-001)"),
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
-    adapter: str = typer.Option("openai", "--adapter", "-a", help="Adapter type"),
+    adapter: str = typer.Option(
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+    ),
+    assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
+    tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
     """Run a single attack against a target."""
     from pentis.core.engine import execute_attack
@@ -174,7 +213,9 @@ def attack(
         console.print(f"[red]Attack {attack_id} not found[/]")
         raise typer.Exit(1)
 
-    target_adapter = _make_adapter(url, api_key, adapter)
+    target_adapter = _make_adapter(
+        url, api_key, adapter, assistant_id=assistant_id, tool_name=tool_name
+    )
     console.print(f"\n[bold]{template.id}: {template.name}[/bold]")
     console.print(f"Severity: {template.severity.value} | Category: {template.category.value}")
     console.print()
@@ -182,7 +223,11 @@ def attack(
     finding = asyncio.run(execute_attack(template, target_adapter, model=model))
     asyncio.run(target_adapter.close())
 
-    icon = {"VULNERABLE": "[red]VULNERABLE[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]INCONCLUSIVE[/]"}
+    icon = {
+        "VULNERABLE": "[red]VULNERABLE[/]",
+        "SAFE": "[green]SAFE[/]",
+        "INCONCLUSIVE": "[yellow]INCONCLUSIVE[/]",
+    }
     console.print(f"Verdict: {icon.get(finding.verdict.value, finding.verdict.value)}")
     console.print(f"Reasoning: {finding.reasoning}")
     for ev in finding.evidence:
@@ -272,8 +317,12 @@ def campaign(
     config_path: str = typer.Argument(help="Path to TOML campaign configuration file"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
-    adapter: str = typer.Option("openai", "--adapter", "-a", help="Adapter type"),
+    adapter: str = typer.Option(
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+    ),
     use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
+    assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
+    tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
     """Run a statistical campaign (N trials per attack)."""
     from pentis.campaign.config import parse_campaign_config
@@ -282,10 +331,16 @@ def campaign(
 
     config = parse_campaign_config(config_path)
     target = Target(url=config.target_url, api_key=config.api_key, model=config.model)
-    target_adapter = _make_adapter(config.target_url, config.api_key, adapter, use_cache)
+    target_adapter = _make_adapter(
+        config.target_url, config.api_key, adapter, use_cache, assistant_id, tool_name
+    )
 
     def on_finding(sf, current, total):
-        icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+        icon = {
+            "VULNERABLE": "[red]VULN[/]",
+            "SAFE": "[green]SAFE[/]",
+            "INCONCLUSIVE": "[yellow]????[/]",
+        }
         console.print(
             f"  [{current}/{total}] {sf.template_id}: {sf.template_name} — "
             f"{icon.get(sf.verdict.value, sf.verdict.value)} "
@@ -332,12 +387,18 @@ def discover(
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
-    adapter: str = typer.Option("openai", "--adapter", "-a", help="Adapter type"),
+    adapter: str = typer.Option(
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+    ),
+    assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
+    tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
     """Fingerprint agent capabilities."""
     from pentis.attacker.discovery import discover_capabilities
 
-    target_adapter = _make_adapter(url, api_key, adapter)
+    target_adapter = _make_adapter(
+        url, api_key, adapter, assistant_id=assistant_id, tool_name=tool_name
+    )
 
     console.print(f"\n[bold]Pentis Agent Discovery[/bold]")
     console.print(f"Target: {url}")
@@ -367,7 +428,9 @@ def discover(
 def diff(
     scan_a: str = typer.Argument(help="First scan ID (before)"),
     scan_b: str = typer.Argument(help="Second scan ID (after)"),
-    enhanced: bool = typer.Option(False, "--enhanced", "-e", help="Show severity-classified alerts"),
+    enhanced: bool = typer.Option(
+        False, "--enhanced", "-e", help="Show severity-classified alerts"
+    ),
 ) -> None:
     """Compare two scans and show regressions/improvements."""
     from pentis.diff.comparator import diff_scans, enhanced_diff_scans, format_diff_report
@@ -417,7 +480,9 @@ def diff(
         console.print(report)
 
         if scan_diff.regressions:
-            console.print(f"\n[red bold]WARNING: {len(scan_diff.regressions)} regressions detected![/]")
+            console.print(
+                f"\n[red bold]WARNING: {len(scan_diff.regressions)} regressions detected![/]"
+            )
 
     store.close()
 
@@ -428,11 +493,17 @@ def evolve(
     attack_id: str = typer.Argument(help="Attack template ID to mutate"),
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
-    attacker_url: Optional[str] = typer.Option(None, "--attacker-url", help="Attacker LLM endpoint"),
+    attacker_url: Optional[str] = typer.Option(
+        None, "--attacker-url", help="Attacker LLM endpoint"
+    ),
     attacker_key: str = typer.Option("", "--attacker-key", help="Attacker LLM API key"),
     mutations: int = typer.Option(5, "--mutations", "-n", help="Number of mutations to try"),
-    adapter: str = typer.Option("openai", "--adapter", "-a", help="Adapter type"),
+    adapter: str = typer.Option(
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+    ),
     use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
+    assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
+    tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
     """Mutate an attack to find bypasses (evolve mode)."""
     from pentis.adaptive.mutations import (
@@ -452,10 +523,11 @@ def evolve(
 
     from pentis.core.models import AttackTemplate
 
-    target_adapter = _make_adapter(url, api_key, adapter, use_cache)
+    target_adapter = _make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
     attacker_adapter = None
     if attacker_url:
         from pentis.adapters.attacker import AttackerAdapter
+
         raw_attacker = OpenAIAdapter(url=attacker_url, api_key=attacker_key)
         attacker_adapter = AttackerAdapter(raw_attacker)
 
@@ -485,7 +557,7 @@ def evolve(
 
             # Create a variant template with the mutated prompt
             variant = AttackTemplate(
-                id=f"{attack_id}-mut{i+1}",
+                id=f"{attack_id}-mut{i + 1}",
                 name=f"{template.name} ({mt.value})",
                 severity=template.severity,
                 category=template.category,
@@ -497,9 +569,13 @@ def evolve(
             finding = await execute_attack(variant, target_adapter, model=model, delay=0.5)
             results.append((mutated, finding))
 
-            icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+            icon = {
+                "VULNERABLE": "[red]VULN[/]",
+                "SAFE": "[green]SAFE[/]",
+                "INCONCLUSIVE": "[yellow]????[/]",
+            }
             console.print(
-                f"  [{i+1}/{mutations}] {mt.value}: "
+                f"  [{i + 1}/{mutations}] {mt.value}: "
                 f"{icon.get(finding.verdict.value, finding.verdict.value)}"
             )
         return results
@@ -544,9 +620,15 @@ def chain(
     profile_id: str = typer.Argument(help="Agent profile ID from discover command"),
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
-    adapter: str = typer.Option("openai", "--adapter", "-a", help="Adapter type"),
+    adapter: str = typer.Option(
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, or mcp"
+    ),
+    assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
+    tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
     llm_chains: bool = typer.Option(False, "--llm-chains", help="Use LLM to generate novel chains"),
-    attacker_url: Optional[str] = typer.Option(None, "--attacker-url", help="Attacker LLM endpoint"),
+    attacker_url: Optional[str] = typer.Option(
+        None, "--attacker-url", help="Attacker LLM endpoint"
+    ),
     attacker_key: str = typer.Option("", "--attacker-key", help="Attacker LLM API key"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
 ) -> None:
@@ -565,7 +647,9 @@ def chain(
     console.print(f"\n[bold]Pentis Attack Chain Synthesis[/bold]")
     console.print(f"Target: {url}")
     console.print(f"Profile: {profile_id}")
-    console.print(f"Detected capabilities: {', '.join(c.name for c in profile.detected_capabilities)}")
+    console.print(
+        f"Detected capabilities: {', '.join(c.name for c in profile.detected_capabilities)}"
+    )
     console.print()
 
     chains = synthesize_chains(profile)
@@ -586,12 +670,14 @@ def chain(
 
     console.print(f"Found {len(chains)} applicable attack chains\n")
 
-    target_adapter = _make_adapter(url, api_key, adapter)
+    target_adapter = _make_adapter(
+        url, api_key, adapter, assistant_id=assistant_id, tool_name=tool_name
+    )
 
     async def _run():
         results = []
         for i, ch in enumerate(chains):
-            console.print(f"  [{i+1}/{len(chains)}] Running: {ch.name}")
+            console.print(f"  [{i + 1}/{len(chains)}] Running: {ch.name}")
 
             template = AttackTemplate(
                 id=f"CHAIN-{ch.chain_id}",
@@ -609,10 +695,12 @@ def chain(
             finding = await execute_attack(template, target_adapter, model=model, delay=1.0)
             results.append((ch, finding))
 
-            icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
-            console.print(
-                f"    Verdict: {icon.get(finding.verdict.value, finding.verdict.value)}"
-            )
+            icon = {
+                "VULNERABLE": "[red]VULN[/]",
+                "SAFE": "[green]SAFE[/]",
+                "INCONCLUSIVE": "[yellow]????[/]",
+            }
+            console.print(f"    Verdict: {icon.get(finding.verdict.value, finding.verdict.value)}")
 
             if not no_save:
                 store.save_attack_chain(ch, profile_id=profile_id)
@@ -633,7 +721,9 @@ def chain(
 def compliance_report(
     scan_id: str = typer.Argument(help="Scan ID to generate compliance report for"),
     framework: str = typer.Option(
-        "owasp-llm-top10", "--framework", "-f",
+        "owasp-llm-top10",
+        "--framework",
+        "-f",
         help="Compliance framework: owasp-llm-top10, nist-ai-rmf, eu-ai-act, iso-42001, soc2",
     ),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
@@ -651,7 +741,9 @@ def compliance_report(
     report_text = generate_compliance_report(result, framework=framework)
     out_dir = output or Path("reports")
     out_dir.mkdir(parents=True, exist_ok=True)
-    report_path = out_dir / f"compliance-{framework}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
+    report_path = (
+        out_dir / f"compliance-{framework}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
+    )
     report_path.write_text(report_text)
 
     console.print(f"[bold]Compliance Report: {framework}[/bold]")
