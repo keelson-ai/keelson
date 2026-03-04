@@ -97,6 +97,55 @@ class TestBaselineCommand:
         assert baselines[0]["label"] == "test-baseline"
 
 
+class TestFailGates:
+    """Test _check_fail_gates logic for CI/CD fail conditions."""
+
+    def test_fail_on_vuln_with_vulns(self) -> None:
+        import click.exceptions
+        import pytest
+        from pentis.cli import _check_fail_gates  # type: ignore[reportPrivateUsage]
+
+        with pytest.raises(click.exceptions.Exit):
+            _check_fail_gates(vuln_count=1, total=100, fail_on_vuln=True, threshold=0.0)
+
+    def test_fail_on_vuln_no_vulns(self) -> None:
+        from pentis.cli import _check_fail_gates  # type: ignore[reportPrivateUsage]
+
+        # Should not raise
+        _check_fail_gates(vuln_count=0, total=100, fail_on_vuln=True, threshold=0.0)
+
+    def test_threshold_exceeded(self) -> None:
+        import click.exceptions
+        import pytest
+        from pentis.cli import _check_fail_gates  # type: ignore[reportPrivateUsage]
+
+        with pytest.raises(click.exceptions.Exit):
+            _check_fail_gates(vuln_count=20, total=100, fail_on_vuln=False, threshold=0.1)
+
+    def test_threshold_not_exceeded(self) -> None:
+        from pentis.cli import _check_fail_gates  # type: ignore[reportPrivateUsage]
+
+        # 5% < 10% threshold — should not raise
+        _check_fail_gates(vuln_count=5, total=100, fail_on_vuln=False, threshold=0.1)
+
+    def test_fail_on_vuln_independent_of_threshold(self) -> None:
+        """--fail-on-vuln should fail even when rate is below --fail-threshold."""
+        import click.exceptions
+        import pytest
+        from pentis.cli import _check_fail_gates  # type: ignore[reportPrivateUsage]
+
+        with pytest.raises(click.exceptions.Exit):
+            # 1 vuln out of 100 = 1% rate, below 50% threshold
+            # But --fail-on-vuln should still trigger
+            _check_fail_gates(vuln_count=1, total=100, fail_on_vuln=True, threshold=0.5)
+
+    def test_neither_flag_does_not_fail(self) -> None:
+        from pentis.cli import _check_fail_gates  # type: ignore[reportPrivateUsage]
+
+        # No flags — should never fail even with vulns
+        _check_fail_gates(vuln_count=50, total=100, fail_on_vuln=False, threshold=0.0)
+
+
 class TestExistingCommandsStillWork:
     """Verify Phase 1 commands are not broken."""
 

@@ -188,6 +188,25 @@ class TestGenerateComplianceReport:
         assert "6.4" in PCI_DSS_V4_CONTROLS
         assert "11.3" in PCI_DSS_V4_CONTROLS
 
+    def test_pci_dss_no_double_counting(self):
+        """Findings matched by both category and prefix should not be double-counted."""
+        # GA-001 matches both category="Goal Adherence" and prefix="GA-" in control 6.2
+        scan = _make_scan(
+            [
+                _make_finding(
+                    "GA-001",
+                    Verdict.VULNERABLE,
+                    category=Category.GOAL_ADHERENCE,
+                    owasp="LLM01 — Prompt Injection",
+                ),
+            ]
+        )
+        report = generate_compliance_report(scan, ComplianceFramework.PCI_DSS_V4)
+        # Count table rows containing GA-001 in the 6.2 section — should be exactly 1
+        section_6_2 = report.split("6.2")[1].split("##")[0] if "6.2" in report else ""
+        table_rows = [line for line in section_6_2.splitlines() if line.startswith("|") and "GA-001" in line]
+        assert len(table_rows) == 1, f"Expected 1 row with GA-001, got {len(table_rows)}"
+
 
 class TestNewCategoryMappings:
     """Test that new categories map correctly across frameworks."""
