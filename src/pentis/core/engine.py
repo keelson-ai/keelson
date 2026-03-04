@@ -7,6 +7,7 @@ import asyncio
 from pentis.adapters.base import BaseAdapter
 from pentis.core.detection import detect
 from pentis.core.models import AttackTemplate, EvidenceItem, Finding
+from pentis.core.observer import StreamingObserver
 
 
 async def execute_attack(
@@ -14,10 +15,12 @@ async def execute_attack(
     adapter: BaseAdapter,
     model: str = "default",
     delay: float = 1.0,
+    observer: StreamingObserver | None = None,
 ) -> Finding:
     """Execute an attack template against a target via the adapter.
 
     Sends each step, accumulates messages for multi-turn, runs detection.
+    Optionally runs a StreamingObserver for per-step leakage analysis.
     """
     messages: list[dict[str, str]] = []
     evidence: list[EvidenceItem] = []
@@ -40,6 +43,10 @@ async def execute_attack(
 
     verdict, reasoning = detect(template, evidence)
 
+    leakage_signals = []
+    if observer is not None:
+        leakage_signals = observer.observe(evidence)
+
     return Finding(
         template_id=template.id,
         template_name=template.name,
@@ -49,4 +56,5 @@ async def execute_attack(
         owasp=template.owasp,
         evidence=evidence,
         reasoning=reasoning,
+        leakage_signals=leakage_signals,
     )

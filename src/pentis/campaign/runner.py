@@ -81,6 +81,69 @@ async def _run_single_trial(
     )
 
 
+def _should_terminate_early(
+    trials: list[TrialResult],
+    threshold: int,
+) -> bool:
+    """Check if we should skip remaining trials.
+
+    Only terminates early if the first `threshold` trials are ALL identical SAFE
+    refusals. Never skips on VULNERABLE trials.
+    """
+    if len(trials) < threshold or threshold <= 0:
+        return False
+
+    recent = trials[:threshold]
+    # Only terminate if all are SAFE
+    if not all(t.verdict == Verdict.SAFE for t in recent):
+        return False
+
+    # Check that responses are identical (indicating consistent refusal)
+    if len(recent) < 2:
+        return False
+    first_response = recent[0].evidence[-1].response if recent[0].evidence else ""
+    return all(
+        (t.evidence[-1].response if t.evidence else "") == first_response
+        for t in recent[1:]
+    )
+
+
+async def _run_trials_concurrent(
+    template: AttackTemplate,
+    adapter: BaseAdapter,
+    model: str,
+    num_trials: int,
+    delay: float,
+    max_concurrent: int,
+    early_termination_threshold: int,
+) -> list[TrialResult]:
+    """Run multiple trials concurrently with semaphore-based concurrency control."""
+    semaphore = asyncio.Semaphore(max_concurrent)
+    trials: list[TrialResult] = []
+    lock = asyncio.Lock()
+    terminated = asyncio.Event()
+
+    async def run_one(trial_index: int) -> TrialResult | None:
+        if terminated.is_set():
+            return None
+        async with semaphore:
+            if terminated.is_set():
+                return None
+            result = await _run_single_trial(template, adapter, model, trial_index, delay)
+            async with lock:
+                trials.append(result)
+                if _should_terminate_early(trials, early_termination_threshold):
+                    terminated.set()
+            return result
+
+    tasks = [asyncio.create_task(run_one(i)) for i in range(num_trials)]
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Sort by trial_index for deterministic ordering
+    trials.sort(key=lambda t: t.trial_index)
+    return trials
+
+
 async def run_campaign(
     target: Target,
     adapter: BaseAdapter,
@@ -106,15 +169,33 @@ async def run_campaign(
     result = CampaignResult(config=config, target=target)
     total = len(templates)
 
+    use_concurrent = config.concurrency.max_concurrent_trials > 1
+
     for idx, template in enumerate(templates):
-        trials: list[TrialResult] = []
-        for trial_idx in range(config.trials_per_attack):
-            trial = await _run_single_trial(
-                template, adapter, target.model, trial_idx, config.delay_between_trials,
+        if use_concurrent:
+            trials = await _run_trials_concurrent(
+                template,
+                adapter,
+                target.model,
+                config.trials_per_attack,
+                config.delay_between_trials,
+                config.concurrency.max_concurrent_trials,
+                config.concurrency.early_termination_threshold,
             )
-            trials.append(trial)
-            if trial_idx < config.trials_per_attack - 1:
-                await asyncio.sleep(config.delay_between_trials)
+        else:
+            trials = []
+            for trial_idx in range(config.trials_per_attack):
+                trial = await _run_single_trial(
+                    template, adapter, target.model, trial_idx, config.delay_between_trials,
+                )
+                trials.append(trial)
+
+                # Check early termination for sequential mode too
+                if _should_terminate_early(trials, config.concurrency.early_termination_threshold):
+                    break
+
+                if trial_idx < config.trials_per_attack - 1:
+                    await asyncio.sleep(config.delay_between_trials)
 
         n_vuln = sum(1 for t in trials if t.verdict == Verdict.VULNERABLE)
         rate, ci_lo, ci_hi = wilson_ci(n_vuln, len(trials), z)

@@ -81,6 +81,38 @@ REPORT_TEMPLATE = Template("""\
 **Reasoning**: {{ f.reasoning }}
 
 {% endfor %}
+### Content Safety (CS)
+{% for f in cs_findings %}
+#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
+
+**Severity**: {{ f.severity.value }}
+**OWASP**: {{ f.owasp }}
+
+{% for e in f.evidence %}
+**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
+
+**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+
+{% endfor %}
+**Reasoning**: {{ f.reasoning }}
+
+{% endfor %}
+### Agentic Security (AS)
+{% for f in as_findings %}
+#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
+
+**Severity**: {{ f.severity.value }}
+**OWASP**: {{ f.owasp }}
+
+{% for e in f.evidence %}
+**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
+
+**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+
+{% endfor %}
+**Reasoning**: {{ f.reasoning }}
+
+{% endfor %}
 ## Recommendations
 
 {% for rec in recommendations %}
@@ -117,6 +149,10 @@ def _generate_recommendations(scan: ScanResult) -> list[str]:
         recs.append("Implement stricter tool execution controls and input validation.")
     if Category.MEMORY_INTEGRITY in categories_hit:
         recs.append("Add conversation history integrity checks and context validation.")
+    if Category.CONTENT_SAFETY in categories_hit:
+        recs.append("Implement content filtering for bias, toxicity, and PII leakage prevention.")
+    if Category.AGENTIC_SECURITY in categories_hit:
+        recs.append("Enforce object-level and function-level authorization in agentic workflows.")
     if any(f.verdict == Verdict.VULNERABLE and f.severity.value == "Critical" for f in scan.findings):
         recs.append("Address critical vulnerabilities as highest priority before production deployment.")
     if not recs:
@@ -136,6 +172,8 @@ def generate_report(scan: ScanResult) -> str:
         ga_findings=_by_category(scan.findings, Category.GOAL_ADHERENCE),
         ts_findings=_by_category(scan.findings, Category.TOOL_SAFETY),
         mi_findings=_by_category(scan.findings, Category.MEMORY_INTEGRITY),
+        cs_findings=_by_category(scan.findings, Category.CONTENT_SAFETY),
+        as_findings=_by_category(scan.findings, Category.AGENTIC_SECURITY),
         recommendations=_generate_recommendations(scan),
     )
 
@@ -234,3 +272,21 @@ def generate_diff_section(diff: ScanDiff) -> str:
     """Generate a markdown section for a scan diff."""
     from pentis.diff.comparator import format_diff_report
     return format_diff_report(diff)
+
+
+# --- Phase 3: Compliance report ---
+
+
+def generate_compliance_report(
+    scan: ScanResult,
+    framework: str = "owasp-llm-top10",
+) -> str:
+    """Generate a compliance report for the given framework.
+
+    Entry point that delegates to core.compliance module.
+    """
+    from pentis.core.compliance import ComplianceFramework
+    from pentis.core.compliance import generate_compliance_report as _generate
+
+    fw = ComplianceFramework(framework)
+    return _generate(scan, framework=fw)
