@@ -723,7 +723,9 @@ class Store:
             owasp=row["owasp"],
         )
 
-    def list_attack_chains(self, profile_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    def list_attack_chains(
+        self, profile_id: str | None = None, limit: int = 50
+    ) -> list[dict[str, Any]]:
         """List attack chains, optionally filtered by profile."""
         if profile_id:
             rows = self._conn.execute(

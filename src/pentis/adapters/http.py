@@ -44,9 +44,7 @@ class GenericHTTPAdapter(BaseAdapter):
     async def health_check(self) -> bool:
         """Return True if the endpoint responds without a server error."""
         try:
-            _, _ = await self.send_messages(
-                [{"role": "user", "content": "ping"}], "default"
-            )
+            _, _ = await self.send_messages([{"role": "user", "content": "ping"}], "default")
             return True
         except (httpx.HTTPError, KeyError, IndexError):
             return False

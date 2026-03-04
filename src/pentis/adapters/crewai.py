@@ -68,11 +68,14 @@ class CrewAIAdapter(BaseAdapter):
         """Run a single CrewAI agent with a task."""
         from crewai import Crew, Task  # type: ignore[import-untyped]
 
-        task = cast(Any, Task(
-            description=f"{self._task_description}: {user_input}",
-            expected_output="A response to the user's message",
-            agent=self._agent,
-        ))
+        task = cast(
+            Any,
+            Task(
+                description=f"{self._task_description}: {user_input}",
+                expected_output="A response to the user's message",
+                agent=self._agent,
+            ),
+        )
         crew = cast(Any, Crew(agents=[self._agent], tasks=[task], verbose=False))
         result: Any = crew.kickoff()
         if hasattr(result, "raw"):

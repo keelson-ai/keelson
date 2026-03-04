@@ -16,7 +16,9 @@ from pentis.core.models import (
 )
 
 SARIF_VERSION = "2.1.0"
-SARIF_SCHEMA = "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json"
+SARIF_SCHEMA = (
+    "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json"
+)
 TOOL_NAME = "pentis"
 TOOL_SEMANTIC_VERSION = "0.4.0"
 TOOL_INFO_URI = "https://github.com/pentis-ai/pentis"
@@ -63,8 +65,12 @@ def _finding_to_result(finding: Finding, rule_index: int) -> dict[str, Any]:
         "ruleId": finding.template_id,
         "ruleIndex": rule_index,
         "kind": _verdict_to_kind(finding.verdict),
-        "level": _severity_to_level(finding.severity) if finding.verdict == Verdict.VULNERABLE else "none",
-        "message": {"text": finding.reasoning or f"{finding.template_name}: {finding.verdict.value}"},
+        "level": _severity_to_level(finding.severity)
+        if finding.verdict == Verdict.VULNERABLE
+        else "none",
+        "message": {
+            "text": finding.reasoning or f"{finding.template_name}: {finding.verdict.value}"
+        },
         "properties": {
             "verdict": finding.verdict.value,
             "category": finding.category.value,
@@ -157,9 +163,7 @@ def scan_to_sarif(scan: ScanResult) -> dict[str, Any]:
     }
 
     if scan.finished_at:
-        run["invocations"][0]["endTimeUtc"] = (
-            scan.finished_at.astimezone(timezone.utc).isoformat()
-        )
+        run["invocations"][0]["endTimeUtc"] = scan.finished_at.astimezone(timezone.utc).isoformat()
 
     if scan.target.url:
         run["properties"] = {
@@ -207,9 +211,9 @@ def campaign_to_sarif(campaign: CampaignResult) -> dict[str, Any]:
     }
 
     if campaign.finished_at:
-        run["invocations"][0]["endTimeUtc"] = (
-            campaign.finished_at.astimezone(timezone.utc).isoformat()
-        )
+        run["invocations"][0]["endTimeUtc"] = campaign.finished_at.astimezone(
+            timezone.utc
+        ).isoformat()
 
     if campaign.target.url:
         run["properties"] = {

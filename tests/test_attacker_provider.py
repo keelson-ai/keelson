@@ -17,7 +17,9 @@ class TestDetectProvider:
         assert detect_provider("https://api.openai.com/v1/chat/completions") == "openai"
 
     def test_google_googleapis(self) -> None:
-        assert detect_provider("https://generativelanguage.googleapis.com/v1beta/models") == "google"
+        assert (
+            detect_provider("https://generativelanguage.googleapis.com/v1beta/models") == "google"
+        )
 
     def test_google_google_com(self) -> None:
         assert detect_provider("https://bard.google.com/api") == "google"
