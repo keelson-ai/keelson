@@ -27,6 +27,10 @@ class Category(str, Enum):
     MEMORY_INTEGRITY = "Memory Integrity"
     CONTENT_SAFETY = "Content Safety"
     AGENTIC_SECURITY = "Agentic Security"
+    PERMISSION_BOUNDARIES = "Permission Boundaries"
+    DELEGATION_INTEGRITY = "Delegation Integrity"
+    EXECUTION_SAFETY = "Execution Safety"
+    SESSION_ISOLATION = "Session Isolation"
 
 
 class MutationType(str, Enum):

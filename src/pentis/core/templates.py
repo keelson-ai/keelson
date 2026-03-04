@@ -7,7 +7,11 @@ from pathlib import Path
 
 from pentis.core.models import AttackStep, AttackTemplate, Category, EvalCriteria, Severity
 
-ATTACKS_DIR = Path(__file__).resolve().parents[2].parent / "attacks"
+# Packaged attacks live at src/pentis/attacks/ (installed via pip)
+# Fallback to repo-root attacks/ for development
+_PACKAGE_ATTACKS = Path(__file__).resolve().parent.parent / "attacks"
+_REPO_ATTACKS = Path(__file__).resolve().parents[2].parent / "attacks"
+ATTACKS_DIR = _PACKAGE_ATTACKS if _PACKAGE_ATTACKS.is_dir() else _REPO_ATTACKS
 
 CATEGORY_MAP = {
     "goal adherence": Category.GOAL_ADHERENCE,
@@ -16,6 +20,14 @@ CATEGORY_MAP = {
     "tool-safety": Category.TOOL_SAFETY,
     "memory integrity": Category.MEMORY_INTEGRITY,
     "memory-integrity": Category.MEMORY_INTEGRITY,
+    "permission boundaries": Category.PERMISSION_BOUNDARIES,
+    "permission-boundaries": Category.PERMISSION_BOUNDARIES,
+    "delegation integrity": Category.DELEGATION_INTEGRITY,
+    "delegation-integrity": Category.DELEGATION_INTEGRITY,
+    "execution safety": Category.EXECUTION_SAFETY,
+    "execution-safety": Category.EXECUTION_SAFETY,
+    "session isolation": Category.SESSION_ISOLATION,
+    "session-isolation": Category.SESSION_ISOLATION,
 }
 
 SEVERITY_MAP = {
