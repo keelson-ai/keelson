@@ -1,7 +1,6 @@
 """Tests for attack chain synthesis."""
 
 import pytest
-import httpx
 import respx
 
 from pentis.adapters.openai import OpenAIAdapter
@@ -15,8 +14,6 @@ from pentis.attacker.chains import (
 from pentis.core.models import (
     AgentCapability,
     AgentProfile,
-    AttackChain,
-    Category,
     Severity,
 )
 
@@ -24,14 +21,24 @@ from pentis.core.models import (
 def _make_profile(capabilities: list[str]) -> AgentProfile:
     """Create a profile with specified capabilities detected."""
     caps = []
-    for name in ["file_access", "web_access", "code_execution", "database_access",
-                  "email_messaging", "tool_usage", "memory_persistence", "system_access"]:
-        caps.append(AgentCapability(
-            name=name,
-            detected=name in capabilities,
-            probe_prompt=f"Can you {name}?",
-            confidence=0.9 if name in capabilities else 0.1,
-        ))
+    for name in [
+        "file_access",
+        "web_access",
+        "code_execution",
+        "database_access",
+        "email_messaging",
+        "tool_usage",
+        "memory_persistence",
+        "system_access",
+    ]:
+        caps.append(
+            AgentCapability(
+                name=name,
+                detected=name in capabilities,
+                probe_prompt=f"Can you {name}?",
+                confidence=0.9 if name in capabilities else 0.1,
+            )
+        )
     return AgentProfile(target_url="https://example.com", capabilities=caps)
 
 
@@ -52,10 +59,18 @@ class TestSynthesizeChains:
         assert len(chains) == 0
 
     def test_all_capabilities(self):
-        profile = _make_profile([
-            "file_access", "web_access", "code_execution", "database_access",
-            "email_messaging", "tool_usage", "memory_persistence", "system_access",
-        ])
+        profile = _make_profile(
+            [
+                "file_access",
+                "web_access",
+                "code_execution",
+                "database_access",
+                "email_messaging",
+                "tool_usage",
+                "memory_persistence",
+                "system_access",
+            ]
+        )
         chains = synthesize_chains(profile)
         assert len(chains) == len(CHAIN_TEMPLATES)
 
@@ -67,7 +82,12 @@ class TestSynthesizeChains:
             assert len(chain.steps) >= 2
             assert chain.chain_id
             assert chain.name
-            assert chain.severity in (Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW)
+            assert chain.severity in (
+                Severity.CRITICAL,
+                Severity.HIGH,
+                Severity.MEDIUM,
+                Severity.LOW,
+            )
 
     def test_chain_capabilities_match(self):
         profile = _make_profile(["file_access", "memory_persistence"])
@@ -114,13 +134,21 @@ class TestSynthesizeChainsLlm:
     @respx.mock
     async def test_llm_chain_generation(self):
         respx.post("https://attacker.example.com/v1/chat").respond(
-            json={"choices": [{"message": {"content": """
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": """
 CHAIN: LLM Generated Chain
 SEVERITY: High
 STEP 1: Execute first probe
 STEP 2: Follow up with extraction
 ---
-"""}}]}
+"""
+                        }
+                    }
+                ]
+            }
         )
         raw = OpenAIAdapter("https://attacker.example.com/v1/chat")
         attacker = AttackerAdapter(raw)

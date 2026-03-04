@@ -108,16 +108,18 @@ def synthesize_chains(profile: AgentProfile) -> list[AttackChain]:
                 AttackStep(index=i + 1, prompt=prompt, is_followup=i > 0)
                 for i, prompt in enumerate(tmpl["steps"])
             ]
-            chains.append(AttackChain(
-                chain_id=uuid.uuid4().hex[:12],
-                name=tmpl["name"],
-                capabilities=tmpl["capabilities"],
-                steps=steps,
-                severity=tmpl["severity"],
-                category=tmpl["category"],
-                owasp=tmpl["owasp"],
-                description=tmpl["description"],
-            ))
+            chains.append(
+                AttackChain(
+                    chain_id=uuid.uuid4().hex[:12],
+                    name=tmpl["name"],
+                    capabilities=tmpl["capabilities"],
+                    steps=steps,
+                    severity=tmpl["severity"],
+                    category=tmpl["category"],
+                    owasp=tmpl["owasp"],
+                    description=tmpl["description"],
+                )
+            )
 
     return chains
 
@@ -194,22 +196,23 @@ def _parse_llm_chains(response: str, capabilities: list[str]) -> list[AttackChai
                 # Extract after "STEP N:"
                 colon_idx = line.find(":")
                 if colon_idx >= 0:
-                    steps.append(line[colon_idx + 1:].strip())
+                    steps.append(line[colon_idx + 1 :].strip())
 
         if name and steps:
             attack_steps = [
-                AttackStep(index=i + 1, prompt=s, is_followup=i > 0)
-                for i, s in enumerate(steps)
+                AttackStep(index=i + 1, prompt=s, is_followup=i > 0) for i, s in enumerate(steps)
             ]
-            chains.append(AttackChain(
-                chain_id=uuid.uuid4().hex[:12],
-                name=name,
-                capabilities=capabilities,
-                steps=attack_steps,
-                severity=severity,
-                category=Category.AGENTIC_SECURITY,
-                owasp="LLM08 — Excessive Agency",
-                description=f"LLM-generated chain: {name}",
-            ))
+            chains.append(
+                AttackChain(
+                    chain_id=uuid.uuid4().hex[:12],
+                    name=name,
+                    capabilities=capabilities,
+                    steps=attack_steps,
+                    severity=severity,
+                    category=Category.AGENTIC_SECURITY,
+                    owasp="LLM08 — Excessive Agency",
+                    description=f"LLM-generated chain: {name}",
+                )
+            )
 
     return chains

@@ -8,7 +8,6 @@ from pentis.core.models import (
     ComplianceFramework,
     Finding,
     ScanResult,
-    Severity,
     Verdict,
 )
 
@@ -298,7 +297,9 @@ def _generate_nist_report(scan: ScanResult) -> str:
                 "description": func_data["description"],
                 "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
                 "findings": scan.findings,
-                "remediation": "Address identified vulnerabilities and re-test." if scan.vulnerable_count > 0 else "",
+                "remediation": "Address identified vulnerabilities and re-test."
+                if scan.vulnerable_count > 0
+                else "",
             }
         else:
             controls[func_id] = {
@@ -344,7 +345,8 @@ def _generate_eu_ai_act_report(scan: ScanResult) -> str:
             "findings": scan.findings if "15" in art_id else [],
             "remediation": (
                 "Address cybersecurity vulnerabilities to meet Article 15 requirements."
-                if scan.vulnerable_count > 0 and "15" in art_id else ""
+                if scan.vulnerable_count > 0 and "15" in art_id
+                else ""
             ),
         }
 
@@ -381,7 +383,9 @@ def _generate_iso_42001_report(scan: ScanResult) -> str:
             "description": "Controls for securing AI systems against adversarial attacks.",
             "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
             "findings": scan.findings,
-            "remediation": "Implement security controls for identified AI vulnerabilities." if scan.vulnerable_count > 0 else "",
+            "remediation": "Implement security controls for identified AI vulnerabilities."
+            if scan.vulnerable_count > 0
+            else "",
         },
     }
 
@@ -412,15 +416,21 @@ def _generate_soc2_report(scan: ScanResult) -> str:
             "name": "Logical and Physical Access Controls",
             "description": "The entity implements logical access security measures.",
             "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
-            "findings": [f for f in scan.findings if f.category.value in ("Tool Safety", "Agentic Security")],
-            "remediation": "Strengthen AI agent access controls." if scan.vulnerable_count > 0 else "",
+            "findings": [
+                f for f in scan.findings if f.category.value in ("Tool Safety", "Agentic Security")
+            ],
+            "remediation": "Strengthen AI agent access controls."
+            if scan.vulnerable_count > 0
+            else "",
         },
         "CC7.2": {
             "name": "System Monitoring",
             "description": "The entity monitors system components for anomalies.",
             "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
             "findings": scan.findings,
-            "remediation": "Implement monitoring for AI-specific attack patterns." if scan.vulnerable_count > 0 else "",
+            "remediation": "Implement monitoring for AI-specific attack patterns."
+            if scan.vulnerable_count > 0
+            else "",
         },
     }
 

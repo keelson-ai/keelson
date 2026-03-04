@@ -2,7 +2,6 @@
 
 from datetime import datetime, timezone
 
-import pytest
 from typer.testing import CliRunner
 
 from pentis.cli import app
@@ -78,9 +77,12 @@ class TestBaselineCommand:
             target=target,
             findings=[
                 Finding(
-                    template_id="GA-001", template_name="Test",
-                    verdict=Verdict.SAFE, severity=Severity.HIGH,
-                    category=Category.GOAL_ADHERENCE, owasp="LLM01",
+                    template_id="GA-001",
+                    template_name="Test",
+                    verdict=Verdict.SAFE,
+                    severity=Severity.HIGH,
+                    category=Category.GOAL_ADHERENCE,
+                    owasp="LLM01",
                 )
             ],
             finished_at=datetime.now(timezone.utc),

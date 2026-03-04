@@ -1,7 +1,5 @@
 """Tests for scan tier presets."""
 
-import pytest
-
 from pentis.campaign.tiers import TIER_PRESETS, get_tier_config
 from pentis.core.models import ScanTier
 
@@ -31,24 +29,33 @@ class TestTierPresets:
         assert config.concurrency.early_termination_threshold == 3
 
     def test_overrides(self):
-        config = get_tier_config(ScanTier.FAST, overrides={
-            "trials_per_attack": 5,
-            "category": "goal-adherence",
-        })
+        config = get_tier_config(
+            ScanTier.FAST,
+            overrides={
+                "trials_per_attack": 5,
+                "category": "goal-adherence",
+            },
+        )
         assert config.trials_per_attack == 5
         assert config.category == "goal-adherence"
         assert config.name == "fast"  # Preserved from preset
 
     def test_concurrency_overrides(self):
-        config = get_tier_config(ScanTier.DEEP, overrides={
-            "concurrency": {"max_concurrent_trials": 5},
-        })
+        config = get_tier_config(
+            ScanTier.DEEP,
+            overrides={
+                "concurrency": {"max_concurrent_trials": 5},
+            },
+        )
         assert config.concurrency.max_concurrent_trials == 5
         # Other fields preserved
         assert config.trials_per_attack == 10
 
     def test_unknown_override_ignored(self):
-        config = get_tier_config(ScanTier.FAST, overrides={
-            "nonexistent_field": 42,
-        })
+        config = get_tier_config(
+            ScanTier.FAST,
+            overrides={
+                "nonexistent_field": 42,
+            },
+        )
         assert config.trials_per_attack == 1  # Preset value preserved

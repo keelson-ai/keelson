@@ -1,10 +1,9 @@
 """Tests for the caching adapter."""
 
 import pytest
-import httpx
 import respx
 
-from pentis.adapters.cache import CachingAdapter, CacheStats
+from pentis.adapters.cache import CachingAdapter
 from pentis.adapters.openai import OpenAIAdapter
 
 
@@ -16,14 +15,10 @@ def _chat_response(content: str) -> dict:
 class TestCachingAdapter:
     @respx.mock
     async def test_cache_miss_forwards_to_adapter(self):
-        respx.post("https://target.example.com/v1/chat").respond(
-            json=_chat_response("Hello!")
-        )
+        respx.post("https://target.example.com/v1/chat").respond(json=_chat_response("Hello!"))
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
         adapter = CachingAdapter(inner)
-        text, ms = await adapter.send_messages(
-            [{"role": "user", "content": "Hi"}], model="default"
-        )
+        text, ms = await adapter.send_messages([{"role": "user", "content": "Hi"}], model="default")
         await adapter.close()
         assert text == "Hello!"
         assert adapter.stats.misses == 1
@@ -51,9 +46,7 @@ class TestCachingAdapter:
 
     @respx.mock
     async def test_different_messages_are_different_keys(self):
-        respx.post("https://target.example.com/v1/chat").respond(
-            json=_chat_response("resp")
-        )
+        respx.post("https://target.example.com/v1/chat").respond(json=_chat_response("resp"))
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
         adapter = CachingAdapter(inner)
 
@@ -66,9 +59,7 @@ class TestCachingAdapter:
 
     @respx.mock
     async def test_different_model_is_different_key(self):
-        respx.post("https://target.example.com/v1/chat").respond(
-            json=_chat_response("resp")
-        )
+        respx.post("https://target.example.com/v1/chat").respond(json=_chat_response("resp"))
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
         adapter = CachingAdapter(inner)
         messages = [{"role": "user", "content": "Hi"}]
@@ -81,12 +72,8 @@ class TestCachingAdapter:
 
     @respx.mock
     async def test_ttl_expiry(self):
-        import time
-        from unittest.mock import patch
 
-        respx.post("https://target.example.com/v1/chat").respond(
-            json=_chat_response("resp")
-        )
+        respx.post("https://target.example.com/v1/chat").respond(json=_chat_response("resp"))
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
         adapter = CachingAdapter(inner, ttl_seconds=0.1)
         messages = [{"role": "user", "content": "Hi"}]
@@ -103,9 +90,7 @@ class TestCachingAdapter:
 
     @respx.mock
     async def test_lru_eviction(self):
-        respx.post("https://target.example.com/v1/chat").respond(
-            json=_chat_response("resp")
-        )
+        respx.post("https://target.example.com/v1/chat").respond(json=_chat_response("resp"))
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
         adapter = CachingAdapter(inner, max_entries=2)
 
@@ -119,9 +104,7 @@ class TestCachingAdapter:
 
     @respx.mock
     async def test_clear(self):
-        respx.post("https://target.example.com/v1/chat").respond(
-            json=_chat_response("resp")
-        )
+        respx.post("https://target.example.com/v1/chat").respond(json=_chat_response("resp"))
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
         adapter = CachingAdapter(inner)
 
@@ -133,9 +116,7 @@ class TestCachingAdapter:
 
     @respx.mock
     async def test_health_check_delegates(self):
-        respx.post("https://target.example.com/v1/chat").respond(
-            json=_chat_response("pong")
-        )
+        respx.post("https://target.example.com/v1/chat").respond(json=_chat_response("pong"))
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
         adapter = CachingAdapter(inner)
         assert await adapter.health_check() is True

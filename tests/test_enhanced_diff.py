@@ -1,13 +1,10 @@
 """Tests for enhanced regression alerts and campaign diff."""
 
-import pytest
-
 from pentis.core.models import (
     Category,
     CampaignConfig,
     CampaignResult,
     Finding,
-    RegressionAlert,
     ScanDiffItem,
     ScanResult,
     Severity,
@@ -22,7 +19,9 @@ from pentis.diff.comparator import (
 )
 
 
-def _make_finding(template_id: str, verdict: Verdict, severity: Severity = Severity.HIGH) -> Finding:
+def _make_finding(
+    template_id: str, verdict: Verdict, severity: Severity = Severity.HIGH
+) -> Finding:
     return Finding(
         template_id=template_id,
         template_name=f"Attack {template_id}",
@@ -44,48 +43,60 @@ def _make_scan(scan_id: str, findings: list[Finding]) -> ScanResult:
 class TestClassifyAlertSeverity:
     def test_safe_to_vuln_critical_attack(self):
         item = ScanDiffItem(
-            template_id="GA-001", template_name="Test",
-            old_verdict=Verdict.SAFE, new_verdict=Verdict.VULNERABLE,
+            template_id="GA-001",
+            template_name="Test",
+            old_verdict=Verdict.SAFE,
+            new_verdict=Verdict.VULNERABLE,
             change_type="regression",
         )
         assert classify_alert_severity(item, Severity.CRITICAL) == "critical"
 
     def test_safe_to_vuln_high_attack(self):
         item = ScanDiffItem(
-            template_id="GA-001", template_name="Test",
-            old_verdict=Verdict.SAFE, new_verdict=Verdict.VULNERABLE,
+            template_id="GA-001",
+            template_name="Test",
+            old_verdict=Verdict.SAFE,
+            new_verdict=Verdict.VULNERABLE,
             change_type="regression",
         )
         assert classify_alert_severity(item, Severity.HIGH) == "critical"
 
     def test_safe_to_vuln_medium_attack(self):
         item = ScanDiffItem(
-            template_id="GA-001", template_name="Test",
-            old_verdict=Verdict.SAFE, new_verdict=Verdict.VULNERABLE,
+            template_id="GA-001",
+            template_name="Test",
+            old_verdict=Verdict.SAFE,
+            new_verdict=Verdict.VULNERABLE,
             change_type="regression",
         )
         assert classify_alert_severity(item, Severity.MEDIUM) == "high"
 
     def test_new_vulnerable(self):
         item = ScanDiffItem(
-            template_id="GA-001", template_name="Test",
-            old_verdict=None, new_verdict=Verdict.VULNERABLE,
+            template_id="GA-001",
+            template_name="Test",
+            old_verdict=None,
+            new_verdict=Verdict.VULNERABLE,
             change_type="new",
         )
         assert classify_alert_severity(item) == "high"
 
     def test_inconclusive_to_vuln(self):
         item = ScanDiffItem(
-            template_id="GA-001", template_name="Test",
-            old_verdict=Verdict.INCONCLUSIVE, new_verdict=Verdict.VULNERABLE,
+            template_id="GA-001",
+            template_name="Test",
+            old_verdict=Verdict.INCONCLUSIVE,
+            new_verdict=Verdict.VULNERABLE,
             change_type="regression",
         )
         assert classify_alert_severity(item) == "medium"
 
     def test_safe_to_inconclusive(self):
         item = ScanDiffItem(
-            template_id="GA-001", template_name="Test",
-            old_verdict=Verdict.SAFE, new_verdict=Verdict.INCONCLUSIVE,
+            template_id="GA-001",
+            template_name="Test",
+            old_verdict=Verdict.SAFE,
+            new_verdict=Verdict.INCONCLUSIVE,
             change_type="regression",
         )
         assert classify_alert_severity(item) == "low"
@@ -113,14 +124,20 @@ class TestEnhancedDiffScans:
         assert len(alerts) == 0
 
     def test_alerts_sorted_by_severity(self):
-        scan_a = _make_scan("a", [
-            _make_finding("GA-001", Verdict.SAFE, Severity.HIGH),
-            _make_finding("GA-002", Verdict.INCONCLUSIVE, Severity.MEDIUM),
-        ])
-        scan_b = _make_scan("b", [
-            _make_finding("GA-001", Verdict.VULNERABLE, Severity.HIGH),
-            _make_finding("GA-002", Verdict.VULNERABLE, Severity.MEDIUM),
-        ])
+        scan_a = _make_scan(
+            "a",
+            [
+                _make_finding("GA-001", Verdict.SAFE, Severity.HIGH),
+                _make_finding("GA-002", Verdict.INCONCLUSIVE, Severity.MEDIUM),
+            ],
+        )
+        scan_b = _make_scan(
+            "b",
+            [
+                _make_finding("GA-001", Verdict.VULNERABLE, Severity.HIGH),
+                _make_finding("GA-002", Verdict.VULNERABLE, Severity.MEDIUM),
+            ],
+        )
         diff, alerts = enhanced_diff_scans(scan_a, scan_b)
         assert len(alerts) == 2
         assert alerts[0].alert_severity == "critical"
@@ -132,9 +149,13 @@ class TestDiffCampaigns:
         self, tid: str, verdict: Verdict, rate: float, severity: Severity = Severity.HIGH
     ) -> StatisticalFinding:
         return StatisticalFinding(
-            template_id=tid, template_name=f"Attack {tid}",
-            severity=severity, category=Category.GOAL_ADHERENCE,
-            owasp="LLM01", success_rate=rate, verdict=verdict,
+            template_id=tid,
+            template_name=f"Attack {tid}",
+            severity=severity,
+            category=Category.GOAL_ADHERENCE,
+            owasp="LLM01",
+            success_rate=rate,
+            verdict=verdict,
         )
 
     def _make_campaign(self, cid: str, findings: list[StatisticalFinding]) -> CampaignResult:
@@ -153,8 +174,12 @@ class TestDiffCampaigns:
         assert alerts[0].alert_severity == "critical"
 
     def test_rate_increase(self):
-        ca = self._make_campaign("a", [self._make_stat_finding("GA-001", Verdict.INCONCLUSIVE, 0.3)])
-        cb = self._make_campaign("b", [self._make_stat_finding("GA-001", Verdict.INCONCLUSIVE, 0.6)])
+        ca = self._make_campaign(
+            "a", [self._make_stat_finding("GA-001", Verdict.INCONCLUSIVE, 0.3)]
+        )
+        cb = self._make_campaign(
+            "b", [self._make_stat_finding("GA-001", Verdict.INCONCLUSIVE, 0.6)]
+        )
         alerts = diff_campaigns(ca, cb)
         assert len(alerts) >= 1
         assert any(a.change_type == "rate_increase" for a in alerts)

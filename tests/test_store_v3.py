@@ -1,7 +1,6 @@
 """Tests for Phase 3 store extensions (cache, regression alerts, attack chains)."""
 
 import pytest
-from pathlib import Path
 
 from pentis.core.models import (
     AttackChain,
@@ -9,7 +8,6 @@ from pentis.core.models import (
     Category,
     RegressionAlert,
     Severity,
-    Verdict,
 )
 from pentis.state.store import Store
 
@@ -128,6 +126,7 @@ class TestAttackChainPersistence:
     def test_list_chains(self, store):
         # Insert a profile first to satisfy FK constraint
         from pentis.core.models import AgentProfile, AgentCapability
+
         profile = AgentProfile(
             profile_id="profile-1",
             target_url="https://example.com",

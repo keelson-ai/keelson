@@ -74,14 +74,20 @@ class TestCampaignConfig:
 class TestCampaignResult:
     def test_properties(self):
         sf1 = StatisticalFinding(
-            template_id="GA-001", template_name="T1", severity=Severity.HIGH,
-            category=Category.GOAL_ADHERENCE, owasp="LLM01",
+            template_id="GA-001",
+            template_name="T1",
+            severity=Severity.HIGH,
+            category=Category.GOAL_ADHERENCE,
+            owasp="LLM01",
             trials=[TrialResult(trial_index=i, verdict=Verdict.VULNERABLE) for i in range(5)],
             verdict=Verdict.VULNERABLE,
         )
         sf2 = StatisticalFinding(
-            template_id="TS-001", template_name="T2", severity=Severity.MEDIUM,
-            category=Category.TOOL_SAFETY, owasp="LLM02",
+            template_id="TS-001",
+            template_name="T2",
+            severity=Severity.MEDIUM,
+            category=Category.TOOL_SAFETY,
+            owasp="LLM02",
             trials=[TrialResult(trial_index=i, verdict=Verdict.SAFE) for i in range(5)],
             verdict=Verdict.SAFE,
         )
