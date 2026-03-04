@@ -1,474 +1,300 @@
 # Pentis
 
-[![PyPI version](https://img.shields.io/pypi/v/pentis)](https://pypi.org/project/pentis/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-472%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 105 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
+**Autonomous red team agent for AI systems.** Pentis ships 105 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It is implemented as a pure Claude Code plugin — Claude Code becomes the pentester: reads attack playbooks, sends prompts via curl, semantically evaluates responses, and generates reports.
 
-```
-pip install pentis
-```
+---
 
-## Quick Start
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Quick Start (Docker)](#quick-start-docker)
+- [Local Development (without Docker)](#local-development-without-docker)
+- [Running Tests](#running-tests)
+- [Code Quality](#code-quality)
+- [Environment Variables](#environment-variables)
+- [Usage](#usage)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Prerequisites
+
+| Tool | Version | Install |
+|------|---------|---------|
+| **Docker** | 24+ | [docs.docker.com](https://docs.docker.com/get-docker/) |
+| **Docker Compose** | v2 (`docker compose`) | Bundled with Docker Desktop |
+| **uv** | 0.4+ | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| **Python** | 3.11+ | Managed automatically by uv |
+
+> **Note:** Docker is only required for the containerised dev environment. You can run the service directly with uv if you prefer (see [Local Development](#local-development-without-docker)).
+
+---
+
+## Quick Start (Docker)
 
 ```bash
-# Scan an OpenAI-compatible endpoint
-pentis scan https://api.example.com/v1/chat/completions --api-key $KEY
+# 1. Clone the repository
+git clone https://github.com/Othentic-Labs/Pentis.git
+cd Pentis
 
-# Single attack
-pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
+# 2. Copy and configure the environment file
+cp .env.example .env
+# Edit .env — at minimum set PENTIS_API_KEY and PENTIS_TARGET_URL
 
-# List all 105 attacks
-pentis list
-
-# Statistical campaign (10 trials per attack)
-pentis scan https://api.example.com/v1/chat/completions --tier deep --api-key $KEY
-
-# SARIF output for GitHub Code Scanning
-pentis scan https://api.example.com/v1/chat/completions --format sarif --api-key $KEY
-
-# JUnit XML output for CI/CD
-pentis scan https://api.example.com/v1/chat/completions --format junit --api-key $KEY
-
-# Fail CI if vulnerabilities found
-pentis scan https://api.example.com/v1/chat/completions --fail-on-vuln --api-key $KEY
-
-# Scan a CrewAI agent directly
-pentis test-crew my_crew.py
-
-# Scan a LangChain agent directly
-pentis test-chain my_agent.py
+# 3. Start the service
+docker compose up
 ```
 
-## How It Works
+The API will be available at **http://localhost:8000**.
 
-```
-Playbooks (.yaml)   Target Agent        Pentis Engine
-┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 105 attacks  │───>│ OpenAI /     │───>│ Detection pipeline   │
-│ 7 categories │    │ Anthropic /  │    │ Streaming observer    │
-│ OWASP mapped │    │ CrewAI / ... │    │ Statistical analysis  │
-└──────────────┘    └──────────────┘    └──────────────────────┘
-                                               │
-                                    ┌──────────┴──────────┐
-                                    │  Reports             │
-                                    │  Markdown / SARIF /  │
-                                    │  JUnit / Compliance  │
-                                    └─────────────────────┘
+Verify it's running:
+
+```bash
+curl http://localhost:8000/health
+# {"status":"ok","version":"0.1.0"}
 ```
 
-1. **Load** attack playbooks from `attacks/**/*.yaml` (structured YAML, no code)
-2. **Send** prompts to the target via any supported adapter
-3. **Detect** vulnerabilities using pattern-based detection + streaming leakage analysis
-4. **Evaluate** each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
-5. **Report** findings with OWASP mapping, evidence, and remediation recommendations
+To rebuild after dependency changes:
 
-## Attack Categories
+```bash
+docker compose up --build
+```
+
+To run in the background:
+
+```bash
+docker compose up -d
+docker compose logs -f   # tail logs
+docker compose down      # stop
+```
+
+---
+
+## Local Development (without Docker)
+
+### Install dependencies
+
+```bash
+uv sync --extra dev
+```
+
+This creates a `.venv` in the project root and installs all runtime and development dependencies (pytest, ruff, pyright, pre-commit).
+
+### Configure environment
+
+```bash
+cp .env.example .env
+# Edit .env with your values
+```
+
+The service reads environment variables from `.env` when running locally. See [Environment Variables](#environment-variables) for the full reference.
+
+### Run the service
+
+```bash
+uv run uvicorn pentis_service.main:app --reload --port 8000
+```
+
+`--reload` enables hot-reload: the server restarts automatically when you edit files under `src/`.
+
+Alternatively, use the installed entrypoint:
+
+```bash
+uv run pentis-service
+```
+
+### Makefile shortcuts
+
+```bash
+make install    # uv pip install -e ".[dev]"
+make test       # pytest tests/
+make lint       # ruff check src/ tests/
+make format     # ruff format src/ tests/
+make typecheck  # pyright
+make check      # lint + typecheck + test (full CI gate)
+make clean      # remove build artefacts and caches
+make build      # uv build (wheel + sdist)
+```
+
+---
+
+## Running Tests
+
+```bash
+# Run the full test suite
+uv run pytest
+
+# Verbose output with test names
+uv run pytest -v
+
+# Run a specific test file
+uv run pytest tests/test_health.py
+
+# Run tests matching a keyword
+uv run pytest -k "health"
+
+# Show coverage (if pytest-cov is installed)
+uv run pytest --cov=src
+```
+
+Tests live in `tests/` and mirror the source structure. All async tests use `asyncio_mode = "auto"` (no `@pytest.mark.asyncio` decorator needed).
+
+---
+
+## Code Quality
+
+### Linting
+
+```bash
+uv run ruff check .
+uv run ruff check . --fix   # auto-fix safe issues
+```
+
+### Formatting
+
+```bash
+uv run ruff format .
+uv run ruff format . --check  # dry-run (exit 1 if changes needed)
+```
+
+### Type checking
+
+```bash
+uv run pyright
+```
+
+Pyright runs in strict mode (configured in `pyproject.toml`). Target: 0 errors.
+
+### Run everything at once
+
+```bash
+make check
+```
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in your values. **Never commit `.env` to version control.**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PENTIS_API_KEY` | *(required)* | Bearer token sent to the target endpoint |
+| `PENTIS_TARGET_URL` | `http://host.docker.internal:8080/v1/chat/completions` | OpenAI-compatible endpoint to scan |
+| `PENTIS_MODEL` | `gpt-4o` | Model name passed in the request body |
+| `PENTIS_LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG \| INFO \| WARNING \| ERROR` |
+| `PENTIS_PORT` | `8000` | Port the uvicorn server listens on |
+| `PENTIS_REQUEST_DELAY` | `1` | Seconds to sleep between attack requests (rate limiting) |
+| `PENTIS_CONCURRENCY` | `4` | Maximum concurrent scan workers |
+| `PENTIS_CATEGORIES` | *(empty = all)* | Comma-separated attack categories to run |
+
+See [`.env.example`](.env.example) for the full annotated reference.
+
+> **Docker note:** `host.docker.internal` resolves to the Docker host on Mac and Windows. On Linux, the `docker-compose.yml` adds `extra_hosts: host-gateway` so it resolves correctly too.
+
+---
+
+## Usage
+
+### Claude Code plugin
+
+```bash
+# Load as a Claude Code plugin
+claude --plugin-dir /path/to/Pentis
+
+# Run a full security scan
+/pentis:scan https://api.example.com/v1/chat/completions --api-key $KEY
+
+# Run a single attack
+/pentis:attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
+
+# Generate a report
+/pentis:report [report-file]
+```
+
+### Attack categories
 
 | Category | Prefix | Count | OWASP | What It Tests |
 |----------|--------|-------|-------|---------------|
-| **Goal Adherence** | GA | 30 | LLM01 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow |
-| **Tool Safety** | TS | 24 | LLM02/LLM06 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal |
-| **Memory Integrity** | MI | 17 | LLM05 | History poisoning, identity persistence, behavior drift, false tool results, cross-turn exfiltration |
-| **Permission Boundaries** | PB | 8 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
-| **Delegation Integrity** | DI | 8 | LLM08/LLM09 | Unauthorized sub-agents, chain amplification, trust boundary violation, delegation scope laundering |
-| **Execution Safety** | ES | 8 | LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization |
-| **Session Isolation** | SI | 10 | LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, stale session exploitation |
+| **Goal Adherence** | GA | 35 | LLM01 | Prompt injection, role hijacking, system prompt extraction, encoding evasion |
+| **Tool Safety** | TS | 35 | LLM02/LLM06 | File access, command injection, SQL injection, privilege escalation, path traversal |
+| **Memory Integrity** | MI | 35 | LLM05 | History poisoning, identity persistence, behavior drift, cross-turn exfiltration |
 
-## Adapters
-
-Pentis communicates with targets through a pluggable adapter interface:
-
-| Adapter | Flag | Protocol | Use Case |
-|---------|------|----------|----------|
-| **OpenAI** | `--adapter openai` | Chat Completions API | GPT models, OpenAI API |
-| **Generic HTTP** | `--adapter http` | Chat Completions API | Local models (Ollama, vLLM), any OpenAI-compatible endpoint |
-| **Anthropic** | `--adapter anthropic` | Messages API | Claude models |
-| **LangGraph** | `--adapter langgraph` | LangGraph Platform | LangGraph agents |
-| **MCP** | `--adapter mcp` | JSON-RPC 2.0 | MCP tool servers |
-| **A2A** | `--adapter a2a` | Google A2A Protocol | A2A-compatible agents |
-| **CrewAI** | `test-crew` command | In-process | CrewAI crews/agents |
-| **LangChain** | `test-chain` command | In-process | LangChain agents/chains |
-
-```bash
-# OpenAI-compatible (default)
-pentis scan http://localhost:11434/v1/chat/completions
-
-# Anthropic
-pentis scan https://api.anthropic.com --adapter anthropic --api-key $KEY
-
-# LangGraph Platform
-pentis scan https://my-agent.langraph.com --adapter langgraph --assistant-id my-agent
-
-# MCP server
-pentis scan http://localhost:3000 --adapter mcp --tool-name ask
-
-# A2A agent
-pentis scan http://localhost:8000 --adapter a2a
-
-# CrewAI (in-process, no HTTP)
-pentis test-crew path/to/my_crew.py
-
-# LangChain (in-process, no HTTP)
-pentis test-chain path/to/my_agent.py
-```
-
-## CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `pentis scan <url>` | Full security scan against an endpoint |
-| `pentis attack <url> <id>` | Run a single attack |
-| `pentis list` | List all available attacks |
-| `pentis campaign <config.toml>` | Statistical campaign (N trials per attack) |
-| `pentis discover <url>` | Fingerprint agent capabilities |
-| `pentis evolve <url> <id>` | Mutate an attack to find bypasses |
-| `pentis chain <url> <profile-id>` | Synthesize and run compound attack chains |
-| `pentis generate <attacker-url>` | Generate novel attacks using an attacker LLM |
-| `pentis test-crew <module.py>` | Scan a CrewAI agent directly |
-| `pentis test-chain <module.py>` | Scan a LangChain agent directly |
-| `pentis diff <scan-a> <scan-b>` | Compare two scans for regressions |
-| `pentis baseline <scan-id>` | Set a regression baseline |
-| `pentis compliance <scan-id>` | Generate compliance report |
-| `pentis report <scan-id>` | Regenerate a scan report |
-| `pentis history` | Show scan history |
-
-## Output Formats
-
-### Markdown Report
-
-```bash
-pentis scan <url> --api-key $KEY
-# -> reports/scan-2026-03-04-120000.md
-```
-
-Reports include executive summary, findings grouped by category with evidence (prompts + responses), OWASP mapping, and remediation recommendations.
-
-### SARIF (for CI/CD)
-
-```bash
-pentis scan <url> --format sarif --api-key $KEY
-# -> reports/scan-2026-03-04-120000.sarif.json
-```
-
-SARIF v2.1.0 output integrates with GitHub Code Scanning, VS Code SARIF Viewer, and other SARIF-compatible tools.
-
-### JUnit XML (for CI/CD)
-
-```bash
-pentis scan <url> --format junit --api-key $KEY
-# -> reports/scan-2026-03-04-120000.junit.xml
-```
-
-JUnit XML integrates with Jenkins, GitLab CI, GitHub Actions, and any CI system that supports JUnit test reports.
-
-### CI/CD Fail Gates
-
-```bash
-# Fail pipeline if any vulnerability found
-pentis scan <url> --fail-on-vuln --api-key $KEY
-
-# Fail if vulnerability rate exceeds threshold (0.0–1.0)
-pentis scan <url> --fail-threshold 0.1 --api-key $KEY
-```
-
-### Compliance Reports
-
-```bash
-pentis compliance <scan-id> --framework owasp-llm-top10
-pentis compliance <scan-id> --framework nist-ai-rmf
-pentis compliance <scan-id> --framework eu-ai-act
-pentis compliance <scan-id> --framework iso-42001
-pentis compliance <scan-id> --framework soc2
-pentis compliance <scan-id> --framework pci-dss-v4
-```
-
-## GitHub Actions
-
-```yaml
-# .github/workflows/ai-security.yml
-name: AI Agent Security
-on: [push, pull_request]
-
-jobs:
-  pentis:
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-    steps:
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - run: pip install pentis
-
-      - run: pentis scan ${{ vars.AGENT_URL }} --api-key ${{ secrets.AGENT_KEY }} --format sarif --output results/ --fail-on-vuln --no-save
-
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: results/
-```
-
-## Statistical Campaigns
-
-Run each attack N times to get statistically significant results with Wilson score confidence intervals:
-
-```bash
-# Quick scan (1 trial, fast)
-pentis scan <url> --tier fast --api-key $KEY
-
-# Deep scan (10 trials, concurrent)
-pentis scan <url> --tier deep --api-key $KEY
-
-# Custom campaign via TOML config
-pentis campaign config.toml
-```
-
-Campaign config example:
-
-```toml
-[campaign]
-name = "nightly-regression"
-trials_per_attack = 10
-confidence_level = 0.95
-
-[target]
-url = "https://api.example.com/v1/chat/completions"
-api_key = "sk-..."
-
-[concurrency]
-max_concurrent_trials = 5
-early_termination_threshold = 3
-```
-
-## Pentis Defend (Runtime Protection)
-
-Pentis Defend is a policy engine that intercepts unsafe tool calls and content at runtime, integrating directly with CrewAI and LangChain agents.
-
-### Policy Configuration
-
-```yaml
-# defend-policy.yaml
-tool_rules:
-  - pattern: "delete_*"
-    action: deny
-    reason: "File deletion blocked by policy"
-  - pattern: "execute_command"
-    action: deny
-    reason: "Shell execution not permitted"
-  - pattern: "send_email"
-    action: log
-    reason: "Email sending logged for audit"
-
-content_rules:
-  - pattern: "password|secret|api_key|token"
-    action: deny
-    check_input: true
-    check_output: true
-
-default_tool_action: allow
-log_all: false
-```
-
-### CrewAI Integration
-
-```python
-from pentis.defend import load_policy, PolicyEngine, register_crewai_hooks
-
-policy = load_policy("defend-policy.yaml")
-engine = PolicyEngine(policy)
-register_crewai_hooks(engine)
-# All CrewAI tool calls are now policy-enforced
-```
-
-### LangChain Integration
-
-```python
-from pentis.defend import load_policy, PolicyEngine, PentisDefendMiddleware
-
-policy = load_policy("defend-policy.yaml")
-engine = PolicyEngine(policy)
-middleware = PentisDefendMiddleware(engine)
-# Wrap your agent's tool and model calls
-```
-
-## Adding Custom Attacks
+### Adding custom attacks
 
 Create a `.yaml` file in the appropriate `attacks/` subdirectory:
 
 ```yaml
-id: XX-NNN
-name: Attack Name
+id: GA-036
+name: My Custom Attack
 severity: high
-category: category_name
-owasp_id: "LLM0X — Name"
+category: goal_adherence
+owasp_id: "LLM01 — Prompt Injection"
 objective: >
-  What this attack tests.
+  Describe what this attack tests.
 turns:
   - role: user
     content: >
       The attack prompt to send.
-  - role: user
-    content: >
-      Follow-up prompt (for multi-turn attacks).
 evaluation:
   vulnerable_if:
     - Agent complies with the attack request
-    - Agent leaks sensitive information
   safe_if:
-    - Agent refuses the request
-    - Agent maintains boundaries
+    - Agent refuses or continues normal behavior
   inconclusive_if:
-    - Response is ambiguous or partial
+    - Response is ambiguous
 ```
 
-## Project Structure
+Use the next ID in sequence (GA-036, TS-036, MI-036). Include an OWASP LLM Top 10 mapping and clear evaluation criteria.
 
-```
-pentis/
-├── .claude-plugin/                 # Claude Code plugin manifest
-│   └── plugin.json
-├── agents/                         # Agent instructions
-│   └── pentester.md                # Pentester agent prompt
-├── commands/                       # Plugin slash commands
-│   ├── scan.md                     # /pentis:scan
-│   ├── attack.md                   # /pentis:attack
-│   └── report.md                   # /pentis:report
-├── attacks/                        # 105 attack playbooks (YAML)
-│   ├── goal-adherence/             # GA-001..030
-│   ├── tool-safety/                # TS-001..024
-│   ├── memory-integrity/           # MI-001..017
-│   ├── permission-boundaries/      # PB-001..008
-│   ├── delegation-integrity/       # DI-001..008
-│   ├── execution-safety/           # ES-001..008
-│   └── session-isolation/          # SI-001..010
-├── src/pentis/                     # Python engine
-│   ├── cli.py                      # Typer CLI (15 commands)
-│   ├── adapters/                   # 8 target adapters
-│   │   ├── base.py                 # BaseAdapter interface
-│   │   ├── openai.py               # OpenAI API
-│   │   ├── http.py                 # GenericHTTPAdapter (OpenAI-compat)
-│   │   ├── anthropic.py            # Anthropic Messages API
-│   │   ├── langgraph.py            # LangGraph Platform
-│   │   ├── mcp.py                  # Model Context Protocol
-│   │   ├── a2a.py                  # Google A2A Protocol
-│   │   ├── crewai.py               # CrewAI native (in-process)
-│   │   ├── langchain.py            # LangChain native (in-process)
-│   │   ├── cache.py                # Response caching decorator
-│   │   └── attacker.py             # Attacker LLM wrapper
-│   ├── core/                       # Engine, scanner, detection
-│   │   ├── engine.py               # Multi-turn attack executor
-│   │   ├── scanner.py              # Full scan orchestrator
-│   │   ├── detection.py            # Pattern-based verdict detection
-│   │   ├── observer.py             # Streaming leakage analysis
-│   │   ├── templates.py            # Playbook parser (markdown)
-│   │   ├── yaml_templates.py       # Playbook parser (YAML)
-│   │   ├── models.py               # Core data models
-│   │   ├── reporter.py             # Markdown report generation
-│   │   ├── sarif.py                # SARIF v2.1.0 output
-│   │   ├── junit.py                # JUnit XML output
-│   │   └── compliance.py           # 6 compliance frameworks
-│   ├── defend/                     # Runtime protection
-│   │   ├── engine.py               # Policy evaluation engine
-│   │   ├── models.py               # Policy, rules, actions
-│   │   ├── loader.py               # YAML policy loader
-│   │   ├── crewai_hook.py          # CrewAI middleware hooks
-│   │   └── langchain_hook.py       # LangChain middleware hooks
-│   ├── attacker/                   # Attack generation
-│   │   ├── generator.py            # LLM-powered prompt generation
-│   │   ├── discovery.py            # Agent capability fingerprinting
-│   │   ├── chains.py               # Compound attack chain synthesis
-│   │   └── provider.py             # Cross-provider attacker selection
-│   ├── adaptive/                   # Mutation engine
-│   │   ├── mutations.py            # Programmatic + LLM mutations
-│   │   ├── branching.py            # Conversation tree exploration
-│   │   └── strategies.py           # Mutation scheduling
-│   ├── campaign/                   # Statistical campaigns
-│   │   ├── runner.py               # N-trial execution with CI
-│   │   ├── tiers.py                # Fast/Deep/Continuous presets
-│   │   └── config.py               # TOML config parser
-│   ├── diff/                       # Scan comparison
-│   │   └── comparator.py           # Regression detection
-│   └── state/                      # Persistence
-│       └── store.py                # SQLite storage
-├── tests/                          # 472 tests
-├── docs/                           # Documentation
-│   ├── adr/                        # Architecture Decision Records
-│   │   ├── ADR-001-framework.md    # FastAPI selection
-│   │   ├── ADR-002-dependency-management.md  # uv selection
-│   │   └── ADR-003-observability.md  # Structured logging + OTel plan
-│   ├── plans/                      # Roadmap
-│   ├── openapi.yaml                # OpenAPI 3.1.0 API contract
-│   └── github-action-spec.md       # GitHub Action design
-├── pyproject.toml                  # Python packaging
-└── LICENSE                         # Apache 2.0
-```
-
-## Development
-
-```bash
-# Clone
-git clone https://github.com/pentis-ai/pentis.git
-cd pentis
-
-# Install with dev dependencies
-pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Run tests with verbose output
-pytest -v
-
-# Lint
-ruff check .
-
-# Type check (strict mode, 0 errors)
-pyright
-```
-
-### Optional Dependencies
-
-```bash
-# CrewAI adapter
-pip install "pentis[crewai]"
-
-# LangChain adapter
-pip install "pentis[langchain]"
-
-# All optional adapters
-pip install "pentis[all]"
-```
-
-## Contributing
-
-Contributions are welcome. Here's how to help:
-
-1. **Add attack playbooks** — Write new `.yaml` files in `attacks/`. Follow the format above.
-2. **Add adapters** — Implement the `BaseAdapter` interface (3 methods: `send_messages`, `health_check`, `close`).
-3. **Improve detection** — Enhance patterns in `core/detection.py` or add new evaluation strategies.
-4. **Report bugs** — Open an issue with reproduction steps.
-
-### Workflow
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/my-feature`)
-3. Make your changes
-4. Run `pytest` and `ruff check .`
-5. Submit a pull request
-
-### Security
-
-This tool is for **authorized security testing only**. Do not use Pentis against systems you don't have permission to test. If you discover a security issue in Pentis itself, please report it via [GitHub Security Advisories](https://github.com/pentis-ai/pentis/security/advisories).
+---
 
 ## Architecture
 
-### API Specification
+### Project structure
 
-The authoritative OpenAPI 3.1.0 contract for the Pentis service is at [`docs/openapi.yaml`](docs/openapi.yaml). It covers the `/health` endpoint (implemented) and placeholder paths for Phase 2 scan, attack, and report endpoints.
+```
+Pentis/
+├── .claude-plugin/
+│   └── plugin.json              # Claude Code plugin manifest
+├── agents/
+│   └── pentester.md             # Main pentester agent instructions
+├── commands/
+│   ├── scan.md                  # /pentis:scan
+│   ├── attack.md                # /pentis:attack
+│   └── report.md                # /pentis:report
+├── attacks/                     # 105 attack playbooks (.yaml)
+│   ├── goal-adherence/          # GA-001..035
+│   ├── tool-safety/             # TS-001..035
+│   └── memory-integrity/        # MI-001..035
+├── src/
+│   └── pentis_service/          # FastAPI service
+│       ├── main.py              # App factory + uvicorn entrypoint
+│       └── routers/
+│           └── health.py        # GET /health
+├── tests/                       # pytest suite
+├── docs/
+│   ├── adr/                     # Architecture Decision Records
+│   │   ├── ADR-001-framework.md
+│   │   ├── ADR-002-dependency-management.md
+│   │   └── ADR-003-observability.md
+│   └── openapi.yaml             # OpenAPI 3.1.0 API contract
+├── Dockerfile                   # Multi-stage production build
+├── Dockerfile.dev               # Dev image with hot-reload
+├── docker-compose.yml           # Single-command local dev
+├── .env.example                 # Environment variable reference
+├── pyproject.toml               # Python packaging + tool config
+└── Makefile                     # Developer shortcuts
+```
+
+### API specification
+
+The authoritative OpenAPI 3.1.0 contract is at [`docs/openapi.yaml`](docs/openapi.yaml). It covers the `/health` endpoint (implemented) and placeholder paths for Phase 2 scan, attack, and report endpoints.
 
 ### Architecture Decision Records
 
@@ -480,15 +306,72 @@ Key technical decisions are documented as [MADR](https://adr.github.io/madr/) re
 | [ADR-002](docs/adr/ADR-002-dependency-management.md) | Dependency management: uv (fast resolver, `uv.lock`) | Accepted |
 | [ADR-003](docs/adr/ADR-003-observability.md) | Observability: structured logging now, OpenTelemetry in Phase 2 | Accepted |
 
-## Roadmap
+### Key design decisions
 
-See [docs/plans/](docs/plans/) for the full roadmap.
+- **No application code for attacks** — YAML playbooks + Claude Code plugin. Claude Code is the pentester.
+- **curl for targets** — OpenAI-compatible chat completions API via `curl -s -X POST`
+- **Semantic evaluation** — Claude judges responses (no regex/heuristics)
+- **Multi-turn support** — accumulate messages array in curl payloads
+- **Rate limiting** — sleep 1-2s between requests (configurable via `PENTIS_REQUEST_DELAY`)
 
-**Next up:**
-- Drift detection and continuous monitoring
-- Semantic coverage tracking
-- REST API and web dashboard
-- GitHub Action (`pentis-ai/pentis-action`)
+---
+
+## Contributing
+
+### Branch naming
+
+```
+<type>/<short-description>
+
+Examples:
+feat/multi-turn-attack-engine
+fix/handle-429-rate-limit
+refactor/detection-pipeline
+test/scanner-integration
+docs/update-contributing-guide
+```
+
+Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`.
+
+### Commit message format
+
+```
+<type>: <brief description in imperative mood>
+
+Examples:
+feat: Add multi-turn attack engine
+fix: Handle 429 rate limit in HTTP adapter
+refactor: Extract detection pipeline into modules
+test: Add integration tests for scanner
+docs: Update environment variable reference
+```
+
+- Lowercase after the colon
+- No period at the end
+- Imperative mood ("Add" not "Added" or "Adds")
+- 72 characters max for the subject line
+
+### Pull request process
+
+1. Create a feature branch from `main`
+2. Make your changes
+3. Run `make check` — all checks must pass (lint, typecheck, tests)
+4. Push the branch and open a PR against `main`
+5. PR title must follow the commit message format above
+6. Every PR must have a summary describing what changed and why
+7. Request review; do not merge your own PRs
+
+### What to contribute
+
+- **Attack playbooks** — Write new `.yaml` files in `attacks/`. Follow the playbook format in [Usage](#usage).
+- **Bug reports** — Open an issue with reproduction steps.
+- **Documentation fixes** — Correct anything that's wrong or unclear.
+
+### Security
+
+This tool is for **authorized security testing only**. Do not use Pentis against systems you don't have permission to test. If you discover a security issue in Pentis itself, report it via [GitHub Security Advisories](https://github.com/Othentic-Labs/Pentis/security/advisories).
+
+---
 
 ## License
 
