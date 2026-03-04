@@ -8,6 +8,18 @@ from jinja2 import Template
 
 from pentis.core.models import CampaignResult, Category, Finding, ScanDiff, ScanResult, Verdict
 
+CATEGORY_LABELS = {
+    "goal-adherence": "Goal Adherence (GA)",
+    "tool-safety": "Tool Safety (TS)",
+    "memory-integrity": "Memory Integrity (MI)",
+    "content-safety": "Content Safety (CS)",
+    "agentic-security": "Agentic Security (AS)",
+    "permission-boundaries": "Permission Boundaries (PB)",
+    "delegation-integrity": "Delegation Integrity (DI)",
+    "execution-safety": "Execution Safety (ES)",
+    "session-isolation": "Session Isolation (SI)",
+}
+
 REPORT_TEMPLATE = Template("""\
 # Pentis Security Scan Report
 
@@ -32,156 +44,30 @@ REPORT_TEMPLATE = Template("""\
 {% endif %}
 
 ## Detailed Results
+{%- for cat_key, cat_label in categories %}
+{%- if sections[cat_key] %}
 
-### Goal Adherence (GA)
-{% for f in ga_findings %}
+### {{ cat_label }}
+{%- for f in sections[cat_key] %}
+
 #### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
 
 **Severity**: {{ f.severity.value }}
 **OWASP**: {{ f.owasp }}
-
 {% for e in f.evidence %}
 **Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
 
 **Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
-
 {% endfor %}
 **Reasoning**: {{ f.reasoning }}
+{%- endfor %}
+{%- endif %}
+{%- endfor %}
 
-{% endfor %}
-### Tool Safety (TS)
-{% for f in ts_findings %}
-#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
-
-**Severity**: {{ f.severity.value }}
-**OWASP**: {{ f.owasp }}
-
-{% for e in f.evidence %}
-**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
-
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
-
-{% endfor %}
-**Reasoning**: {{ f.reasoning }}
-
-{% endfor %}
-### Memory Integrity (MI)
-{% for f in mi_findings %}
-#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
-
-**Severity**: {{ f.severity.value }}
-**OWASP**: {{ f.owasp }}
-
-{% for e in f.evidence %}
-**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
-
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
-
-{% endfor %}
-**Reasoning**: {{ f.reasoning }}
-
-{% endfor %}
-### Content Safety (CS)
-{% for f in cs_findings %}
-#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
-
-**Severity**: {{ f.severity.value }}
-**OWASP**: {{ f.owasp }}
-
-{% for e in f.evidence %}
-**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
-
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
-
-{% endfor %}
-**Reasoning**: {{ f.reasoning }}
-
-{% endfor %}
-### Agentic Security (AS)
-{% for f in as_findings %}
-#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
-
-**Severity**: {{ f.severity.value }}
-**OWASP**: {{ f.owasp }}
-
-{% for e in f.evidence %}
-**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
-
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
-
-{% endfor %}
-**Reasoning**: {{ f.reasoning }}
-
-{% endfor %}
-### Permission Boundaries (PB)
-{% for f in pb_findings %}
-#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
-
-**Severity**: {{ f.severity.value }}
-**OWASP**: {{ f.owasp }}
-
-{% for e in f.evidence %}
-**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
-
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
-
-{% endfor %}
-**Reasoning**: {{ f.reasoning }}
-
-{% endfor %}
-### Delegation Integrity (DI)
-{% for f in di_findings %}
-#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
-
-**Severity**: {{ f.severity.value }}
-**OWASP**: {{ f.owasp }}
-
-{% for e in f.evidence %}
-**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
-
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
-
-{% endfor %}
-**Reasoning**: {{ f.reasoning }}
-
-{% endfor %}
-### Execution Safety (ES)
-{% for f in es_findings %}
-#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
-
-**Severity**: {{ f.severity.value }}
-**OWASP**: {{ f.owasp }}
-
-{% for e in f.evidence %}
-**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
-
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
-
-{% endfor %}
-**Reasoning**: {{ f.reasoning }}
-
-{% endfor %}
-### Session Isolation (SI)
-{% for f in si_findings %}
-#### {{ f.template_id }}: {{ f.template_name }} — {{ f.verdict.value }}
-
-**Severity**: {{ f.severity.value }}
-**OWASP**: {{ f.owasp }}
-
-{% for e in f.evidence %}
-**Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
-
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
-
-{% endfor %}
-**Reasoning**: {{ f.reasoning }}
-
-{% endfor %}
 ## Recommendations
-
 {% for rec in recommendations %}
 {{ loop.index }}. {{ rec }}
-{% endfor %}
+{%- endfor %}
 """)
 
 
@@ -247,21 +133,27 @@ def generate_report(scan: ScanResult, *, debug: bool = False) -> str:
         for f in scan.findings
         if f.verdict == Verdict.VULNERABLE and f.severity.value == "Critical"
     ]
+    category_order = [
+        (Category.GOAL_ADHERENCE, "goal-adherence"),
+        (Category.TOOL_SAFETY, "tool-safety"),
+        (Category.MEMORY_INTEGRITY, "memory-integrity"),
+        (Category.CONTENT_SAFETY, "content-safety"),
+        (Category.AGENTIC_SECURITY, "agentic-security"),
+        (Category.PERMISSION_BOUNDARIES, "permission-boundaries"),
+        (Category.DELEGATION_INTEGRITY, "delegation-integrity"),
+        (Category.EXECUTION_SAFETY, "execution-safety"),
+        (Category.SESSION_ISOLATION, "session-isolation"),
+    ]
+    sections = {key: _by_category(scan.findings, cat, debug=debug) for cat, key in category_order}
+    categories = [(key, CATEGORY_LABELS[key]) for _, key in category_order]
     return REPORT_TEMPLATE.render(
         scan=scan,
         target=scan.target,
         date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
         summary=_generate_summary(scan),
         critical_findings=critical,
-        ga_findings=_by_category(scan.findings, Category.GOAL_ADHERENCE, debug=debug),
-        ts_findings=_by_category(scan.findings, Category.TOOL_SAFETY, debug=debug),
-        mi_findings=_by_category(scan.findings, Category.MEMORY_INTEGRITY, debug=debug),
-        cs_findings=_by_category(scan.findings, Category.CONTENT_SAFETY, debug=debug),
-        as_findings=_by_category(scan.findings, Category.AGENTIC_SECURITY, debug=debug),
-        pb_findings=_by_category(scan.findings, Category.PERMISSION_BOUNDARIES, debug=debug),
-        di_findings=_by_category(scan.findings, Category.DELEGATION_INTEGRITY, debug=debug),
-        es_findings=_by_category(scan.findings, Category.EXECUTION_SAFETY, debug=debug),
-        si_findings=_by_category(scan.findings, Category.SESSION_ISOLATION, debug=debug),
+        categories=categories,
+        sections=sections,
         recommendations=_generate_recommendations(scan),
     )
 

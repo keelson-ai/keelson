@@ -92,6 +92,12 @@ class TestReporter:
 
     def test_report_contains_sections(self):
         report = generate_report(_make_scan())
+        assert "### Goal Adherence (GA)" in report  # has VULNERABLE finding
+        assert "### Tool Safety (TS)" not in report  # only SAFE — hidden by default
+        assert "### Memory Integrity (MI)" in report  # has INCONCLUSIVE finding
+
+    def test_report_shows_all_sections_in_debug(self):
+        report = generate_report(_make_scan(), debug=True)
         assert "### Goal Adherence (GA)" in report
         assert "### Tool Safety (TS)" in report
         assert "### Memory Integrity (MI)" in report
