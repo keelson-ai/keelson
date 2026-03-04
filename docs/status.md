@@ -1,5 +1,23 @@
 # Task Status
 
+## 7K3bniQf — Write README with setup instructions, local dev guide, and contribution conventions
+
+**Status**: Complete
+
+### Files Created / Modified
+| File | Action | Notes |
+|------|--------|-------|
+| `README.md` | Rewritten | Full developer-facing README: prerequisites, Docker quickstart, local dev (uv), tests, linting, env vars reference, architecture, contributing conventions |
+
+### Notes
+- Replaced aspirational CLI feature docs with accurate, tested commands matching the actual project setup
+- All commands verified against `Dockerfile.dev`, `docker-compose.yml`, `Makefile`, and `pyproject.toml`
+- Contribution conventions (branch naming, commit format, PR process) sourced from `.claude/rules/git-workflow.md`
+- Environment variables table generated from `.env.example`
+- Architecture section preserves ADR table and OpenAPI spec link from previous task (iRlZjdIF)
+
+---
+
 ## iRlZjdIF — Draft OpenAPI Specification and Architecture Decision Records (ADRs)
 
 **Status**: Complete
