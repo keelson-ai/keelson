@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import pytest
 
 from pentis.core.models import Category, Severity
 from pentis.core.templates import load_all_templates, load_template, parse_template
@@ -177,7 +176,7 @@ class TestLoadTemplates:
     def test_all_templates_have_required_fields(self):
         templates = load_all_templates(attacks_dir=ATTACKS_DIR)
         for t in templates:
-            assert t.id, f"Template missing id"
+            assert t.id, "Template missing id"
             assert t.name, f"{t.id} missing name"
             assert t.severity, f"{t.id} missing severity"
             assert t.category, f"{t.id} missing category"

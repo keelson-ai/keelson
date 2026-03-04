@@ -137,8 +137,11 @@ class TestRunCampaign:
             delay_between_attacks=0,
         )
         progress = []
-        result = await run_campaign(
-            target, adapter, config, attacks_dir=attacks_dir,
+        await run_campaign(
+            target,
+            adapter,
+            config,
+            attacks_dir=attacks_dir,
             on_finding=lambda sf, cur, tot: progress.append((sf.template_id, cur, tot)),
         )
         await adapter.close()

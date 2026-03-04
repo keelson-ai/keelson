@@ -1,7 +1,5 @@
 """Tests for Phase 3 model additions."""
 
-import pytest
-
 from pentis.core.models import (
     AttackChain,
     AttackStep,
@@ -67,9 +65,7 @@ class TestCampaignConfigConcurrency:
         assert config.concurrency.early_termination_threshold == 3
 
     def test_custom_concurrency(self):
-        config = CampaignConfig(
-            concurrency=ConcurrencyConfig(max_concurrent_trials=10)
-        )
+        config = CampaignConfig(concurrency=ConcurrencyConfig(max_concurrent_trials=10))
         assert config.concurrency.max_concurrent_trials == 10
 
 
