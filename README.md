@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/pentis)](https://pypi.org/project/pentis/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-472%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-493%20passing-brightgreen)]()
 
 **Autonomous red team agent for AI systems.** Pentis ships 105 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
 
@@ -394,7 +394,7 @@ pentis/
 │   │   └── comparator.py           # Regression detection
 │   └── state/                      # Persistence
 │       └── store.py                # SQLite storage
-├── tests/                          # 472 tests
+├── tests/                          # 493 tests
 ├── docs/                           # Documentation
 │   ├── adr/                        # Architecture Decision Records
 │   │   ├── ADR-001-framework.md    # FastAPI selection
