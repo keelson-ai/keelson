@@ -57,12 +57,7 @@ class A2AAdapter(BaseAdapter):
         model: str = "default",  # noqa: ARG002
     ) -> tuple[str, int]:
         """Send messages via A2A tasks/send JSON-RPC method."""
-        # Extract the latest user message
-        user_message = ""
-        for msg in reversed(messages):
-            if msg.get("role") == "user":
-                user_message = msg["content"]
-                break
+        user_message = self._last_user_message(messages)
 
         task_id = uuid.uuid4().hex[:16]
         headers: dict[str, str] = {"Content-Type": "application/json"}

@@ -11,7 +11,7 @@ from typing import Any, Callable, cast
 
 from pentis.defend.engine import PolicyEngine
 from pentis.defend.loader import default_policy
-from pentis.defend.models import DefendPolicy
+from pentis.defend.models import REDACTED_MESSAGE, DefendPolicy
 
 
 def register_crewai_hooks(policy: DefendPolicy | None = None) -> PolicyEngine:
@@ -48,7 +48,7 @@ def register_crewai_hooks(policy: DefendPolicy | None = None) -> PolicyEngine:
         if result is not None:
             decision = engine.check_content(str(result), is_input=False)
             if not decision.allowed:
-                return "[REDACTED by Pentis Defend]"
+                return REDACTED_MESSAGE
         return None
 
     @before_llm_call_dec

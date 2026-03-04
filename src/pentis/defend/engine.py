@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import fnmatch
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
 from pentis.core.detection import SIDE_EFFECT_PATTERNS
 from pentis.defend.models import ContentRule, DefendPolicy, PolicyAction
+
+# Pre-compile side-effect patterns at module level (they never change)
+_COMPILED_SIDE_EFFECTS: list[re.Pattern[str]] = [
+    re.compile(p, re.IGNORECASE) for p in SIDE_EFFECT_PATTERNS
+]
 
 
 @dataclass
@@ -37,16 +42,11 @@ class PolicyEngine:
 
     def __init__(self, policy: DefendPolicy) -> None:
         self._policy = policy
-        self._violations: list[Violation] = field(default_factory=list)  # type: ignore[assignment]
-        self._violations = []
+        self._violations: list[Violation] = []
         # Pre-compile content rule patterns
         self._compiled_content: list[tuple[ContentRule, re.Pattern[str]]] = []
         for rule in policy.content_rules:
             self._compiled_content.append((rule, re.compile(rule.pattern, re.IGNORECASE)))
-        # Pre-compile side-effect patterns
-        self._compiled_side_effects: list[re.Pattern[str]] = [
-            re.compile(p, re.IGNORECASE) for p in SIDE_EFFECT_PATTERNS
-        ]
 
     def check_tool(self, tool_name: str, arguments: dict[str, Any] | None = None) -> PolicyDecision:
         """Check if a tool call is allowed by policy."""
@@ -100,6 +100,8 @@ class PolicyEngine:
 
     def check_content(self, content: str, is_input: bool = True) -> PolicyDecision:
         """Check content against content rules and built-in detection patterns."""
+        snippet = content[:100]
+
         # Check content rules
         for rule, compiled in self._compiled_content:
             if is_input and not rule.check_input:
@@ -109,8 +111,6 @@ class PolicyEngine:
             if compiled.search(content):
                 allowed = rule.action == PolicyAction.ALLOW
                 is_log = rule.action == PolicyAction.LOG
-
-                snippet = content[:100] if len(content) > 100 else content
 
                 if not allowed and not is_log:
                     self._record_violation(
@@ -136,9 +136,8 @@ class PolicyEngine:
 
         # For outputs, also check SIDE_EFFECT_PATTERNS from detection.py
         if not is_input:
-            for pattern in self._compiled_side_effects:
+            for pattern in _COMPILED_SIDE_EFFECTS:
                 if pattern.search(content):
-                    snippet = content[:100] if len(content) > 100 else content
                     self._record_violation(
                         tool_name=None,
                         content_snippet=snippet,

@@ -10,7 +10,7 @@ from typing import Any, cast
 
 from pentis.defend.engine import PolicyEngine
 from pentis.defend.loader import default_policy
-from pentis.defend.models import DefendPolicy
+from pentis.defend.models import BLOCKED_MESSAGE, REDACTED_MESSAGE, DefendPolicy
 
 
 class PentisDefendMiddleware:
@@ -53,13 +53,13 @@ class PentisDefendMiddleware:
                 _lc_any: Any = _lc_msgs
                 _ToolMessage: type[Any] = _lc_any.ToolMessage
                 return _ToolMessage(
-                    content=f"[BLOCKED by Pentis Defend] {decision.reason}",
+                    content=f"{BLOCKED_MESSAGE} {decision.reason}",
                     tool_call_id=tool_call_id,
                 )
             except ImportError:
                 # Fallback: return a dict if langchain_core is not available
                 return {
-                    "content": f"[BLOCKED by Pentis Defend] {decision.reason}",
+                    "content": f"{BLOCKED_MESSAGE} {decision.reason}",
                     "tool_call_id": tool_call_id,
                 }
 
@@ -70,7 +70,7 @@ class PentisDefendMiddleware:
         output_decision = self.engine.check_content(content, is_input=False)
         if not output_decision.allowed:
             if hasattr(result, "content"):
-                result.content = "[REDACTED by Pentis Defend]"
+                result.content = REDACTED_MESSAGE
 
         return result
 
@@ -93,8 +93,8 @@ class PentisDefendMiddleware:
 
                         _lc_any2: Any = _lc_msgs
                         _AIMessage: type[Any] = _lc_any2.AIMessage
-                        return _AIMessage(content=f"[BLOCKED by Pentis Defend] {decision.reason}")
+                        return _AIMessage(content=f"{BLOCKED_MESSAGE} {decision.reason}")
                     except ImportError:
-                        return {"content": f"[BLOCKED by Pentis Defend] {decision.reason}"}
+                        return {"content": f"{BLOCKED_MESSAGE} {decision.reason}"}
 
         return handler(request)

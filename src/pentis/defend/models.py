@@ -6,6 +6,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 
+BLOCKED_MESSAGE = "[BLOCKED by Pentis Defend]"
+REDACTED_MESSAGE = "[REDACTED by Pentis Defend]"
+
+
 class PolicyAction(str, Enum):
     ALLOW = "allow"
     DENY = "deny"
@@ -36,7 +40,7 @@ class ContentRule:
 class DefendPolicy:
     """Complete defend policy configuration."""
 
-    tool_rules: list[ToolRule] = field(default_factory=list[ToolRule])
-    content_rules: list[ContentRule] = field(default_factory=list[ContentRule])
+    tool_rules: list[ToolRule] = field(default_factory=lambda: list[ToolRule]())
+    content_rules: list[ContentRule] = field(default_factory=lambda: list[ContentRule]())
     default_tool_action: PolicyAction = PolicyAction.ALLOW
     log_all: bool = False
