@@ -104,8 +104,7 @@ def _should_terminate_early(
         return False
     first_response = recent[0].evidence[-1].response if recent[0].evidence else ""
     return all(
-        (t.evidence[-1].response if t.evidence else "") == first_response
-        for t in recent[1:]
+        (t.evidence[-1].response if t.evidence else "") == first_response for t in recent[1:]
     )
 
 
@@ -187,7 +186,11 @@ async def run_campaign(
             trials: list[TrialResult] = []
             for trial_idx in range(config.trials_per_attack):
                 trial = await _run_single_trial(
-                    template, adapter, target.model, trial_idx, config.delay_between_trials,
+                    template,
+                    adapter,
+                    target.model,
+                    trial_idx,
+                    config.delay_between_trials,
                 )
                 trials.append(trial)
 

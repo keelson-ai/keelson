@@ -67,16 +67,20 @@ class TestDiffScans:
         assert diff.items[0].change_type == "removed"
 
     def test_mixed_changes(self):
-        scan_a = _make_scan([
-            _make_finding("GA-001", "T1", Verdict.SAFE),
-            _make_finding("GA-002", "T2", Verdict.VULNERABLE),
-            _make_finding("GA-003", "T3", Verdict.SAFE),
-        ])
-        scan_b = _make_scan([
-            _make_finding("GA-001", "T1", Verdict.VULNERABLE),  # regression
-            _make_finding("GA-002", "T2", Verdict.SAFE),  # improvement
-            _make_finding("GA-004", "T4", Verdict.SAFE),  # new (GA-003 removed)
-        ])
+        scan_a = _make_scan(
+            [
+                _make_finding("GA-001", "T1", Verdict.SAFE),
+                _make_finding("GA-002", "T2", Verdict.VULNERABLE),
+                _make_finding("GA-003", "T3", Verdict.SAFE),
+            ]
+        )
+        scan_b = _make_scan(
+            [
+                _make_finding("GA-001", "T1", Verdict.VULNERABLE),  # regression
+                _make_finding("GA-002", "T2", Verdict.SAFE),  # improvement
+                _make_finding("GA-004", "T4", Verdict.SAFE),  # new (GA-003 removed)
+            ]
+        )
         diff = diff_scans(scan_a, scan_b)
         assert len(diff.regressions) == 1
         assert len(diff.improvements) == 1
@@ -103,6 +107,7 @@ class TestDiffFromBaseline:
 class TestFormatDiffReport:
     def test_no_changes(self):
         from pentis.core.models import ScanDiff
+
         diff = ScanDiff(scan_a_id="aaa", scan_b_id="bbb")
         report = format_diff_report(diff)
         assert "No changes detected" in report
@@ -119,14 +124,20 @@ class TestFormatDiffReport:
         assert "1 regressions" in report
 
     def test_summary_counts(self):
-        scan_a = _make_scan([
-            _make_finding("GA-001", "T1", Verdict.SAFE),
-            _make_finding("GA-002", "T2", Verdict.VULNERABLE),
-        ], scan_id="aaa")
-        scan_b = _make_scan([
-            _make_finding("GA-001", "T1", Verdict.VULNERABLE),
-            _make_finding("GA-002", "T2", Verdict.SAFE),
-        ], scan_id="bbb")
+        scan_a = _make_scan(
+            [
+                _make_finding("GA-001", "T1", Verdict.SAFE),
+                _make_finding("GA-002", "T2", Verdict.VULNERABLE),
+            ],
+            scan_id="aaa",
+        )
+        scan_b = _make_scan(
+            [
+                _make_finding("GA-001", "T1", Verdict.VULNERABLE),
+                _make_finding("GA-002", "T2", Verdict.SAFE),
+            ],
+            scan_id="bbb",
+        )
         diff = diff_scans(scan_a, scan_b)
         report = format_diff_report(diff)
         assert "1 regressions" in report

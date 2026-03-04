@@ -81,10 +81,12 @@ class TestMapFindingsToOwasp:
 
 class TestGenerateComplianceReport:
     def test_owasp_report_structure(self):
-        scan = _make_scan([
-            _make_finding("GA-001", Verdict.VULNERABLE),
-            _make_finding("GA-002", Verdict.SAFE),
-        ])
+        scan = _make_scan(
+            [
+                _make_finding("GA-001", Verdict.VULNERABLE),
+                _make_finding("GA-002", Verdict.SAFE),
+            ]
+        )
         report = generate_compliance_report(scan, ComplianceFramework.OWASP_LLM_TOP_10)
         assert "OWASP LLM Top 10" in report
         assert "GA-001" in report
@@ -92,10 +94,12 @@ class TestGenerateComplianceReport:
         assert "Recommendations" in report
 
     def test_owasp_report_all_safe(self):
-        scan = _make_scan([
-            _make_finding("GA-001", Verdict.SAFE),
-            _make_finding("GA-002", Verdict.SAFE),
-        ])
+        scan = _make_scan(
+            [
+                _make_finding("GA-001", Verdict.SAFE),
+                _make_finding("GA-002", Verdict.SAFE),
+            ]
+        )
         report = generate_compliance_report(scan, ComplianceFramework.OWASP_LLM_TOP_10)
         assert "passed" in report.lower() or "PASS" in report
 
@@ -118,9 +122,11 @@ class TestGenerateComplianceReport:
         assert "ISO 42001" in report
 
     def test_soc2_report(self):
-        scan = _make_scan([
-            _make_finding("TS-001", Verdict.VULNERABLE, category=Category.TOOL_SAFETY),
-        ])
+        scan = _make_scan(
+            [
+                _make_finding("TS-001", Verdict.VULNERABLE, category=Category.TOOL_SAFETY),
+            ]
+        )
         report = generate_compliance_report(scan, ComplianceFramework.SOC2)
         assert "SOC2" in report
 
@@ -130,9 +136,16 @@ class TestGenerateComplianceReport:
         assert "NOT TESTED" in report
 
     def test_coverage_percentage(self):
-        scan = _make_scan([
-            _make_finding("GA-001", Verdict.VULNERABLE, owasp="LLM01 — Prompt Injection"),
-            _make_finding("TS-001", Verdict.SAFE, owasp="LLM02 — Insecure Output", category=Category.TOOL_SAFETY),
-        ])
+        scan = _make_scan(
+            [
+                _make_finding("GA-001", Verdict.VULNERABLE, owasp="LLM01 — Prompt Injection"),
+                _make_finding(
+                    "TS-001",
+                    Verdict.SAFE,
+                    owasp="LLM02 — Insecure Output",
+                    category=Category.TOOL_SAFETY,
+                ),
+            ]
+        )
         report = generate_compliance_report(scan, ComplianceFramework.OWASP_LLM_TOP_10)
         assert "Coverage" in report

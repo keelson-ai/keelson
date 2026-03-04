@@ -27,10 +27,15 @@ class Category(str, Enum):
     MEMORY_INTEGRITY = "Memory Integrity"
     CONTENT_SAFETY = "Content Safety"
     AGENTIC_SECURITY = "Agentic Security"
+    PERMISSION_BOUNDARIES = "Permission Boundaries"
+    DELEGATION_INTEGRITY = "Delegation Integrity"
+    EXECUTION_SAFETY = "Execution Safety"
+    SESSION_ISOLATION = "Session Isolation"
 
 
 class MutationType(str, Enum):
     """Types of prompt mutations."""
+
     BASE64_ENCODE = "base64_encode"
     LEETSPEAK = "leetspeak"
     CONTEXT_OVERFLOW = "context_overflow"
@@ -41,6 +46,7 @@ class MutationType(str, Enum):
 
 class ResponseClass(str, Enum):
     """Classification of a target response for branching."""
+
     REFUSAL = "refusal"
     PARTIAL = "partial"
     COMPLIANCE = "compliance"
@@ -48,6 +54,7 @@ class ResponseClass(str, Enum):
 
 class ScanTier(str, Enum):
     """Scan tier presets for campaign execution."""
+
     FAST = "fast"
     DEEP = "deep"
     CONTINUOUS = "continuous"
@@ -55,6 +62,7 @@ class ScanTier(str, Enum):
 
 class ComplianceFramework(str, Enum):
     """Compliance frameworks for report generation."""
+
     OWASP_LLM_TOP_10 = "owasp-llm-top10"
     NIST_AI_RMF = "nist-ai-rmf"
     EU_AI_ACT = "eu-ai-act"
@@ -100,6 +108,7 @@ class EvidenceItem:
 @dataclass
 class LeakageSignal:
     """A per-step leakage signal detected by the streaming observer."""
+
     step_index: int
     signal_type: str  # "progressive_disclosure", "boundary_erosion", "partial_leak"
     severity: str  # "high", "medium", "low"
@@ -160,6 +169,7 @@ class ScanResult:
 @dataclass
 class TrialResult:
     """Single trial execution of an attack."""
+
     trial_index: int
     verdict: Verdict
     evidence: list[EvidenceItem] = field(default_factory=list[EvidenceItem])
@@ -170,6 +180,7 @@ class TrialResult:
 @dataclass
 class StatisticalFinding:
     """Aggregated result over N trials for a single attack."""
+
     template_id: str
     template_name: str
     severity: Severity
@@ -193,6 +204,7 @@ class StatisticalFinding:
 @dataclass
 class ConcurrencyConfig:
     """Concurrency settings for campaign execution."""
+
     max_concurrent_trials: int = 5
     early_termination_threshold: int = 3
 
@@ -200,6 +212,7 @@ class ConcurrencyConfig:
 @dataclass
 class CampaignConfig:
     """Configuration for a statistical campaign."""
+
     name: str = "default"
     trials_per_attack: int = 5
     confidence_level: float = 0.95
@@ -216,6 +229,7 @@ class CampaignConfig:
 @dataclass
 class CampaignResult:
     """Complete result of a statistical campaign."""
+
     campaign_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     config: CampaignConfig = field(default_factory=CampaignConfig)
     target: Target = field(default_factory=lambda: Target(url=""))
@@ -235,6 +249,7 @@ class CampaignResult:
 @dataclass
 class ScanDiffItem:
     """A single difference between two scans."""
+
     template_id: str
     template_name: str
     old_verdict: Verdict | None
@@ -245,6 +260,7 @@ class ScanDiffItem:
 @dataclass
 class ScanDiff:
     """Diff between two scan results."""
+
     scan_a_id: str
     scan_b_id: str
     items: list[ScanDiffItem] = field(default_factory=list[ScanDiffItem])
@@ -261,6 +277,7 @@ class ScanDiff:
 @dataclass
 class MutatedAttack:
     """An attack template with a mutation applied."""
+
     original_id: str
     mutation_type: MutationType
     mutated_prompt: str
@@ -270,6 +287,7 @@ class MutatedAttack:
 @dataclass
 class AgentCapability:
     """A discovered capability of a target agent."""
+
     name: str
     detected: bool
     probe_prompt: str
@@ -280,6 +298,7 @@ class AgentCapability:
 @dataclass
 class AgentProfile:
     """Profile of an agent's capabilities."""
+
     profile_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     target_url: str = ""
     capabilities: list[AgentCapability] = field(default_factory=list[AgentCapability])
@@ -293,6 +312,7 @@ class AgentProfile:
 @dataclass
 class ConversationNode:
     """A node in a conversation branching tree."""
+
     node_id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
     prompt: str = ""
     response: str = ""
@@ -308,6 +328,7 @@ class ConversationNode:
 @dataclass
 class RegressionAlert:
     """A severity-classified regression alert from scan comparison."""
+
     template_id: str
     alert_severity: str  # "critical", "high", "medium", "low"
     change_type: str  # "regression", "new_vulnerable"
@@ -320,6 +341,7 @@ class RegressionAlert:
 @dataclass
 class AttackChain:
     """A compound attack chain combining multiple capabilities."""
+
     chain_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     name: str = ""
     capabilities: list[str] = field(default_factory=list[str])

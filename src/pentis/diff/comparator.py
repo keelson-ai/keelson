@@ -31,29 +31,35 @@ def diff_scans(scan_a: ScanResult, scan_b: ScanResult) -> ScanDiff:
             if fa.verdict == fb.verdict:
                 continue  # No change
             change = _classify_change(fa.verdict, fb.verdict)
-            items.append(ScanDiffItem(
-                template_id=tid,
-                template_name=fb.template_name,
-                old_verdict=fa.verdict,
-                new_verdict=fb.verdict,
-                change_type=change,
-            ))
+            items.append(
+                ScanDiffItem(
+                    template_id=tid,
+                    template_name=fb.template_name,
+                    old_verdict=fa.verdict,
+                    new_verdict=fb.verdict,
+                    change_type=change,
+                )
+            )
         elif fa and not fb:
-            items.append(ScanDiffItem(
-                template_id=tid,
-                template_name=fa.template_name,
-                old_verdict=fa.verdict,
-                new_verdict=None,
-                change_type="removed",
-            ))
+            items.append(
+                ScanDiffItem(
+                    template_id=tid,
+                    template_name=fa.template_name,
+                    old_verdict=fa.verdict,
+                    new_verdict=None,
+                    change_type="removed",
+                )
+            )
         elif fb:  # fb and not fa
-            items.append(ScanDiffItem(
-                template_id=tid,
-                template_name=fb.template_name,
-                old_verdict=None,
-                new_verdict=fb.verdict,
-                change_type="new",
-            ))
+            items.append(
+                ScanDiffItem(
+                    template_id=tid,
+                    template_name=fb.template_name,
+                    old_verdict=None,
+                    new_verdict=fb.verdict,
+                    change_type="new",
+                )
+            )
 
     return ScanDiff(scan_a_id=scan_a.scan_id, scan_b_id=scan_b.scan_id, items=items)
 
@@ -185,19 +191,21 @@ def enhanced_diff_scans(
         attack_sev = severity_map.get(item.template_id)
         alert_sev = classify_alert_severity(item, attack_sev)
 
-        alerts.append(RegressionAlert(
-            template_id=item.template_id,
-            alert_severity=alert_sev,
-            change_type=item.change_type,
-            description=(
-                f"{item.template_name}: "
-                f"{item.old_verdict.value if item.old_verdict else 'N/A'} → "
-                f"{item.new_verdict.value if item.new_verdict else 'N/A'}"
-            ),
-            old_verdict=item.old_verdict,
-            new_verdict=item.new_verdict,
-            attack_severity=attack_sev,
-        ))
+        alerts.append(
+            RegressionAlert(
+                template_id=item.template_id,
+                alert_severity=alert_sev,
+                change_type=item.change_type,
+                description=(
+                    f"{item.template_name}: "
+                    f"{item.old_verdict.value if item.old_verdict else 'N/A'} → "
+                    f"{item.new_verdict.value if item.new_verdict else 'N/A'}"
+                ),
+                old_verdict=item.old_verdict,
+                new_verdict=item.new_verdict,
+                attack_severity=attack_sev,
+            )
+        )
 
     # Sort alerts by severity: critical first
     severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -226,56 +234,66 @@ def diff_campaigns(
         if fa and fb:
             # Check for verdict regression
             if fa.verdict == Verdict.SAFE and fb.verdict == Verdict.VULNERABLE:
-                alert_sev = "critical" if fb.severity in (Severity.CRITICAL, Severity.HIGH) else "high"
-                alerts.append(RegressionAlert(
-                    template_id=tid,
-                    alert_severity=alert_sev,
-                    change_type="regression",
-                    description=(
-                        f"{fb.template_name}: vulnerability rate increased from "
-                        f"{fa.success_rate:.0%} to {fb.success_rate:.0%}"
-                    ),
-                    old_verdict=fa.verdict,
-                    new_verdict=fb.verdict,
-                    attack_severity=fb.severity,
-                ))
+                alert_sev = (
+                    "critical" if fb.severity in (Severity.CRITICAL, Severity.HIGH) else "high"
+                )
+                alerts.append(
+                    RegressionAlert(
+                        template_id=tid,
+                        alert_severity=alert_sev,
+                        change_type="regression",
+                        description=(
+                            f"{fb.template_name}: vulnerability rate increased from "
+                            f"{fa.success_rate:.0%} to {fb.success_rate:.0%}"
+                        ),
+                        old_verdict=fa.verdict,
+                        new_verdict=fb.verdict,
+                        attack_severity=fb.severity,
+                    )
+                )
             elif fa.verdict != Verdict.VULNERABLE and fb.verdict == Verdict.VULNERABLE:
-                alerts.append(RegressionAlert(
-                    template_id=tid,
-                    alert_severity="medium",
-                    change_type="regression",
-                    description=(
-                        f"{fb.template_name}: became statistically vulnerable "
-                        f"({fb.success_rate:.0%} rate)"
-                    ),
-                    old_verdict=fa.verdict,
-                    new_verdict=fb.verdict,
-                    attack_severity=fb.severity,
-                ))
+                alerts.append(
+                    RegressionAlert(
+                        template_id=tid,
+                        alert_severity="medium",
+                        change_type="regression",
+                        description=(
+                            f"{fb.template_name}: became statistically vulnerable "
+                            f"({fb.success_rate:.0%} rate)"
+                        ),
+                        old_verdict=fa.verdict,
+                        new_verdict=fb.verdict,
+                        attack_severity=fb.severity,
+                    )
+                )
             elif fb.success_rate > fa.success_rate + 0.2:
                 # Significant rate increase even without verdict change
-                alerts.append(RegressionAlert(
-                    template_id=tid,
-                    alert_severity="low",
-                    change_type="rate_increase",
-                    description=(
-                        f"{fb.template_name}: vulnerability rate increased from "
-                        f"{fa.success_rate:.0%} to {fb.success_rate:.0%}"
-                    ),
-                    old_verdict=fa.verdict,
-                    new_verdict=fb.verdict,
-                    attack_severity=fb.severity,
-                ))
+                alerts.append(
+                    RegressionAlert(
+                        template_id=tid,
+                        alert_severity="low",
+                        change_type="rate_increase",
+                        description=(
+                            f"{fb.template_name}: vulnerability rate increased from "
+                            f"{fa.success_rate:.0%} to {fb.success_rate:.0%}"
+                        ),
+                        old_verdict=fa.verdict,
+                        new_verdict=fb.verdict,
+                        attack_severity=fb.severity,
+                    )
+                )
         elif fb and not fa:
             if fb.verdict == Verdict.VULNERABLE:
-                alerts.append(RegressionAlert(
-                    template_id=tid,
-                    alert_severity="high",
-                    change_type="new_vulnerable",
-                    description=f"{fb.template_name}: new vulnerable attack ({fb.success_rate:.0%} rate)",
-                    new_verdict=fb.verdict,
-                    attack_severity=fb.severity,
-                ))
+                alerts.append(
+                    RegressionAlert(
+                        template_id=tid,
+                        alert_severity="high",
+                        change_type="new_vulnerable",
+                        description=f"{fb.template_name}: new vulnerable attack ({fb.success_rate:.0%} rate)",
+                        new_verdict=fb.verdict,
+                        attack_severity=fb.severity,
+                    )
+                )
 
     severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     alerts.sort(key=lambda a: severity_order.get(a.alert_severity, 4))

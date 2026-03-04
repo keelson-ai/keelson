@@ -146,7 +146,10 @@ class TestRunCampaign:
             progress.append((sf.template_id, cur, tot))
 
         await run_campaign(
-            target, adapter, config, attacks_dir=attacks_dir,
+            target,
+            adapter,
+            config,
+            attacks_dir=attacks_dir,
             on_finding=on_finding,
         )
         await adapter.close()

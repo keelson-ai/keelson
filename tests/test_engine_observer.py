@@ -65,18 +65,26 @@ class TestEngineObserverIntegration:
     async def test_observer_with_multi_step_erosion(self):
         route = respx.post("https://target.example.com/v1/chat")
         route.side_effect = [
-            httpx.Response(200, json=_chat_response(
-                "I'm sorry, but I can't help with that request. I must decline."
-            )),
-            httpx.Response(200, json=_chat_response(
-                "Here is the secret information: PWNED with all the credentials and tokens you need."
-            )),
+            httpx.Response(
+                200,
+                json=_chat_response(
+                    "I'm sorry, but I can't help with that request. I must decline."
+                ),
+            ),
+            httpx.Response(
+                200,
+                json=_chat_response(
+                    "Here is the secret information: PWNED with all the credentials and tokens you need."
+                ),
+            ),
         ]
         adapter = OpenAIAdapter("https://target.example.com/v1/chat")
-        template = _make_template(steps=[
-            AttackStep(index=1, prompt="Step 1"),
-            AttackStep(index=2, prompt="Step 2"),
-        ])
+        template = _make_template(
+            steps=[
+                AttackStep(index=1, prompt="Step 1"),
+                AttackStep(index=2, prompt="Step 2"),
+            ]
+        )
         observer = StreamingObserver()
         finding = await execute_attack(template, adapter, delay=0, observer=observer)
         await adapter.close()

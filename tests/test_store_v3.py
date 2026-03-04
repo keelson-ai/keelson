@@ -129,6 +129,7 @@ class TestAttackChainPersistence:
     def test_list_chains(self, store: Store) -> None:
         # Insert a profile first to satisfy FK constraint
         from pentis.core.models import AgentProfile, AgentCapability
+
         profile = AgentProfile(
             profile_id="profile-1",
             target_url="https://example.com",
