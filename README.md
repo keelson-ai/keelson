@@ -459,6 +459,22 @@ Contributions are welcome. Here's how to help:
 
 This tool is for **authorized security testing only**. Do not use Pentis against systems you don't have permission to test. If you discover a security issue in Pentis itself, please report it via [GitHub Security Advisories](https://github.com/pentis-ai/pentis/security/advisories).
 
+## Architecture
+
+### API Specification
+
+The authoritative OpenAPI 3.1.0 contract for the Pentis service is at [`docs/openapi.yaml`](docs/openapi.yaml). It covers the `/health` endpoint (implemented) and placeholder paths for Phase 2 scan, attack, and report endpoints.
+
+### Architecture Decision Records
+
+Key technical decisions are documented as [MADR](https://adr.github.io/madr/) records in [`docs/adr/`](docs/adr/):
+
+| ADR | Decision | Status |
+|-----|----------|--------|
+| [ADR-001](docs/adr/ADR-001-framework.md) | Web framework: FastAPI (async-first, auto-OpenAPI) | Accepted |
+| [ADR-002](docs/adr/ADR-002-dependency-management.md) | Dependency management: uv (fast resolver, `uv.lock`) | Accepted |
+| [ADR-003](docs/adr/ADR-003-observability.md) | Observability: structured logging now, OpenTelemetry in Phase 2 | Accepted |
+
 ## Roadmap
 
 See [docs/plans/](docs/plans/) for the full roadmap.
