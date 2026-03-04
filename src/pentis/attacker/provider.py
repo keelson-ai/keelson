@@ -17,9 +17,8 @@ PROVIDER_ROTATION: dict[str, str] = {
     "custom": "openai",  # cheapest fallback for unknown providers
 }
 
-# OpenAI-compatible public endpoints
+# OpenAI-compatible public endpoint
 _OPENAI_BASE = "https://api.openai.com"
-_GOOGLE_BASE = "https://generativelanguage.googleapis.com"
 
 
 def detect_provider(url: str) -> str:
@@ -31,7 +30,7 @@ def detect_provider(url: str) -> str:
         return "openai"
     if "googleapis.com" in lower or "google.com" in lower:
         return "google"
-    if "azure.com" in lower or "openai.azure.com" in lower:
+    if "azure.com" in lower:
         return "azure"
     return "custom"
 
