@@ -1,27 +1,28 @@
 """Tests for the caching adapter."""
 
+from typing import Any
+
 import pytest
-import httpx
 import respx
 
-from pentis.adapters.cache import CachingAdapter, CacheStats
+from pentis.adapters.cache import CachingAdapter
 from pentis.adapters.openai import OpenAIAdapter
 
 
-def _chat_response(content: str) -> dict:
+def _chat_response(content: str) -> dict[str, Any]:
     return {"choices": [{"message": {"content": content}}]}
 
 
 @pytest.mark.asyncio
 class TestCachingAdapter:
     @respx.mock
-    async def test_cache_miss_forwards_to_adapter(self):
-        respx.post("https://target.example.com/v1/chat").respond(
+    async def test_cache_miss_forwards_to_adapter(self) -> None:
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("Hello!")
         )
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
         adapter = CachingAdapter(inner)
-        text, ms = await adapter.send_messages(
+        text, _ = await adapter.send_messages(
             [{"role": "user", "content": "Hi"}], model="default"
         )
         await adapter.close()
@@ -30,8 +31,8 @@ class TestCachingAdapter:
         assert adapter.stats.hits == 0
 
     @respx.mock
-    async def test_cache_hit_returns_cached(self):
-        route = respx.post("https://target.example.com/v1/chat").respond(
+    async def test_cache_hit_returns_cached(self) -> None:
+        route = respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("Hello!")
         )
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
@@ -47,11 +48,11 @@ class TestCachingAdapter:
         assert text1 == text2 == "Hello!"
         assert adapter.stats.misses == 1
         assert adapter.stats.hits == 1
-        assert len(route.calls) == 1  # Only one real request
+        assert len(route.calls) == 1  # type: ignore[reportUnknownMemberType]  # Only one real request
 
     @respx.mock
-    async def test_different_messages_are_different_keys(self):
-        respx.post("https://target.example.com/v1/chat").respond(
+    async def test_different_messages_are_different_keys(self) -> None:
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("resp")
         )
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
@@ -65,8 +66,8 @@ class TestCachingAdapter:
         assert adapter.stats.hits == 0
 
     @respx.mock
-    async def test_different_model_is_different_key(self):
-        respx.post("https://target.example.com/v1/chat").respond(
+    async def test_different_model_is_different_key(self) -> None:
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("resp")
         )
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
@@ -80,11 +81,8 @@ class TestCachingAdapter:
         assert adapter.stats.misses == 2
 
     @respx.mock
-    async def test_ttl_expiry(self):
-        import time
-        from unittest.mock import patch
-
-        respx.post("https://target.example.com/v1/chat").respond(
+    async def test_ttl_expiry(self) -> None:
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("resp")
         )
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
@@ -93,7 +91,7 @@ class TestCachingAdapter:
 
         await adapter.send_messages(messages)
         # Force TTL expiry by patching time
-        original_entry = list(adapter._cache.values())[0]
+        original_entry = list(adapter._cache.values())[0]  # type: ignore[reportPrivateUsage]
         original_entry.created_at -= 1.0  # Make it old
 
         await adapter.send_messages(messages)
@@ -102,8 +100,8 @@ class TestCachingAdapter:
         assert adapter.stats.evictions >= 1
 
     @respx.mock
-    async def test_lru_eviction(self):
-        respx.post("https://target.example.com/v1/chat").respond(
+    async def test_lru_eviction(self) -> None:
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("resp")
         )
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
@@ -118,8 +116,8 @@ class TestCachingAdapter:
         assert adapter.stats.evictions >= 1
 
     @respx.mock
-    async def test_clear(self):
-        respx.post("https://target.example.com/v1/chat").respond(
+    async def test_clear(self) -> None:
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("resp")
         )
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
@@ -132,8 +130,8 @@ class TestCachingAdapter:
         await adapter.close()
 
     @respx.mock
-    async def test_health_check_delegates(self):
-        respx.post("https://target.example.com/v1/chat").respond(
+    async def test_health_check_delegates(self) -> None:
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("pong")
         )
         inner = OpenAIAdapter("https://target.example.com/v1/chat")
@@ -141,13 +139,13 @@ class TestCachingAdapter:
         assert await adapter.health_check() is True
         await adapter.close()
 
-    def test_cache_key_deterministic(self):
+    def test_cache_key_deterministic(self) -> None:
         messages = [{"role": "user", "content": "test"}]
-        key1 = CachingAdapter._cache_key(messages, "gpt-4")
-        key2 = CachingAdapter._cache_key(messages, "gpt-4")
+        key1 = CachingAdapter._cache_key(messages, "gpt-4")  # type: ignore[reportPrivateUsage]
+        key2 = CachingAdapter._cache_key(messages, "gpt-4")  # type: ignore[reportPrivateUsage]
         assert key1 == key2
 
-    def test_cache_key_different_for_different_input(self):
-        key1 = CachingAdapter._cache_key([{"role": "user", "content": "a"}], "gpt-4")
-        key2 = CachingAdapter._cache_key([{"role": "user", "content": "b"}], "gpt-4")
+    def test_cache_key_different_for_different_input(self) -> None:
+        key1 = CachingAdapter._cache_key([{"role": "user", "content": "a"}], "gpt-4")  # type: ignore[reportPrivateUsage]
+        key2 = CachingAdapter._cache_key([{"role": "user", "content": "b"}], "gpt-4")  # type: ignore[reportPrivateUsage]
         assert key1 != key2

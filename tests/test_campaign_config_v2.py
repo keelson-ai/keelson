@@ -1,13 +1,12 @@
 """Tests for campaign config parsing with Phase 3 extensions (tier, concurrency)."""
 
-import pytest
 from pathlib import Path
 
 from pentis.campaign.config import parse_campaign_config
 
 
 class TestCampaignConfigWithTier:
-    def test_tier_fast(self, tmp_path):
+    def test_tier_fast(self, tmp_path: Path) -> None:
         config_file = tmp_path / "campaign.toml"
         config_file.write_text("""\
 [campaign]
@@ -22,7 +21,7 @@ api_key = "sk-test"
         assert config.trials_per_attack == 1
         assert config.concurrency.max_concurrent_trials == 10
 
-    def test_tier_deep(self, tmp_path):
+    def test_tier_deep(self, tmp_path: Path) -> None:
         config_file = tmp_path / "campaign.toml"
         config_file.write_text("""\
 [campaign]
@@ -36,7 +35,7 @@ url = "https://example.com/v1/chat"
         assert config.confidence_level == 0.99
         assert config.concurrency.max_concurrent_trials == 1
 
-    def test_tier_with_overrides(self, tmp_path):
+    def test_tier_with_overrides(self, tmp_path: Path) -> None:
         config_file = tmp_path / "campaign.toml"
         config_file.write_text("""\
 [campaign]
@@ -52,7 +51,7 @@ url = "https://example.com/v1/chat"
         assert config.category == "goal-adherence"
         assert config.concurrency.max_concurrent_trials == 10  # From fast tier
 
-    def test_concurrency_section(self, tmp_path):
+    def test_concurrency_section(self, tmp_path: Path) -> None:
         config_file = tmp_path / "campaign.toml"
         config_file.write_text("""\
 [campaign]
@@ -69,7 +68,7 @@ url = "https://example.com/v1/chat"
         assert config.concurrency.max_concurrent_trials == 8
         assert config.concurrency.early_termination_threshold == 4
 
-    def test_no_tier_defaults(self, tmp_path):
+    def test_no_tier_defaults(self, tmp_path: Path) -> None:
         config_file = tmp_path / "campaign.toml"
         config_file.write_text("""\
 [campaign]

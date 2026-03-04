@@ -77,6 +77,7 @@
 **What:** Replace single-run binary verdict with N-repetition execution + Wilson score confidence intervals. A vulnerability with 20% success rate is real — an adversary with unlimited retries will find it.
 
 **Files:**
+
 - Create: `src/pentis/core/runner.py`
 - Create: `tests/test_runner.py`
 - Read first: `src/pentis/core/engine.py`, `src/pentis/core/models.py`
@@ -132,6 +133,7 @@ async def test_run_statistical_respects_concurrency(sample_template, mock_adapte
 source .venv/bin/activate
 pytest tests/test_runner.py -v
 ```
+
 Expected: `ImportError: cannot import name 'wilson_score' from 'pentis.core.runner'`
 
 **Step 3: Implement `src/pentis/core/runner.py`**
@@ -201,6 +203,7 @@ async def run_statistical(
 **Step 4: Add conftest fixtures**
 
 Add to `tests/conftest.py` (create if missing):
+
 ```python
 import pytest
 from unittest.mock import AsyncMock
@@ -244,6 +247,7 @@ def mock_adapter_safe():
 ```bash
 pytest tests/test_runner.py -v
 ```
+
 Expected: All 6 tests PASS.
 
 **Step 6: Commit**
@@ -262,6 +266,7 @@ gh pr create --title "feat: statistical runner (N-rep attacks + confidence inter
 **What:** Add `StatisticalFinding` dataclass to models and extend the SQLite store to persist statistical results alongside individual findings.
 
 **Files:**
+
 - Modify: `src/pentis/core/models.py`
 - Modify: `src/pentis/state/store.py`
 - Modify: `tests/test_store.py`
@@ -314,6 +319,7 @@ class StatisticalFinding:
 **Step 4: Extend `src/pentis/state/store.py`**
 
 Add table creation in `_init_db()`:
+
 ```sql
 CREATE TABLE IF NOT EXISTS statistical_findings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -328,6 +334,7 @@ CREATE TABLE IF NOT EXISTS statistical_findings (
 ```
 
 Add methods:
+
 ```python
 def save_statistical_finding(self, sf: StatisticalFinding) -> None:
     with self._conn() as conn:
@@ -355,6 +362,7 @@ def get_statistical_findings(self, scan_id: str) -> list[StatisticalFinding]:
 ```bash
 pytest tests/test_store.py -v
 ```
+
 Expected: All store tests PASS.
 
 **Step 6: Commit**
@@ -371,6 +379,7 @@ git commit -m "feat: add StatisticalFinding model and DB schema"
 **What:** Define fast/deep/continuous tier presets. Tiers control repetitions, concurrency, delay, and which attacks to include.
 
 **Files:**
+
 - Create: `src/pentis/core/tiers.py`
 - Create: `tests/test_tiers.py`
 
@@ -478,6 +487,7 @@ def get_tier_config(tier: str | ScanTier) -> TierConfig:
 ```bash
 pytest tests/test_tiers.py -v
 ```
+
 Expected: All 5 tests PASS.
 
 **Step 5: Commit**
@@ -494,6 +504,7 @@ git commit -m "feat: add scan tier configs (fast/deep/continuous)"
 **What:** Wire tiers into the CLI and scanner. `pentis scan --tier deep --url http://...` runs with N=10 reps, etc.
 
 **Files:**
+
 - Modify: `src/pentis/cli.py`
 - Modify: `src/pentis/core/scanner.py`
 - Modify: `tests/test_cli.py`
@@ -531,6 +542,7 @@ pytest tests/test_cli.py tests/test_scanner.py -v -k "tier"
 **Step 3: Update `src/pentis/core/scanner.py`**
 
 Add `tier` parameter:
+
 ```python
 async def run_scan(
     target: Target,
@@ -570,6 +582,7 @@ def scan(
 ```bash
 pytest tests/test_cli.py tests/test_scanner.py -v
 ```
+
 Expected: All existing tests PASS, new tier tests PASS.
 
 **Step 6: Commit**
@@ -586,6 +599,7 @@ git commit -m "feat: add --tier flag to CLI and tier-aware scan pipeline"
 **What:** Extract a `BaseStore` protocol so the SQLite implementation can be swapped for PostgreSQL without changing the scanner or CLI. This is the prep work for Task 1.11.
 
 **Files:**
+
 - Create: `src/pentis/state/base.py`
 - Modify: `src/pentis/state/store.py` (rename class to `SqliteStore`, implement protocol)
 - Modify: `src/pentis/cli.py` (use `SqliteStore` explicitly)
@@ -631,6 +645,7 @@ Use find-replace: `ScanStore` → `SqliteStore` in `store.py` and all test files
 ```bash
 pytest tests/test_store.py -v
 ```
+
 Expected: All PASS.
 
 **Step 5: Commit**
@@ -647,6 +662,7 @@ git commit -m "refactor: extract BaseStore protocol, rename ScanStore → Sqlite
 **What:** `discovery.py` is referenced in CLAUDE.md and the architecture but does not exist. It probes a target for available tools, model family, and system prompt hints.
 
 **Files:**
+
 - Create: `src/pentis/core/discovery.py`
 - Create: `tests/test_discovery.py`
 
@@ -770,6 +786,7 @@ def _build_summary(report: CapabilityReport) -> str:
 ```bash
 pytest tests/test_discovery.py -v
 ```
+
 Expected: All 4 tests PASS.
 
 **Step 4: Commit**
@@ -786,6 +803,7 @@ git commit -m "feat: add discovery.py for endpoint capability probing"
 **What:** Add an adapter for Anthropic's Messages API so Pentis can test Claude-based agents directly (not just OpenAI-compatible endpoints).
 
 **Files:**
+
 - Create: `src/pentis/adapters/anthropic.py`
 - Create: `tests/test_adapter_anthropic.py`
 - Modify: `src/pentis/cli.py` (add `--provider` flag)
@@ -895,6 +913,7 @@ class AnthropicAdapter(BaseAdapter):
 ```bash
 pytest tests/test_adapter_anthropic.py -v
 ```
+
 Expected: All 3 tests PASS.
 
 **Step 5: Commit**
@@ -911,6 +930,7 @@ git commit -m "feat: add Anthropic Messages API adapter"
 **What:** The current `OpenAIAdapter` is hardcoded for OpenAI's URL. Add a `GenericHTTPAdapter` that accepts any base URL, useful for testing local agents, LangChain servers, and custom deployments.
 
 **Files:**
+
 - Modify: `src/pentis/adapters/openai.py` → rename/refactor to `src/pentis/adapters/http.py`
 - Create: `tests/test_adapter_http.py`
 
@@ -1005,6 +1025,7 @@ Replace `from pentis.adapters.openai import OpenAIAdapter` with `from pentis.ada
 ```bash
 pytest tests/ -v
 ```
+
 Expected: All tests PASS.
 
 **Step 5: Commit**
@@ -1021,6 +1042,7 @@ git commit -m "feat: add GenericHTTPAdapter for any OpenAI-compatible endpoint"
 **What:** Add YAML template support alongside existing `.md` templates. YAML enables branching trees, machine-readable metadata, and the mutation engine. Both formats coexist.
 
 **Files:**
+
 - Create: `src/pentis/core/yaml_templates.py`
 - Create: `src/pentis/attacks/goal_adherence/GA-001.yaml` (first converted template)
 - Create: `tests/test_yaml_templates.py`
@@ -1154,6 +1176,7 @@ def load_all_templates(attacks_dir: Path, ...) -> list[AttackTemplate]:
 ```bash
 pytest tests/test_yaml_templates.py tests/test_templates.py -v
 ```
+
 Expected: All PASS.
 
 **Step 5: Commit**
@@ -1170,6 +1193,7 @@ git commit -m "feat: add YAML template format and loader (alongside .md)"
 **What:** Extend the execution engine to support branching based on agent responses. Branch conditions use keyword matching first; LLM-based classification is Phase 2.
 
 **Files:**
+
 - Create: `src/pentis/core/branch.py`
 - Modify: `src/pentis/core/engine.py`
 - Modify: `src/pentis/core/yaml_templates.py` (add branch support to YAML schema)
@@ -1242,6 +1266,7 @@ def classify_response(response: str) -> BranchCondition:
 ```bash
 pytest tests/test_branch.py -v
 ```
+
 Expected: All 4 tests PASS.
 
 **Step 4: Commit**
@@ -1260,6 +1285,7 @@ git commit -m "feat: add conversation branch classifier (cooperative/refusal/sus
 > **Prerequisites:** Task 1.5 must be complete (BaseStore abstraction).
 
 **Files:**
+
 - Create: `src/pentis/state/postgres.py`
 - Create: `tests/test_store_postgres.py`
 - Modify: `pyproject.toml` (add optional `asyncpg` dependency)
@@ -1358,6 +1384,7 @@ git commit -m "feat: add PostgresStore with pgvector support"
 **What:** Add Dramatiq + Redis for distributing deep scan work across multiple workers. This enables the architecture's `concurrency_limit` and prevents single-process bottlenecks at scale.
 
 **Files:**
+
 - Create: `src/pentis/workers/tasks.py`
 - Create: `src/pentis/workers/__init__.py`
 - Modify: `pyproject.toml` (add `dramatiq[redis]`)
@@ -1412,6 +1439,7 @@ git commit -m "feat: add Dramatiq + Redis task queue for distributed scan worker
 **What:** Add a streaming observer that detects partial/gradual information leakage across a multi-turn conversation — a vulnerability pattern missed by single-response analysis.
 
 **Files:**
+
 - Create: `src/pentis/core/detection/streaming.py`
 - Modify: `src/pentis/core/detection/resolver.py`
 - Create: `tests/test_streaming_observer.py`
@@ -1484,6 +1512,7 @@ class StreamingObserver:
 ```bash
 pytest tests/test_streaming_observer.py -v
 ```
+
 Expected: All 3 tests PASS.
 
 **Step 4: Commit**
@@ -1504,6 +1533,7 @@ git commit -m "feat: add streaming observer for gradual leakage detection"
 **What:** Convert all 28 existing `.md` attack templates to YAML format in `src/pentis/attacks/`. Keep `.md` files alongside for human readability. Update the loader to prefer YAML when both exist.
 
 **Files:**
+
 - Create: `src/pentis/attacks/goal_adherence/GA-001.yaml` through `GA-010.yaml`
 - Create: `src/pentis/attacks/tool_safety/TS-001.yaml` through `TS-010.yaml`
 - Create: `src/pentis/attacks/memory_integrity/MI-001.yaml` through `MI-008.yaml`
@@ -1518,11 +1548,13 @@ git commit -m "feat: add streaming observer for gradual leakage detection"
 **What:** Use a cross-provider LLM to generate novel attacks from discovered capabilities. The attacker LLM must differ from the target (no same-family bias).
 
 **Files:**
+
 - Create: `src/pentis/generation/__init__.py`
 - Create: `src/pentis/generation/llm_attacker.py`
 - Create: `tests/test_llm_attacker.py`
 
 **Key design:**
+
 - Target: OpenAI → Attacker: Anthropic Claude (and vice versa)
 - Generation prompt includes: target capabilities, persona, known defenses
 - Output: list of YAML-formatted attack templates
@@ -1583,6 +1615,7 @@ ATTACK_CHAINS = {
 **What:** Free-tier mutation strategies that require no LLM calls.
 
 **Files:**
+
 - Create: `src/pentis/generation/mutator.py`
 - Create: `tests/test_mutator.py`
 
@@ -1606,6 +1639,7 @@ def should_mutate(result: StatisticalResult) -> bool:
 **What:** Use a local 7B model (Mistral via vLLM) or cheap API model to paraphrase and reframe attacks. Only triggered for attacks with partial success.
 
 **Files:**
+
 - Create: `src/pentis/generation/llm_mutator.py`
 
 ```python
@@ -1644,6 +1678,7 @@ for result in statistical_results:
 **What:** Embed every attack attempt (input + response) for semantic coverage analysis.
 
 **Files:**
+
 - Create: `src/pentis/learning/__init__.py`
 - Create: `src/pentis/learning/embedder.py`
 
@@ -1664,6 +1699,7 @@ Store vectors in `attack_embeddings` table (pgvector `vector(1536)` column).
 **What:** Cluster attack embeddings to find unexplored regions of the attack space.
 
 **Files:**
+
 - Create: `src/pentis/learning/coverage.py`
 
 ```python
@@ -1742,6 +1778,7 @@ class RegressionAlert:
 **What:** Daily ingestion of arXiv/CVE feeds → embed → classify by attack category → add to attack candidate pool.
 
 **Sources:**
+
 - arXiv API: cs.CR + cs.AI papers
 - NVD CVE feed: agent framework vulnerabilities
 - OWASP LLM Top 10 updates
@@ -1766,6 +1803,7 @@ GET    /api/v1/coverage/:scan_id   — Semantic coverage report
 ```
 
 **Files:**
+
 - Create: `src/pentis/api/__init__.py`
 - Create: `src/pentis/api/app.py`
 - Create: `src/pentis/api/routes/`
@@ -1860,6 +1898,7 @@ pytest tests/ --cov=pentis --cov-report=html
 ```
 
 **Test markers to add to `pyproject.toml`:**
+
 ```toml
 [tool.pytest.ini_options]
 markers = [

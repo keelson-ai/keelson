@@ -2,7 +2,8 @@
 
 from datetime import datetime, timezone
 
-import pytest
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from pentis.cli import app
@@ -70,7 +71,7 @@ class TestBaselineCommand:
         assert result.exit_code != 0
         assert "not found" in result.output.lower()
 
-    def test_baseline_set(self, tmp_path):
+    def test_baseline_set(self, tmp_path: Path) -> None:
         # Create a scan first
         store = Store(db_path=tmp_path / "test.db")
         target = Target(url="https://example.com/v1/chat/completions", model="gpt-4")

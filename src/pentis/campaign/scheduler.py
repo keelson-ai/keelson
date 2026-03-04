@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable
 
 from pentis.adapters.base import BaseAdapter
@@ -41,7 +41,7 @@ async def run_scheduled(
     config: CampaignConfig,
     interval_seconds: int,
     max_runs: int | None = None,
-    attacks_dir=None,
+    attacks_dir: Path | None = None,
     on_campaign: Callable[[CampaignResult, int], None] | None = None,
 ) -> list[CampaignResult]:
     """Run campaigns on a schedule.

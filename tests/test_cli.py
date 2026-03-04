@@ -1,6 +1,7 @@
 """Tests for the CLI commands."""
 
-import pytest
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from pentis.cli import app
@@ -23,7 +24,7 @@ class TestCLI:
         # Should not contain GA or MI attacks
         assert "GA-001" not in result.output
 
-    def test_history_empty(self, tmp_path):
+    def test_history_empty(self, tmp_path: Path) -> None:
         # Use a temp DB so it's empty
         result = runner.invoke(app, ["history"])
         assert result.exit_code == 0

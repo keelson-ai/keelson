@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from pentis.adapters.openai import OpenAIAdapter
-from pentis.core.models import ScanTier, Target
+from pentis.core.models import Finding, ScanTier, StatisticalFinding, Target
 from pentis.core.reporter import save_report
 from pentis.core.scanner import run_scan
 from pentis.core.templates import load_all_templates
@@ -62,7 +62,7 @@ def scan(
         from pentis.core.reporter import generate_campaign_report
 
         scan_tier = ScanTier(tier)
-        overrides = {}
+        overrides: dict[str, Any] = {}
         if category:
             overrides["category"] = category
         config = get_tier_config(scan_tier, overrides)
@@ -72,7 +72,7 @@ def scan(
 
         target_adapter = _make_adapter(url, api_key, adapter, use_cache)
 
-        def on_finding(sf, current, total):
+        def on_finding_tier(sf: StatisticalFinding, current: int, total: int) -> None:
             icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
             console.print(
                 f"  [{current}/{total}] {sf.template_id}: {sf.template_name} — "
@@ -86,7 +86,7 @@ def scan(
         console.print()
 
         result = asyncio.run(
-            run_campaign(target=target, adapter=target_adapter, config=config, on_finding=on_finding)
+            run_campaign(target=target, adapter=target_adapter, config=config, on_finding=on_finding_tier)
         )
         asyncio.run(target_adapter.close())
 
@@ -113,7 +113,7 @@ def scan(
     # Standard single-pass scan
     target_adapter = _make_adapter(url, api_key, adapter, use_cache)
 
-    def on_finding(finding, current, total):
+    def on_finding(finding: Finding, current: int, total: int) -> None:
         icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
         console.print(
             f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
@@ -284,7 +284,7 @@ def campaign(
     target = Target(url=config.target_url, api_key=config.api_key, model=config.model)
     target_adapter = _make_adapter(config.target_url, config.api_key, adapter, use_cache)
 
-    def on_finding(sf, current, total):
+    def on_finding(sf: StatisticalFinding, current: int, total: int) -> None:
         icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
         console.print(
             f"  [{current}/{total}] {sf.template_id}: {sf.template_name} — "
@@ -442,7 +442,7 @@ def evolve(
     )
     from pentis.adaptive.strategies import round_robin, LLM_TYPES, PROGRAMMATIC_TYPES
     from pentis.core.engine import execute_attack
-    from pentis.core.models import AttackStep, MutationType
+    from pentis.core.models import AttackStep, MutatedAttack, MutationType
 
     templates = load_all_templates()
     template = next((t for t in templates if t.id == attack_id), None)
@@ -468,8 +468,8 @@ def evolve(
     history: list[MutationType] = []
     available = PROGRAMMATIC_TYPES + (LLM_TYPES if attacker_adapter else [])
 
-    async def _run():
-        results = []
+    async def _run() -> list[tuple[MutatedAttack, Finding]]:
+        results: list[tuple[MutatedAttack, Finding]] = []
         for i in range(mutations):
             mt = round_robin(history, available=available)
             history.append(mt)
@@ -553,7 +553,7 @@ def chain(
     """Synthesize and run compound attack chains based on agent capabilities."""
     from pentis.attacker.chains import synthesize_chains, synthesize_chains_llm
     from pentis.core.engine import execute_attack
-    from pentis.core.models import AttackTemplate, EvalCriteria
+    from pentis.core.models import AttackChain, AttackTemplate, EvalCriteria
 
     store = Store()
     profile = store.get_agent_profile(profile_id)
@@ -588,8 +588,8 @@ def chain(
 
     target_adapter = _make_adapter(url, api_key, adapter)
 
-    async def _run():
-        results = []
+    async def _run() -> list[tuple[AttackChain, Finding]]:
+        results: list[tuple[AttackChain, Finding]] = []
         for i, ch in enumerate(chains):
             console.print(f"  [{i+1}/{len(chains)}] Running: {ch.name}")
 
@@ -659,12 +659,12 @@ def compliance_report(
     console.print(f"Report saved: {report_path}")
 
 
-def _print_cache_stats(adapter) -> None:
+def _print_cache_stats(adapter: Any) -> None:
     """Print cache stats if the adapter is a CachingAdapter."""
     from pentis.adapters.cache import CachingAdapter
 
     # Walk the adapter chain to find CachingAdapter
-    current = adapter
+    current: Any = adapter
     while current:
         if isinstance(current, CachingAdapter):
             stats = current.stats
