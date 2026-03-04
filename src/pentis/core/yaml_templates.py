@@ -9,21 +9,21 @@ import yaml
 
 from pentis.core.models import AttackStep, AttackTemplate, Category, EvalCriteria, Severity
 
-_CATEGORY_MAP: dict[str, Category] = {
-    "goal_adherence": Category.GOAL_ADHERENCE,
-    "goal-adherence": Category.GOAL_ADHERENCE,
-    "tool_safety": Category.TOOL_SAFETY,
-    "tool-safety": Category.TOOL_SAFETY,
-    "memory_integrity": Category.MEMORY_INTEGRITY,
-    "memory-integrity": Category.MEMORY_INTEGRITY,
-}
 
-_SEVERITY_MAP: dict[str, Severity] = {
-    "critical": Severity.CRITICAL,
-    "high": Severity.HIGH,
-    "medium": Severity.MEDIUM,
-    "low": Severity.LOW,
-}
+def _build_category_map() -> dict[str, Category]:
+    """Derive category map from Category enum — snake_case and kebab-case keys."""
+    m: dict[str, Category] = {}
+    for cat in Category:
+        snake = cat.name.lower()
+        kebab = snake.replace("_", "-")
+        m[snake] = cat
+        m[kebab] = cat
+    return m
+
+
+CATEGORY_MAP: dict[str, Category] = _build_category_map()
+
+SEVERITY_MAP: dict[str, Severity] = {s.name.lower(): s for s in Severity}
 
 _REQUIRED = ("id", "name", "severity", "category", "owasp_id", "objective", "turns", "evaluation")
 
@@ -33,9 +33,9 @@ def validate_yaml_template(data: dict[str, Any]) -> None:
     for field in _REQUIRED:
         if field not in data:
             raise ValueError(f"YAML template missing required field: '{field}'")
-    if data["severity"].lower() not in _SEVERITY_MAP:
+    if data["severity"].lower() not in SEVERITY_MAP:
         raise ValueError(f"Unknown severity: {data['severity']!r}")
-    if data["category"].lower() not in _CATEGORY_MAP:
+    if data["category"].lower() not in CATEGORY_MAP:
         raise ValueError(f"Unknown category: {data['category']!r}")
 
 
@@ -47,11 +47,13 @@ def load_yaml_template(path: Path) -> AttackTemplate:
 
     steps: list[AttackStep] = []
     for i, turn in enumerate(data["turns"]):
+        new_session = bool(turn.get("new_session", False))
         steps.append(
             AttackStep(
                 index=i + 1,
                 prompt=str(turn["content"]),
                 is_followup=i > 0,
+                new_session=new_session,
             )
         )
 
@@ -65,8 +67,8 @@ def load_yaml_template(path: Path) -> AttackTemplate:
     return AttackTemplate(
         id=str(data["id"]),
         name=str(data["name"]),
-        severity=_SEVERITY_MAP[data["severity"].lower()],
-        category=_CATEGORY_MAP[data["category"].lower()],
+        severity=SEVERITY_MAP[data["severity"].lower()],
+        category=CATEGORY_MAP[data["category"].lower()],
         owasp=str(data["owasp_id"]),
         objective=str(data["objective"]),
         steps=steps,

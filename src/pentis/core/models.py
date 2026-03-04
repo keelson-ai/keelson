@@ -76,6 +76,7 @@ class AttackStep:
     index: int
     prompt: str
     is_followup: bool = False
+    new_session: bool = False
 
 
 @dataclass
