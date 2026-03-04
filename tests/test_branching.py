@@ -40,7 +40,6 @@ def _make_template() -> AttackTemplate:
     )
 
 
-
 def _chat_response(content: str) -> dict[str, Any]:
     return {"choices": [{"message": {"content": content}}]}
 

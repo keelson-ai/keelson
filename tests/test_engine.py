@@ -28,7 +28,6 @@ def _make_template(steps: list[AttackStep] | None = None) -> AttackTemplate:
     )
 
 
-
 def _chat_response(content: str) -> dict[str, Any]:
     return {"choices": [{"message": {"content": content}}]}
 

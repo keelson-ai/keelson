@@ -75,7 +75,9 @@ def weighted_by_history(
     return random.choices(pool, weights=weights, k=1)[0]
 
 
-def should_mutate(success_rate: float, low_threshold: float = 0.05, high_threshold: float = 0.80) -> bool:
+def should_mutate(
+    success_rate: float, low_threshold: float = 0.05, high_threshold: float = 0.80
+) -> bool:
     """Return True when a partial success rate warrants mutation attempts.
 
     The sweet spot is attacks that sometimes succeed (above noise) but aren't

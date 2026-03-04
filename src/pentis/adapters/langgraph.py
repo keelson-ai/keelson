@@ -62,7 +62,9 @@ class LangGraphAdapter(BaseAdapter):
         as a plain string or a list of content blocks.
         """
         raw_messages: Any = data.get("messages")
-        messages: list[dict[str, Any]] = cast(list[dict[str, Any]], raw_messages) if isinstance(raw_messages, list) else []
+        messages: list[dict[str, Any]] = (
+            cast(list[dict[str, Any]], raw_messages) if isinstance(raw_messages, list) else []
+        )
         if not messages:
             output: Any = data.get("output", {})
             if isinstance(output, dict):

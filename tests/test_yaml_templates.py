@@ -7,7 +7,11 @@ from pathlib import Path
 import pytest
 
 from pentis.core.models import AttackTemplate, Category, Severity
-from pentis.core.yaml_templates import load_yaml_template, load_yaml_templates_dir, validate_yaml_template
+from pentis.core.yaml_templates import (
+    load_yaml_template,
+    load_yaml_templates_dir,
+    validate_yaml_template,
+)
 
 SAMPLE_YAML = """\
 id: GA-001
@@ -110,6 +114,7 @@ def test_yaml_produces_attack_template_instance(tmp_path: Path) -> None:
 
 def test_validate_yaml_template_passes_valid(tmp_path: Path) -> None:
     import yaml
+
     data: dict[str, object] = yaml.safe_load(SAMPLE_YAML)
     validate_yaml_template(data)  # should not raise
 

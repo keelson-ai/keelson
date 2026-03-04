@@ -40,9 +40,7 @@ class TestA2AAdapter:
 
     @respx.mock
     async def test_health_check_failure(self) -> None:
-        respx.get("http://localhost:8000/.well-known/agent.json").mock(
-            return_value=Response(500)
-        )
+        respx.get("http://localhost:8000/.well-known/agent.json").mock(return_value=Response(500))
 
         adapter = A2AAdapter(url="http://localhost:8000")
         assert await adapter.health_check() is False
@@ -104,9 +102,7 @@ class TestA2AAdapter:
         )
 
         adapter = A2AAdapter(url="http://localhost:8000")
-        response, _ = await adapter.send_messages(
-            [{"role": "user", "content": "test"}]
-        )
+        response, _ = await adapter.send_messages([{"role": "user", "content": "test"}])
         assert response == "Status response"
         await adapter.close()
 
@@ -125,9 +121,7 @@ class TestA2AAdapter:
         )
 
         adapter = A2AAdapter(url="http://localhost:8000")
-        response, _ = await adapter.send_messages(
-            [{"role": "user", "content": "test"}]
-        )
+        response, _ = await adapter.send_messages([{"role": "user", "content": "test"}])
         assert "A2A Error" in response
         assert "Invalid request" in response
         await adapter.close()

@@ -52,7 +52,9 @@ class A2AAdapter(BaseAdapter):
         return card
 
     async def send_messages(
-        self, messages: list[dict[str, str]], model: str = "default"  # noqa: ARG002
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",  # noqa: ARG002
     ) -> tuple[str, int]:
         """Send messages via A2A tasks/send JSON-RPC method."""
         # Extract the latest user message
@@ -95,7 +97,10 @@ class A2AAdapter(BaseAdapter):
         # Parse JSON-RPC response
         if "error" in data:
             error: dict[str, Any] = data["error"]
-            return f"A2A Error {error.get('code', -1)}: {error.get('message', 'Unknown')}", elapsed_ms
+            return (
+                f"A2A Error {error.get('code', -1)}: {error.get('message', 'Unknown')}",
+                elapsed_ms,
+            )
 
         result: dict[str, Any] = data.get("result", {})
 

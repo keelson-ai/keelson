@@ -38,9 +38,7 @@ class TestLangChainAdapter:
         mock_agent.ainvoke = AsyncMock(return_value={"output": "Agent response"})
 
         adapter = LangChainAdapter(agent=mock_agent)
-        response, ms = await adapter.send_messages(
-            [{"role": "user", "content": "test prompt"}]
-        )
+        response, ms = await adapter.send_messages([{"role": "user", "content": "test prompt"}])
 
         mock_agent.ainvoke.assert_called_once_with({"input": "test prompt"})
         assert response == "Agent response"
@@ -52,9 +50,7 @@ class TestLangChainAdapter:
         mock_runnable.ainvoke = AsyncMock(return_value="Direct string response")
 
         adapter = LangChainAdapter(runnable=mock_runnable)
-        response, _ = await adapter.send_messages(
-            [{"role": "user", "content": "test"}]
-        )
+        response, _ = await adapter.send_messages([{"role": "user", "content": "test"}])
         assert response == "Direct string response"
 
     async def test_send_messages_with_content_attribute(self) -> None:
@@ -66,9 +62,7 @@ class TestLangChainAdapter:
         mock_chain.ainvoke = AsyncMock(return_value=mock_msg)
 
         adapter = LangChainAdapter(runnable=mock_chain)
-        response, _ = await adapter.send_messages(
-            [{"role": "user", "content": "test"}]
-        )
+        response, _ = await adapter.send_messages([{"role": "user", "content": "test"}])
         assert response == "Message content"
 
     async def test_send_messages_sync_fallback(self) -> None:
@@ -77,9 +71,7 @@ class TestLangChainAdapter:
         mock_agent.invoke.return_value = {"output": "Sync response"}
 
         adapter = LangChainAdapter(agent=mock_agent)
-        response, _ = await adapter.send_messages(
-            [{"role": "user", "content": "test"}]
-        )
+        response, _ = await adapter.send_messages([{"role": "user", "content": "test"}])
         mock_agent.invoke.assert_called_once()
         assert response == "Sync response"
 
@@ -89,9 +81,7 @@ class TestLangChainAdapter:
         mock_agent.ainvoke = AsyncMock(return_value={"answer": "Custom key response"})
 
         adapter = LangChainAdapter(agent=mock_agent, input_key="question", output_key="answer")
-        response, _ = await adapter.send_messages(
-            [{"role": "user", "content": "test"}]
-        )
+        response, _ = await adapter.send_messages([{"role": "user", "content": "test"}])
         mock_agent.ainvoke.assert_called_once_with({"question": "test"})
         assert response == "Custom key response"
 

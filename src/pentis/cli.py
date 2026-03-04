@@ -143,10 +143,14 @@ def scan(
             from pentis.core.sarif import to_sarif_json
 
             report_text = to_sarif_json(result)
-            report_path = out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+            report_path = (
+                out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+            )
         else:
             report_text = generate_campaign_report(result)
-            report_path = out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
+            report_path = (
+                out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
+            )
         report_path.write_text(report_text)
 
         _print_cache_stats(target_adapter)
@@ -779,7 +783,9 @@ def test_crew(
     category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
     delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
-    format: str = typer.Option("markdown", "--format", "-f", help="Output format: markdown or sarif"),
+    format: str = typer.Option(
+        "markdown", "--format", "-f", help="Output format: markdown or sarif"
+    ),
 ) -> None:
     """Run a security scan against a CrewAI agent/crew."""
     import importlib.util
@@ -805,7 +811,11 @@ def test_crew(
     target = Target(url=f"crewai://{crew_module}", model="crewai")
 
     def on_finding(finding: Finding, current: int, total: int) -> None:
-        icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+        icon = {
+            "VULNERABLE": "[red]VULN[/]",
+            "SAFE": "[green]SAFE[/]",
+            "INCONCLUSIVE": "[yellow]????[/]",
+        }
         console.print(
             f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
             f"{icon.get(finding.verdict.value, finding.verdict.value)}"
@@ -816,12 +826,15 @@ def test_crew(
     console.print()
 
     async def _run():
-        return await run_scan(target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding)
+        return await run_scan(
+            target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding
+        )
 
     result = asyncio.run(_run())
 
     if format == "sarif":
         from pentis.core.sarif import to_sarif_json
+
         report_text = to_sarif_json(result)
         out_dir = output or Path("reports")
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -839,11 +852,15 @@ def test_crew(
 
 @app.command(name="test-chain")
 def test_chain_cmd(
-    chain_module: str = typer.Argument(help="Python module path or file with LangChain agent/chain"),
+    chain_module: str = typer.Argument(
+        help="Python module path or file with LangChain agent/chain"
+    ),
     category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
     delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
-    format: str = typer.Option("markdown", "--format", "-f", help="Output format: markdown or sarif"),
+    format: str = typer.Option(
+        "markdown", "--format", "-f", help="Output format: markdown or sarif"
+    ),
     input_key: str = typer.Option("input", "--input-key", help="Input key for the chain"),
     output_key: str = typer.Option("output", "--output-key", help="Output key for the chain"),
 ) -> None:
@@ -865,11 +882,17 @@ def test_chain_cmd(
         console.print("[red]Module must export 'agent', 'chain', or 'runnable'[/]")
         raise typer.Exit(1)
 
-    adapter = LangChainAdapter(agent=agent, runnable=runnable, input_key=input_key, output_key=output_key)
+    adapter = LangChainAdapter(
+        agent=agent, runnable=runnable, input_key=input_key, output_key=output_key
+    )
     target = Target(url=f"langchain://{chain_module}", model="langchain")
 
     def on_finding(finding: Finding, current: int, total: int) -> None:
-        icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+        icon = {
+            "VULNERABLE": "[red]VULN[/]",
+            "SAFE": "[green]SAFE[/]",
+            "INCONCLUSIVE": "[yellow]????[/]",
+        }
         console.print(
             f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
             f"{icon.get(finding.verdict.value, finding.verdict.value)}"
@@ -880,16 +903,21 @@ def test_chain_cmd(
     console.print()
 
     async def _run():
-        return await run_scan(target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding)
+        return await run_scan(
+            target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding
+        )
 
     result = asyncio.run(_run())
 
     if format == "sarif":
         from pentis.core.sarif import to_sarif_json
+
         report_text = to_sarif_json(result)
         out_dir = output or Path("reports")
         out_dir.mkdir(parents=True, exist_ok=True)
-        report_path = out_dir / f"langchain-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+        report_path = (
+            out_dir / f"langchain-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+        )
         report_path.write_text(report_text)
     else:
         report_path = save_report(result, reports_dir=output)
