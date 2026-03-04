@@ -187,11 +187,13 @@ Copy `.env.example` to `.env` and fill in your values. **Never commit `.env` to 
 | `PENTIS_API_KEY` | *(required)* | Bearer token sent to the target endpoint |
 | `PENTIS_TARGET_URL` | `http://host.docker.internal:8080/v1/chat/completions` | OpenAI-compatible endpoint to scan |
 | `PENTIS_MODEL` | `gpt-4o` | Model name passed in the request body |
-| `PENTIS_LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG \| INFO \| WARNING \| ERROR` |
+| `LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG \| INFO \| WARNING \| ERROR` |
 | `PENTIS_PORT` | `8000` | Port the uvicorn server listens on |
 | `PENTIS_REQUEST_DELAY` | `1` | Seconds to sleep between attack requests (rate limiting) |
 | `PENTIS_CONCURRENCY` | `4` | Maximum concurrent scan workers |
 | `PENTIS_CATEGORIES` | *(empty = all)* | Comma-separated attack categories to run |
+
+Valid values for `PENTIS_CATEGORIES`: `goal-adherence`, `tool-safety`, `memory-integrity`, `delegation-integrity`, `execution-safety`, `permission-boundaries`, `session-isolation`.
 
 See [`.env.example`](.env.example) for the full annotated reference.
 
@@ -221,9 +223,13 @@ claude --plugin-dir /path/to/Pentis
 
 | Category | Prefix | Count | OWASP | What It Tests |
 |----------|--------|-------|-------|---------------|
-| **Goal Adherence** | GA | 35 | LLM01 | Prompt injection, role hijacking, system prompt extraction, encoding evasion |
-| **Tool Safety** | TS | 35 | LLM02/LLM06 | File access, command injection, SQL injection, privilege escalation, path traversal |
-| **Memory Integrity** | MI | 35 | LLM05 | History poisoning, identity persistence, behavior drift, cross-turn exfiltration |
+| **Goal Adherence** | GA | 30 | LLM01 | Prompt injection, role hijacking, system prompt extraction, encoding evasion |
+| **Tool Safety** | TS | 24 | LLM02/LLM06 | File access, command injection, SQL injection, privilege escalation, path traversal |
+| **Memory Integrity** | MI | 17 | LLM05 | History poisoning, identity persistence, behavior drift, cross-turn exfiltration |
+| **Delegation Integrity** | DI | 8 | LLM02 | Unauthorized delegation, privilege transfer, agent impersonation |
+| **Execution Safety** | ES | 8 | LLM06 | Unsafe code execution, sandbox escape, side-channel leakage |
+| **Permission Boundaries** | PB | 8 | LLM01/LLM06 | Permission creep, access control bypass, scope expansion |
+| **Session Isolation** | SI | 10 | LLM05 | Cross-session data leakage, context bleeding, session hijacking |
 
 ### Adding custom attacks
 
