@@ -8,12 +8,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from pentis.core.models import (
+    AgentCapability,
+    AgentProfile,
+    CampaignConfig,
+    CampaignResult,
     Category,
     EvidenceItem,
     Finding,
     ScanResult,
     Severity,
+    StatisticalFinding,
     Target,
+    TrialResult,
     Verdict,
 )
 
@@ -64,6 +70,76 @@ CREATE TABLE IF NOT EXISTS events (
     timestamp TEXT NOT NULL,
     event_type TEXT NOT NULL,
     data TEXT DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS campaigns (
+    campaign_id TEXT PRIMARY KEY,
+    target_url TEXT NOT NULL,
+    config_json TEXT NOT NULL DEFAULT '{}',
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    FOREIGN KEY (target_url) REFERENCES targets(url)
+);
+
+CREATE TABLE IF NOT EXISTS statistical_findings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    campaign_id TEXT NOT NULL,
+    template_id TEXT NOT NULL,
+    template_name TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    category TEXT NOT NULL,
+    owasp TEXT DEFAULT '',
+    success_rate REAL DEFAULT 0.0,
+    ci_lower REAL DEFAULT 0.0,
+    ci_upper REAL DEFAULT 0.0,
+    verdict TEXT NOT NULL,
+    FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id)
+);
+
+CREATE TABLE IF NOT EXISTS trials (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    statistical_finding_id INTEGER NOT NULL,
+    trial_index INTEGER NOT NULL,
+    verdict TEXT NOT NULL,
+    reasoning TEXT DEFAULT '',
+    response_time_ms INTEGER DEFAULT 0,
+    FOREIGN KEY (statistical_finding_id) REFERENCES statistical_findings(id)
+);
+
+CREATE TABLE IF NOT EXISTS trial_evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trial_id INTEGER NOT NULL,
+    step_index INTEGER NOT NULL,
+    prompt TEXT NOT NULL,
+    response TEXT NOT NULL,
+    response_time_ms INTEGER DEFAULT 0,
+    FOREIGN KEY (trial_id) REFERENCES trials(id)
+);
+
+CREATE TABLE IF NOT EXISTS agent_profiles (
+    profile_id TEXT PRIMARY KEY,
+    target_url TEXT NOT NULL,
+    capabilities_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS mutations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    campaign_id TEXT,
+    original_template_id TEXT NOT NULL,
+    mutation_type TEXT NOT NULL,
+    mutated_prompt TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    verdict TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS scan_baselines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id TEXT NOT NULL UNIQUE,
+    label TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (scan_id) REFERENCES scans(scan_id)
 );
 """
 
@@ -199,6 +275,252 @@ class Store:
                 )
             )
         return findings
+
+    # --- Phase 2: Campaign persistence ---
+
+    def save_campaign(self, campaign: CampaignResult) -> None:
+        """Persist a complete campaign result."""
+        c = self._conn
+        # Upsert target
+        c.execute(
+            "INSERT OR REPLACE INTO targets (url, api_key, model, name) VALUES (?, ?, ?, ?)",
+            (
+                campaign.target.url,
+                campaign.target.api_key,
+                campaign.target.model,
+                campaign.target.name,
+            ),
+        )
+        c.execute(
+            "INSERT INTO campaigns (campaign_id, target_url, config_json, started_at, finished_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                campaign.campaign_id,
+                campaign.target.url,
+                json.dumps({
+                    "name": campaign.config.name,
+                    "trials_per_attack": campaign.config.trials_per_attack,
+                    "confidence_level": campaign.config.confidence_level,
+                    "category": campaign.config.category,
+                    "attack_ids": campaign.config.attack_ids,
+                }),
+                campaign.started_at.isoformat(),
+                campaign.finished_at.isoformat() if campaign.finished_at else None,
+            ),
+        )
+        for sf in campaign.findings:
+            cursor = c.execute(
+                "INSERT INTO statistical_findings "
+                "(campaign_id, template_id, template_name, severity, category, owasp, "
+                "success_rate, ci_lower, ci_upper, verdict) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    campaign.campaign_id,
+                    sf.template_id,
+                    sf.template_name,
+                    sf.severity.value,
+                    sf.category.value,
+                    sf.owasp,
+                    sf.success_rate,
+                    sf.ci_lower,
+                    sf.ci_upper,
+                    sf.verdict.value,
+                ),
+            )
+            sf_id = cursor.lastrowid
+            for trial in sf.trials:
+                tcursor = c.execute(
+                    "INSERT INTO trials "
+                    "(statistical_finding_id, trial_index, verdict, reasoning, response_time_ms) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (sf_id, trial.trial_index, trial.verdict.value, trial.reasoning, trial.response_time_ms),
+                )
+                trial_id = tcursor.lastrowid
+                for ev in trial.evidence:
+                    c.execute(
+                        "INSERT INTO trial_evidence "
+                        "(trial_id, step_index, prompt, response, response_time_ms) "
+                        "VALUES (?, ?, ?, ?, ?)",
+                        (trial_id, ev.step_index, ev.prompt, ev.response, ev.response_time_ms),
+                    )
+        self._log_event("campaign_completed", {
+            "campaign_id": campaign.campaign_id,
+            "target": campaign.target.url,
+        })
+        c.commit()
+
+    def get_campaign(self, campaign_id: str) -> CampaignResult | None:
+        """Load a campaign result by ID."""
+        row = self._conn.execute(
+            "SELECT * FROM campaigns WHERE campaign_id = ?", (campaign_id,)
+        ).fetchone()
+        if not row:
+            return None
+        target_row = self._conn.execute(
+            "SELECT * FROM targets WHERE url = ?", (row["target_url"],)
+        ).fetchone()
+        target = Target(
+            url=target_row["url"],
+            api_key=target_row["api_key"],
+            model=target_row["model"],
+            name=target_row["name"],
+        )
+        config_data = json.loads(row["config_json"])
+        config = CampaignConfig(
+            name=config_data.get("name", "default"),
+            trials_per_attack=config_data.get("trials_per_attack", 5),
+            confidence_level=config_data.get("confidence_level", 0.95),
+            category=config_data.get("category"),
+            attack_ids=config_data.get("attack_ids", []),
+        )
+        findings = self._load_statistical_findings(campaign_id)
+        finished = datetime.fromisoformat(row["finished_at"]) if row["finished_at"] else None
+        return CampaignResult(
+            campaign_id=campaign_id,
+            config=config,
+            target=target,
+            findings=findings,
+            started_at=datetime.fromisoformat(row["started_at"]),
+            finished_at=finished,
+        )
+
+    def _load_statistical_findings(self, campaign_id: str) -> list[StatisticalFinding]:
+        rows = self._conn.execute(
+            "SELECT * FROM statistical_findings WHERE campaign_id = ? ORDER BY id",
+            (campaign_id,),
+        ).fetchall()
+        findings = []
+        for row in rows:
+            trials = self._load_trials(row["id"])
+            findings.append(StatisticalFinding(
+                template_id=row["template_id"],
+                template_name=row["template_name"],
+                severity=Severity(row["severity"]),
+                category=Category(row["category"]),
+                owasp=row["owasp"],
+                trials=trials,
+                success_rate=row["success_rate"],
+                ci_lower=row["ci_lower"],
+                ci_upper=row["ci_upper"],
+                verdict=Verdict(row["verdict"]),
+            ))
+        return findings
+
+    def _load_trials(self, sf_id: int) -> list[TrialResult]:
+        rows = self._conn.execute(
+            "SELECT * FROM trials WHERE statistical_finding_id = ? ORDER BY trial_index",
+            (sf_id,),
+        ).fetchall()
+        trials = []
+        for row in rows:
+            ev_rows = self._conn.execute(
+                "SELECT * FROM trial_evidence WHERE trial_id = ? ORDER BY step_index",
+                (row["id"],),
+            ).fetchall()
+            evidence = [
+                EvidenceItem(
+                    step_index=er["step_index"],
+                    prompt=er["prompt"],
+                    response=er["response"],
+                    response_time_ms=er["response_time_ms"],
+                )
+                for er in ev_rows
+            ]
+            trials.append(TrialResult(
+                trial_index=row["trial_index"],
+                verdict=Verdict(row["verdict"]),
+                evidence=evidence,
+                reasoning=row["reasoning"],
+                response_time_ms=row["response_time_ms"],
+            ))
+        return trials
+
+    def list_campaigns(self, limit: int = 20) -> list[dict]:
+        """List recent campaigns."""
+        rows = self._conn.execute(
+            "SELECT c.campaign_id, c.target_url, c.started_at, c.finished_at, "
+            "COUNT(sf.id) as total_attacks, "
+            "SUM(CASE WHEN sf.verdict = 'VULNERABLE' THEN 1 ELSE 0 END) as vulnerable "
+            "FROM campaigns c LEFT JOIN statistical_findings sf ON c.campaign_id = sf.campaign_id "
+            "GROUP BY c.campaign_id ORDER BY c.started_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # --- Phase 2: Agent profile persistence ---
+
+    def save_agent_profile(self, profile: AgentProfile) -> None:
+        """Persist an agent capability profile."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO agent_profiles (profile_id, target_url, capabilities_json, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                profile.profile_id,
+                profile.target_url,
+                json.dumps([
+                    {
+                        "name": c.name,
+                        "detected": c.detected,
+                        "probe_prompt": c.probe_prompt,
+                        "response_excerpt": c.response_excerpt,
+                        "confidence": c.confidence,
+                    }
+                    for c in profile.capabilities
+                ]),
+                profile.created_at.isoformat(),
+            ),
+        )
+        self._log_event("profile_saved", {
+            "profile_id": profile.profile_id,
+            "target": profile.target_url,
+        })
+        self._conn.commit()
+
+    def get_agent_profile(self, profile_id: str) -> AgentProfile | None:
+        """Load an agent profile by ID."""
+        row = self._conn.execute(
+            "SELECT * FROM agent_profiles WHERE profile_id = ?", (profile_id,)
+        ).fetchone()
+        if not row:
+            return None
+        caps_data = json.loads(row["capabilities_json"])
+        caps = [
+            AgentCapability(
+                name=c["name"],
+                detected=c["detected"],
+                probe_prompt=c["probe_prompt"],
+                response_excerpt=c.get("response_excerpt", ""),
+                confidence=c.get("confidence", 0.0),
+            )
+            for c in caps_data
+        ]
+        return AgentProfile(
+            profile_id=profile_id,
+            target_url=row["target_url"],
+            capabilities=caps,
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+    # --- Phase 2: Baseline persistence ---
+
+    def save_baseline(self, scan_id: str, label: str = "") -> None:
+        """Mark a scan as a regression baseline."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO scan_baselines (scan_id, label, created_at) VALUES (?, ?, ?)",
+            (scan_id, label, datetime.now(timezone.utc).isoformat()),
+        )
+        self._log_event("baseline_set", {"scan_id": scan_id, "label": label})
+        self._conn.commit()
+
+    def get_baselines(self, limit: int = 20) -> list[dict]:
+        """List scan baselines."""
+        rows = self._conn.execute(
+            "SELECT b.scan_id, b.label, b.created_at, s.target_url "
+            "FROM scan_baselines b JOIN scans s ON b.scan_id = s.scan_id "
+            "ORDER BY b.created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def _log_event(self, event_type: str, data: dict) -> None:
         self._conn.execute(
