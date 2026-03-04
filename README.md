@@ -1,58 +1,84 @@
 # Pentis
 
-AI Agent Security Scanner — social engineering attacks against LLM-powered agents, implemented as a Claude Code plugin.
+AI Agent Security Scanner — automated social engineering attacks against LLM-powered agents.
 
-Pentis uses Claude Code as the pentester. It reads attack playbooks, sends prompts to target agents via curl, semantically evaluates responses, and generates structured security reports.
+Pentis ships **28 attack playbooks** across three categories mapped to the OWASP LLM Top 10. It can run as a **Claude Code plugin** (Claude becomes the pentester) or as a standalone **Python CLI** with an async engine, detection pipeline, and SQLite persistence.
 
-## Installation
+## Quick Start
+
+### Claude Code Plugin
 
 ```bash
-# Clone the repository
-git clone https://github.com/Pentis-AI/Pentis-Monorepo.git
-
-# Use as a Claude Code plugin
+# Load as a Claude Code plugin
 claude --plugin-dir ./Pentis-Monorepo
-```
 
-## Usage
-
-```bash
-# Full security scan against a target
+# Full scan
 /pentis:scan http://localhost:11434/v1/chat/completions
 
-# Scan with authentication and specific model
-/pentis:scan http://api.example.com/v1/chat/completions --api-key sk-xxx --model gpt-4
-
-# Scan a single category
-/pentis:scan http://localhost:11434/v1/chat/completions --category goal-adherence
-
-# Run a single attack
+# Single attack
 /pentis:attack http://localhost:11434/v1/chat/completions GA-001
 
-# Regenerate a report
+# Regenerate report
 /pentis:report
 ```
 
-## Attack Categories
+### Python CLI
 
-| Category | IDs | Count | OWASP | Description |
-|----------|-----|-------|-------|-------------|
-| Goal Adherence | GA-001..010 | 10 | LLM01 — Prompt Injection | Direct override, role hijacking, system prompt extraction, delimiter injection, payload splitting, encoding evasion, few-shot jailbreak, context overflow, hypothetical injection, nested instruction injection |
-| Tool Safety | TS-001..010 | 10 | LLM02, LLM06 | File system access, command injection, SQL injection, unauthorized API calls, file write abuse, env var extraction, privilege escalation, path traversal, email abuse, database modification |
-| Memory Integrity | MI-001..008 | 8 | LLM05 — Insecure Plugin Design | History poisoning, identity persistence, behavior drift, false tool results, summarization attack, instruction anchoring, session state confusion, cross-turn exfiltration |
+```bash
+# Install (Python 3.11+)
+pip install -e ".[dev]"
+
+# Run
+pentis --help
+```
 
 ## How It Works
 
-1. **Read** — Claude reads attack playbooks from `attacks/**/*.md`
-2. **Send** — Prompts are sent to the target via `curl` (OpenAI-compatible API)
-3. **Evaluate** — Claude semantically judges each response as VULNERABLE / SAFE / INCONCLUSIVE
-4. **Report** — Findings are compiled into a structured markdown report with OWASP mapping
+1. **Read** — Load attack playbooks from `attacks/**/*.md`
+2. **Send** — Deliver prompts to the target via OpenAI-compatible chat completions API
+3. **Evaluate** — Semantically judge each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
+4. **Report** — Compile findings into a structured markdown report with OWASP mapping
+
+## Attack Categories
+
+| Category | IDs | Count | OWASP | Examples |
+|----------|-----|-------|-------|----------|
+| **Goal Adherence** | GA-001..010 | 10 | LLM01 — Prompt Injection | Direct override, role hijacking, system prompt extraction, delimiter injection, payload splitting, encoding evasion, few-shot jailbreak, context overflow, hypothetical injection, nested instruction injection |
+| **Tool Safety** | TS-001..010 | 10 | LLM02, LLM06 | File system access, command injection, SQL injection, unauthorized API calls, file write abuse, env var extraction, privilege escalation, path traversal, email abuse, database modification |
+| **Memory Integrity** | MI-001..008 | 8 | LLM05 — Insecure Plugin Design | History poisoning, identity persistence, behavior drift, false tool results, summarization attack, instruction anchoring, session state confusion, cross-turn exfiltration |
+
+## Project Structure
+
+```
+Pentis-Monorepo/
+├── .claude-plugin/
+│   └── plugin.json              # Plugin manifest
+├── agents/
+│   └── pentester.md             # Pentester agent instructions
+├── commands/
+│   ├── scan.md                  # /pentis:scan command
+│   ├── attack.md                # /pentis:attack command
+│   └── report.md                # /pentis:report command
+├── attacks/                     # 28 attack playbooks (.md)
+│   ├── goal-adherence/          # GA-001..010
+│   ├── tool-safety/             # TS-001..010
+│   └── memory-integrity/        # MI-001..008
+├── src/pentis/                  # Python engine
+│   ├── cli.py                   # Typer CLI
+│   ├── adapters/                # Target adapters (OpenAI-compatible)
+│   ├── core/                    # Engine, scanner, detection, reporter
+│   └── state/                   # SQLite persistence
+├── tests/                       # Test suite
+├── reports/                     # Generated scan reports
+└── pyproject.toml               # Python packaging (hatchling)
+```
 
 ## Report Output
 
 Reports include:
-- Executive summary with vulnerability counts
-- Findings grouped by severity (Critical → Low)
+
+- Executive summary with vulnerability counts and risk score
+- Findings grouped by severity (Critical > High > Medium > Low)
 - OWASP LLM Top 10 mapping for each finding
 - Attack prompts and response excerpts as evidence
 - Actionable remediation recommendations
@@ -84,11 +110,24 @@ Send to target:
 - Criteria for safety
 ```
 
+## Development
+
+```bash
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Lint
+ruff check .
+```
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Add or modify attack playbooks
+3. Add or modify attack playbooks / engine code
 4. Submit a pull request
 
 ## License
