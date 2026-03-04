@@ -28,6 +28,8 @@ dependencies = [
     "rich>=13.0",
     "jinja2>=3.1",
     "pyyaml>=6.0",
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
 ]
 
 [project.urls]
@@ -43,6 +45,7 @@ dev = [
     "respx>=0.21",
     "ruff>=0.5",
     "pyright>=1.1",
+    "pre-commit>=3.0",
 ]
 crewai = ["crewai>=0.80"]
 langchain = ["langchain-core>=0.3"]
@@ -50,9 +53,10 @@ all = ["pentis[crewai,langchain]"]
 
 [project.scripts]
 pentis = "pentis.cli:app"
+pentis-service = "pentis_service.main:serve"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/pentis"]
+packages = ["src/pentis", "src/pentis_service"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "src/pentis/attacks" = "pentis/attacks"
@@ -73,3 +77,6 @@ reportMissingTypeStubs = false
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
