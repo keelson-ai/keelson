@@ -1,0 +1,9 @@
+{
+  "name": "pentis",
+  "version": "1.0.0",
+  "description": "AI agent security scanner — social engineering attacks against LLM-powered agents",
+  "author": { "name": "Pentis AI", "url": "https://github.com/Pentis-AI" },
+  "repository": "https://github.com/Pentis-AI/Pentis-Monorepo",
+  "license": "Apache-2.0",
+  "keywords": ["security", "pentesting", "llm", "agent", "owasp"]
+}

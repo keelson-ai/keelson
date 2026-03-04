@@ -1,18 +1,25 @@
+.DS_Store
+.env
+
+# Claude Code local settings (permissions are machine-specific)
+.claude/settings.local.json
+
+/reports
+
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.egg-info/
 dist/
 build/
 .eggs/
 *.egg
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
 .venv/
 venv/
-.env
-.pytest_cache/
-*.pyc
-pentis-report-*.md
-.DS_Store
 
-# Claude Code local settings (permissions are machine-specific)
-.claude/settings.local.json
+# Pentis state
+~/.pentis/
