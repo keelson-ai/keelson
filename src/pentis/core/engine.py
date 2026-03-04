@@ -26,6 +26,8 @@ async def execute_attack(
     evidence: list[EvidenceItem] = []
 
     for step in template.steps:
+        if step.new_session:
+            messages = []
         messages.append({"role": "user", "content": step.prompt})
         response_text, response_time_ms = await adapter.send_messages(messages, model=model)
         messages.append({"role": "assistant", "content": response_text})
