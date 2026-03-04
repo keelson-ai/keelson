@@ -97,12 +97,18 @@ class TestReporter:
         assert "### Memory Integrity (MI)" in report
 
     def test_report_contains_findings(self):
-        report = generate_report(_make_scan())
+        report = generate_report(_make_scan(), debug=True)
         assert "GA-001" in report
         assert "TS-001" in report
         assert "MI-001" in report
         assert "VULNERABLE" in report
         assert "SAFE" in report
+
+    def test_report_hides_safe_by_default(self):
+        report = generate_report(_make_scan())
+        assert "GA-001" in report  # VULNERABLE — shown
+        assert "MI-001" in report  # INCONCLUSIVE — shown
+        assert "TS-001" not in report  # SAFE — hidden
 
     def test_report_contains_recommendations(self):
         report = generate_report(_make_scan())

@@ -185,8 +185,8 @@ REPORT_TEMPLATE = Template("""\
 """)
 
 
-def _by_category(findings: list[Finding], cat: Category) -> list[Finding]:
-    return [f for f in findings if f.category == cat]
+def _by_category(findings: list[Finding], cat: Category, *, debug: bool = False) -> list[Finding]:
+    return [f for f in findings if f.category == cat and (debug or f.verdict != Verdict.SAFE)]
 
 
 def _generate_summary(scan: ScanResult) -> str:
@@ -236,8 +236,12 @@ def _generate_recommendations(scan: ScanResult) -> list[str]:
     return recs
 
 
-def generate_report(scan: ScanResult) -> str:
-    """Generate a markdown report from scan results."""
+def generate_report(scan: ScanResult, *, debug: bool = False) -> str:
+    """Generate a markdown report from scan results.
+
+    By default only VULNERABLE and INCONCLUSIVE findings are shown.
+    Pass debug=True to include SAFE findings as well.
+    """
     critical = [
         f
         for f in scan.findings
@@ -249,22 +253,22 @@ def generate_report(scan: ScanResult) -> str:
         date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
         summary=_generate_summary(scan),
         critical_findings=critical,
-        ga_findings=_by_category(scan.findings, Category.GOAL_ADHERENCE),
-        ts_findings=_by_category(scan.findings, Category.TOOL_SAFETY),
-        mi_findings=_by_category(scan.findings, Category.MEMORY_INTEGRITY),
-        cs_findings=_by_category(scan.findings, Category.CONTENT_SAFETY),
-        as_findings=_by_category(scan.findings, Category.AGENTIC_SECURITY),
-        pb_findings=_by_category(scan.findings, Category.PERMISSION_BOUNDARIES),
-        di_findings=_by_category(scan.findings, Category.DELEGATION_INTEGRITY),
-        es_findings=_by_category(scan.findings, Category.EXECUTION_SAFETY),
-        si_findings=_by_category(scan.findings, Category.SESSION_ISOLATION),
+        ga_findings=_by_category(scan.findings, Category.GOAL_ADHERENCE, debug=debug),
+        ts_findings=_by_category(scan.findings, Category.TOOL_SAFETY, debug=debug),
+        mi_findings=_by_category(scan.findings, Category.MEMORY_INTEGRITY, debug=debug),
+        cs_findings=_by_category(scan.findings, Category.CONTENT_SAFETY, debug=debug),
+        as_findings=_by_category(scan.findings, Category.AGENTIC_SECURITY, debug=debug),
+        pb_findings=_by_category(scan.findings, Category.PERMISSION_BOUNDARIES, debug=debug),
+        di_findings=_by_category(scan.findings, Category.DELEGATION_INTEGRITY, debug=debug),
+        es_findings=_by_category(scan.findings, Category.EXECUTION_SAFETY, debug=debug),
+        si_findings=_by_category(scan.findings, Category.SESSION_ISOLATION, debug=debug),
         recommendations=_generate_recommendations(scan),
     )
 
 
-def save_report(scan: ScanResult, reports_dir: Path | None = None) -> Path:
+def save_report(scan: ScanResult, reports_dir: Path | None = None, *, debug: bool = False) -> Path:
     """Generate and save a report to disk."""
-    report_text = generate_report(scan)
+    report_text = generate_report(scan, debug=debug)
     out_dir = reports_dir or Path("reports")
     out_dir.mkdir(parents=True, exist_ok=True)
     filename = f"scan-{scan.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
