@@ -45,6 +45,7 @@ dev = [
     "respx>=0.21",
     "ruff>=0.5",
     "pyright>=1.1",
+    "pre-commit>=3.0",
 ]
 crewai = ["crewai>=0.80"]
 langchain = ["langchain-core>=0.3"]
@@ -75,3 +76,6 @@ reportMissingTypeStubs = false
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
