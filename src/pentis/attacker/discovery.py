@@ -98,13 +98,15 @@ async def discover_capabilities(
         response_text, _ = await adapter.send_messages(messages, model=model)
 
         detected, confidence = _score_capability(response_text, probe)
-        capabilities.append(AgentCapability(
-            name=probe["name"],
-            detected=detected,
-            probe_prompt=probe["prompt"],
-            response_excerpt=response_text[:300],
-            confidence=confidence,
-        ))
+        capabilities.append(
+            AgentCapability(
+                name=probe["name"],
+                detected=detected,
+                probe_prompt=probe["prompt"],
+                response_excerpt=response_text[:300],
+                confidence=confidence,
+            )
+        )
 
         if i < len(CAPABILITY_PROBES) - 1:
             await asyncio.sleep(delay)

@@ -1,6 +1,5 @@
 """Tests for TOML campaign config parser."""
 
-
 from pentis.campaign.config import parse_campaign_config
 
 

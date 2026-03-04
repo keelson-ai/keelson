@@ -1,6 +1,5 @@
 """Tests for campaign config parsing with Phase 3 extensions (tier, concurrency)."""
 
-
 from pentis.campaign.config import parse_campaign_config
 
 

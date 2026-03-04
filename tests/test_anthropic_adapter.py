@@ -42,6 +42,7 @@ class TestAnthropicAdapter:
         # Verify system was extracted to top-level param
         request_body = route.calls[0].request
         import json
+
         body = json.loads(request_body.content)
         assert body["system"] == "You are helpful."
         assert all(m["role"] != "system" for m in body["messages"])
@@ -60,6 +61,7 @@ class TestAnthropicAdapter:
         )
         await adapter.close()
         import json
+
         body = json.loads(route.calls[0].request.content)
         assert "First instruction." in body["system"]
         assert "Second instruction." in body["system"]
@@ -68,11 +70,10 @@ class TestAnthropicAdapter:
     async def test_default_model(self):
         route = respx.post(ANTHROPIC_API_URL).respond(json=_anthropic_response("ok"))
         adapter = AnthropicAdapter(api_key="test-key")
-        await adapter.send_messages(
-            [{"role": "user", "content": "Hi"}], model="default"
-        )
+        await adapter.send_messages([{"role": "user", "content": "Hi"}], model="default")
         await adapter.close()
         import json
+
         body = json.loads(route.calls[0].request.content)
         assert body["model"] == "claude-sonnet-4-20250514"
 

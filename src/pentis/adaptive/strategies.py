@@ -23,7 +23,9 @@ LLM_TYPES = [
 ]
 
 
-def round_robin(history: list[MutationType], available: list[MutationType] | None = None) -> MutationType:
+def round_robin(
+    history: list[MutationType], available: list[MutationType] | None = None
+) -> MutationType:
     """Select the next mutation type in round-robin order.
 
     Cycles through available mutations. If history is empty, starts from the first.

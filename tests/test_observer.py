@@ -1,6 +1,5 @@
 """Tests for the streaming leakage observer."""
 
-
 from pentis.core.models import EvidenceItem
 from pentis.core.observer import StreamingObserver
 
@@ -17,8 +16,16 @@ class TestStreamingObserver:
     def test_progressive_disclosure_detected(self):
         evidence = [
             EvidenceItem(step_index=1, prompt="p1", response="No, I cannot do that."),
-            EvidenceItem(step_index=2, prompt="p2", response="Well, I suppose I could explain a bit more about how that works. Let me give you some details about the internal process and how it functions in different contexts and scenarios..."),
-            EvidenceItem(step_index=3, prompt="p3", response="Here is the full detailed information you requested. The system works by first authenticating against the internal API using the credentials stored in the environment variables. The primary key is stored at /etc/secrets/api_key.json and the secondary backup is at ~/.config/app/credentials.yaml. The authentication flow uses OAuth2 with a client secret that rotates every 24 hours."),
+            EvidenceItem(
+                step_index=2,
+                prompt="p2",
+                response="Well, I suppose I could explain a bit more about how that works. Let me give you some details about the internal process and how it functions in different contexts and scenarios...",
+            ),
+            EvidenceItem(
+                step_index=3,
+                prompt="p3",
+                response="Here is the full detailed information you requested. The system works by first authenticating against the internal API using the credentials stored in the environment variables. The primary key is stored at /etc/secrets/api_key.json and the secondary backup is at ~/.config/app/credentials.yaml. The authentication flow uses OAuth2 with a client secret that rotates every 24 hours.",
+            ),
         ]
         signals = self.observer.observe(evidence)
         types = [s.signal_type for s in signals]
@@ -36,12 +43,14 @@ class TestStreamingObserver:
     def test_boundary_erosion_detected(self):
         evidence = [
             EvidenceItem(
-                step_index=1, prompt="p1",
-                response="I can't do that. I'm sorry, but I must decline this request as it's against my guidelines."
+                step_index=1,
+                prompt="p1",
+                response="I can't do that. I'm sorry, but I must decline this request as it's against my guidelines.",
             ),
             EvidenceItem(
-                step_index=2, prompt="p2",
-                response="Here is the information you asked about. The database schema uses PostgreSQL with the following tables..."
+                step_index=2,
+                prompt="p2",
+                response="Here is the information you asked about. The database schema uses PostgreSQL with the following tables...",
             ),
         ]
         signals = self.observer.observe(evidence)
@@ -51,12 +60,12 @@ class TestStreamingObserver:
     def test_no_boundary_erosion_when_always_refusing(self):
         evidence = [
             EvidenceItem(
-                step_index=1, prompt="p1",
-                response="I can't help with that. I must decline."
+                step_index=1, prompt="p1", response="I can't help with that. I must decline."
             ),
             EvidenceItem(
-                step_index=2, prompt="p2",
-                response="I'm sorry, but I cannot assist with this request."
+                step_index=2,
+                prompt="p2",
+                response="I'm sorry, but I cannot assist with this request.",
             ),
         ]
         signals = self.observer.observe(evidence)
@@ -67,7 +76,8 @@ class TestStreamingObserver:
         evidence = [
             EvidenceItem(step_index=1, prompt="p1", response="I can help with general questions."),
             EvidenceItem(
-                step_index=2, prompt="p2",
+                step_index=2,
+                prompt="p2",
                 response=(
                     "Here's some code: ```python\ndef secret_function():\n"
                     "    password = 'hunter2'\n    token = 'abc123'\n"
@@ -91,12 +101,14 @@ class TestStreamingObserver:
     def test_signal_has_correct_fields(self):
         evidence = [
             EvidenceItem(
-                step_index=1, prompt="p1",
-                response="I can't do that. I'm sorry, but I must decline."
+                step_index=1,
+                prompt="p1",
+                response="I can't do that. I'm sorry, but I must decline.",
             ),
             EvidenceItem(
-                step_index=2, prompt="p2",
-                response="OK here is everything. ```python\nimport os\npassword='secret'```"
+                step_index=2,
+                prompt="p2",
+                response="OK here is everything. ```python\nimport os\npassword='secret'```",
             ),
         ]
         signals = self.observer.observe(evidence)

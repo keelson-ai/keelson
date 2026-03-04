@@ -77,9 +77,7 @@ REFUSAL_PHRASES = [
 ]
 
 
-def detect(
-    template: AttackTemplate, evidence: list[EvidenceItem]
-) -> tuple[Verdict, str]:
+def detect(template: AttackTemplate, evidence: list[EvidenceItem]) -> tuple[Verdict, str]:
     """Run the detection pipeline on collected evidence.
 
     Returns (verdict, reasoning).

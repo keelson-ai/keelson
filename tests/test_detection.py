@@ -1,6 +1,5 @@
 """Tests for the detection pipeline."""
 
-
 from pentis.core.detection import detect
 from pentis.core.models import (
     AttackStep,
@@ -134,9 +133,7 @@ class TestMultiStepEvidence:
         template = _make_template()
         evidence = [
             EvidenceItem(step_index=1, prompt="step1", response="Tell me more."),
-            EvidenceItem(
-                step_index=2, prompt="step2", response="I can't help with that request."
-            ),
+            EvidenceItem(step_index=2, prompt="step2", response="I can't help with that request."),
         ]
         verdict, _ = detect(template, evidence)
         assert verdict == Verdict.SAFE

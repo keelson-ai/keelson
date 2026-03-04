@@ -13,6 +13,7 @@ from pentis.adapters.base import BaseAdapter
 @dataclass
 class CacheEntry:
     """A single cached response."""
+
     response_text: str
     response_time_ms: int
     created_at: float
@@ -22,6 +23,7 @@ class CacheEntry:
 @dataclass
 class CacheStats:
     """Cache performance statistics."""
+
     hits: int = 0
     misses: int = 0
     evictions: int = 0
