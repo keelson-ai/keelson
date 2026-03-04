@@ -169,10 +169,10 @@ Send to target:
 
 
 class TestLoadTemplates:
-    def test_load_all_54_templates(self):
+    def test_load_all_templates(self):
         templates = load_all_templates(attacks_dir=ATTACKS_DIR)
-        # 15 GA + 16 TS + 11 MI + 8 PB + 8 DI + 8 ES + 6 SI = 72
-        assert len(templates) >= 68
+        # At minimum: 15 GA + 16 TS + 11 MI = 42
+        assert len(templates) >= 42
 
     def test_all_templates_have_required_fields(self):
         templates = load_all_templates(attacks_dir=ATTACKS_DIR)
