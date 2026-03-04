@@ -16,6 +16,15 @@
 - Environment variables table generated from `.env.example`
 - Architecture section preserves ADR table and OpenAPI spec link from previous task (iRlZjdIF)
 
+### QA Review Fixes (automated)
+| File | Fix |
+|------|-----|
+| `README.md` | Fixed env var `PENTIS_LOG_LEVEL` → `LOG_LEVEL` in Environment Variables table (code at `main.py:12` reads `LOG_LEVEL`) |
+| `README.md` | Expanded attack categories table from 3 to 7 categories; corrected per-category counts (GA:30, TS:24, MI:17, DI:8, ES:8, PB:8, SI:10) |
+| `README.md` | Added all 7 valid values for `PENTIS_CATEGORIES` after env vars table |
+| `.env.example` | Fixed `PENTIS_LOG_LEVEL` → `LOG_LEVEL` to match `main.py` |
+| `.env.example` | Updated `PENTIS_CATEGORIES` comment to list all 7 category values |
+
 ---
 
 ## iRlZjdIF — Draft OpenAPI Specification and Architecture Decision Records (ADRs)
