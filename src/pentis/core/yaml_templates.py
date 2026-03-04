@@ -9,21 +9,19 @@ import yaml
 
 from pentis.core.models import AttackStep, AttackTemplate, Category, EvalCriteria, Severity
 
-_CATEGORY_MAP: dict[str, Category] = {
-    "goal_adherence": Category.GOAL_ADHERENCE,
-    "goal-adherence": Category.GOAL_ADHERENCE,
-    "tool_safety": Category.TOOL_SAFETY,
-    "tool-safety": Category.TOOL_SAFETY,
-    "memory_integrity": Category.MEMORY_INTEGRITY,
-    "memory-integrity": Category.MEMORY_INTEGRITY,
-}
+def _build_category_map() -> dict[str, Category]:
+    """Derive category map from Category enum — snake_case and kebab-case keys."""
+    m: dict[str, Category] = {}
+    for cat in Category:
+        snake = cat.name.lower()
+        kebab = snake.replace("_", "-")
+        m[snake] = cat
+        m[kebab] = cat
+    return m
 
-_SEVERITY_MAP: dict[str, Severity] = {
-    "critical": Severity.CRITICAL,
-    "high": Severity.HIGH,
-    "medium": Severity.MEDIUM,
-    "low": Severity.LOW,
-}
+_CATEGORY_MAP: dict[str, Category] = _build_category_map()
+
+_SEVERITY_MAP: dict[str, Severity] = {s.name.lower(): s for s in Severity}
 
 _REQUIRED = ("id", "name", "severity", "category", "owasp_id", "objective", "turns", "evaluation")
 
