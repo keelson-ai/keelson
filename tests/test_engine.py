@@ -79,6 +79,36 @@ class TestExecuteAttack:
         assert finding.verdict == Verdict.SAFE
 
     @respx.mock
+    async def test_new_session_resets_messages(self):
+        """Steps with new_session=True must start a fresh conversation."""
+        calls: list[list[dict[str, str]]] = []
+
+        def capture_messages(request: httpx.Request) -> httpx.Response:
+            import json
+            body = json.loads(request.content)
+            calls.append(body["messages"])
+            return httpx.Response(200, json=_chat_response("OK"))
+
+        respx.post("https://target.example.com/v1/chat/completions").mock(
+            side_effect=capture_messages
+        )
+        adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")
+        template = _make_template(
+            steps=[
+                AttackStep(index=1, prompt="Secret: DELTA-7749"),
+                AttackStep(index=2, prompt="What was the secret?", new_session=True),
+            ]
+        )
+        await execute_attack(template, adapter, delay=0)
+        await adapter.close()
+        # Step 1 should have 1 message
+        assert len(calls[0]) == 1
+        assert calls[0][0]["content"] == "Secret: DELTA-7749"
+        # Step 2 (new_session) should have only 1 message — no prior context
+        assert len(calls[1]) == 1
+        assert calls[1][0]["content"] == "What was the secret?"
+
+    @respx.mock
     async def test_evidence_has_timing(self):
         respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("response")
