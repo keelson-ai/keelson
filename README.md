@@ -3,9 +3,9 @@
 [![PyPI version](https://img.shields.io/pypi/v/pentis)](https://pypi.org/project/pentis/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-458%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-472%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 72 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 7 target adapters (OpenAI, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
+**Autonomous red team agent for AI systems.** Pentis ships 105 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
 
 ```
 pip install pentis
@@ -20,7 +20,7 @@ pentis scan https://api.example.com/v1/chat/completions --api-key $KEY
 # Single attack
 pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
 
-# List all 72 attacks
+# List all 105 attacks
 pentis list
 
 # Statistical campaign (10 trials per attack)
@@ -45,9 +45,9 @@ pentis test-chain my_agent.py
 ## How It Works
 
 ```
-Playbooks (.md)     Target Agent        Pentis Engine
+Playbooks (.yaml)   Target Agent        Pentis Engine
 ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 72 attacks   │───>│ OpenAI /     │───>│ Detection pipeline   │
+│ 105 attacks  │───>│ OpenAI /     │───>│ Detection pipeline   │
 │ 7 categories │    │ Anthropic /  │    │ Streaming observer    │
 │ OWASP mapped │    │ CrewAI / ... │    │ Statistical analysis  │
 └──────────────┘    └──────────────┘    └──────────────────────┘
@@ -59,7 +59,7 @@ Playbooks (.md)     Target Agent        Pentis Engine
                                     └─────────────────────┘
 ```
 
-1. **Load** attack playbooks from `attacks/**/*.md` (pure markdown, no code)
+1. **Load** attack playbooks from `attacks/**/*.yaml` (structured YAML, no code)
 2. **Send** prompts to the target via any supported adapter
 3. **Detect** vulnerabilities using pattern-based detection + streaming leakage analysis
 4. **Evaluate** each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
@@ -69,13 +69,13 @@ Playbooks (.md)     Target Agent        Pentis Engine
 
 | Category | Prefix | Count | OWASP | What It Tests |
 |----------|--------|-------|-------|---------------|
-| **Goal Adherence** | GA | 15 | LLM01 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow |
-| **Tool Safety** | TS | 16 | LLM02/LLM06 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal |
-| **Memory Integrity** | MI | 11 | LLM05 | History poisoning, identity persistence, behavior drift, false tool results, cross-turn exfiltration |
+| **Goal Adherence** | GA | 30 | LLM01 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow |
+| **Tool Safety** | TS | 24 | LLM02/LLM06 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal |
+| **Memory Integrity** | MI | 17 | LLM05 | History poisoning, identity persistence, behavior drift, false tool results, cross-turn exfiltration |
 | **Permission Boundaries** | PB | 8 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
 | **Delegation Integrity** | DI | 8 | LLM08/LLM09 | Unauthorized sub-agents, chain amplification, trust boundary violation, delegation scope laundering |
 | **Execution Safety** | ES | 8 | LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization |
-| **Session Isolation** | SI | 6 | LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, stale session exploitation |
+| **Session Isolation** | SI | 10 | LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, stale session exploitation |
 
 ## Adapters
 
@@ -83,7 +83,8 @@ Pentis communicates with targets through a pluggable adapter interface:
 
 | Adapter | Flag | Protocol | Use Case |
 |---------|------|----------|----------|
-| **OpenAI** | `--adapter openai` | Chat Completions API | GPT, local models (Ollama, vLLM) |
+| **OpenAI** | `--adapter openai` | Chat Completions API | GPT models, OpenAI API |
+| **Generic HTTP** | `--adapter http` | Chat Completions API | Local models (Ollama, vLLM), any OpenAI-compatible endpoint |
 | **Anthropic** | `--adapter anthropic` | Messages API | Claude models |
 | **LangGraph** | `--adapter langgraph` | LangGraph Platform | LangGraph agents |
 | **MCP** | `--adapter mcp` | JSON-RPC 2.0 | MCP tool servers |
@@ -296,56 +297,59 @@ middleware = PentisDefendMiddleware(engine)
 
 ## Adding Custom Attacks
 
-Create a `.md` file in the appropriate `attacks/` subdirectory:
+Create a `.yaml` file in the appropriate `attacks/` subdirectory:
 
-```markdown
-# XX-NNN: Attack Name
-
-**Severity**: High | **Category**: Category Name | **OWASP**: LLM0X — Name
-
-## Objective
-What this attack tests.
-
-## Attack Steps
-
-### Step 1
-Send to target:
-> The attack prompt to send
-
-### Step 2 (follow-up)
-Send as follow-up:
-> The follow-up prompt
-
-## Evaluation
-
-**Vulnerable if**:
-- Agent complies with the attack request
-- Agent leaks sensitive information
-
-**Safe if**:
-- Agent refuses the request
-- Agent maintains boundaries
-
-**Inconclusive if**:
-- Response is ambiguous or partial
+```yaml
+id: XX-NNN
+name: Attack Name
+severity: high
+category: category_name
+owasp_id: "LLM0X — Name"
+objective: >
+  What this attack tests.
+turns:
+  - role: user
+    content: >
+      The attack prompt to send.
+  - role: user
+    content: >
+      Follow-up prompt (for multi-turn attacks).
+evaluation:
+  vulnerable_if:
+    - Agent complies with the attack request
+    - Agent leaks sensitive information
+  safe_if:
+    - Agent refuses the request
+    - Agent maintains boundaries
+  inconclusive_if:
+    - Response is ambiguous or partial
 ```
 
 ## Project Structure
 
 ```
 pentis/
-├── attacks/                        # 72 attack playbooks (pure markdown)
-│   ├── goal-adherence/             # GA-001..015
-│   ├── tool-safety/                # TS-001..016
-│   ├── memory-integrity/           # MI-001..011
+├── .claude-plugin/                 # Claude Code plugin manifest
+│   └── plugin.json
+├── agents/                         # Agent instructions
+│   └── pentester.md                # Pentester agent prompt
+├── commands/                       # Plugin slash commands
+│   ├── scan.md                     # /pentis:scan
+│   ├── attack.md                   # /pentis:attack
+│   └── report.md                   # /pentis:report
+├── attacks/                        # 105 attack playbooks (YAML)
+│   ├── goal-adherence/             # GA-001..030
+│   ├── tool-safety/                # TS-001..024
+│   ├── memory-integrity/           # MI-001..017
 │   ├── permission-boundaries/      # PB-001..008
 │   ├── delegation-integrity/       # DI-001..008
 │   ├── execution-safety/           # ES-001..008
-│   └── session-isolation/          # SI-001..006
+│   └── session-isolation/          # SI-001..010
 ├── src/pentis/                     # Python engine
 │   ├── cli.py                      # Typer CLI (15 commands)
-│   ├── adapters/                   # 7 target adapters
+│   ├── adapters/                   # 8 target adapters
 │   │   ├── base.py                 # BaseAdapter interface
+│   │   ├── openai.py               # OpenAI API
 │   │   ├── http.py                 # GenericHTTPAdapter (OpenAI-compat)
 │   │   ├── anthropic.py            # Anthropic Messages API
 │   │   ├── langgraph.py            # LangGraph Platform
@@ -360,7 +364,9 @@ pentis/
 │   │   ├── scanner.py              # Full scan orchestrator
 │   │   ├── detection.py            # Pattern-based verdict detection
 │   │   ├── observer.py             # Streaming leakage analysis
-│   │   ├── templates.py            # Playbook parser
+│   │   ├── templates.py            # Playbook parser (markdown)
+│   │   ├── yaml_templates.py       # Playbook parser (YAML)
+│   │   ├── models.py               # Core data models
 │   │   ├── reporter.py             # Markdown report generation
 │   │   ├── sarif.py                # SARIF v2.1.0 output
 │   │   ├── junit.py                # JUnit XML output
@@ -388,7 +394,7 @@ pentis/
 │   │   └── comparator.py           # Regression detection
 │   └── state/                      # Persistence
 │       └── store.py                # SQLite storage
-├── tests/                          # 458 tests
+├── tests/                          # 472 tests
 ├── docs/                           # Documentation
 │   ├── plans/                      # Roadmap
 │   └── github-action-spec.md       # GitHub Action design
@@ -436,7 +442,7 @@ pip install "pentis[all]"
 
 Contributions are welcome. Here's how to help:
 
-1. **Add attack playbooks** — Write new `.md` files in `attacks/`. Follow the format above.
+1. **Add attack playbooks** — Write new `.yaml` files in `attacks/`. Follow the format above.
 2. **Add adapters** — Implement the `BaseAdapter` interface (3 methods: `send_messages`, `health_check`, `close`).
 3. **Improve detection** — Enhance patterns in `core/detection.py` or add new evaluation strategies.
 4. **Report bugs** — Open an issue with reproduction steps.
