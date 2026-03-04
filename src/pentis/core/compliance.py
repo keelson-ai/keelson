@@ -24,7 +24,7 @@ OWASP_LLM_CONTROLS: dict[str, dict] = {
         "name": "Insecure Output Handling",
         "description": "Failure to validate/sanitize LLM outputs before passing to downstream systems.",
         "remediation": "Apply output encoding, input validation on downstream systems, and least privilege.",
-        "attack_prefixes": ["TS-"],
+        "attack_prefixes": ["TS-", "PB-"],
     },
     "LLM03": {
         "name": "Training Data Poisoning",
@@ -42,13 +42,13 @@ OWASP_LLM_CONTROLS: dict[str, dict] = {
         "name": "Supply Chain Vulnerabilities",
         "description": "Vulnerabilities in third-party components, plugins, or pre-trained models.",
         "remediation": "Vet third-party components, maintain SBOM, and monitor for CVEs.",
-        "attack_prefixes": ["MI-"],
+        "attack_prefixes": ["MI-", "SI-"],
     },
     "LLM06": {
         "name": "Sensitive Information Disclosure",
         "description": "LLM revealing sensitive data through responses.",
         "remediation": "Apply data sanitization, PII filtering, and access controls on training data.",
-        "attack_prefixes": ["CS-"],
+        "attack_prefixes": ["CS-", "ES-"],
     },
     "LLM07": {
         "name": "Insecure Plugin Design",
@@ -60,13 +60,13 @@ OWASP_LLM_CONTROLS: dict[str, dict] = {
         "name": "Excessive Agency",
         "description": "LLM granted excessive capabilities, permissions, or autonomy.",
         "remediation": "Limit LLM permissions, implement function-level authorization, require human approval.",
-        "attack_prefixes": ["AS-"],
+        "attack_prefixes": ["AS-", "DI-"],
     },
     "LLM09": {
         "name": "Overreliance",
         "description": "Excessive dependence on LLM output without verification.",
         "remediation": "Implement human oversight, output verification, and confidence scoring.",
-        "attack_prefixes": ["AS-"],
+        "attack_prefixes": ["AS-", "DI-"],
     },
     "LLM10": {
         "name": "Model Theft",
@@ -417,7 +417,15 @@ def _generate_soc2_report(scan: ScanResult) -> str:
             "description": "The entity implements logical access security measures.",
             "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
             "findings": [
-                f for f in scan.findings if f.category.value in ("Tool Safety", "Agentic Security")
+                f
+                for f in scan.findings
+                if f.category.value
+                in (
+                    "Tool Safety",
+                    "Agentic Security",
+                    "Permission Boundaries",
+                    "Execution Safety",
+                )
             ],
             "remediation": "Strengthen AI agent access controls."
             if scan.vulnerable_count > 0
