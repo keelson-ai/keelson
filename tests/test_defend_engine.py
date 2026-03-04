@@ -164,3 +164,56 @@ class TestViolationLogging:
         v2 = engine.violations
         assert v1 is not v2
         assert v1 == v2
+
+
+class TestContentAllowShortCircuit:
+    """Content ALLOW rules must short-circuit and skip later DENY rules."""
+
+    def test_allow_rule_prevents_subsequent_deny(self) -> None:
+        """An ALLOW content rule should short-circuit before a DENY rule fires."""
+        policy = DefendPolicy(
+            tool_rules=[],
+            content_rules=[
+                ContentRule(
+                    pattern="password",
+                    action=PolicyAction.ALLOW,
+                    reason="Explicitly allowed",
+                    check_input=True,
+                    check_output=True,
+                ),
+                ContentRule(
+                    pattern="password",
+                    action=PolicyAction.DENY,
+                    reason="Should never fire",
+                    check_input=True,
+                    check_output=True,
+                ),
+            ],
+            default_tool_action=PolicyAction.ALLOW,
+            log_all=False,
+        )
+        engine = PolicyEngine(policy)
+        decision = engine.check_content("my password is secret")
+        assert decision.allowed is True
+        assert decision.rule == "password"
+        assert decision.reason == "Explicitly allowed"
+
+    def test_allow_rule_skips_side_effect_check_for_output(self) -> None:
+        """An ALLOW content rule on output should short-circuit side-effect detection."""
+        policy = DefendPolicy(
+            tool_rules=[],
+            content_rules=[
+                ContentRule(
+                    pattern="function_call",
+                    action=PolicyAction.ALLOW,
+                    reason="Allowed for this context",
+                    check_input=True,
+                    check_output=True,
+                ),
+            ],
+            default_tool_action=PolicyAction.ALLOW,
+            log_all=False,
+        )
+        engine = PolicyEngine(policy)
+        decision = engine.check_content('"function_call"', is_input=False)
+        assert decision.allowed is True

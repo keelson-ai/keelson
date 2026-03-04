@@ -134,6 +134,9 @@ class PolicyEngine:
                     )
                     return PolicyDecision(allowed=True, rule=rule.pattern, reason=rule.reason)
 
+                # Explicit ALLOW — short-circuit, skip further rules
+                return PolicyDecision(allowed=True, rule=rule.pattern, reason=rule.reason)
+
         # For outputs, also check SIDE_EFFECT_PATTERNS from detection.py
         if not is_input:
             for pattern in _COMPILED_SIDE_EFFECTS:
