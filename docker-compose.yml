@@ -9,6 +9,8 @@ services:
       - ./src:/app/src
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
