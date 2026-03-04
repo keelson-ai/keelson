@@ -18,13 +18,19 @@ from pentis.core.models import (
     Category,
     EvidenceItem,
     Finding,
+    LearningRecord,
     RegressionAlert,
+    ScanJob,
     ScanResult,
+    ScanStatus,
+    ScheduleConfig,
     Severity,
     StatisticalFinding,
     Target,
+    TargetHealthStatus,
     TrialResult,
     Verdict,
+    WebhookConfig,
 )
 
 DEFAULT_DB_PATH = Path.home() / ".pentis" / "pentis.db"
@@ -181,16 +187,75 @@ CREATE TABLE IF NOT EXISTS attack_chains (
     created_at TEXT NOT NULL,
     FOREIGN KEY (profile_id) REFERENCES agent_profiles(profile_id)
 );
+
+CREATE TABLE IF NOT EXISTS schedules (
+    schedule_id TEXT PRIMARY KEY,
+    target_url TEXT NOT NULL,
+    api_key TEXT DEFAULT '',
+    adapter_type TEXT DEFAULT 'openai',
+    tier TEXT DEFAULT 'deep',
+    interval_seconds INTEGER DEFAULT 21600,
+    enabled INTEGER DEFAULT 1,
+    category TEXT,
+    attacker_api_key TEXT DEFAULT '',
+    attacker_model TEXT DEFAULT 'default',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS scan_jobs (
+    scan_id TEXT PRIMARY KEY,
+    schedule_id TEXT,
+    target_url TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    progress INTEGER DEFAULT 0,
+    total_attacks INTEGER DEFAULT 0,
+    vulnerable_count INTEGER DEFAULT 0,
+    error_message TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    started_at TEXT,
+    finished_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS webhooks (
+    webhook_id TEXT PRIMARY KEY,
+    url TEXT NOT NULL,
+    events_json TEXT NOT NULL DEFAULT '[]',
+    secret TEXT DEFAULT '',
+    enabled INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS target_health (
+    target_url TEXT PRIMARY KEY,
+    healthy INTEGER DEFAULT 1,
+    consecutive_failures INTEGER DEFAULT 0,
+    last_check_at TEXT,
+    last_response_time_ms INTEGER DEFAULT 0,
+    last_error TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS learning_records (
+    record_id TEXT PRIMARY KEY,
+    cycle_id TEXT NOT NULL,
+    target_url TEXT NOT NULL,
+    attacks_run INTEGER DEFAULT 0,
+    vulns_found INTEGER DEFAULT 0,
+    defense_patterns_json TEXT NOT NULL DEFAULT '[]',
+    successful_mutations_json TEXT NOT NULL DEFAULT '[]',
+    coverage_gaps_json TEXT NOT NULL DEFAULT '[]',
+    strategy_weights_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
 """
 
 
 class Store:
     """SQLite store for Pentis scan data."""
 
-    def __init__(self, db_path: Path | None = None):
+    def __init__(self, db_path: Path | None = None, check_same_thread: bool = True):
         self.db_path = db_path or DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.db_path))
+        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=check_same_thread)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.row_factory = sqlite3.Row
@@ -738,6 +803,323 @@ class Store:
                 (limit,),
             ).fetchall()
         return [dict(r) for r in rows]
+
+    # --- Service Layer: Schedule persistence ---
+
+    def save_schedule(self, schedule: ScheduleConfig) -> None:
+        """Persist a schedule configuration."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO schedules "
+            "(schedule_id, target_url, api_key, adapter_type, tier, interval_seconds, "
+            "enabled, category, attacker_api_key, attacker_model, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                schedule.schedule_id,
+                schedule.target_url,
+                schedule.api_key,
+                schedule.adapter_type,
+                schedule.tier,
+                schedule.interval_seconds,
+                1 if schedule.enabled else 0,
+                schedule.category,
+                schedule.attacker_api_key,
+                schedule.attacker_model,
+                schedule.created_at.isoformat(),
+            ),
+        )
+        self._log_event("schedule_saved", {"schedule_id": schedule.schedule_id})
+        self._conn.commit()
+
+    def get_schedule(self, schedule_id: str) -> ScheduleConfig | None:
+        """Load a schedule by ID."""
+        row = self._conn.execute(
+            "SELECT * FROM schedules WHERE schedule_id = ?", (schedule_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return ScheduleConfig(
+            schedule_id=row["schedule_id"],
+            target_url=row["target_url"],
+            api_key=row["api_key"],
+            adapter_type=row["adapter_type"],
+            tier=row["tier"],
+            interval_seconds=row["interval_seconds"],
+            enabled=bool(row["enabled"]),
+            category=row["category"],
+            attacker_api_key=row["attacker_api_key"],
+            attacker_model=row["attacker_model"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+    def list_schedules(self, limit: int = 50) -> list[dict[str, Any]]:
+        """List all schedules."""
+        rows = self._conn.execute(
+            "SELECT * FROM schedules ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def delete_schedule(self, schedule_id: str) -> bool:
+        """Delete a schedule. Returns True if deleted."""
+        cursor = self._conn.execute(
+            "DELETE FROM schedules WHERE schedule_id = ?", (schedule_id,)
+        )
+        self._conn.commit()
+        return cursor.rowcount > 0
+
+    # --- Service Layer: Scan job persistence ---
+
+    def save_scan_job(self, job: ScanJob) -> None:
+        """Persist a scan job."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO scan_jobs "
+            "(scan_id, schedule_id, target_url, status, progress, total_attacks, "
+            "vulnerable_count, error_message, created_at, started_at, finished_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                job.scan_id,
+                job.schedule_id,
+                job.target_url,
+                job.status.value,
+                job.progress,
+                job.total_attacks,
+                job.vulnerable_count,
+                job.error_message,
+                job.created_at.isoformat(),
+                job.started_at.isoformat() if job.started_at else None,
+                job.finished_at.isoformat() if job.finished_at else None,
+            ),
+        )
+        self._conn.commit()
+
+    def get_scan_job(self, scan_id: str) -> ScanJob | None:
+        """Load a scan job by ID."""
+        row = self._conn.execute(
+            "SELECT * FROM scan_jobs WHERE scan_id = ?", (scan_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return ScanJob(
+            scan_id=row["scan_id"],
+            schedule_id=row["schedule_id"],
+            target_url=row["target_url"],
+            status=ScanStatus(row["status"]),
+            progress=row["progress"],
+            total_attacks=row["total_attacks"],
+            vulnerable_count=row["vulnerable_count"],
+            error_message=row["error_message"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+            started_at=datetime.fromisoformat(row["started_at"]) if row["started_at"] else None,
+            finished_at=(
+                datetime.fromisoformat(row["finished_at"]) if row["finished_at"] else None
+            ),
+        )
+
+    def list_scan_jobs(
+        self, status: str | None = None, limit: int = 50
+    ) -> list[dict[str, Any]]:
+        """List scan jobs, optionally filtered by status."""
+        if status:
+            rows = self._conn.execute(
+                "SELECT * FROM scan_jobs WHERE status = ? ORDER BY created_at DESC LIMIT ?",
+                (status, limit),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM scan_jobs ORDER BY created_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def update_scan_job_status(
+        self,
+        scan_id: str,
+        status: ScanStatus,
+        progress: int | None = None,
+        vulnerable_count: int | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        """Update a scan job's status and optional fields."""
+        updates = ["status = ?"]
+        params: list[Any] = [status.value]
+        if progress is not None:
+            updates.append("progress = ?")
+            params.append(progress)
+        if vulnerable_count is not None:
+            updates.append("vulnerable_count = ?")
+            params.append(vulnerable_count)
+        if error_message is not None:
+            updates.append("error_message = ?")
+            params.append(error_message)
+        if status == ScanStatus.RUNNING:
+            updates.append("started_at = ?")
+            params.append(datetime.now(timezone.utc).isoformat())
+        if status in (ScanStatus.COMPLETED, ScanStatus.FAILED, ScanStatus.CANCELLED):
+            updates.append("finished_at = ?")
+            params.append(datetime.now(timezone.utc).isoformat())
+        params.append(scan_id)
+        self._conn.execute(
+            f"UPDATE scan_jobs SET {', '.join(updates)} WHERE scan_id = ?", params
+        )
+        self._conn.commit()
+
+    # --- Service Layer: Webhook persistence ---
+
+    def save_webhook(self, webhook: WebhookConfig) -> None:
+        """Persist a webhook configuration."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO webhooks "
+            "(webhook_id, url, events_json, secret, enabled, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                webhook.webhook_id,
+                webhook.url,
+                json.dumps(webhook.events),
+                webhook.secret,
+                1 if webhook.enabled else 0,
+                webhook.created_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def list_webhooks(self) -> list[WebhookConfig]:
+        """List all webhooks."""
+        rows = self._conn.execute("SELECT * FROM webhooks ORDER BY created_at DESC").fetchall()
+        return [
+            WebhookConfig(
+                webhook_id=r["webhook_id"],
+                url=r["url"],
+                events=json.loads(r["events_json"]),
+                secret=r["secret"],
+                enabled=bool(r["enabled"]),
+                created_at=datetime.fromisoformat(r["created_at"]),
+            )
+            for r in rows
+        ]
+
+    def delete_webhook(self, webhook_id: str) -> bool:
+        """Delete a webhook. Returns True if deleted."""
+        cursor = self._conn.execute(
+            "DELETE FROM webhooks WHERE webhook_id = ?", (webhook_id,)
+        )
+        self._conn.commit()
+        return cursor.rowcount > 0
+
+    # --- Service Layer: Target health persistence ---
+
+    def save_target_health(self, health: TargetHealthStatus) -> None:
+        """Persist target health status."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO target_health "
+            "(target_url, healthy, consecutive_failures, last_check_at, "
+            "last_response_time_ms, last_error) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                health.target_url,
+                1 if health.healthy else 0,
+                health.consecutive_failures,
+                health.last_check_at.isoformat() if health.last_check_at else None,
+                health.last_response_time_ms,
+                health.last_error,
+            ),
+        )
+        self._conn.commit()
+
+    def get_target_health(self, target_url: str) -> TargetHealthStatus | None:
+        """Load target health status."""
+        row = self._conn.execute(
+            "SELECT * FROM target_health WHERE target_url = ?", (target_url,)
+        ).fetchone()
+        if not row:
+            return None
+        return TargetHealthStatus(
+            target_url=row["target_url"],
+            healthy=bool(row["healthy"]),
+            consecutive_failures=row["consecutive_failures"],
+            last_check_at=(
+                datetime.fromisoformat(row["last_check_at"]) if row["last_check_at"] else None
+            ),
+            last_response_time_ms=row["last_response_time_ms"],
+            last_error=row["last_error"],
+        )
+
+    def list_target_health(self) -> list[TargetHealthStatus]:
+        """List all target health statuses."""
+        rows = self._conn.execute("SELECT * FROM target_health").fetchall()
+        return [
+            TargetHealthStatus(
+                target_url=r["target_url"],
+                healthy=bool(r["healthy"]),
+                consecutive_failures=r["consecutive_failures"],
+                last_check_at=(
+                    datetime.fromisoformat(r["last_check_at"]) if r["last_check_at"] else None
+                ),
+                last_response_time_ms=r["last_response_time_ms"],
+                last_error=r["last_error"],
+            )
+            for r in rows
+        ]
+
+    # --- Service Layer: Learning record persistence ---
+
+    def save_learning_record(self, record: LearningRecord) -> None:
+        """Persist a learning record from a red team cycle."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO learning_records "
+            "(record_id, cycle_id, target_url, attacks_run, vulns_found, "
+            "defense_patterns_json, successful_mutations_json, coverage_gaps_json, "
+            "strategy_weights_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                record.record_id,
+                record.cycle_id,
+                record.target_url,
+                record.attacks_run,
+                record.vulns_found,
+                json.dumps(record.defense_patterns),
+                json.dumps(record.successful_mutations),
+                json.dumps(record.coverage_gaps),
+                json.dumps(record.strategy_weights),
+                record.created_at.isoformat(),
+            ),
+        )
+        self._log_event(
+            "learning_record_saved",
+            {"record_id": record.record_id, "target": record.target_url},
+        )
+        self._conn.commit()
+
+    def list_learning_records(
+        self, target_url: str | None = None, limit: int = 50
+    ) -> list[LearningRecord]:
+        """List learning records, optionally filtered by target."""
+        if target_url:
+            rows = self._conn.execute(
+                "SELECT * FROM learning_records WHERE target_url = ? "
+                "ORDER BY created_at DESC LIMIT ?",
+                (target_url, limit),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM learning_records ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [
+            LearningRecord(
+                record_id=r["record_id"],
+                cycle_id=r["cycle_id"],
+                target_url=r["target_url"],
+                attacks_run=r["attacks_run"],
+                vulns_found=r["vulns_found"],
+                defense_patterns=json.loads(r["defense_patterns_json"]),
+                successful_mutations=json.loads(r["successful_mutations_json"]),
+                coverage_gaps=json.loads(r["coverage_gaps_json"]),
+                strategy_weights=json.loads(r["strategy_weights_json"]),
+                created_at=datetime.fromisoformat(r["created_at"]),
+            )
+            for r in rows
+        ]
+
+    def get_latest_learning_record(self, target_url: str) -> LearningRecord | None:
+        """Get the most recent learning record for a target."""
+        records = self.list_learning_records(target_url=target_url, limit=1)
+        return records[0] if records else None
 
     def _log_event(self, event_type: str, data: dict[str, Any]) -> None:
         self._conn.execute(

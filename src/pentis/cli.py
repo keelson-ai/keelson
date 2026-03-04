@@ -150,34 +150,16 @@ def _make_adapter(
     tool_name: str = "chat",
 ):
     """Create the appropriate adapter stack based on CLI flags."""
-    from pentis.adapters.base import BaseAdapter
+    from pentis.adapters.factory import make_adapter
 
-    base: BaseAdapter
-    if adapter_type == "anthropic":
-        from pentis.adapters.anthropic import AnthropicAdapter
-
-        base = AnthropicAdapter(api_key=api_key, url=url)
-    elif adapter_type == "langgraph":
-        from pentis.adapters.langgraph import LangGraphAdapter
-
-        base = LangGraphAdapter(url=url, api_key=api_key, assistant_id=assistant_id)
-    elif adapter_type == "mcp":
-        from pentis.adapters.mcp import MCPAdapter
-
-        base = MCPAdapter(url=url, api_key=api_key, tool_name=tool_name)
-    elif adapter_type == "a2a":
-        from pentis.adapters.a2a import A2AAdapter
-
-        base = A2AAdapter(url=url, api_key=api_key)
-    else:
-        base = OpenAIAdapter(url=url, api_key=api_key)
-
-    if cache:
-        from pentis.adapters.cache import CachingAdapter
-
-        base = CachingAdapter(base)
-
-    return base
+    return make_adapter(
+        url=url,
+        api_key=api_key,
+        adapter_type=adapter_type,
+        cache=cache,
+        assistant_id=assistant_id,
+        tool_name=tool_name,
+    )
 
 
 @app.command()
@@ -1138,6 +1120,116 @@ def _print_cache_stats(adapter: Any) -> None:
             )
             return
         current = getattr(current, "_adapter", None)
+
+
+@app.command()
+def onboard(
+    url: str = typer.Option("", "--url", "-u", help="Target endpoint URL"),
+    api_key: str = typer.Option("", "--api-key", "-k", help="API key for target"),
+    adapter: str = typer.Option("openai", "--adapter", "-a", help="Adapter type"),
+    attacker_url: str = typer.Option("", "--attacker-url", help="Attacker LLM URL"),
+    attacker_key: str = typer.Option("", "--attacker-key", help="Attacker LLM API key"),
+    attacker_model: str = typer.Option("default", "--attacker-model", help="Attacker model"),
+    interval: int = typer.Option(21600, "--interval", "-i", help="Scan interval in seconds"),
+    webhook_url: str = typer.Option("", "--webhook", help="Webhook URL for alerts"),
+    run_mode: str = typer.Option("continuous", "--mode", help="Run mode: continuous or once"),
+) -> None:
+    """Interactive onboarding wizard for the Always-Live Red Team agent."""
+    from pentis.adapters.factory import make_adapter
+    from pentis.attacker.chains import synthesize_chains
+    from pentis.attacker.discovery import discover_capabilities
+
+    # Interactive prompts for missing values
+    if not url:
+        url = typer.prompt("Target URL")
+    if not api_key:
+        api_key = typer.prompt("API Key (or press Enter to skip)", default="")
+    if not adapter:
+        adapter = typer.prompt("Adapter type", default="openai")
+    if not attacker_key:
+        attacker_key = typer.prompt("Attacker LLM key (for attack generation, or Enter to skip)", default="")
+
+    console.print("\n[bold]Pentis — Always-Live Red Team Onboarding[/bold]\n")
+
+    # Health check
+    target_adapter = make_adapter(url=url, api_key=api_key, adapter_type=adapter)
+
+    async def _check():
+        import time
+        start = time.monotonic()
+        try:
+            healthy = await target_adapter.health_check()
+            ms = int((time.monotonic() - start) * 1000)
+            return healthy, ms
+        except Exception as exc:
+            ms = int((time.monotonic() - start) * 1000)
+            return False, ms
+        finally:
+            await target_adapter.close()
+
+    healthy, response_ms = asyncio.run(_check())
+
+    if healthy:
+        console.print(f"  Checking target health... [green]✓[/] ({response_ms}ms)")
+    else:
+        console.print(f"  Checking target health... [red]✗[/] ({response_ms}ms)")
+        console.print("[red]Target is unreachable. Please check URL and credentials.[/]")
+        raise typer.Exit(1)
+
+    # Fingerprint capabilities
+    probe_adapter = make_adapter(url=url, api_key=api_key, adapter_type=adapter)
+
+    async def _discover():
+        try:
+            return await discover_capabilities(probe_adapter, target_url=url, delay=1.0)
+        finally:
+            await probe_adapter.close()
+
+    console.print("  Fingerprinting capabilities...", end=" ")
+    profile = asyncio.run(_discover())
+    detected = profile.detected_capabilities
+    console.print(f"[green]✓[/] ({len(profile.capabilities)} probes, {len(detected)} detected)")
+    for cap in detected:
+        console.print(f"    [green]✓[/] {cap.name} ({cap.confidence:.2f})")
+
+    store = Store()
+    store.save_agent_profile(profile)
+
+    # Attack plan
+    all_templates = load_all_templates()
+    chains = synthesize_chains(profile)
+    console.print(f"\n  Attack plan:")
+    console.print(f"    {len(all_templates)} playbook attacks")
+    console.print(f"    {len(detected) * 2} capability-informed attacks")
+    console.print(f"    {len(chains)} attack chains")
+
+    if run_mode == "continuous":
+        from pentis.core.models import ScheduleConfig
+
+        schedule = ScheduleConfig(
+            target_url=url,
+            api_key=api_key,
+            adapter_type=adapter,
+            interval_seconds=interval,
+            attacker_api_key=attacker_key,
+            attacker_model=attacker_model,
+        )
+        store.save_schedule(schedule)
+        hours = interval // 3600
+        console.print(f"\n  [green]✓[/] Schedule created (every {hours}h)")
+        console.print(f"  Schedule ID: {schedule.schedule_id}")
+        console.print(f"\n  Start the service to begin: [bold]pentis-service[/bold]")
+        console.print(f"  Dashboard: http://localhost:8000/dashboard")
+
+    if webhook_url:
+        from pentis.core.models import WebhookConfig
+
+        webhook = WebhookConfig(url=webhook_url)
+        store.save_webhook(webhook)
+        console.print(f"  [green]✓[/] Webhook configured: {webhook_url}")
+
+    store.close()
+    console.print("\n[bold green]Onboarding complete![/bold green]")
 
 
 if __name__ == "__main__":

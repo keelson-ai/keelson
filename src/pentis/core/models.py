@@ -352,3 +352,90 @@ class AttackChain:
     category: Category = Category.AGENTIC_SECURITY
     owasp: str = ""
     description: str = ""
+
+
+# --- Service Layer Models ---
+
+
+class ScanStatus(str, Enum):
+    """Status of a scan job."""
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+@dataclass
+class ScheduleConfig:
+    """Configuration for a recurring red team schedule."""
+
+    schedule_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    target_url: str = ""
+    api_key: str = ""
+    adapter_type: str = "openai"
+    tier: str = "deep"
+    interval_seconds: int = 21600  # 6 hours default
+    enabled: bool = True
+    category: str | None = None
+    attacker_api_key: str = ""
+    attacker_model: str = "default"
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@dataclass
+class ScanJob:
+    """A queued or running scan job."""
+
+    scan_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    schedule_id: str | None = None
+    target_url: str = ""
+    status: ScanStatus = ScanStatus.QUEUED
+    progress: int = 0
+    total_attacks: int = 0
+    vulnerable_count: int = 0
+    error_message: str = ""
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+@dataclass
+class WebhookConfig:
+    """Webhook configuration for event delivery."""
+
+    webhook_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    url: str = ""
+    events: list[str] = field(default_factory=list)
+    secret: str = ""
+    enabled: bool = True
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@dataclass
+class TargetHealthStatus:
+    """Health status of a monitored target."""
+
+    target_url: str = ""
+    healthy: bool = True
+    consecutive_failures: int = 0
+    last_check_at: datetime | None = None
+    last_response_time_ms: int = 0
+    last_error: str = ""
+
+
+@dataclass
+class LearningRecord:
+    """Record of what the red team loop learned from a cycle."""
+
+    record_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    cycle_id: str = ""
+    target_url: str = ""
+    attacks_run: int = 0
+    vulns_found: int = 0
+    defense_patterns: list[str] = field(default_factory=list)
+    successful_mutations: list[str] = field(default_factory=list)
+    coverage_gaps: list[str] = field(default_factory=list)
+    strategy_weights: dict[str, float] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
