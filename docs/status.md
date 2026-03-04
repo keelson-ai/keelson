@@ -1,5 +1,32 @@
 # Task Status
 
+## iRlZjdIF — Draft OpenAPI Specification and Architecture Decision Records (ADRs)
+
+**Status**: Complete
+
+### Files Created / Modified
+| File | Action | Notes |
+|------|--------|-------|
+| `docs/openapi.yaml` | Created | OpenAPI 3.1.0 spec; `/health` fully specified; Phase 2 paths (`/scans`, `/attacks`, `/reports/{id}`) as stubs with schemas |
+| `docs/adr/ADR-001-framework.md` | Created | FastAPI selected over Flask and bare Starlette; rationale: async-first, auto-OpenAPI, Pydantic validation |
+| `docs/adr/ADR-002-dependency-management.md` | Created | uv selected over Poetry and pip-tools; rationale: 10-100× faster installs, native `pyproject.toml`, lockfile |
+| `docs/adr/ADR-003-observability.md` | Created | Structured logging (stdlib JSON) accepted now; OpenTelemetry deferred to Phase 2; `trace_id` reserved in log schema |
+| `README.md` | Modified | Added `## Architecture` section with OpenAPI link and ADR table |
+
+### Notes
+- `docs/openapi.yaml` uses OpenAPI 3.1.0 (not 3.0.x); validators should use a 3.1-compatible parser
+- Phase 2 stub schemas in openapi.yaml are intentionally minimal — they document intent, not final contracts
+- ADRs follow MADR format as specified in the task; they can be rendered by the `adr-tools` CLI or browsed directly on GitHub
+- `HealthResponse` dataclass in `routers/health.py` should be migrated to a Pydantic `BaseModel` in Phase 2 so FastAPI generates an accurate JSON Schema (noted in ADR-001)
+
+### QA Review Fixes (automated)
+| File | Fix |
+|------|-----|
+| `docs/openapi.yaml` | Replaced 4 instances of `nullable: true` (OpenAPI 3.0.x syntax) with `type: ["T", "null"]` (valid OpenAPI 3.1.0 JSON Schema syntax) |
+| `README.md` | Updated project structure tree to include `docs/adr/` directory and `docs/openapi.yaml` file |
+
+---
+
 ## YvHKkjLC — Create Dockerfile and docker-compose.yml
 
 **Status**: Complete
