@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from pentis.adapters.openai import OpenAIAdapter
-from pentis.core.models import ScanTier, Target
+from pentis.core.models import AttackTemplate, Finding, ScanTier, StatisticalFinding, Target
 from pentis.core.reporter import save_report
 from pentis.core.scanner import run_scan
 from pentis.core.templates import load_all_templates
@@ -92,7 +92,7 @@ def scan(
         from pentis.core.reporter import generate_campaign_report
 
         scan_tier = ScanTier(tier)
-        overrides = {}
+        overrides: dict[str, Any] = {}
         if category:
             overrides["category"] = category
         config = get_tier_config(scan_tier, overrides)
@@ -102,7 +102,7 @@ def scan(
 
         target_adapter = _make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
 
-        def on_finding(sf, current, total):
+        def on_finding_tier(sf: StatisticalFinding, current: int, total: int) -> None:
             icon = {
                 "VULNERABLE": "[red]VULN[/]",
                 "SAFE": "[green]SAFE[/]",
@@ -124,7 +124,7 @@ def scan(
         async def _run_tier():
             try:
                 return await run_campaign(
-                    target=target, adapter=target_adapter, config=config, on_finding=on_finding
+                    target=target, adapter=target_adapter, config=config, on_finding=on_finding_tier
                 )
             finally:
                 await target_adapter.close()
@@ -143,10 +143,14 @@ def scan(
             from pentis.core.sarif import to_sarif_json
 
             report_text = to_sarif_json(result)
-            report_path = out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+            report_path = (
+                out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+            )
         else:
             report_text = generate_campaign_report(result)
-            report_path = out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
+            report_path = (
+                out_dir / f"scan-{tier}-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.md"
+            )
         report_path.write_text(report_text)
 
         _print_cache_stats(target_adapter)
@@ -161,7 +165,7 @@ def scan(
     # Standard single-pass scan
     target_adapter = _make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
 
-    def on_finding(finding, current, total):
+    def on_finding(finding: Finding, current: int, total: int) -> None:
         icon = {
             "VULNERABLE": "[red]VULN[/]",
             "SAFE": "[green]SAFE[/]",
@@ -369,7 +373,7 @@ def campaign(
         config.target_url, config.api_key, adapter, use_cache, assistant_id, tool_name
     )
 
-    def on_finding(sf, current, total):
+    def on_finding(sf: StatisticalFinding, current: int, total: int) -> None:
         icon = {
             "VULNERABLE": "[red]VULN[/]",
             "SAFE": "[green]SAFE[/]",
@@ -557,7 +561,7 @@ def evolve(
     )
     from pentis.adaptive.strategies import round_robin, LLM_TYPES, PROGRAMMATIC_TYPES
     from pentis.core.engine import execute_attack
-    from pentis.core.models import AttackStep, MutationType
+    from pentis.core.models import AttackStep, MutatedAttack, MutationType
 
     templates = load_all_templates()
     template = next((t for t in templates if t.id == attack_id), None)
@@ -584,9 +588,9 @@ def evolve(
     history: list[MutationType] = []
     available = PROGRAMMATIC_TYPES + (LLM_TYPES if attacker_adapter else [])
 
-    async def _run():
+    async def _run() -> list[tuple[MutatedAttack, Finding]]:
         try:
-            results = []
+            results: list[tuple[MutatedAttack, Finding]] = []
             for i in range(mutations):
                 mt = round_robin(history, available=available)
                 history.append(mt)
@@ -681,7 +685,7 @@ def chain(
     """Synthesize and run compound attack chains based on agent capabilities."""
     from pentis.attacker.chains import synthesize_chains, synthesize_chains_llm
     from pentis.core.engine import execute_attack
-    from pentis.core.models import AttackTemplate, EvalCriteria
+    from pentis.core.models import AttackChain, AttackTemplate, EvalCriteria
 
     store = Store()
     profile = store.get_agent_profile(profile_id)
@@ -726,9 +730,9 @@ def chain(
         url, api_key, adapter, assistant_id=assistant_id, tool_name=tool_name
     )
 
-    async def _run():
+    async def _run() -> list[tuple[AttackChain, Finding]]:
         try:
-            results = []
+            results: list[tuple[AttackChain, Finding]] = []
             for i, ch in enumerate(chains):
                 console.print(f"  [{i + 1}/{len(chains)}] Running: {ch.name}")
 
@@ -779,7 +783,9 @@ def test_crew(
     category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
     delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
-    format: str = typer.Option("markdown", "--format", "-f", help="Output format: markdown or sarif"),
+    format: str = typer.Option(
+        "markdown", "--format", "-f", help="Output format: markdown or sarif"
+    ),
 ) -> None:
     """Run a security scan against a CrewAI agent/crew."""
     import importlib.util
@@ -804,24 +810,31 @@ def test_crew(
     adapter = CrewAIAdapter(agent=agent, crew=crew)
     target = Target(url=f"crewai://{crew_module}", model="crewai")
 
-    def on_finding(finding, current, total):
-        icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+    def on_finding(finding: Finding, current: int, total: int) -> None:
+        icon = {
+            "VULNERABLE": "[red]VULN[/]",
+            "SAFE": "[green]SAFE[/]",
+            "INCONCLUSIVE": "[yellow]????[/]",
+        }
         console.print(
             f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
             f"{icon.get(finding.verdict.value, finding.verdict.value)}"
         )
 
-    console.print(f"\n[bold]Pentis CrewAI Security Scan[/bold]")
+    console.print("\n[bold]Pentis CrewAI Security Scan[/bold]")
     console.print(f"Module: {crew_module}")
     console.print()
 
     async def _run():
-        return await run_scan(target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding)
+        return await run_scan(
+            target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding
+        )
 
     result = asyncio.run(_run())
 
     if format == "sarif":
         from pentis.core.sarif import to_sarif_json
+
         report_text = to_sarif_json(result)
         out_dir = output or Path("reports")
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -839,11 +852,15 @@ def test_crew(
 
 @app.command(name="test-chain")
 def test_chain_cmd(
-    chain_module: str = typer.Argument(help="Python module path or file with LangChain agent/chain"),
+    chain_module: str = typer.Argument(
+        help="Python module path or file with LangChain agent/chain"
+    ),
     category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
     delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
-    format: str = typer.Option("markdown", "--format", "-f", help="Output format: markdown or sarif"),
+    format: str = typer.Option(
+        "markdown", "--format", "-f", help="Output format: markdown or sarif"
+    ),
     input_key: str = typer.Option("input", "--input-key", help="Input key for the chain"),
     output_key: str = typer.Option("output", "--output-key", help="Output key for the chain"),
 ) -> None:
@@ -865,31 +882,42 @@ def test_chain_cmd(
         console.print("[red]Module must export 'agent', 'chain', or 'runnable'[/]")
         raise typer.Exit(1)
 
-    adapter = LangChainAdapter(agent=agent, runnable=runnable, input_key=input_key, output_key=output_key)
+    adapter = LangChainAdapter(
+        agent=agent, runnable=runnable, input_key=input_key, output_key=output_key
+    )
     target = Target(url=f"langchain://{chain_module}", model="langchain")
 
-    def on_finding(finding, current, total):
-        icon = {"VULNERABLE": "[red]VULN[/]", "SAFE": "[green]SAFE[/]", "INCONCLUSIVE": "[yellow]????[/]"}
+    def on_finding(finding: Finding, current: int, total: int) -> None:
+        icon = {
+            "VULNERABLE": "[red]VULN[/]",
+            "SAFE": "[green]SAFE[/]",
+            "INCONCLUSIVE": "[yellow]????[/]",
+        }
         console.print(
             f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — "
             f"{icon.get(finding.verdict.value, finding.verdict.value)}"
         )
 
-    console.print(f"\n[bold]Pentis LangChain Security Scan[/bold]")
+    console.print("\n[bold]Pentis LangChain Security Scan[/bold]")
     console.print(f"Module: {chain_module}")
     console.print()
 
     async def _run():
-        return await run_scan(target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding)
+        return await run_scan(
+            target=target, adapter=adapter, category=category, delay=delay, on_finding=on_finding
+        )
 
     result = asyncio.run(_run())
 
     if format == "sarif":
         from pentis.core.sarif import to_sarif_json
+
         report_text = to_sarif_json(result)
         out_dir = output or Path("reports")
         out_dir.mkdir(parents=True, exist_ok=True)
-        report_path = out_dir / f"langchain-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+        report_path = (
+            out_dir / f"langchain-{result.started_at.strftime('%Y-%m-%d-%H%M%S')}.sarif.json"
+        )
         report_path.write_text(report_text)
     else:
         report_path = save_report(result, reports_dir=output)
@@ -910,7 +938,7 @@ def generate(
         None, "--category", "-c", help="Specific category to generate for"
     ),
     count: int = typer.Option(3, "--count", "-n", help="Attacks per category"),
-    multi_step: bool = typer.Option(False, "--multi-step", help="Generate multi-step attacks"),
+    multi_step: bool = typer.Option(False, "--multi-step", help="Generate multi-step attacks"),  # noqa: ARG001
     profile_id: Optional[str] = typer.Option(
         None, "--profile", "-p", help="Agent profile ID for capability-informed generation"
     ),
@@ -923,7 +951,6 @@ def generate(
         generate_batch,
         generate_capability_informed_attacks,
     )
-    from pentis.core.models import Category as Cat
 
     attacker_adapter = OpenAIAdapter(url=attacker_url, api_key=attacker_key)
 
@@ -983,7 +1010,7 @@ def generate(
             console.print(f"  Saved: {path}")
 
 
-def _template_to_markdown(t: "AttackTemplate") -> str:
+def _template_to_markdown(t: AttackTemplate) -> str:
     """Convert an AttackTemplate to markdown playbook format."""
     lines = [
         f"# {t.id}: {t.name}",
@@ -1051,12 +1078,12 @@ def compliance_report(
     console.print(f"Report saved: {report_path}")
 
 
-def _print_cache_stats(adapter) -> None:
+def _print_cache_stats(adapter: Any) -> None:
     """Print cache stats if the adapter is a CachingAdapter."""
     from pentis.adapters.cache import CachingAdapter
 
     # Walk the adapter chain to find CachingAdapter
-    current = adapter
+    current: Any = adapter
     while current:
         if isinstance(current, CachingAdapter):
             stats = current.stats

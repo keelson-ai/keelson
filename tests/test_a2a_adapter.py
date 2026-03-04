@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
+from typing import Any
+
 import respx
 from httpx import Response
 
@@ -10,17 +11,17 @@ from pentis.adapters.a2a import A2AAdapter
 
 
 class TestA2AAdapter:
-    def test_init(self):
+    def test_init(self) -> None:
         adapter = A2AAdapter(url="http://localhost:8000", api_key="test-key")
-        assert adapter._base_url == "http://localhost:8000"
-        assert adapter._api_key == "test-key"
+        assert adapter._base_url == "http://localhost:8000"  # pyright: ignore[reportPrivateUsage]
+        assert adapter._api_key == "test-key"  # pyright: ignore[reportPrivateUsage]
 
-    def test_strips_trailing_slash(self):
+    def test_strips_trailing_slash(self) -> None:
         adapter = A2AAdapter(url="http://localhost:8000/")
-        assert adapter._base_url == "http://localhost:8000"
+        assert adapter._base_url == "http://localhost:8000"  # pyright: ignore[reportPrivateUsage]
 
     @respx.mock
-    async def test_health_check_success(self):
+    async def test_health_check_success(self) -> None:
         respx.get("http://localhost:8000/.well-known/agent.json").mock(
             return_value=Response(
                 200,
@@ -38,17 +39,15 @@ class TestA2AAdapter:
         await adapter.close()
 
     @respx.mock
-    async def test_health_check_failure(self):
-        respx.get("http://localhost:8000/.well-known/agent.json").mock(
-            return_value=Response(500)
-        )
+    async def test_health_check_failure(self) -> None:
+        respx.get("http://localhost:8000/.well-known/agent.json").mock(return_value=Response(500))
 
         adapter = A2AAdapter(url="http://localhost:8000")
         assert await adapter.health_check() is False
         await adapter.close()
 
     @respx.mock
-    async def test_send_messages_success(self):
+    async def test_send_messages_success(self) -> None:
         respx.post("http://localhost:8000").mock(
             return_value=Response(
                 200,
@@ -80,7 +79,7 @@ class TestA2AAdapter:
         await adapter.close()
 
     @respx.mock
-    async def test_send_messages_with_status_message(self):
+    async def test_send_messages_with_status_message(self) -> None:
         """Verify fallback to status message when no artifacts."""
         respx.post("http://localhost:8000").mock(
             return_value=Response(
@@ -103,14 +102,12 @@ class TestA2AAdapter:
         )
 
         adapter = A2AAdapter(url="http://localhost:8000")
-        response, _ = await adapter.send_messages(
-            [{"role": "user", "content": "test"}]
-        )
+        response, _ = await adapter.send_messages([{"role": "user", "content": "test"}])
         assert response == "Status response"
         await adapter.close()
 
     @respx.mock
-    async def test_send_messages_error_response(self):
+    async def test_send_messages_error_response(self) -> None:
         """Verify error handling for JSON-RPC errors."""
         respx.post("http://localhost:8000").mock(
             return_value=Response(
@@ -124,15 +121,13 @@ class TestA2AAdapter:
         )
 
         adapter = A2AAdapter(url="http://localhost:8000")
-        response, _ = await adapter.send_messages(
-            [{"role": "user", "content": "test"}]
-        )
+        response, _ = await adapter.send_messages([{"role": "user", "content": "test"}])
         assert "A2A Error" in response
         assert "Invalid request" in response
         await adapter.close()
 
     @respx.mock
-    async def test_send_messages_with_auth_header(self):
+    async def test_send_messages_with_auth_header(self) -> None:
         """Verify API key is sent as Bearer token."""
         route = respx.post("http://localhost:8000").mock(
             return_value=Response(
@@ -152,10 +147,10 @@ class TestA2AAdapter:
         await adapter.send_messages([{"role": "user", "content": "test"}])
 
         assert route.called
-        request = route.calls[0].request
-        assert request.headers["Authorization"] == "Bearer my-key"
+        req_headers: Any = route.calls[0].request.headers  # type: ignore[reportUnknownMemberType]
+        assert req_headers["Authorization"] == "Bearer my-key"
         await adapter.close()
 
-    async def test_close(self):
+    async def test_close(self) -> None:
         adapter = A2AAdapter(url="http://localhost:8000")
         await adapter.close()  # Should not raise

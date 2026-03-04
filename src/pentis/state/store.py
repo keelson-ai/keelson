@@ -6,6 +6,7 @@ import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from pentis.core.models import (
     AgentCapability,
@@ -267,7 +268,7 @@ class Store:
             finished_at=finished,
         )
 
-    def list_scans(self, limit: int = 20) -> list[dict]:
+    def list_scans(self, limit: int = 20) -> list[dict[str, Any]]:
         """List recent scans with summary info."""
         rows = self._conn.execute(
             "SELECT s.scan_id, s.target_url, s.started_at, s.finished_at, "
@@ -284,7 +285,7 @@ class Store:
         rows = self._conn.execute(
             "SELECT * FROM findings WHERE scan_id = ? ORDER BY id", (scan_id,)
         ).fetchall()
-        findings = []
+        findings: list[Finding] = []
         for row in rows:
             evidence_rows = self._conn.execute(
                 "SELECT * FROM evidence WHERE finding_id = ? ORDER BY step_index", (row["id"],)
@@ -437,7 +438,7 @@ class Store:
             "SELECT * FROM statistical_findings WHERE campaign_id = ? ORDER BY id",
             (campaign_id,),
         ).fetchall()
-        findings = []
+        findings: list[StatisticalFinding] = []
         for row in rows:
             trials = self._load_trials(row["id"])
             findings.append(
@@ -461,7 +462,7 @@ class Store:
             "SELECT * FROM trials WHERE statistical_finding_id = ? ORDER BY trial_index",
             (sf_id,),
         ).fetchall()
-        trials = []
+        trials: list[TrialResult] = []
         for row in rows:
             ev_rows = self._conn.execute(
                 "SELECT * FROM trial_evidence WHERE trial_id = ? ORDER BY step_index",
@@ -487,7 +488,7 @@ class Store:
             )
         return trials
 
-    def list_campaigns(self, limit: int = 20) -> list[dict]:
+    def list_campaigns(self, limit: int = 20) -> list[dict[str, Any]]:
         """List recent campaigns."""
         rows = self._conn.execute(
             "SELECT c.campaign_id, c.target_url, c.started_at, c.finished_at, "
@@ -569,7 +570,7 @@ class Store:
         self._log_event("baseline_set", {"scan_id": scan_id, "label": label})
         self._conn.commit()
 
-    def get_baselines(self, limit: int = 20) -> list[dict]:
+    def get_baselines(self, limit: int = 20) -> list[dict[str, Any]]:
         """List scan baselines."""
         rows = self._conn.execute(
             "SELECT b.scan_id, b.label, b.created_at, s.target_url "
@@ -584,7 +585,7 @@ class Store:
     def save_cache_entry(
         self,
         cache_key: str,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         model: str,
         response_text: str,
         response_time_ms: int,
@@ -605,7 +606,7 @@ class Store:
         )
         self._conn.commit()
 
-    def get_cache_entry(self, cache_key: str) -> dict | None:
+    def get_cache_entry(self, cache_key: str) -> dict[str, Any] | None:
         """Load a cached response by key."""
         row = self._conn.execute(
             "SELECT * FROM response_cache WHERE cache_key = ?", (cache_key,)
@@ -654,7 +655,7 @@ class Store:
         )
         self._conn.commit()
 
-    def list_regression_alerts(self, limit: int = 50) -> list[dict]:
+    def list_regression_alerts(self, limit: int = 50) -> list[dict[str, Any]]:
         """List recent regression alerts."""
         rows = self._conn.execute(
             "SELECT * FROM regression_alerts ORDER BY created_at DESC LIMIT ?",
@@ -722,7 +723,9 @@ class Store:
             owasp=row["owasp"],
         )
 
-    def list_attack_chains(self, profile_id: str | None = None, limit: int = 50) -> list[dict]:
+    def list_attack_chains(
+        self, profile_id: str | None = None, limit: int = 50
+    ) -> list[dict[str, Any]]:
         """List attack chains, optionally filtered by profile."""
         if profile_id:
             rows = self._conn.execute(
@@ -736,7 +739,7 @@ class Store:
             ).fetchall()
         return [dict(r) for r in rows]
 
-    def _log_event(self, event_type: str, data: dict) -> None:
+    def _log_event(self, event_type: str, data: dict[str, Any]) -> None:
         self._conn.execute(
             "INSERT INTO events (timestamp, event_type, data) VALUES (?, ?, ?)",
             (datetime.now(timezone.utc).isoformat(), event_type, json.dumps(data)),

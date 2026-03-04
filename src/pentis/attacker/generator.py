@@ -27,12 +27,24 @@ OWASP_MAP = {
 
 # Capability → relevant attack categories
 CAPABILITY_CATEGORY_MAP: dict[str, list[Category]] = {
-    "file_access": [Category.TOOL_SAFETY, Category.PERMISSION_BOUNDARIES, Category.EXECUTION_SAFETY],
+    "file_access": [
+        Category.TOOL_SAFETY,
+        Category.PERMISSION_BOUNDARIES,
+        Category.EXECUTION_SAFETY,
+    ],
     "web_access": [Category.TOOL_SAFETY, Category.EXECUTION_SAFETY],
     "code_execution": [Category.EXECUTION_SAFETY, Category.TOOL_SAFETY],
-    "database_access": [Category.TOOL_SAFETY, Category.SESSION_ISOLATION, Category.PERMISSION_BOUNDARIES],
+    "database_access": [
+        Category.TOOL_SAFETY,
+        Category.SESSION_ISOLATION,
+        Category.PERMISSION_BOUNDARIES,
+    ],
     "email_messaging": [Category.TOOL_SAFETY, Category.DELEGATION_INTEGRITY],
-    "tool_usage": [Category.TOOL_SAFETY, Category.DELEGATION_INTEGRITY, Category.PERMISSION_BOUNDARIES],
+    "tool_usage": [
+        Category.TOOL_SAFETY,
+        Category.DELEGATION_INTEGRITY,
+        Category.PERMISSION_BOUNDARIES,
+    ],
     "memory_persistence": [Category.MEMORY_INTEGRITY, Category.SESSION_ISOLATION],
     "system_access": [Category.EXECUTION_SAFETY, Category.PERMISSION_BOUNDARIES],
 }
@@ -92,7 +104,7 @@ async def generate_multistep_attack(
         line = line.strip()
         for prefix in [f"STEP{i}:" for i in range(1, num_steps + 1)]:
             if line.upper().startswith(prefix):
-                steps.append(line[len(prefix):].strip())
+                steps.append(line[len(prefix) :].strip())
                 break
     # Fallback: if parsing fails, treat entire response as single step
     if not steps:
@@ -116,8 +128,7 @@ async def generate_attack_template(
             attacker, category, objective, num_steps=num_steps, model=model
         )
         steps = [
-            AttackStep(index=i + 1, prompt=p, is_followup=(i > 0))
-            for i, p in enumerate(prompts)
+            AttackStep(index=i + 1, prompt=p, is_followup=(i > 0)) for i, p in enumerate(prompts)
         ]
     else:
         prompt = await generate_attack(attacker, category, objective, model)

@@ -1,5 +1,7 @@
 """Tests for engine.py observer integration."""
 
+from typing import Any
+
 import pytest
 import httpx
 import respx
@@ -10,7 +12,7 @@ from pentis.core.models import AttackStep, AttackTemplate, Category, EvalCriteri
 from pentis.core.observer import StreamingObserver
 
 
-def _make_template(steps=None) -> AttackTemplate:
+def _make_template(steps: list[AttackStep] | None = None) -> AttackTemplate:
     return AttackTemplate(
         id="GA-001",
         name="Test Attack",
@@ -26,7 +28,7 @@ def _make_template(steps=None) -> AttackTemplate:
     )
 
 
-def _chat_response(content: str) -> dict:
+def _chat_response(content: str) -> dict[str, Any]:
     return {"choices": [{"message": {"content": content}}]}
 
 
@@ -34,7 +36,7 @@ def _chat_response(content: str) -> dict:
 class TestEngineObserverIntegration:
     @respx.mock
     async def test_observer_is_optional(self):
-        respx.post("https://target.example.com/v1/chat").respond(
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("I can't do that.")
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat")
@@ -47,7 +49,9 @@ class TestEngineObserverIntegration:
 
     @respx.mock
     async def test_observer_with_single_step(self):
-        respx.post("https://target.example.com/v1/chat").respond(json=_chat_response("PWNED"))
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
+            json=_chat_response("PWNED")
+        )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat")
         template = _make_template()
         observer = StreamingObserver()
@@ -90,7 +94,7 @@ class TestEngineObserverIntegration:
 
     @respx.mock
     async def test_finding_has_leakage_signals_field(self):
-        respx.post("https://target.example.com/v1/chat").respond(
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("I can't do that.")
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat")

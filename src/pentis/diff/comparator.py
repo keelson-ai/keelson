@@ -50,7 +50,7 @@ def diff_scans(scan_a: ScanResult, scan_b: ScanResult) -> ScanDiff:
                     change_type="removed",
                 )
             )
-        else:  # fb and not fa
+        elif fb:  # fb and not fa
             items.append(
                 ScanDiffItem(
                     template_id=tid,

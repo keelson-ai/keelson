@@ -1,5 +1,6 @@
 .DS_Store
 .env
+.vscode/
 
 # Claude Code local settings (permissions are machine-specific)
 .claude/settings.local.json
@@ -23,3 +24,4 @@ venv/
 
 # Pentis state
 ~/.pentis/
+.worktrees/

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from pentis.core.models import CampaignConfig, ConcurrencyConfig, ScanTier
 
 # Tier presets: each returns a CampaignConfig suitable for different use cases
@@ -44,7 +46,7 @@ TIER_PRESETS: dict[ScanTier, CampaignConfig] = {
 
 def get_tier_config(
     tier: ScanTier,
-    overrides: dict | None = None,
+    overrides: dict[str, Any] | None = None,
 ) -> CampaignConfig:
     """Get a CampaignConfig for the given tier with optional overrides.
 
@@ -71,7 +73,8 @@ def get_tier_config(
     if overrides:
         for key, value in overrides.items():
             if key == "concurrency" and isinstance(value, dict):
-                for ckey, cvalue in value.items():
+                concurrency_dict = cast(dict[str, Any], value)
+                for ckey, cvalue in concurrency_dict.items():
                     if hasattr(config.concurrency, ckey):
                         setattr(config.concurrency, ckey, cvalue)
             elif hasattr(config, key):

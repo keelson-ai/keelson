@@ -62,7 +62,7 @@ def weighted_by_history(
     tried = Counter(history)
     max_success = max(success_map.values()) if success_map else 1
 
-    weights = []
+    weights: list[float] = []
     for mt in pool:
         successes = success_map.get(mt, 0)
         times_tried = tried.get(mt, 0)
@@ -73,6 +73,26 @@ def weighted_by_history(
             weights.append(max(successes, 0.1))
 
     return random.choices(pool, weights=weights, k=1)[0]
+
+
+def should_mutate(
+    success_rate: float, low_threshold: float = 0.05, high_threshold: float = 0.80
+) -> bool:
+    """Return True when a partial success rate warrants mutation attempts.
+
+    The sweet spot is attacks that sometimes succeed (above noise) but aren't
+    fully bypassing defences (below saturation). Outside that window mutations
+    are unlikely to add signal.
+
+    Args:
+        success_rate: Fraction of trials that returned a VULNERABLE verdict (0.0–1.0).
+        low_threshold:  Below this the attack shows no signal — skip mutations.
+        high_threshold: Above this the attack already saturates — skip mutations.
+
+    Returns:
+        True iff ``low_threshold < success_rate < high_threshold``.
+    """
+    return low_threshold < success_rate < high_threshold
 
 
 def select_mutation(

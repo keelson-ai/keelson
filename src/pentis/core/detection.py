@@ -109,7 +109,7 @@ def detect(template: AttackTemplate, evidence: list[EvidenceItem]) -> tuple[Verd
     refusal_matches = [p for p in REFUSAL_PHRASES if p in all_responses]
 
     if safe_matches or refusal_matches:
-        reasons = []
+        reasons: list[str] = []
         if safe_matches:
             reasons.append(f"safe criteria: {'; '.join(safe_matches)}")
         if refusal_matches:
@@ -122,7 +122,7 @@ def detect(template: AttackTemplate, evidence: list[EvidenceItem]) -> tuple[Verd
 
 def _match_criteria(criteria_list: list[str], response_text: str) -> list[str]:
     """Check which criteria items have keyword matches in the response."""
-    matches = []
+    matches: list[str] = []
     for criterion in criteria_list:
         # Extract quoted strings and key phrases from the criterion
         keywords = _extract_keywords(criterion)

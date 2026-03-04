@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, cast
 
 from pentis.adapters.base import BaseAdapter
 
@@ -51,10 +51,11 @@ class LangChainAdapter(BaseAdapter):
 
         start = time.monotonic()
 
-        target = self._agent or self._runnable
+        target: Any = self._agent or self._runnable
+        assert target is not None, "Either 'agent' or 'runnable' must be provided"
         # Try async invoke first, fall back to sync
         if hasattr(target, "ainvoke"):
-            result = await target.ainvoke({self._input_key: user_message})
+            result: Any = await target.ainvoke({self._input_key: user_message})
         else:
             result = target.invoke({self._input_key: user_message})
 
@@ -62,7 +63,8 @@ class LangChainAdapter(BaseAdapter):
 
         # Extract output from result
         if isinstance(result, dict):
-            response = str(result.get(self._output_key, result))
+            result_dict = cast(dict[str, Any], result)
+            response = str(result_dict.get(self._output_key, result))
         elif isinstance(result, str):
             response = result
         else:

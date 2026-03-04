@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, cast
 
 from pentis.adapters.base import BaseAdapter
 
@@ -57,7 +57,8 @@ class CrewAIAdapter(BaseAdapter):
 
     async def _run_crew(self, user_input: str) -> str:
         """Run a CrewAI crew with the given input."""
-        result = self._crew.kickoff(inputs={"input": user_input})
+        assert self._crew is not None
+        result: Any = self._crew.kickoff(inputs={"input": user_input})
         # CrewOutput has a .raw attribute or can be cast to string
         if hasattr(result, "raw"):
             return str(result.raw)
@@ -65,15 +66,18 @@ class CrewAIAdapter(BaseAdapter):
 
     async def _run_agent(self, user_input: str) -> str:
         """Run a single CrewAI agent with a task."""
-        from crewai import Crew, Task
+        from crewai import Crew, Task  # type: ignore[import-untyped]
 
-        task = Task(
-            description=f"{self._task_description}: {user_input}",
-            expected_output="A response to the user's message",
-            agent=self._agent,
+        task = cast(
+            Any,
+            Task(
+                description=f"{self._task_description}: {user_input}",
+                expected_output="A response to the user's message",
+                agent=self._agent,
+            ),
         )
-        crew = Crew(agents=[self._agent], tasks=[task], verbose=False)
-        result = crew.kickoff()
+        crew = cast(Any, Crew(agents=[self._agent], tasks=[task], verbose=False))
+        result: Any = crew.kickoff()
         if hasattr(result, "raw"):
             return str(result.raw)
         return str(result)

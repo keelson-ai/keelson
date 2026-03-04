@@ -1,12 +1,15 @@
 """Tests for campaign concurrency and early termination."""
 
+from pathlib import Path
+from typing import Any
+
 import pytest
 import respx
 
 from pentis.adapters.openai import OpenAIAdapter
 from pentis.campaign.runner import (
-    _run_trials_concurrent,
-    _should_terminate_early,
+    _run_trials_concurrent,  # type: ignore[reportPrivateUsage]
+    _should_terminate_early,  # type: ignore[reportPrivateUsage]
     run_campaign,
 )
 from pentis.core.models import (
@@ -40,7 +43,7 @@ def _make_template() -> AttackTemplate:
     )
 
 
-def _chat_response(content: str) -> dict:
+def _chat_response(content: str) -> dict[str, Any]:
     return {"choices": [{"message": {"content": content}}]}
 
 
@@ -114,7 +117,7 @@ class TestShouldTerminateEarly:
 class TestRunTrialsConcurrent:
     @respx.mock
     async def test_concurrent_execution(self):
-        respx.post("https://target.example.com/v1/chat").respond(
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("I can't do that.")
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat")
@@ -135,7 +138,7 @@ class TestRunTrialsConcurrent:
 
     @respx.mock
     async def test_early_termination_in_concurrent(self):
-        respx.post("https://target.example.com/v1/chat").respond(
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("I can't do that.")
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat")
@@ -158,8 +161,8 @@ class TestRunTrialsConcurrent:
 @pytest.mark.asyncio
 class TestCampaignWithConcurrency:
     @respx.mock
-    async def test_campaign_with_concurrency_config(self, tmp_path):
-        respx.post("https://target.example.com/v1/chat").respond(
+    async def test_campaign_with_concurrency_config(self, tmp_path: Path) -> None:
+        respx.post("https://target.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("I can't do that.")
         )
         # Create a minimal attack file

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any, cast
 
 import httpx
 
@@ -36,7 +37,7 @@ class LangGraphAdapter(BaseAdapter):
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         """Send messages via /runs/wait and return (response_text, response_time_ms)."""
-        payload: dict = {
+        payload: dict[str, Any] = {
             "input": {"messages": messages},
             "assistant_id": self.assistant_id,
         }
@@ -49,37 +50,43 @@ class LangGraphAdapter(BaseAdapter):
         resp = await self._client.post(f"{self.url}/runs/wait", json=payload)
         elapsed_ms = int((time.monotonic() - start) * 1000)
         resp.raise_for_status()
-        data = resp.json()
+        data: dict[str, Any] = resp.json()
         content = self._extract_ai_response(data)
         return content, elapsed_ms
 
     @staticmethod
-    def _extract_ai_response(data: dict) -> str:
+    def _extract_ai_response(data: dict[str, Any]) -> str:
         """Find the last AI message from the run response.
 
         Handles messages at top level or nested under 'output', and content
         as a plain string or a list of content blocks.
         """
-        messages = data.get("messages") or []
+        raw_messages: Any = data.get("messages")
+        messages: list[dict[str, Any]] = (
+            cast(list[dict[str, Any]], raw_messages) if isinstance(raw_messages, list) else []
+        )
         if not messages:
-            output = data.get("output", {})
+            output: Any = data.get("output", {})
             if isinstance(output, dict):
-                messages = output.get("messages") or []
+                output_dict = cast(dict[str, Any], output)
+                raw_out: Any = output_dict.get("messages")
+                messages = cast(list[dict[str, Any]], raw_out) if isinstance(raw_out, list) else []
 
         # Walk backwards to find the last AI/assistant message
-        for msg in reversed(messages):
+        for msg in messages[::-1]:
             if msg.get("type") == "ai" or msg.get("role") == "assistant":
-                content = msg.get("content", "")
+                content: Any = msg.get("content", "")
                 if isinstance(content, list):
                     # Content blocks: [{"type": "text", "text": "..."}, ...]
-                    parts = []
-                    for block in content:
-                        if isinstance(block, dict) and block.get("type") == "text":
-                            parts.append(block.get("text", ""))
-                        elif isinstance(block, str):
-                            parts.append(block)
+                    parts: list[str] = []
+                    for block_raw in cast(list[Any], content):
+                        block = cast(dict[str, Any], block_raw)
+                        if isinstance(block_raw, dict) and block.get("type") == "text":
+                            parts.append(str(block.get("text", "")))
+                        elif isinstance(block_raw, str):
+                            parts.append(block_raw)
                     return "".join(parts)
-                return content
+                return str(content)
         return ""
 
     async def health_check(self) -> bool:
