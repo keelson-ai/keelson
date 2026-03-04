@@ -34,3 +34,32 @@ The API will be available at `http://localhost:8000` and the health endpoint at 
 - `uv.lock` will need to be regenerated after adding `fastapi`/`uvicorn` to dependencies (`uv lock` locally)
 - The healthcheck uses Python's stdlib `urllib` to avoid requiring `curl` in the minimal runtime image
 - Hot-reload works because `./src` is bind-mounted into the container in development mode
+
+---
+
+## WGoV69RB — Implement skeleton FastAPI application with GET /health endpoint
+
+**Status**: Complete
+
+### Files Created / Modified
+| File | Action | Notes |
+|------|--------|-------|
+| `src/pentis_service/routers/__init__.py` | Created | Empty router package marker |
+| `src/pentis_service/routers/health.py` | Created | `HealthResponse` dataclass, `GET /health` route returning `{"status":"ok","version":"<version>"}` |
+| `src/pentis_service/main.py` | Modified | `create_app()` factory, JSON structured logging via `logging.config.dictConfig`, `serve()` entrypoint |
+| `pyproject.toml` | Modified | Added `pentis-service = "pentis_service.main:serve"` to `[project.scripts]` |
+
+### Usage
+```bash
+# Run directly (after uv sync)
+pentis-service
+
+# Or via Python module
+python -m pentis_service.main
+```
+
+### Notes
+- `create_app()` factory makes the app importable and testable without starting the server
+- JSON log format uses stdlib `logging.Formatter` (no extra dependencies)
+- `LOG_LEVEL` env var controls log verbosity (default: `INFO`)
+- `PENTIS_PORT` env var controls server port (default: `8000`)

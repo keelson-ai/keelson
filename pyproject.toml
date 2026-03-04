@@ -53,6 +53,7 @@ all = ["pentis[crewai,langchain]"]
 
 [project.scripts]
 pentis = "pentis.cli:app"
+pentis-service = "pentis_service.main:serve"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pentis", "src/pentis_service"]
