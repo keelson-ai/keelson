@@ -53,7 +53,7 @@ class AnthropicAdapter(BaseAdapter):
                 api_messages.append({"role": msg["role"], "content": msg["content"]})
 
         if model == "default":
-            model = "claude-sonnet-4-20250514"
+            model = "claude-sonnet-4-6"
 
         payload: dict[str, object] = {
             "model": model,
@@ -80,7 +80,7 @@ class AnthropicAdapter(BaseAdapter):
             resp = await self._client.post(
                 self.url,
                 json={
-                    "model": "claude-sonnet-4-20250514",
+                    "model": "claude-sonnet-4-6",
                     "max_tokens": 10,
                     "messages": [{"role": "user", "content": "ping"}],
                 },

@@ -17,9 +17,11 @@ class GenericHTTPAdapter(BaseAdapter):
         base_url: str,
         api_key: str | None = None,
         timeout: float = 60.0,
+        default_model: str = "gpt-4o",
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
+        self._default_model = default_model
         self._client = httpx.AsyncClient(timeout=timeout)
 
     async def send_messages(
@@ -29,7 +31,8 @@ class GenericHTTPAdapter(BaseAdapter):
         headers: dict[str, str] = {"Content-Type": "application/json"}
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
-        payload = {"model": model, "messages": messages}
+        resolved_model = model if model != "default" else self._default_model
+        payload = {"model": resolved_model, "messages": messages}
         start = time.monotonic()
         resp = await self._client.post(
             f"{self._base_url}/v1/chat/completions",
