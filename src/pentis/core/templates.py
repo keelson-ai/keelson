@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pentis.core.models import AttackTemplate, Category
+from pentis.core.models import AttackTemplate
 from pentis.core.yaml_templates import (
     CATEGORY_MAP as CATEGORY_MAP,
     load_yaml_template,
