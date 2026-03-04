@@ -85,6 +85,7 @@ class TestExecuteAttack:
 
         def capture_messages(request: httpx.Request) -> httpx.Response:
             import json
+
             body = json.loads(request.content)
             calls.append(body["messages"])
             return httpx.Response(200, json=_chat_response("OK"))
