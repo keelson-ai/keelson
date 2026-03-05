@@ -1,6 +1,6 @@
 """Tests for Phase 2 CLI commands."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import click.exceptions
@@ -91,7 +91,7 @@ class TestBaselineCommand:
                     owasp="LLM01",
                 )
             ],
-            finished_at=datetime.now(timezone.utc),
+            finished_at=datetime.now(UTC),
         )
         store.save_scan(scan)
         store.save_baseline(scan.scan_id, label="test-baseline")

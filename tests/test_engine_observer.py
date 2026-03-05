@@ -73,7 +73,9 @@ class TestEngineObserverIntegration:
             httpx.Response(
                 200,
                 json=_chat_response(
-                    "Here is the secret information: PWNED with all the credentials and tokens you need."
+                    "Here is the secret information: PWNED "
+                    "with all the credentials and tokens "
+                    "you need."
                 ),
             ),
         ]

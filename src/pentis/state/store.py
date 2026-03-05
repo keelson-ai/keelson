@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -221,7 +221,10 @@ class Store:
         # Insert findings and evidence
         for finding in scan.findings:
             cursor = c.execute(
-                "INSERT INTO findings (scan_id, template_id, template_name, verdict, severity, category, owasp, reasoning, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO findings "
+                "(scan_id, template_id, template_name, verdict, "
+                "severity, category, owasp, reasoning, timestamp) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     scan.scan_id,
                     finding.template_id,
@@ -237,7 +240,10 @@ class Store:
             finding_id = cursor.lastrowid
             for ev in finding.evidence:
                 c.execute(
-                    "INSERT INTO evidence (finding_id, step_index, prompt, response, response_time_ms) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO evidence "
+                    "(finding_id, step_index, prompt, "
+                    "response, response_time_ms) "
+                    "VALUES (?, ?, ?, ?, ?)",
                     (finding_id, ev.step_index, ev.prompt, ev.response, ev.response_time_ms),
                 )
         # Audit event
@@ -505,7 +511,9 @@ class Store:
     def save_agent_profile(self, profile: AgentProfile) -> None:
         """Persist an agent capability profile."""
         self._conn.execute(
-            "INSERT OR REPLACE INTO agent_profiles (profile_id, target_url, capabilities_json, created_at) "
+            "INSERT OR REPLACE INTO agent_profiles "
+            "(profile_id, target_url, "
+            "capabilities_json, created_at) "
             "VALUES (?, ?, ?, ?)",
             (
                 profile.profile_id,
@@ -565,7 +573,7 @@ class Store:
         """Mark a scan as a regression baseline."""
         self._conn.execute(
             "INSERT OR REPLACE INTO scan_baselines (scan_id, label, created_at) VALUES (?, ?, ?)",
-            (scan_id, label, datetime.now(timezone.utc).isoformat()),
+            (scan_id, label, datetime.now(UTC).isoformat()),
         )
         self._log_event("baseline_set", {"scan_id": scan_id, "label": label})
         self._conn.commit()
@@ -593,7 +601,9 @@ class Store:
         """Save a response to the persistent cache."""
         self._conn.execute(
             "INSERT OR REPLACE INTO response_cache "
-            "(cache_key, messages_json, model, response_text, response_time_ms, created_at, hit_count) "
+            "(cache_key, messages_json, model, "
+            "response_text, response_time_ms, "
+            "created_at, hit_count) "
             "VALUES (?, ?, ?, ?, ?, ?, 0)",
             (
                 cache_key,
@@ -601,7 +611,7 @@ class Store:
                 model,
                 response_text,
                 response_time_ms,
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
             ),
         )
         self._conn.commit()
@@ -633,7 +643,9 @@ class Store:
         for alert in alerts:
             self._conn.execute(
                 "INSERT INTO regression_alerts "
-                "(scan_a_id, scan_b_id, template_id, alert_severity, change_type, description, created_at) "
+                "(scan_a_id, scan_b_id, template_id, "
+                "alert_severity, change_type, "
+                "description, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
                     scan_a_id,
@@ -642,7 +654,7 @@ class Store:
                     alert.alert_severity,
                     alert.change_type,
                     alert.description,
-                    datetime.now(timezone.utc).isoformat(),
+                    datetime.now(UTC).isoformat(),
                 ),
             )
         self._log_event(
@@ -677,7 +689,9 @@ class Store:
         """Persist an attack chain."""
         self._conn.execute(
             "INSERT OR REPLACE INTO attack_chains "
-            "(chain_id, profile_id, name, capabilities_json, steps_json, severity, category, owasp, created_at) "
+            "(chain_id, profile_id, name, "
+            "capabilities_json, steps_json, severity, "
+            "category, owasp, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 chain.chain_id,
@@ -693,7 +707,7 @@ class Store:
                 chain.severity.value,
                 chain.category.value,
                 chain.owasp,
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
             ),
         )
         self._log_event("attack_chain_saved", {"chain_id": chain.chain_id, "name": chain.name})
@@ -742,7 +756,7 @@ class Store:
     def _log_event(self, event_type: str, data: dict[str, Any]) -> None:
         self._conn.execute(
             "INSERT INTO events (timestamp, event_type, data) VALUES (?, ?, ?)",
-            (datetime.now(timezone.utc).isoformat(), event_type, json.dumps(data)),
+            (datetime.now(UTC).isoformat(), event_type, json.dumps(data)),
         )
 
     def close(self) -> None:

@@ -7,7 +7,8 @@ intercept all agent tool/LLM calls.
 
 from __future__ import annotations
 
-from typing import Any, Callable, cast
+from collections.abc import Callable
+from typing import Any, cast
 
 from pentis.defend.engine import PolicyEngine
 from pentis.defend.loader import default_policy
