@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from pentis.adapters.base import BaseAdapter
 from pentis.campaign.runner import run_campaign

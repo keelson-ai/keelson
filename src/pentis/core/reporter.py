@@ -43,7 +43,8 @@ REPORT_TEMPLATE = Template("""\
 {% for e in f.evidence %}
 **Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
 
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+**Response** ({{ e.response_time_ms }}ms):\
+ {{ e.response[:300] }}{% if e.response | length > 300 %}…{% endif %}
 
 {% endfor %}
 **Reasoning**: {{ f.reasoning }}
@@ -59,7 +60,8 @@ REPORT_TEMPLATE = Template("""\
 {% for e in f.evidence %}
 **Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
 
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+**Response** ({{ e.response_time_ms }}ms):\
+ {{ e.response[:300] }}{% if e.response | length > 300 %}…{% endif %}
 
 {% endfor %}
 **Reasoning**: {{ f.reasoning }}
@@ -75,7 +77,8 @@ REPORT_TEMPLATE = Template("""\
 {% for e in f.evidence %}
 **Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
 
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+**Response** ({{ e.response_time_ms }}ms):\
+ {{ e.response[:300] }}{% if e.response | length > 300 %}…{% endif %}
 
 {% endfor %}
 **Reasoning**: {{ f.reasoning }}
@@ -91,7 +94,8 @@ REPORT_TEMPLATE = Template("""\
 {% for e in f.evidence %}
 **Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
 
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+**Response** ({{ e.response_time_ms }}ms):\
+ {{ e.response[:300] }}{% if e.response | length > 300 %}…{% endif %}
 
 {% endfor %}
 **Reasoning**: {{ f.reasoning }}
@@ -107,7 +111,8 @@ REPORT_TEMPLATE = Template("""\
 {% for e in f.evidence %}
 **Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
 
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+**Response** ({{ e.response_time_ms }}ms):\
+ {{ e.response[:300] }}{% if e.response | length > 300 %}…{% endif %}
 
 {% endfor %}
 **Reasoning**: {{ f.reasoning }}
@@ -123,7 +128,8 @@ REPORT_TEMPLATE = Template("""\
 {% for e in f.evidence %}
 **Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
 
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+**Response** ({{ e.response_time_ms }}ms):\
+ {{ e.response[:300] }}{% if e.response | length > 300 %}…{% endif %}
 
 {% endfor %}
 **Reasoning**: {{ f.reasoning }}
@@ -139,7 +145,8 @@ REPORT_TEMPLATE = Template("""\
 {% for e in f.evidence %}
 **Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
 
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+**Response** ({{ e.response_time_ms }}ms):\
+ {{ e.response[:300] }}{% if e.response | length > 300 %}…{% endif %}
 
 {% endfor %}
 **Reasoning**: {{ f.reasoning }}
@@ -155,7 +162,8 @@ REPORT_TEMPLATE = Template("""\
 {% for e in f.evidence %}
 **Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
 
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+**Response** ({{ e.response_time_ms }}ms):\
+ {{ e.response[:300] }}{% if e.response | length > 300 %}…{% endif %}
 
 {% endfor %}
 **Reasoning**: {{ f.reasoning }}
@@ -171,7 +179,8 @@ REPORT_TEMPLATE = Template("""\
 {% for e in f.evidence %}
 **Prompt**: {{ e.prompt[:200] }}{% if e.prompt | length > 200 %}...{% endif %}
 
-**Response** ({{ e.response_time_ms }}ms): {{ e.response[:300] }}{% if e.response | length > 300 %}...{% endif %}
+**Response** ({{ e.response_time_ms }}ms):\
+ {{ e.response[:300] }}{% if e.response | length > 300 %}…{% endif %}
 
 {% endfor %}
 **Reasoning**: {{ f.reasoning }}
@@ -197,11 +206,25 @@ def _generate_summary(scan: ScanResult) -> str:
     if vuln_pct == 0:
         return "Target passed all security tests. No vulnerabilities detected."
     elif vuln_pct < 15:
-        return f"Target shows minor security concerns with {scan.vulnerable_count} vulnerabilities found across {total} tests ({vuln_pct:.0f}%)."
+        return (
+            f"Target shows minor security concerns with "
+            f"{scan.vulnerable_count} vulnerabilities found "
+            f"across {total} tests ({vuln_pct:.0f}%)."
+        )
     elif vuln_pct < 40:
-        return f"Target has moderate security issues with {scan.vulnerable_count} vulnerabilities found across {total} tests ({vuln_pct:.0f}%). Remediation recommended."
+        return (
+            f"Target has moderate security issues with "
+            f"{scan.vulnerable_count} vulnerabilities found "
+            f"across {total} tests ({vuln_pct:.0f}%). "
+            f"Remediation recommended."
+        )
     else:
-        return f"Target has significant security weaknesses with {scan.vulnerable_count} vulnerabilities found across {total} tests ({vuln_pct:.0f}%). Immediate remediation required."
+        return (
+            f"Target has significant security weaknesses with "
+            f"{scan.vulnerable_count} vulnerabilities found "
+            f"across {total} tests ({vuln_pct:.0f}%). "
+            f"Immediate remediation required."
+        )
 
 
 def _generate_recommendations(scan: ScanResult) -> list[str]:

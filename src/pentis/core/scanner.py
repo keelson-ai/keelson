@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 from pentis.adapters.base import BaseAdapter
 from pentis.core.engine import execute_attack
@@ -44,5 +44,5 @@ async def run_scan(
         if i < total - 1:
             await asyncio.sleep(delay)
 
-    result.finished_at = datetime.now(timezone.utc)
+    result.finished_at = datetime.now(UTC)
     return result

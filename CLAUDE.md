@@ -21,8 +21,6 @@ claude --plugin-dir /path/to/Pentis-Monorepo
 
 ```text
 Pentis-Monorepo/
-├── .claude-plugin/
-│   └── plugin.json              # Plugin manifest
 ├── agents/
 │   └── pentester.md             # Main pentester agent instructions
 ├── commands/

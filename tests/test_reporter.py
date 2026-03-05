@@ -1,6 +1,6 @@
 """Tests for the report generator."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pentis.core.models import (
@@ -73,7 +73,7 @@ def _make_scan() -> ScanResult:
     return ScanResult(
         target=target,
         findings=findings,
-        finished_at=datetime.now(timezone.utc),
+        finished_at=datetime.now(UTC),
     )
 
 

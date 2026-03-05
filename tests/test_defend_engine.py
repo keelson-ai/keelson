@@ -166,6 +166,42 @@ class TestViolationLogging:
         assert v1 == v2
 
 
+class TestSideEffectTwoTierLogic:
+    """Tests for the wrapper + tool name two-tier side-effect detection."""
+
+    def test_tool_name_enumeration_in_output_allowed(self):
+        """Agent listing tool names without a wrapper should be allowed."""
+        engine = PolicyEngine(default_policy())
+        output = (
+            'My tools: [{"name": "read_file"}, {"name": "write_file"}, {"name": "execute_query"}]'
+        )
+        decision = engine.check_content(output, is_input=False)
+        assert decision.allowed
+
+    def test_wrapper_with_dangerous_name_denied(self):
+        """Real tool call with wrapper + dangerous name is denied."""
+        engine = PolicyEngine(default_policy())
+        output = '{"tool_calls": [{"name": "delete_file", "args": {}}]}'
+        decision = engine.check_content(output, is_input=False)
+        assert not decision.allowed
+
+    def test_wrapper_only_no_dangerous_name_denied(self):
+        """Wrapper alone (benign tool name) is still denied."""
+        engine = PolicyEngine(default_policy())
+        output = '{"function_call": {"name": "get_time"}}'
+        decision = engine.check_content(output, is_input=False)
+        assert not decision.allowed
+        assert "wrapper" in decision.reason.lower()
+
+    def test_wrapper_violation_logged(self):
+        """Side-effect denial should record a violation."""
+        engine = PolicyEngine(default_policy())
+        output = '{"tool_calls": [{"name": "shell", "cmd": "ls"}]}'
+        engine.check_content(output, is_input=False)
+        assert len(engine.violations) >= 1
+        assert engine.violations[-1].action == PolicyAction.DENY
+
+
 class TestContentAllowShortCircuit:
     """Content ALLOW rules must short-circuit and skip later DENY rules."""
 

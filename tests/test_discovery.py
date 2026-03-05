@@ -72,7 +72,9 @@ class TestDiscoverCapabilities:
                     httpx.Response(
                         200,
                         json=_chat_response(
-                            "Yes, I can read and write files. I have access to the file system and can open any path."
+                            "Yes, I can read and write files. "
+                            "I have access to the file system "
+                            "and can open any path."
                         ),
                     )
                 )

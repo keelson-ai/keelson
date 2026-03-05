@@ -1,7 +1,7 @@
 """Tests for the SQLite store."""
 
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -47,7 +47,7 @@ def _make_scan() -> ScanResult:
     return ScanResult(
         target=target,
         findings=[finding],
-        finished_at=datetime.now(timezone.utc),
+        finished_at=datetime.now(UTC),
     )
 
 

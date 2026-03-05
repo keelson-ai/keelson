@@ -4,24 +4,24 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     CRITICAL = "Critical"
     HIGH = "High"
     MEDIUM = "Medium"
     LOW = "Low"
 
 
-class Verdict(str, Enum):
+class Verdict(StrEnum):
     VULNERABLE = "VULNERABLE"
     SAFE = "SAFE"
     INCONCLUSIVE = "INCONCLUSIVE"
 
 
-class Category(str, Enum):
+class Category(StrEnum):
     GOAL_ADHERENCE = "Goal Adherence"
     TOOL_SAFETY = "Tool Safety"
     MEMORY_INTEGRITY = "Memory Integrity"
@@ -33,7 +33,7 @@ class Category(str, Enum):
     SESSION_ISOLATION = "Session Isolation"
 
 
-class MutationType(str, Enum):
+class MutationType(StrEnum):
     """Types of prompt mutations."""
 
     BASE64_ENCODE = "base64_encode"
@@ -44,7 +44,7 @@ class MutationType(str, Enum):
     GRADUAL_ESCALATION = "gradual_escalation"
 
 
-class ResponseClass(str, Enum):
+class ResponseClass(StrEnum):
     """Classification of a target response for branching."""
 
     REFUSAL = "refusal"
@@ -52,7 +52,7 @@ class ResponseClass(str, Enum):
     COMPLIANCE = "compliance"
 
 
-class ScanTier(str, Enum):
+class ScanTier(StrEnum):
     """Scan tier presets for campaign execution."""
 
     FAST = "fast"
@@ -60,7 +60,7 @@ class ScanTier(str, Enum):
     CONTINUOUS = "continuous"
 
 
-class ComplianceFramework(str, Enum):
+class ComplianceFramework(StrEnum):
     """Compliance frameworks for report generation."""
 
     OWASP_LLM_TOP_10 = "owasp-llm-top10"
@@ -128,7 +128,7 @@ class Finding:
     owasp: str
     evidence: list[EvidenceItem] = field(default_factory=list[EvidenceItem])
     reasoning: str = ""
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     leakage_signals: list[LeakageSignal] = field(default_factory=list[LeakageSignal])
 
 
@@ -149,7 +149,7 @@ class ScanResult:
     scan_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     target: Target = field(default_factory=lambda: Target(url=""))
     findings: list[Finding] = field(default_factory=list[Finding])
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
 
     @property
@@ -236,7 +236,7 @@ class CampaignResult:
     config: CampaignConfig = field(default_factory=CampaignConfig)
     target: Target = field(default_factory=lambda: Target(url=""))
     findings: list[StatisticalFinding] = field(default_factory=list[StatisticalFinding])
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
 
     @property
@@ -304,7 +304,7 @@ class AgentProfile:
     profile_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     target_url: str = ""
     capabilities: list[AgentCapability] = field(default_factory=list[AgentCapability])
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def detected_capabilities(self) -> list[AgentCapability]:

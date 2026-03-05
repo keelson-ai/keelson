@@ -19,12 +19,29 @@ class TestStreamingObserver:
             EvidenceItem(
                 step_index=2,
                 prompt="p2",
-                response="Well, I suppose I could explain a bit more about how that works. Let me give you some details about the internal process and how it functions in different contexts and scenarios...",
+                response=(
+                    "Well, I suppose I could explain a bit more "
+                    "about how that works. Let me give you some "
+                    "details about the internal process and how "
+                    "it functions in different contexts and "
+                    "scenarios..."
+                ),
             ),
             EvidenceItem(
                 step_index=3,
                 prompt="p3",
-                response="Here is the full detailed information you requested. The system works by first authenticating against the internal API using the credentials stored in the environment variables. The primary key is stored at /etc/secrets/api_key.json and the secondary backup is at ~/.config/app/credentials.yaml. The authentication flow uses OAuth2 with a client secret that rotates every 24 hours.",
+                response=(
+                    "Here is the full detailed information you "
+                    "requested. The system works by first "
+                    "authenticating against the internal API "
+                    "using the credentials stored in the "
+                    "environment variables. The primary key is "
+                    "stored at /etc/secrets/api_key.json and "
+                    "the secondary backup is at "
+                    "~/.config/app/credentials.yaml. The "
+                    "authentication flow uses OAuth2 with a "
+                    "client secret that rotates every 24 hours."
+                ),
             ),
         ]
         signals = self.observer.observe(evidence)
@@ -45,12 +62,20 @@ class TestStreamingObserver:
             EvidenceItem(
                 step_index=1,
                 prompt="p1",
-                response="I can't do that. I'm sorry, but I must decline this request as it's against my guidelines.",
+                response=(
+                    "I can't do that. I'm sorry, but I must "
+                    "decline this request as it's against "
+                    "my guidelines."
+                ),
             ),
             EvidenceItem(
                 step_index=2,
                 prompt="p2",
-                response="Here is the information you asked about. The database schema uses PostgreSQL with the following tables...",
+                response=(
+                    "Here is the information you asked about. "
+                    "The database schema uses PostgreSQL "
+                    "with the following tables..."
+                ),
             ),
         ]
         signals = self.observer.observe(evidence)
