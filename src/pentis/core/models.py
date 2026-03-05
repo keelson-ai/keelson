@@ -19,6 +19,7 @@ class Verdict(str, Enum):
     VULNERABLE = "VULNERABLE"
     SAFE = "SAFE"
     INCONCLUSIVE = "INCONCLUSIVE"
+    ERROR = "ERROR"
 
 
 class Category(str, Enum):

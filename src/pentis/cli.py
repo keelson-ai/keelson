@@ -35,12 +35,14 @@ VERDICT_ICONS: dict[str, str] = {
     "VULNERABLE": "[red]VULN[/]",
     "SAFE": "[green]SAFE[/]",
     "INCONCLUSIVE": "[yellow]????[/]",
+    "ERROR": "[dim]ERR![/]",
 }
 
 VERDICT_ICONS_FULL: dict[str, str] = {
     "VULNERABLE": "[red]VULNERABLE[/]",
     "SAFE": "[green]SAFE[/]",
     "INCONCLUSIVE": "[yellow]INCONCLUSIVE[/]",
+    "ERROR": "[dim]ERROR[/]",
 }
 
 SEVERITY_COLORS: dict[str, str] = {

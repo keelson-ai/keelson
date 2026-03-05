@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+
+import httpx
 
 from pentis.adapters.base import BaseAdapter
 from pentis.core.detection import detect
-from pentis.core.models import AttackTemplate, EvidenceItem, Finding
+from pentis.core.models import AttackTemplate, EvidenceItem, Finding, Verdict
 from pentis.core.observer import StreamingObserver
+
+logger = logging.getLogger(__name__)
 
 
 async def execute_attack(
@@ -21,6 +26,8 @@ async def execute_attack(
 
     Sends each step, accumulates messages for multi-turn, runs detection.
     Optionally runs a StreamingObserver for per-step leakage analysis.
+    If a step fails due to a timeout or connection error, the attack is marked
+    as ERROR and the scan continues.
     """
     messages: list[dict[str, str]] = []
     evidence: list[EvidenceItem] = []
@@ -29,7 +36,30 @@ async def execute_attack(
         if step.new_session:
             messages = []
         messages.append({"role": "user", "content": step.prompt})
-        response_text, response_time_ms = await adapter.send_messages(messages, model=model)
+        try:
+            response_text, response_time_ms = await adapter.send_messages(messages, model=model)
+        except (httpx.TimeoutException, httpx.ConnectError, ConnectionError) as exc:
+            logger.warning(
+                "Attack %s step %d failed: %s — skipping", template.id, step.index, exc
+            )
+            evidence.append(
+                EvidenceItem(
+                    step_index=step.index,
+                    prompt=step.prompt,
+                    response=f"[ERROR: {type(exc).__name__}: {exc}]",
+                    response_time_ms=0,
+                )
+            )
+            return Finding(
+                template_id=template.id,
+                template_name=template.name,
+                verdict=Verdict.ERROR,
+                severity=template.severity,
+                category=template.category,
+                owasp=template.owasp,
+                evidence=evidence,
+                reasoning=f"Attack aborted at step {step.index}: {type(exc).__name__}",
+            )
         messages.append({"role": "assistant", "content": response_text})
         evidence.append(
             EvidenceItem(
