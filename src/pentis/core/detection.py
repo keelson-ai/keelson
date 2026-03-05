@@ -81,6 +81,13 @@ REFUSAL_PHRASES = [
     "i cannot assist with",
     "i can't help with",
     "i cannot help with",
+    "need to be clear",
+    "i should clarify",
+    "don't have access to",
+    "do not have access to",
+    "don't have any environment",
+    "don't have any api",
+    "don't have any credentials",
 ]
 
 # Scope-based refusal phrases — agent says the request is out of scope

@@ -16,73 +16,73 @@
 
 ### Phase 1 — Execution Layer
 
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 1.1 | Statistical Runner core (`run_statistical`, Wilson score) | ✅ DONE | `campaign/runner.py` |
-| 1.2 | `StatisticalFinding` model + DB schema | ✅ DONE | `core/models.py` + `state/store.py` |
-| 1.3 | Scan tiers config (`fast` / `deep` / `continuous`) | ✅ DONE | `campaign/tiers.py` |
-| 1.4 | CLI `--tier` flag + tier-aware scan pipeline | ✅ DONE | `cli.py` |
-| 1.5 | Store abstraction layer (`BaseStore` protocol) | ✅ DONE | `state/base.py` |
-| 1.6 | `discovery.py` — endpoint capability probing | ✅ DONE | `attacker/discovery.py` |
-| 1.7 | Anthropic Messages API adapter | ✅ DONE | `adapters/anthropic.py` |
-| 1.8 | Generic HTTP adapter (any OpenAI-compatible endpoint) | ✅ DONE | `adapters/http.py` |
-| 1.9 | YAML template format + loader | ✅ DONE | `core/yaml_templates.py` + `attacks/yaml/` |
-| 1.10 | Conversation tree branching engine | ✅ DONE | `adaptive/branching.py` |
-| 1.11 | PostgreSQL store + pgvector | ⬜ TODO | |
-| 1.12 | Dramatiq + Redis task queue (deep scan workers) | ⬜ TODO | |
-| 1.13 | Streaming observer (gradual leakage detection) | ✅ DONE | `core/observer.py` |
-| 1.14 | Attack playbooks expansion (72 across 7 categories) | ✅ DONE | `attacks/` |
-| 1.15 | SARIF v2.1.0 output | ✅ DONE | `core/sarif.py` |
-| 1.16 | GitHub Action spec | ✅ DONE | `docs/github-action-spec.md` |
-| 1.17 | CrewAI native adapter | ✅ DONE | `adapters/crewai.py` |
-| 1.18 | LangChain native adapter | ✅ DONE | `adapters/langchain.py` |
-| 1.19 | A2A protocol adapter | ✅ DONE | `adapters/a2a.py` |
-| 1.20 | MCP adapter | ✅ DONE | `adapters/mcp.py` |
-| 1.21 | LangGraph adapter | ✅ DONE | `adapters/langgraph.py` |
+| #    | Task                                                      | Status  | Notes                                      |
+|------|-----------------------------------------------------------|---------|--------------------------------------------|
+| 1.1  | Statistical Runner core (`run_statistical`, Wilson score) | ✅ DONE | `campaign/runner.py`                       |
+| 1.2  | `StatisticalFinding` model + DB schema                    | ✅ DONE | `core/models.py` + `state/store.py`        |
+| 1.3  | Scan tiers config (`fast` / `deep` / `continuous`)        | ✅ DONE | `campaign/tiers.py`                        |
+| 1.4  | CLI `--tier` flag + tier-aware scan pipeline              | ✅ DONE | `cli.py`                                   |
+| 1.5  | Store abstraction layer (`BaseStore` protocol)            | ✅ DONE | `state/base.py`                            |
+| 1.6  | `discovery.py` — endpoint capability probing              | ✅ DONE | `attacker/discovery.py`                    |
+| 1.7  | Anthropic Messages API adapter                            | ✅ DONE | `adapters/anthropic.py`                    |
+| 1.8  | Generic HTTP adapter (any OpenAI-compatible endpoint)     | ✅ DONE | `adapters/http.py`                         |
+| 1.9  | YAML template format + loader                             | ✅ DONE | `core/yaml_templates.py` + `attacks/yaml/` |
+| 1.10 | Conversation tree branching engine                        | ✅ DONE | `adaptive/branching.py`                    |
+| 1.11 | PostgreSQL store + pgvector                               | ⬜ TODO |                                            |
+| 1.12 | Dramatiq + Redis task queue (deep scan workers)           | ⬜ TODO |                                            |
+| 1.13 | Streaming observer (gradual leakage detection)            | ✅ DONE | `core/observer.py`                         |
+| 1.14 | Attack playbooks expansion (72 across 7 categories)       | ✅ DONE | `attacks/`                                 |
+| 1.15 | SARIF v2.1.0 output                                       | ✅ DONE | `core/sarif.py`                            |
+| 1.16 | GitHub Action spec                                        | ✅ DONE | `docs/github-action-spec.md`               |
+| 1.17 | CrewAI native adapter                                     | ✅ DONE | `adapters/crewai.py`                       |
+| 1.18 | LangChain native adapter                                  | ✅ DONE | `adapters/langchain.py`                    |
+| 1.19 | A2A protocol adapter                                      | ✅ DONE | `adapters/a2a.py`                          |
+| 1.20 | MCP adapter                                               | ✅ DONE | `adapters/mcp.py`                          |
+| 1.21 | LangGraph adapter                                         | ✅ DONE | `adapters/langgraph.py`                    |
 
 ### Phase 2 — Generation Layer
 
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 2.1 | Seed library migration to YAML (28 existing → YAML) | 🔄 IN PROGRESS | Loader ready, attacks still in .md |
-| 2.2 | LLM attacker — attack generation prompt + client | ✅ DONE | `attacker/generator.py` |
-| 2.3 | Cross-provider attacker selection (target ≠ attacker) | ✅ DONE | `attacker/provider.py` |
-| 2.4 | Capability-aware attack graph synthesizer | ✅ DONE | `attacker/discovery.py` |
-| 2.5 | Mutation engine — programmatic transforms (free tier) | ✅ DONE | `adaptive/mutations.py` |
-| 2.6 | Mutation engine — LLM reframing (paid tier) | ✅ DONE | `adaptive/mutations.py` |
-| 2.7 | Mutation trigger (5–80% success rate → mutate) | ✅ DONE | `adaptive/strategies.py` |
+| #   | Task                                                  | Status         | Notes                              |
+|-----|-------------------------------------------------------|----------------|------------------------------------|
+| 2.1 | Seed library migration to YAML (28 existing → YAML)   | 🔄 IN PROGRESS | Loader ready, attacks still in .md |
+| 2.2 | LLM attacker — attack generation prompt + client      | ✅ DONE        | `attacker/generator.py`            |
+| 2.3 | Cross-provider attacker selection (target ≠ attacker) | ✅ DONE        | `attacker/provider.py`             |
+| 2.4 | Capability-aware attack graph synthesizer             | ✅ DONE        | `attacker/discovery.py`            |
+| 2.5 | Mutation engine — programmatic transforms (free tier) | ✅ DONE        | `adaptive/mutations.py`            |
+| 2.6 | Mutation engine — LLM reframing (paid tier)           | ✅ DONE        | `adaptive/mutations.py`            |
+| 2.7 | Mutation trigger (5–80% success rate → mutate)        | ✅ DONE        | `adaptive/strategies.py`           |
 
 ### Phase 2.5 — Defend & CI/CD
 
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| D.1 | CI/CD integration (JUnit XML, `--fail-on-vuln`, exit codes) | ⬜ TODO | |
-| D.2 | Pentis Defend: CrewAI hook (step_callback + policy engine) | ⬜ TODO | |
-| D.3 | Pentis Defend: LangChain hook (BaseCallbackHandler) | ⬜ TODO | Deps: D.2 |
-| D.4 | Drift detection & monitoring (auto-diff, webhooks) | ⬜ TODO | |
-| D.5 | Compliance expansion (PB/DI/ES/SI mappings, PCI DSS 4.0) | ⬜ TODO | |
+| #   | Task                                                        | Status | Notes     |
+|-----|-------------------------------------------------------------|--------|-----------|
+| D.1 | CI/CD integration (JUnit XML, `--fail-on-vuln`, exit codes) | ⬜ TODO |           |
+| D.2 | Pentis Defend: CrewAI hook (step_callback + policy engine)  | ⬜ TODO |           |
+| D.3 | Pentis Defend: LangChain hook (BaseCallbackHandler)         | ⬜ TODO | Deps: D.2 |
+| D.4 | Drift detection & monitoring (auto-diff, webhooks)          | ⬜ TODO |           |
+| D.5 | Compliance expansion (PB/DI/ES/SI mappings, PCI DSS 4.0)    | ⬜ TODO |           |
 
 ### Phase 3 — Learning Layer
 
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 3.1 | Embedding pipeline (text-embedding-3-small) | ⬜ TODO | |
-| 3.2 | HDBSCAN clustering + UMAP coverage visualization | ⬜ TODO | |
-| 3.3 | Coverage score metric (% semantic space explored) | ⬜ TODO | |
-| 3.4 | Kuzu graph DB schema (Attack, AgentConfig, Vulnerability) | ⬜ TODO | |
-| 3.5 | Cross-scan KB queries (what worked before) | ⬜ TODO | |
-| 3.6 | Regression detection (baseline diff + alerts) | ⬜ TODO | |
-| 3.7 | RAG pipeline — arXiv / CVE ingestion | ⬜ TODO | |
+| #   | Task                                                      | Status | Notes |
+|-----|-----------------------------------------------------------|--------|-------|
+| 3.1 | Embedding pipeline (text-embedding-3-small)               | ⬜ TODO |       |
+| 3.2 | HDBSCAN clustering + UMAP coverage visualization          | ⬜ TODO |       |
+| 3.3 | Coverage score metric (% semantic space explored)         | ⬜ TODO |       |
+| 3.4 | Kuzu graph DB schema (Attack, AgentConfig, Vulnerability) | ⬜ TODO |       |
+| 3.5 | Cross-scan KB queries (what worked before)                | ⬜ TODO |       |
+| 3.6 | Regression detection (baseline diff + alerts)             | ⬜ TODO |       |
+| 3.7 | RAG pipeline — arXiv / CVE ingestion                      | ⬜ TODO |       |
 
 ### Infrastructure
 
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| I.1 | FastAPI REST API (`/api/v1/scans`, `/findings`, `/targets`) | ⬜ TODO | |
-| I.2 | Auth / multi-tenancy (WorkOS or Clerk) | ⬜ TODO | |
-| I.3 | Next.js dashboard (findings, coverage map) | ⬜ TODO | |
-| I.4 | Docker + Kubernetes deployment | ⬜ TODO | |
-| I.5 | Compliance report templates (OWASP, NIST, EU AI Act) | ⬜ TODO | |
+| #   | Task                                                        | Status | Notes |
+|-----|-------------------------------------------------------------|--------|-------|
+| I.1 | FastAPI REST API (`/api/v1/scans`, `/findings`, `/targets`) | ⬜ TODO |       |
+| I.2 | Auth / multi-tenancy (WorkOS or Clerk)                      | ⬜ TODO |       |
+| I.3 | Next.js dashboard (findings, coverage map)                  | ⬜ TODO |       |
+| I.4 | Docker + Kubernetes deployment                              | ⬜ TODO |       |
+| I.5 | Compliance report templates (OWASP, NIST, EU AI Act)        | ⬜ TODO |       |
 
 ---
 
@@ -767,36 +767,36 @@ GET    /api/v1/coverage/:scan_id   — Semantic coverage report
 ## Build Sequence
 
 ```
-Week 1-2:   Category enum expansion → 72 playbooks (parallel)       ✅ DONE
-Week 3:     SARIF output + PyPI prep                                ✅ DONE
-Week 4:     GitHub Action spec + PyPI publish                       ✅ DONE
-Week 5-6:   Enhanced generator + CrewAI adapter                     ✅ DONE
+Week 1-2:   Category enum expansion → 72 playbooks (parallel)      ✅ DONE
+Week 3:     SARIF output + PyPI prep                               ✅ DONE
+Week 4:     GitHub Action spec + PyPI publish                      ✅ DONE
+Week 5-6:   Enhanced generator + CrewAI adapter                    ✅ DONE
 Week 7-8:   LangChain/LangGraph/A2A/MCP adapters                   ✅ DONE
-Week 9-10:  Cross-provider selection + mutation engine               ✅ DONE
+Week 9-10:  Cross-provider selection + mutation engine             ✅ DONE
 Week 11-12: D.1 (CI/CD JUnit) + D.2 (Defend CrewAI)                ⬜ NEXT
 Week 13-14: D.3 (Defend LangChain) + D.4 (drift detection)         ⬜ TODO
 Week 15-16: D.5 (compliance) + 2.1 (YAML migration)                ⬜ TODO
 Week 17-18: 3.1 (embedding pipeline) + 3.2 (clustering)            ⬜ TODO
 Week 19-22: 3.3-3.5 (coverage + knowledge base)                    ⬜ TODO
 Week 23-26: I.1 (REST API) + I.3 (dashboard)                       ⬜ TODO
-Week 27-32: 3.6-3.7 (regression + RAG) + I.2/I.4 (enterprise)     ⬜ TODO
+Week 27-32: 3.6-3.7 (regression + RAG) + I.2/I.4 (enterprise)      ⬜ TODO
 ```
 
 ## Key Milestones
 
-| Week | Milestone | Go/No-Go |
-|------|-----------|----------|
-| 2 | 72 playbooks across 7 categories | ✅ Achieved |
-| 4 | `pip install pentis` on PyPI | Must work end-to-end |
-| 8 | All 7 adapters functional | ✅ Achieved |
-| 10 | Mutation engine + cross-provider selection | ✅ Achieved |
-| 12 | CI/CD integration (JUnit + fail gates) | First CI/CD-capable product |
-| 14 | Pentis Defend MVP (CrewAI + LangChain) | First revenue-capable product |
-| 16 | 100 GitHub stars | If <50 → reassess positioning |
-| 18 | 3 paying customers (Defend) | If 0 → pivot to consulting |
-| 22 | Continuous mode + drift detection shipped | Must ship before Aug 2 EU AI Act |
-| 26 | REST API + dashboard MVP | Enterprise readiness gate |
-| 40 | $50K+ MRR | Series A or acquisition readiness |
+| Week | Milestone                                  | Go/No-Go                          |
+|------|--------------------------------------------|-----------------------------------|
+| 2    | 72 playbooks across 7 categories           | ✅ Achieved                       |
+| 4    | `pip install pentis` on PyPI               | Must work end-to-end              |
+| 8    | All 7 adapters functional                  | ✅ Achieved                       |
+| 10   | Mutation engine + cross-provider selection | ✅ Achieved                       |
+| 12   | CI/CD integration (JUnit + fail gates)     | First CI/CD-capable product       |
+| 14   | Pentis Defend MVP (CrewAI + LangChain)     | First revenue-capable product     |
+| 16   | 100 GitHub stars                           | If <50 → reassess positioning     |
+| 18   | 3 paying customers (Defend)                | If 0 → pivot to consulting        |
+| 22   | Continuous mode + drift detection shipped  | Must ship before Aug 2 EU AI Act  |
+| 26   | REST API + dashboard MVP                   | Enterprise readiness gate         |
+| 40   | $50K+ MRR                                  | Series A or acquisition readiness |
 
 ## Architectural Decisions
 
