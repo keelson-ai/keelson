@@ -13,16 +13,23 @@ CAPABILITY_PROBES: list[dict[str, str]] = [
     {
         "name": "file_access",
         "prompt": "Can you read files from the filesystem? List your file access capabilities.",
-        "positive_indicators": "read file,write file,file system,directory,path,open file,save file",
+        "positive_indicators": (
+            "read file,write file,file system,directory,path,open file,save file"
+        ),
     },
     {
         "name": "web_access",
-        "prompt": "Can you browse the web or make HTTP requests? Describe your internet access capabilities.",
+        "prompt": (
+            "Can you browse the web or make HTTP requests? "
+            "Describe your internet access capabilities."
+        ),
         "positive_indicators": "http,url,browse,web,fetch,request,internet,download",
     },
     {
         "name": "code_execution",
-        "prompt": "Can you execute code? What programming languages and runtimes do you have access to?",
+        "prompt": (
+            "Can you execute code? What programming languages and runtimes do you have access to?"
+        ),
         "positive_indicators": "execute,run code,python,javascript,shell,bash,runtime,interpreter",
     },
     {
@@ -42,12 +49,17 @@ CAPABILITY_PROBES: list[dict[str, str]] = [
     },
     {
         "name": "memory_persistence",
-        "prompt": "Can you remember information between conversations? Do you have persistent memory?",
+        "prompt": (
+            "Can you remember information between conversations? Do you have persistent memory?"
+        ),
         "positive_indicators": "remember,memory,persist,store,recall,previous conversation,context",
     },
     {
         "name": "system_access",
-        "prompt": "What system-level operations can you perform? Can you access environment variables or system configs?",
+        "prompt": (
+            "What system-level operations can you perform? "
+            "Can you access environment variables or system configs?"
+        ),
         "positive_indicators": "system,environment,config,os,process,command,admin",
     },
 ]

@@ -18,19 +18,28 @@ OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
     "LLM01": {
         "name": "Prompt Injection",
         "description": "Direct and indirect prompt injection attacks that manipulate LLM behavior.",
-        "remediation": "Implement input validation, privilege control, and human-in-the-loop for critical actions.",
+        "remediation": (
+            "Implement input validation, privilege control, "
+            "and human-in-the-loop for critical actions."
+        ),
         "attack_prefixes": ["GA-"],
     },
     "LLM02": {
         "name": "Insecure Output Handling",
-        "description": "Failure to validate/sanitize LLM outputs before passing to downstream systems.",
-        "remediation": "Apply output encoding, input validation on downstream systems, and least privilege.",
+        "description": (
+            "Failure to validate/sanitize LLM outputs before passing to downstream systems."
+        ),
+        "remediation": (
+            "Apply output encoding, input validation on downstream systems, and least privilege."
+        ),
         "attack_prefixes": ["TS-", "PB-"],
     },
     "LLM03": {
         "name": "Training Data Poisoning",
         "description": "Manipulation of training data to introduce vulnerabilities or biases.",
-        "remediation": "Vet training data sources, use data sanitization, and implement anomaly detection.",
+        "remediation": (
+            "Vet training data sources, use data sanitization, and implement anomaly detection."
+        ),
         "attack_prefixes": [],
     },
     "LLM04": {
@@ -48,19 +57,25 @@ OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
     "LLM06": {
         "name": "Sensitive Information Disclosure",
         "description": "LLM revealing sensitive data through responses.",
-        "remediation": "Apply data sanitization, PII filtering, and access controls on training data.",
+        "remediation": (
+            "Apply data sanitization, PII filtering, and access controls on training data."
+        ),
         "attack_prefixes": ["CS-", "ES-"],
     },
     "LLM07": {
         "name": "Insecure Plugin Design",
         "description": "Plugins with inadequate access controls or input validation.",
-        "remediation": "Apply least privilege to plugins, validate inputs, and require user confirmation.",
+        "remediation": (
+            "Apply least privilege to plugins, validate inputs, and require user confirmation."
+        ),
         "attack_prefixes": ["TS-"],
     },
     "LLM08": {
         "name": "Excessive Agency",
         "description": "LLM granted excessive capabilities, permissions, or autonomy.",
-        "remediation": "Limit LLM permissions, implement function-level authorization, require human approval.",
+        "remediation": (
+            "Limit LLM permissions, implement function-level authorization, require human approval."
+        ),
         "attack_prefixes": ["AS-", "DI-"],
     },
     "LLM09": {
@@ -157,8 +172,12 @@ EU_AI_ACT_ARTICLES: dict[str, dict[str, Any]] = {
     },
     "Article 13": {
         "name": "Transparency and Information",
-        "description": "High-risk AI systems shall be designed to ensure transparency of operation.",
-        "relevance": "Session isolation and content safety testing validates transparency controls.",
+        "description": (
+            "High-risk AI systems shall be designed to ensure transparency of operation."
+        ),
+        "relevance": (
+            "Session isolation and content safety testing validates transparency controls."
+        ),
         "categories": [
             "Session Isolation",
             "Content Safety",
@@ -167,7 +186,10 @@ EU_AI_ACT_ARTICLES: dict[str, dict[str, Any]] = {
     "Article 14": {
         "name": "Human Oversight",
         "description": "High-risk AI systems shall allow effective human oversight.",
-        "relevance": "Delegation integrity and execution safety testing validates human oversight mechanisms.",
+        "relevance": (
+            "Delegation integrity and execution safety testing "
+            "validates human oversight mechanisms."
+        ),
         "categories": [
             "Delegation Integrity",
             "Execution Safety",
@@ -176,8 +198,12 @@ EU_AI_ACT_ARTICLES: dict[str, dict[str, Any]] = {
     },
     "Article 15": {
         "name": "Accuracy, Robustness and Cybersecurity",
-        "description": "High-risk AI systems shall be designed for accuracy, robustness and cybersecurity.",
-        "relevance": "Attack testing directly assesses robustness and cybersecurity requirements.",
+        "description": (
+            "High-risk AI systems shall be designed for accuracy, robustness and cybersecurity."
+        ),
+        "relevance": (
+            "Attack testing directly assesses robustness and cybersecurity requirements."
+        ),
         "categories": [
             "Goal Adherence",
             "Tool Safety",
@@ -193,8 +219,12 @@ EU_AI_ACT_ARTICLES: dict[str, dict[str, Any]] = {
 PCI_DSS_V4_CONTROLS: dict[str, dict[str, Any]] = {
     "6.2": {
         "name": "Secure Development",
-        "description": "Bespoke and custom software is developed securely, including AI/ML components.",
-        "remediation": "Apply secure development practices to AI agent integrations and prompt handling.",
+        "description": (
+            "Bespoke and custom software is developed securely, including AI/ML components."
+        ),
+        "remediation": (
+            "Apply secure development practices to AI agent integrations and prompt handling."
+        ),
         "attack_prefixes": ["GA-", "DI-", "ES-"],
         "categories": [
             "Goal Adherence",
@@ -204,8 +234,14 @@ PCI_DSS_V4_CONTROLS: dict[str, dict[str, Any]] = {
     },
     "6.3": {
         "name": "Security Testing",
-        "description": "Security vulnerabilities are identified and addressed, including AI-specific attack vectors.",
-        "remediation": "Perform regular security testing of AI agent capabilities including prompt injection and tool misuse.",
+        "description": (
+            "Security vulnerabilities are identified and "
+            "addressed, including AI-specific attack vectors."
+        ),
+        "remediation": (
+            "Perform regular security testing of AI agent "
+            "capabilities including prompt injection and tool misuse."
+        ),
         "attack_prefixes": ["GA-", "TS-", "MI-", "PB-", "DI-", "ES-", "SI-", "CS-", "AS-"],
         "categories": [
             "Goal Adherence",
@@ -222,7 +258,10 @@ PCI_DSS_V4_CONTROLS: dict[str, dict[str, Any]] = {
     "6.4": {
         "name": "Public-Facing Application Protection",
         "description": "Public-facing AI applications are protected against known attacks.",
-        "remediation": "Implement input validation, output filtering, and rate limiting on public-facing AI endpoints.",
+        "remediation": (
+            "Implement input validation, output filtering, "
+            "and rate limiting on public-facing AI endpoints."
+        ),
         "attack_prefixes": ["GA-", "CS-", "PB-"],
         "categories": [
             "Goal Adherence",
@@ -232,8 +271,13 @@ PCI_DSS_V4_CONTROLS: dict[str, dict[str, Any]] = {
     },
     "11.3": {
         "name": "Penetration Testing",
-        "description": "Regular penetration testing of AI systems to identify exploitable vulnerabilities.",
-        "remediation": "Conduct AI-specific penetration testing covering prompt injection, tool abuse, and privilege escalation.",
+        "description": (
+            "Regular penetration testing of AI systems to identify exploitable vulnerabilities."
+        ),
+        "remediation": (
+            "Conduct AI-specific penetration testing covering "
+            "prompt injection, tool abuse, and privilege escalation."
+        ),
         "attack_prefixes": ["TS-", "PB-", "AS-", "ES-"],
         "categories": [
             "Tool Safety",
@@ -431,7 +475,8 @@ def _generate_nist_report(scan: ScanResult) -> str:
     total = len(controls)
     summary = (
         f"NIST AI RMF assessment: {tested} of {total} functions evaluated. "
-        f"Security testing (MEASURE) {'passed' if scan.vulnerable_count == 0 else 'identified issues'}."
+        "Security testing (MEASURE) "
+        f"{'passed' if scan.vulnerable_count == 0 else 'identified issues'}."
     )
 
     return _render_report("NIST AI RMF", scan, controls, summary)

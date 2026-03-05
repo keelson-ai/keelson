@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 BLOCKED_MESSAGE = "[BLOCKED by Pentis Defend]"
 REDACTED_MESSAGE = "[REDACTED by Pentis Defend]"
 
 
-class PolicyAction(str, Enum):
+class PolicyAction(StrEnum):
     ALLOW = "allow"
     DENY = "deny"
     LOG = "log"  # allow but log warning

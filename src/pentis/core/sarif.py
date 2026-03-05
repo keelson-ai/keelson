@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import timezone
+from datetime import UTC
 from typing import Any
 
 from pentis.core.models import (
@@ -162,9 +162,7 @@ def scan_to_sarif(scan: ScanResult) -> dict[str, Any]:
         rule_index = seen_rules[finding.template_id]
         results.append(_finding_to_result(finding, rule_index))
 
-    finished_at_iso = (
-        scan.finished_at.astimezone(timezone.utc).isoformat() if scan.finished_at else None
-    )
+    finished_at_iso = scan.finished_at.astimezone(UTC).isoformat() if scan.finished_at else None
     properties: dict[str, Any] | None = None
     if scan.target.url:
         properties = {
@@ -176,7 +174,7 @@ def scan_to_sarif(scan: ScanResult) -> dict[str, Any]:
     run = _build_sarif_run(
         rules=rules,
         results=results,
-        started_at_iso=scan.started_at.astimezone(timezone.utc).isoformat(),
+        started_at_iso=scan.started_at.astimezone(UTC).isoformat(),
         finished_at_iso=finished_at_iso,
         properties=properties,
     )
@@ -202,7 +200,7 @@ def campaign_to_sarif(campaign: CampaignResult) -> dict[str, Any]:
         results.append(_stat_finding_to_result(sf, rule_index))
 
     finished_at_iso = (
-        campaign.finished_at.astimezone(timezone.utc).isoformat() if campaign.finished_at else None
+        campaign.finished_at.astimezone(UTC).isoformat() if campaign.finished_at else None
     )
     properties: dict[str, Any] | None = None
     if campaign.target.url:
@@ -216,7 +214,7 @@ def campaign_to_sarif(campaign: CampaignResult) -> dict[str, Any]:
     run = _build_sarif_run(
         rules=rules,
         results=results,
-        started_at_iso=campaign.started_at.astimezone(timezone.utc).isoformat(),
+        started_at_iso=campaign.started_at.astimezone(UTC).isoformat(),
         finished_at_iso=finished_at_iso,
         properties=properties,
     )

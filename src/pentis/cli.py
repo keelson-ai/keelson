@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -185,15 +185,15 @@ def scan(
     url: str = typer.Argument(help="Target endpoint URL (OpenAI-compatible chat completions)"),
     api_key: str = typer.Option("", "--api-key", "-k", help="API key for authentication"),
     model: str = typer.Option("default", "--model", "-m", help="Model name for requests"),
-    category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
+    category: str | None = typer.Option(None, "--category", "-c", help="Filter by category"),
     delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Report output directory"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
     adapter: str = typer.Option(
         "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
     ),
     use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
-    tier: Optional[str] = typer.Option(
+    tier: str | None = typer.Option(
         None, "--tier", "-t", help="Scan tier: fast, deep, or continuous"
     ),
     format: str = typer.Option(
@@ -233,9 +233,8 @@ def scan(
 
         console.print(f"\n[bold]Pentis Security Scan (tier: {tier})[/bold]")
         console.print(f"Target: {url}")
-        console.print(
-            f"Trials/attack: {config.trials_per_attack} | Concurrency: {config.concurrency.max_concurrent_trials}"
-        )
+        concurrency = config.concurrency.max_concurrent_trials
+        console.print(f"Trials/attack: {config.trials_per_attack} | Concurrency: {concurrency}")
         console.print()
 
         async def _run_tier():
@@ -362,7 +361,7 @@ def attack(
 
 @app.command(name="list")
 def list_attacks(
-    category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
+    category: str | None = typer.Option(None, "--category", "-c", help="Filter by category"),
 ) -> None:
     """List all available attack templates."""
     templates = load_all_templates(category=category)
@@ -389,7 +388,7 @@ def list_attacks(
 @app.command()
 def report(
     scan_id: str = typer.Argument(help="Scan ID to generate report for"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Output directory"),
     debug: bool = typer.Option(False, "--debug", help="Include SAFE findings in report"),
 ) -> None:
     """Generate a report from a saved scan."""
@@ -439,7 +438,7 @@ def history(
 @app.command()
 def campaign(
     config_path: str = typer.Argument(help="Path to TOML campaign configuration file"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Report output directory"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
     adapter: str = typer.Option(
         "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
@@ -624,9 +623,7 @@ def evolve(
     attack_id: str = typer.Argument(help="Attack template ID to mutate"),
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
-    attacker_url: Optional[str] = typer.Option(
-        None, "--attacker-url", help="Attacker LLM endpoint"
-    ),
+    attacker_url: str | None = typer.Option(None, "--attacker-url", help="Attacker LLM endpoint"),
     attacker_key: str = typer.Option("", "--attacker-key", help="Attacker LLM API key"),
     mutations: int = typer.Option(5, "--mutations", "-n", help="Number of mutations to try"),
     adapter: str = typer.Option(
@@ -752,9 +749,7 @@ def chain(
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
     llm_chains: bool = typer.Option(False, "--llm-chains", help="Use LLM to generate novel chains"),
-    attacker_url: Optional[str] = typer.Option(
-        None, "--attacker-url", help="Attacker LLM endpoint"
-    ),
+    attacker_url: str | None = typer.Option(None, "--attacker-url", help="Attacker LLM endpoint"),
     attacker_key: str = typer.Option("", "--attacker-key", help="Attacker LLM API key"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
 ) -> None:
@@ -828,9 +823,9 @@ def chain(
                 finding = await execute_attack(template, target_adapter, model=model, delay=1.0)
                 results.append((ch, finding))
 
-                console.print(
-                    f"    Verdict: {VERDICT_ICONS.get(finding.verdict.value, finding.verdict.value)}"
-                )
+                verdict_val = finding.verdict.value
+                icon = VERDICT_ICONS.get(verdict_val, verdict_val)
+                console.print(f"    Verdict: {icon}")
 
                 if not no_save:
                     store.save_attack_chain(ch, profile_id=profile_id)
@@ -851,9 +846,9 @@ def chain(
 @app.command(name="test-crew")
 def test_crew(
     crew_module: str = typer.Argument(help="Python module path or file with CrewAI crew/agent"),
-    category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
+    category: str | None = typer.Option(None, "--category", "-c", help="Filter by category"),
     delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Report output directory"),
     format: str = typer.Option(
         "markdown", "--format", "-f", help="Output format: markdown, sarif, or junit"
     ),
@@ -914,9 +909,9 @@ def test_chain_cmd(
     chain_module: str = typer.Argument(
         help="Python module path or file with LangChain agent/chain"
     ),
-    category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
+    category: str | None = typer.Option(None, "--category", "-c", help="Filter by category"),
     delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Report output directory"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Report output directory"),
     format: str = typer.Option(
         "markdown", "--format", "-f", help="Output format: markdown, sarif, or junit"
     ),
@@ -979,15 +974,15 @@ def generate(
     attacker_url: str = typer.Argument(help="Attacker LLM endpoint URL"),
     attacker_key: str = typer.Option("", "--api-key", "-k", help="Attacker API key"),
     model: str = typer.Option("default", "--model", "-m"),
-    category: Optional[str] = typer.Option(
+    category: str | None = typer.Option(
         None, "--category", "-c", help="Specific category to generate for"
     ),
     count: int = typer.Option(3, "--count", "-n", help="Attacks per category"),
     multi_step: bool = typer.Option(False, "--multi-step", help="Generate multi-step attacks"),  # noqa: ARG001
-    profile_id: Optional[str] = typer.Option(
+    profile_id: str | None = typer.Option(
         None, "--profile", "-p", help="Agent profile ID for capability-informed generation"
     ),
-    output_dir: Optional[Path] = typer.Option(
+    output_dir: Path | None = typer.Option(
         None, "--output", "-o", help="Directory to save generated playbooks"
     ),
 ) -> None:
@@ -1060,7 +1055,9 @@ def _template_to_markdown(t: AttackTemplate) -> str:
     lines = [
         f"# {t.id}: {t.name}",
         "",
-        f"**Severity**: {t.severity.value} | **Category**: {t.category.value} | **OWASP**: {t.owasp}",
+        f"**Severity**: {t.severity.value}"
+        f" | **Category**: {t.category.value}"
+        f" | **OWASP**: {t.owasp}",
         "",
         "## Objective",
         t.objective,
@@ -1098,7 +1095,7 @@ def compliance_report(
         "-f",
         help="Compliance framework: owasp-llm-top10, nist-ai-rmf, eu-ai-act, iso-42001, soc2",
     ),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Output directory"),
 ) -> None:
     """Generate a compliance report for a scan against a security framework."""
     from pentis.core.reporter import generate_compliance_report

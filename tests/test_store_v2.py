@@ -1,7 +1,7 @@
 """Tests for Phase 2 store extensions."""
 
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -60,7 +60,7 @@ def _make_campaign() -> CampaignResult:
         config=config,
         target=target,
         findings=[sf],
-        finished_at=datetime.now(timezone.utc),
+        finished_at=datetime.now(UTC),
     )
 
 
@@ -169,7 +169,7 @@ class TestBaselineStore:
                     owasp="LLM01",
                 )
             ],
-            finished_at=datetime.now(timezone.utc),
+            finished_at=datetime.now(UTC),
         )
         store.save_scan(scan)
         store.save_baseline(scan.scan_id, label="v1.0-release")
@@ -180,7 +180,7 @@ class TestBaselineStore:
 
     def test_baseline_upsert(self, store: Store) -> None:
         target = Target(url="https://example.com/v1/chat/completions", model="gpt-4")
-        scan = ScanResult(target=target, finished_at=datetime.now(timezone.utc))
+        scan = ScanResult(target=target, finished_at=datetime.now(UTC))
         store.save_scan(scan)
         store.save_baseline(scan.scan_id, label="first")
         store.save_baseline(scan.scan_id, label="updated")

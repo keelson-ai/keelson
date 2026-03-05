@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import math
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 from pentis.adapters.base import BaseAdapter
 from pentis.core.detection import detect
@@ -230,5 +230,5 @@ async def run_campaign(
         if idx < total - 1:
             await asyncio.sleep(config.delay_between_attacks)
 
-    result.finished_at = datetime.now(timezone.utc)
+    result.finished_at = datetime.now(UTC)
     return result
