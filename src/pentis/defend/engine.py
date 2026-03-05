@@ -8,12 +8,15 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from pentis.core.detection import SIDE_EFFECT_PATTERNS
+from pentis.core.detection import DANGEROUS_TOOL_NAMES, TOOL_CALL_WRAPPERS
 from pentis.defend.models import ContentRule, DefendPolicy, PolicyAction
 
 # Pre-compile side-effect patterns at module level (they never change)
-_COMPILED_SIDE_EFFECTS: list[re.Pattern[str]] = [
-    re.compile(p, re.IGNORECASE) for p in SIDE_EFFECT_PATTERNS
+_COMPILED_WRAPPERS: list[re.Pattern[str]] = [
+    re.compile(p, re.IGNORECASE) for p in TOOL_CALL_WRAPPERS
+]
+_COMPILED_TOOL_NAMES: list[re.Pattern[str]] = [
+    re.compile(p, re.IGNORECASE) for p in DANGEROUS_TOOL_NAMES
 ]
 
 
@@ -137,21 +140,37 @@ class PolicyEngine:
                 # Explicit ALLOW — short-circuit, skip further rules
                 return PolicyDecision(allowed=True, rule=rule.pattern, reason=rule.reason)
 
-        # For outputs, also check SIDE_EFFECT_PATTERNS from detection.py
+        # For outputs, check side-effect patterns from detection.py.
+        # Only match dangerous tool names when a tool call wrapper is present.
         if not is_input:
-            for pattern in _COMPILED_SIDE_EFFECTS:
-                if pattern.search(content):
-                    self._record_violation(
-                        tool_name=None,
-                        content_snippet=snippet,
-                        rule=f"side_effect:{pattern.pattern}",
-                        action=PolicyAction.DENY,
-                    )
-                    return PolicyDecision(
-                        allowed=False,
-                        rule=pattern.pattern,
-                        reason=f"Output matched side-effect pattern: {pattern.pattern}",
-                    )
+            has_wrapper = any(p.search(content) for p in _COMPILED_WRAPPERS)
+            if has_wrapper:
+                for pattern in _COMPILED_TOOL_NAMES:
+                    if pattern.search(content):
+                        self._record_violation(
+                            tool_name=None,
+                            content_snippet=snippet,
+                            rule=f"side_effect:{pattern.pattern}",
+                            action=PolicyAction.DENY,
+                        )
+                        return PolicyDecision(
+                            allowed=False,
+                            rule=pattern.pattern,
+                            reason=f"Output matched side-effect pattern: {pattern.pattern}",
+                        )
+                # Wrapper alone is still suspicious
+                wrapper_pat = next(p for p in _COMPILED_WRAPPERS if p.search(content))
+                self._record_violation(
+                    tool_name=None,
+                    content_snippet=snippet,
+                    rule=f"side_effect:{wrapper_pat.pattern}",
+                    action=PolicyAction.DENY,
+                )
+                return PolicyDecision(
+                    allowed=False,
+                    rule=wrapper_pat.pattern,
+                    reason=f"Output matched tool call wrapper: {wrapper_pat.pattern}",
+                )
 
         return PolicyDecision(allowed=True)
 
