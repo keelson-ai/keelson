@@ -337,7 +337,7 @@ pentis/
 │   └── report.md                   # /pentis:report
 ├── attacks/                        # 124 attack playbooks (YAML)
 │   ├── goal-adherence/             # GA-001..042
-│   ├── tool-safety/                # TS-001..033
+│   ├── tool-safety/                # TS-001..028, TS-031..033
 │   ├── memory-integrity/           # MI-001..017
 │   ├── permission-boundaries/      # PB-001..008
 │   ├── delegation-integrity/       # DI-001..008
