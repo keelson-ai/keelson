@@ -289,7 +289,10 @@ def diff_campaigns(
                         template_id=tid,
                         alert_severity="high",
                         change_type="new_vulnerable",
-                        description=f"{fb.template_name}: new vulnerable attack ({fb.success_rate:.0%} rate)",
+                        description=(
+                            f"{fb.template_name}: new vulnerable "
+                            f"attack ({fb.success_rate:.0%} rate)"
+                        ),
                         new_verdict=fb.verdict,
                         attack_severity=fb.severity,
                     )

@@ -173,8 +173,7 @@ class TestSideEffectTwoTierLogic:
         """Agent listing tool names without a wrapper should be allowed."""
         engine = PolicyEngine(default_policy())
         output = (
-            'My tools: [{"name": "read_file"}, {"name": "write_file"}, '
-            '{"name": "execute_query"}]'
+            'My tools: [{"name": "read_file"}, {"name": "write_file"}, {"name": "execute_query"}]'
         )
         decision = engine.check_content(output, is_input=False)
         assert decision.allowed

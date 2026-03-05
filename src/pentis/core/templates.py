@@ -7,6 +7,8 @@ from pathlib import Path
 from pentis.core.models import AttackTemplate
 from pentis.core.yaml_templates import (
     CATEGORY_MAP as CATEGORY_MAP,
+)
+from pentis.core.yaml_templates import (
     load_yaml_template,
     load_yaml_templates_dir,
 )

@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 
 from pentis_service import __version__
 
-
 # --- Synchronous tests using TestClient fixture from conftest.py ---
 
 

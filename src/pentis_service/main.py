@@ -17,7 +17,12 @@ _LOGGING_CONFIG: dict[str, object] = {
     "formatters": {
         "json": {
             "()": "logging.Formatter",
-            "fmt": '{"time":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","message":"%(message)s"}',
+            "fmt": (
+                '{"time":"%(asctime)s",'
+                '"level":"%(levelname)s",'
+                '"logger":"%(name)s",'
+                '"message":"%(message)s"}'
+            ),
             "datefmt": "%Y-%m-%dT%H:%M:%SZ",
         }
     },

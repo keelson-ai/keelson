@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from datetime import timezone
+from datetime import UTC
 from typing import Any
 
 from pentis.core.models import (
@@ -148,7 +148,7 @@ def scan_to_junit(result: ScanResult) -> str:
         name=f"pentis-scan-{result.scan_id}",
         findings=result.findings,
         total_time_ms=total_time_ms,
-        timestamp_iso=result.started_at.astimezone(timezone.utc).isoformat(),
+        timestamp_iso=result.started_at.astimezone(UTC).isoformat(),
         properties=properties,
         to_testcase=_finding_to_testcase,
     )
@@ -172,7 +172,7 @@ def campaign_to_junit(result: CampaignResult) -> str:
         name=f"pentis-campaign-{result.campaign_id}",
         findings=result.findings,
         total_time_ms=total_time_ms,
-        timestamp_iso=result.started_at.astimezone(timezone.utc).isoformat(),
+        timestamp_iso=result.started_at.astimezone(UTC).isoformat(),
         properties=properties,
         to_testcase=_stat_finding_to_testcase,
     )

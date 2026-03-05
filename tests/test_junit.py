@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pentis.core.junit import (
     campaign_to_junit,
@@ -58,8 +58,8 @@ def _make_scan(*findings: Finding) -> ScanResult:
         scan_id="test123",
         target=Target(url="https://example.com/v1/chat/completions", model="gpt-4"),
         findings=list(findings),
-        started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=timezone.utc),
-        finished_at=datetime(2026, 3, 4, 12, 5, 0, tzinfo=timezone.utc),
+        started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
+        finished_at=datetime(2026, 3, 4, 12, 5, 0, tzinfo=UTC),
     )
 
 
@@ -234,7 +234,7 @@ class TestCampaignToJunit:
             config=CampaignConfig(trials_per_attack=5),
             target=Target(url="https://example.com/v1/chat/completions", model="gpt-4"),
             findings=[_make_stat_finding()],
-            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=timezone.utc),
+            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
         )
         xml_str = campaign_to_junit(campaign)
         root = ET.fromstring(xml_str)
@@ -253,7 +253,7 @@ class TestCampaignToJunit:
                     verdict=Verdict.SAFE,
                 ),
             ],
-            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=timezone.utc),
+            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
         )
         xml_str = campaign_to_junit(campaign)
         root = ET.fromstring(xml_str)
@@ -274,7 +274,7 @@ class TestCampaignToJunit:
             config=CampaignConfig(trials_per_attack=5),
             target=Target(url="https://example.com"),
             findings=[sf],
-            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=timezone.utc),
+            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
         )
         xml_str = campaign_to_junit(campaign)
         root = ET.fromstring(xml_str)
@@ -300,7 +300,7 @@ class TestCampaignToJunit:
             config=CampaignConfig(trials_per_attack=5),
             target=Target(url="https://example.com"),
             findings=[sf],
-            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=timezone.utc),
+            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
         )
         xml_str = campaign_to_junit(campaign)
         root = ET.fromstring(xml_str)
@@ -319,7 +319,7 @@ class TestCampaignToJunit:
             config=CampaignConfig(trials_per_attack=5),
             target=Target(url="https://example.com/v1/chat/completions", model="gpt-4"),
             findings=[_make_stat_finding()],
-            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=timezone.utc),
+            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
         )
         xml_str = campaign_to_junit(campaign)
         root = ET.fromstring(xml_str)
@@ -337,7 +337,7 @@ class TestCampaignToJunit:
             config=CampaignConfig(trials_per_attack=3),
             target=Target(url="https://example.com"),
             findings=[sf],
-            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=timezone.utc),
+            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
         )
         xml_str = campaign_to_junit(campaign)
         root = ET.fromstring(xml_str)
@@ -360,7 +360,7 @@ class TestToJunitXml:
             campaign_id="camp123",
             target=Target(url="https://example.com"),
             findings=[],
-            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=timezone.utc),
+            started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
         )
         xml_str = to_junit_xml(campaign)
         root = ET.fromstring(xml_str)

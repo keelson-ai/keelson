@@ -5,7 +5,7 @@ from __future__ import annotations
 import fnmatch
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pentis.core.detection import DANGEROUS_TOOL_NAMES, TOOL_CALL_WRAPPERS
@@ -188,7 +188,7 @@ class PolicyEngine:
     ) -> None:
         self._violations.append(
             Violation(
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 tool_name=tool_name,
                 content_snippet=content_snippet,
                 rule=rule,
