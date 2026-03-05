@@ -83,7 +83,12 @@ def _make_stat_finding_callback() -> Callable[[StatisticalFinding, int, int], No
 
 
 def _write_report(
-    result: ScanResult | CampaignResult, fmt: str, output: Path | None, prefix: str
+    result: ScanResult | CampaignResult,
+    fmt: str,
+    output: Path | None,
+    prefix: str,
+    *,
+    debug: bool = False,
 ) -> Path:
     """Write a report in the requested format and return the output path."""
     out_dir = output or Path("reports")
@@ -106,7 +111,7 @@ def _write_report(
         if isinstance(result, CampaignResult):
             text = generate_campaign_report(result)
         else:
-            text = generate_report(result)
+            text = generate_report(result, debug=debug)
         path = out_dir / f"{prefix}-{timestamp}.md"
 
     path.write_text(text)
@@ -204,6 +209,7 @@ def scan(
     ),
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
+    debug: bool = typer.Option(False, "--debug", help="Include SAFE findings in report"),
 ) -> None:
     """Run a full security scan against an AI agent endpoint."""
     target = Target(url=url, api_key=api_key, model=model)
@@ -247,7 +253,7 @@ def scan(
             store.save_campaign(result)
             store.close()
 
-        report_path = _write_report(result, format, output, f"scan-{tier}")
+        report_path = _write_report(result, format, output, f"scan-{tier}", debug=debug)
 
         _print_cache_stats(target_adapter)
 
@@ -294,7 +300,7 @@ def scan(
         store.save_scan(result)
         store.close()
 
-    report_path = _write_report(result, format, output, "scan")
+    report_path = _write_report(result, format, output, "scan", debug=debug)
 
     _print_cache_stats(target_adapter)
 
@@ -384,6 +390,7 @@ def list_attacks(
 def report(
     scan_id: str = typer.Argument(help="Scan ID to generate report for"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
+    debug: bool = typer.Option(False, "--debug", help="Include SAFE findings in report"),
 ) -> None:
     """Generate a report from a saved scan."""
     store = Store()
@@ -392,7 +399,7 @@ def report(
     if not result:
         console.print(f"[red]Scan {scan_id} not found[/]")
         raise typer.Exit(1)
-    path = save_report(result, reports_dir=output)
+    path = save_report(result, reports_dir=output, debug=debug)
     console.print(f"Report saved: {path}")
 
 

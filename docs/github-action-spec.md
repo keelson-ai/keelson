@@ -10,25 +10,25 @@ Composite GitHub Action that runs Pentis security scans against AI agent endpoin
 
 ### Inputs
 
-| Input | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `target-url` | Yes | — | AI agent endpoint URL |
-| `api-key` | No | — | API key (use secrets) |
-| `model` | No | `default` | Model name |
-| `adapter` | No | `openai` | Adapter type |
-| `category` | No | — | Filter by category |
-| `tier` | No | `fast` | Scan tier: fast, deep |
-| `format` | No | `sarif` | Output format |
-| `fail-on-vuln` | No | `true` | Exit non-zero on vulnerabilities |
-| `python-version` | No | `3.12` | Python version |
+| Input            | Required | Default   | Description                      |
+|------------------|----------|-----------|----------------------------------|
+| `target-url`     | Yes      | —         | AI agent endpoint URL            |
+| `api-key`        | No       | —         | API key (use secrets)            |
+| `model`          | No       | `default` | Model name                       |
+| `adapter`        | No       | `openai`  | Adapter type                     |
+| `category`       | No       | —         | Filter by category               |
+| `tier`           | No       | `fast`    | Scan tier: fast, deep            |
+| `format`         | No       | `sarif`   | Output format                    |
+| `fail-on-vuln`   | No       | `true`    | Exit non-zero on vulnerabilities |
+| `python-version` | No       | `3.12`    | Python version                   |
 
 ### Outputs
 
-| Output | Description |
-|--------|-------------|
-| `sarif-file` | Path to SARIF output file |
+| Output             | Description                     |
+|--------------------|---------------------------------|
+| `sarif-file`       | Path to SARIF output file       |
 | `vulnerable-count` | Number of vulnerabilities found |
-| `scan-id` | Pentis scan ID |
+| `scan-id`          | Pentis scan ID                  |
 
 ## Composite Action Steps
 
