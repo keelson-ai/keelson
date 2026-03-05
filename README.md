@@ -5,7 +5,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://img.shields.io/badge/tests-524%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 124 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
+**Autonomous red team agent for AI systems.** Pentis ships 105 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
 
 ```
 pip install pentis
@@ -20,7 +20,7 @@ pentis scan https://api.example.com/v1/chat/completions --api-key $KEY
 # Single attack
 pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
 
-# List all 124 attacks
+# List all 105 attacks
 pentis list
 
 # Statistical campaign (10 trials per attack)
@@ -47,7 +47,7 @@ pentis test-chain my_agent.py
 ```
 Playbooks (.yaml)   Target Agent        Pentis Engine
 ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 124 attacks  │───>│ OpenAI /     │───>│ Detection pipeline   │
+│ 105 attacks  │───>│ OpenAI /     │───>│ Detection pipeline   │
 │ 7 categories │    │ Anthropic /  │    │ Streaming observer    │
 │ OWASP mapped │    │ CrewAI / ... │    │ Statistical analysis  │
 └──────────────┘    └──────────────┘    └──────────────────────┘
@@ -69,13 +69,13 @@ Playbooks (.yaml)   Target Agent        Pentis Engine
 
 | Category | Prefix | Count | OWASP | What It Tests |
 |----------|--------|-------|-------|---------------|
-| **Goal Adherence** | GA | 42 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) attacks, rapport exploitation |
-| **Tool Safety** | TS | 31 | LLM02/LLM06/LLM07 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal, MCP tool poisoning, MCP rug pull, cross-server contamination, SSRF, side-effect detection, excessive agency |
-| **Memory Integrity** | MI | 17 | LLM05 | History poisoning, identity persistence, behavior drift, false tool results, cross-turn exfiltration |
+| **Goal Adherence** | GA | 33 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) attacks, rapport exploitation |
+| **Tool Safety** | TS | 28 | LLM02/LLM06/LLM07 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal, MCP tool poisoning, MCP rug pull, cross-server contamination, SSRF, side-effect detection, excessive agency |
+| **Memory Integrity** | MI | 14 | LLM05 | History poisoning, identity persistence, false tool results, cross-turn exfiltration, error info leakage |
 | **Permission Boundaries** | PB | 8 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
-| **Delegation Integrity** | DI | 8 | LLM08/LLM09 | Unauthorized sub-agents, chain amplification, trust boundary violation, delegation scope laundering |
+| **Delegation Integrity** | DI | 6 | LLM08/LLM09 | Unauthorized sub-agents, trust boundary violation, delegation scope laundering |
 | **Execution Safety** | ES | 8 | LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization |
-| **Session Isolation** | SI | 10 | LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, stale session exploitation |
+| **Session Isolation** | SI | 8 | LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, model fingerprinting |
 
 ## Adapters
 
@@ -335,14 +335,14 @@ pentis/
 │   ├── scan.md                     # /pentis:scan
 │   ├── attack.md                   # /pentis:attack
 │   └── report.md                   # /pentis:report
-├── attacks/                        # 124 attack playbooks (YAML)
-│   ├── goal-adherence/             # GA-001..042
-│   ├── tool-safety/                # TS-001..028, TS-031..033
-│   ├── memory-integrity/           # MI-001..017
+├── attacks/                        # 105 attack playbooks (YAML)
+│   ├── goal-adherence/             # GA-001..042 (33 attacks)
+│   ├── tool-safety/                # TS-001..033 (28 attacks)
+│   ├── memory-integrity/           # MI-001..017 (14 attacks)
 │   ├── permission-boundaries/      # PB-001..008
-│   ├── delegation-integrity/       # DI-001..008
+│   ├── delegation-integrity/       # DI-001..007 (6 attacks)
 │   ├── execution-safety/           # ES-001..008
-│   └── session-isolation/          # SI-001..010
+│   └── session-isolation/          # SI-001..010 (8 attacks)
 ├── src/pentis/                     # Python engine
 │   ├── cli.py                      # Typer CLI (15 commands)
 │   ├── adapters/                   # 8 target adapters
