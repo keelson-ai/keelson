@@ -10,8 +10,7 @@ from pathlib import Path
 
 from pentis.adapters.base import BaseAdapter
 from pentis.attacker.discovery import CAPABILITY_PROBES, score_capability
-from pentis.core.engine import execute_attack
-from pentis.core.execution import verify_findings
+from pentis.core.execution import execute_sequential, verify_findings
 from pentis.core.memo import MemoTable, infer_techniques_from_template, score_attack_by_memo
 from pentis.core.models import (
     AgentCapability,
@@ -143,22 +142,18 @@ async def _execute_session(
     """
     adapter.reset_session()
 
-    findings: list[Finding] = []
+    on_each = memo.record if memo is not None else None
 
-    for i, template in enumerate(session):
-        finding = await execute_attack(template, adapter, model=model, delay=delay)
-        findings.append(finding)
-
-        # Record into memo table immediately so later sessions benefit
-        if memo is not None:
-            memo.record(finding)
-
-        if on_finding:
-            on_finding(finding, current_offset + i + 1, total)
-        if i < len(session) - 1:
-            await asyncio.sleep(delay)
-
-    return findings
+    return await execute_sequential(
+        templates=session,
+        adapter=adapter,
+        model=model,
+        delay=delay,
+        on_finding=on_finding,
+        on_each=on_each,
+        offset=current_offset,
+        total=total,
+    )
 
 
 async def run_smart_scan(

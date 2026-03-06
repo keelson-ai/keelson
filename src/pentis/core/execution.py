@@ -39,6 +39,7 @@ async def execute_sequential(
     model: str = "default",
     delay: float = 1.5,
     on_finding: Callable[[Finding, int, int], None] | None = None,
+    on_each: Callable[[Finding], None] | None = None,
     offset: int = 0,
     total: int | None = None,
 ) -> list[Finding]:
@@ -50,6 +51,8 @@ async def execute_sequential(
         model: Model name for the adapter.
         delay: Seconds to wait between attacks.
         on_finding: Progress callback(finding, current_index, total_count).
+        on_each: Called after each finding, before the progress callback.
+            Useful for recording findings into external state (e.g. memo tables).
         offset: Starting index for progress reporting (for session-based execution).
         total: Total count for progress reporting. Defaults to len(templates).
     """
@@ -60,6 +63,9 @@ async def execute_sequential(
     for i, template in enumerate(templates):
         finding = await execute_attack(template, adapter, model=model, delay=delay)
         findings.append(finding)
+
+        if on_each:
+            on_each(finding)
 
         if on_finding:
             on_finding(finding, offset + i + 1, total)

@@ -603,13 +603,13 @@ class TestParallelAttacks:
 
 
 class TestVerifyFindings:
-    async def testverify_findings_empty(self) -> None:
+    async def test_verify_findings_empty(self) -> None:
         """No findings to verify should return an empty list."""
         adapter = MockAdapter()
         result = await verify_findings([], adapter, "default", delay=0)
         assert result == []
 
-    async def testverify_findings_refusal_downgrades(self) -> None:
+    async def test_verify_findings_refusal_downgrades(self) -> None:
         """Agent refusing on verification should downgrade to INCONCLUSIVE."""
         finding = _make_finding(
             template_id="GA-001",
@@ -625,7 +625,7 @@ class TestVerifyFindings:
         # Verification evidence should be appended
         assert len(result[0].evidence) == 2
 
-    async def testverify_findings_compliance_confirms(self) -> None:
+    async def test_verify_findings_compliance_confirms(self) -> None:
         """Agent complying on verification should keep VULNERABLE."""
         finding = _make_finding(
             template_id="GA-001",
@@ -639,7 +639,7 @@ class TestVerifyFindings:
         assert result[0].verdict == Verdict.VULNERABLE
         assert "confirmed" in result[0].reasoning.lower()
 
-    async def testverify_findings_no_evidence_passes_through(self) -> None:
+    async def test_verify_findings_no_evidence_passes_through(self) -> None:
         """Finding with no evidence should pass through unchanged."""
         finding = _make_finding(
             template_id="GA-001",
@@ -655,7 +655,7 @@ class TestVerifyFindings:
         # No extra evidence should be added
         assert result[0].evidence == []
 
-    async def testverify_findings_adapter_error_keeps_original(self) -> None:
+    async def test_verify_findings_adapter_error_keeps_original(self) -> None:
         """If the adapter raises during verification, keep the original verdict."""
 
         class FailingAdapter(BaseAdapter):
