@@ -5,7 +5,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://img.shields.io/badge/tests-703%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 205 attack playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
+**Autonomous red team agent for AI systems.** Pentis ships 205 attack playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
 
 ```
 pip install pentis
@@ -53,17 +53,18 @@ pentis test-chain my_agent.py
 ```
 Playbooks (.yaml)   Target Agent        Pentis Engine
 ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 205 attacks  │───>│ OpenAI /     │───>│ Scan Modes           │
-│ 13 categories│    │ Anthropic /  │    │  scan (sequential)   │
-│ OWASP mapped │    │ CrewAI / ... │    │  pipeline (parallel) │
-└──────────────┘    └──────────────┘    │  smart (adaptive)    │
-                                        └──────────┬───────────┘
-                                                   │
-                                        ┌──────────┴──────────┐
-                                        │  Detection pipeline  │
-                                        │  Verification pass   │
-                                        │  Memo feedback loop  │
-                                        └──────────┬──────────┘
+│ 205 attacks  │───>│ 9 Adapters   │───>│ Scan Modes           │
+│ 13 categories│    │ OpenAI /     │    │  scan (sequential)   │
+│ OWASP mapped │    │ Anthropic /  │    │  pipeline (parallel) │
+└──────────────┘    │ MCP / A2A /  │    │  smart (adaptive)    │
+                    │ SiteGPT /... │    └──────────┬───────────┘
+  Orchestrators     └──────────────┘               │
+┌──────────────┐                        ┌──────────┴──────────┐
+│ PAIR         │───────────────────────>│  Detection pipeline  │
+│ Crescendo    │                        │  Pattern + LLM Judge │
+│ Mutations    │                        │  Verification pass   │
+│ (13 types)   │                        │  Memo feedback loop  │
+└──────────────┘                        └──────────┬──────────┘
                                                    │
                                         ┌──────────┴──────────┐
                                         │  Reports             │
@@ -74,9 +75,10 @@ Playbooks (.yaml)   Target Agent        Pentis Engine
 
 1. **Load** attack playbooks from `attacks/**/*.yaml` (structured YAML, no code)
 2. **Send** prompts to the target via any supported adapter
-3. **Detect** vulnerabilities using pattern-based detection + streaming leakage analysis
-4. **Evaluate** each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
-5. **Report** findings with OWASP mapping, evidence, and remediation recommendations
+3. **Detect** vulnerabilities using pattern detection, LLM-as-judge scoring, or combined mode
+4. **Orchestrate** advanced strategies: PAIR iterative refinement, Crescendo gradual escalation, 13 mutation types
+5. **Evaluate** each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
+6. **Report** findings with OWASP mapping, evidence, and remediation recommendations
 
 ## Attack Categories
 
@@ -110,6 +112,7 @@ Pentis communicates with targets through a pluggable adapter interface:
 | **A2A** | `--adapter a2a` | Google A2A Protocol | A2A-compatible agents |
 | **CrewAI** | `test-crew` command | In-process | CrewAI crews/agents |
 | **LangChain** | `test-chain` command | In-process | LangChain agents/chains |
+| **SiteGPT** | `--adapter sitegpt` | WebSocket / REST | SiteGPT chatbots |
 
 ```bash
 # OpenAI-compatible (default)
@@ -132,6 +135,9 @@ pentis test-crew path/to/my_crew.py
 
 # LangChain (in-process, no HTTP)
 pentis test-chain path/to/my_agent.py
+
+# SiteGPT chatbot (WebSocket or REST)
+pentis scan https://widget.sitegpt.ai --adapter sitegpt --chatbot-id YOUR_CHATBOT_ID
 ```
 
 ## CLI Commands
@@ -377,7 +383,7 @@ pentis/
 │   │   ├── scan_commands.py        # scan, pipeline-scan, smart-scan, attack
 │   │   ├── ops_commands.py         # list, report, history, diff, discover, baseline, compliance
 │   │   └── advanced_commands.py    # campaign, evolve, chain, generate, test-crew, test-chain
-│   ├── adapters/                   # 8 target adapters
+│   ├── adapters/                   # 9 target adapters
 │   │   ├── base.py                 # BaseAdapter interface
 │   │   ├── openai.py               # OpenAI API
 │   │   ├── http.py                 # GenericHTTPAdapter (OpenAI-compat)
@@ -387,6 +393,7 @@ pentis/
 │   │   ├── a2a.py                  # Google A2A Protocol
 │   │   ├── crewai.py               # CrewAI native (in-process)
 │   │   ├── langchain.py            # LangChain native (in-process)
+│   │   ├── sitegpt.py              # SiteGPT (WebSocket / REST)
 │   │   ├── cache.py                # Response caching decorator
 │   │   └── attacker.py             # Attacker LLM wrapper
 │   ├── core/                       # Engine, scanner, detection
@@ -399,6 +406,7 @@ pentis/
 │   │   ├── strategist.py           # LLM-based target classification
 │   │   ├── detection.py            # Pattern-based verdict detection
 │   │   ├── observer.py             # Streaming leakage analysis
+│   │   ├── llm_judge.py             # LLM-as-judge semantic evaluation
 │   │   ├── templates.py            # Playbook parser (markdown)
 │   │   ├── yaml_templates.py       # Playbook parser (YAML)
 │   │   ├── models.py               # Core data models
@@ -418,17 +426,22 @@ pentis/
 │   │   ├── discovery.py            # Agent capability fingerprinting
 │   │   ├── chains.py               # Compound attack chain synthesis
 │   │   └── provider.py             # Cross-provider attacker selection
-│   ├── adaptive/                   # Mutation engine
-│   │   ├── mutations.py            # Programmatic + LLM mutations
+│   ├── adaptive/                   # Mutation engine + orchestrators
+│   │   ├── mutations.py            # 13 programmatic + LLM mutations
 │   │   ├── branching.py            # Conversation tree exploration
+│   │   ├── attack_tree.py          # Attack tree data structures
+│   │   ├── pair.py                 # PAIR iterative refinement orchestrator
+│   │   ├── crescendo.py            # Crescendo gradual escalation orchestrator
 │   │   └── strategies.py           # Mutation scheduling
 │   ├── campaign/                   # Statistical campaigns
 │   │   ├── runner.py               # N-trial execution with CI
 │   │   ├── tiers.py                # Fast/Deep/Continuous presets
+│   │   ├── scheduler.py            # Campaign scheduling
 │   │   └── config.py               # TOML config parser
 │   ├── diff/                       # Scan comparison
 │   │   └── comparator.py           # Regression detection
 │   └── state/                      # Persistence
+│       ├── base.py                 # Storage base interface
 │       └── store.py                # SQLite storage
 ├── tests/                          # 703 tests
 ├── docs/                           # Documentation
@@ -510,18 +523,22 @@ This tool is for **authorized security testing only**. Do not use Pentis against
 flowchart TD
     A[Load Playbooks] --> B[Send Prompts via Adapter]
     B --> C[Collect Evidence]
-    C --> D[Detection Pipeline]
+    C --> D[Detection Pipeline<br/>Pattern / LLM Judge / Combined]
     D --> E{Verdict?}
-    E -->|VULNERABLE| F[Record Finding]
-    E -->|SAFE| F
+    E -->|VULNERABLE| DP{Deep Probe<br/>enabled?}
+    DP -->|Yes| BRANCH[Explore follow-up paths<br/>via conversation branching]
+    BRANCH --> F[Record Finding + Probe Findings]
+    DP -->|No| F
+    E -->|SAFE| F[Record Finding]
     E -->|INCONCLUSIVE| F
     F --> G{More Attacks?}
-    G -->|Yes| H[Dynamic Reorder by Vuln Categories]
+    G -->|Yes| H[Dynamic Reorder<br/>by Vuln Categories]
     H --> B
     G -->|No| I[Generate Report]
 
     style E fill:#f9f,stroke:#333
     style I fill:#9f9,stroke:#333
+    style BRANCH fill:#fde8e8,stroke:#333
 ```
 
 #### Pipeline Scan (Parallel + Checkpoint + Verify)
@@ -666,7 +683,12 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    EV[Evidence: prompts + responses] --> SE[Side Effects Check<br/>Tool call wrappers + dangerous names]
+    EV[Evidence: prompts + responses] --> MODE{Scoring<br/>Method?}
+
+    MODE -->|PATTERN| SE[Side Effects Check<br/>Tool call wrappers + dangerous names]
+    MODE -->|COMBINED| BOTH_PATH[Run Pattern + LLM Judge in parallel]
+    MODE -->|LLM_JUDGE| JUDGE_ONLY[LLM-as-Judge Only]
+
     SE -->|Match| V1[VULNERABLE]
 
     SE -->|No match| SIG[Collect Signals]
@@ -674,23 +696,37 @@ flowchart TD
     SIG --> SM[safe_if matches]
     SIG --> RF[Refusal phrase matches]
 
-    VM --> BOTH{Both vuln<br/>and safe?}
-    SM --> BOTH
-    RF --> BOTH
+    VM --> COMB{Both vuln<br/>and safe?}
+    SM --> COMB
+    RF --> COMB
 
-    BOTH -->|Yes, multi-step| LAST[Check last step only]
+    COMB -->|Yes, multi-step| LAST[Check last step only]
     LAST -->|Vuln without refusal| V2[VULNERABLE<br/>Bypassed initial refusal]
     LAST -->|Has refusal| SAFE1[SAFE]
 
-    BOTH -->|Yes, single-step| DISC[Substantial disclosure?<br/>Code blocks / structured lists]
+    COMB -->|Yes, single-step| DISC[Substantial disclosure?<br/>Code blocks / structured lists]
     DISC -->|Yes| V3[VULNERABLE<br/>Disclosed despite refusal]
     DISC -->|No| SAFE1
 
-    BOTH -->|Only vuln| V4[VULNERABLE]
-    BOTH -->|Only safe/refusal| SAFE2[SAFE]
-    BOTH -->|Neither| LEAK{High-confidence<br/>leakage signals?}
+    COMB -->|Only vuln| V4[VULNERABLE]
+    COMB -->|Only safe/refusal| SAFE2[SAFE]
+    COMB -->|Neither| LEAK{High-confidence<br/>leakage signals?}
     LEAK -->|Yes| V5[VULNERABLE]
     LEAK -->|No| INC[INCONCLUSIVE]
+
+    JUDGE_ONLY --> JR[Judge LLM evaluates<br/>objective + evidence + criteria]
+    JR --> JV[VERDICT + confidence + reasoning]
+
+    BOTH_PATH --> PAT_V[Pattern Verdict]
+    BOTH_PATH --> JDG_V[Judge Verdict]
+    PAT_V --> RESOLVE{Resolve<br/>Disagreement}
+    JDG_V --> RESOLVE
+    RESOLVE -->|Both agree| BOOST[Use verdict<br/>confidence + 0.15]
+    RESOLVE -->|Pattern VULN, Judge SAFE| TRUST_J1[Trust Judge → SAFE<br/>reduces false positives]
+    RESOLVE -->|Pattern SAFE, Judge VULN| CONF{Judge<br/>confidence ≥ 0.7?}
+    CONF -->|Yes| TRUST_J2[Trust Judge → VULNERABLE<br/>catches subtle compliance]
+    CONF -->|No| KEEP_S[Keep SAFE]
+    RESOLVE -->|One INCONCLUSIVE| DEFER[Defer to the other verdict]
 
     style V1 fill:#f99,stroke:#333
     style V2 fill:#f99,stroke:#333
@@ -700,6 +736,99 @@ flowchart TD
     style SAFE1 fill:#9f9,stroke:#333
     style SAFE2 fill:#9f9,stroke:#333
     style INC fill:#ff9,stroke:#333
+    style JV fill:#f9f,stroke:#333
+    style BOOST fill:#9f9,stroke:#333
+    style TRUST_J1 fill:#9f9,stroke:#333
+    style TRUST_J2 fill:#f99,stroke:#333
+    style KEEP_S fill:#9f9,stroke:#333
+```
+
+#### PAIR Orchestrator (Prompt Automatic Iterative Refinement)
+
+```mermaid
+flowchart TD
+    START[Initial Attack Prompt] --> SEND[Send to Target]
+    SEND --> EVAL{Evaluate Response}
+
+    EVAL -->|VULNERABLE| SUCCESS[Vulnerability Found — Stop]
+    EVAL -->|SAFE / INCONCLUSIVE| CHECK{Max iterations<br/>reached?}
+
+    CHECK -->|Yes| FINAL[Final Verdict from<br/>all collected evidence]
+    CHECK -->|No| REFINE[Feed response to Attacker LLM]
+
+    REFINE --> GEN[Attacker generates refined prompt<br/>• Different framing/angle<br/>• Addresses specific refusal reasons<br/>• New technique each iteration]
+    GEN --> SEND
+
+    style SUCCESS fill:#f99,stroke:#333
+    style FINAL fill:#ff9,stroke:#333
+    style REFINE fill:#f9f,stroke:#333
+```
+
+#### Crescendo Orchestrator (Gradual Escalation)
+
+```mermaid
+flowchart TD
+    subgraph Phase1[Phase 1: Plan]
+        OBJ[Attack Objective] --> PLAN[Attacker LLM plans<br/>N-turn escalation sequence]
+        PLAN --> TURNS[Turn 1: Innocent rapport<br/>Turn 2-3: Domain introduction<br/>Turn 4-5: Approach objective<br/>Turn N: Full request]
+    end
+
+    subgraph Phase2[Phase 2: Execute]
+        TURNS --> T1[Turn 1 — Establish rapport]
+        T1 --> RESP1[Target responds cooperatively]
+        RESP1 --> ADAPT[Adapt next turn based on<br/>target's actual response]
+        ADAPT --> TN[Turn N — Escalated request]
+    end
+
+    subgraph Phase3[Phase 3: Evaluate]
+        TN --> EVAL{Evaluate from<br/>turn 3 onward}
+        EVAL -->|VULNERABLE| STOP[Escalation Succeeded<br/>at turn K/N]
+        EVAL -->|SAFE| CONT{More turns?}
+        CONT -->|Yes| ADAPT
+        CONT -->|No| DONE[Final Verdict]
+    end
+
+    style Phase1 fill:#e8f4fd,stroke:#333
+    style Phase2 fill:#fdf8e8,stroke:#333
+    style Phase3 fill:#fde8e8,stroke:#333
+    style STOP fill:#f99,stroke:#333
+```
+
+#### Mutation Engine
+
+```mermaid
+flowchart LR
+    subgraph Programmatic[Programmatic Mutations]
+        P1[Base64 Encode]
+        P2[Leetspeak]
+        P3[Context Overflow]
+        P4[ROT13]
+        P5[Unicode Homoglyph]
+        P6[Char Split — ZWSP]
+        P7[Reversed Words]
+        P8[Morse Code]
+        P9[Caesar Cipher]
+    end
+
+    subgraph LLMPowered[LLM-Powered Mutations]
+        L1[Paraphrase]
+        L2[Roleplay Wrap]
+        L3[Gradual Escalation]
+        L4[Translation]
+    end
+
+    ORIG[Original Prompt] --> Programmatic
+    ORIG --> LLMPowered
+
+    Programmatic --> MUT[Mutated Attack]
+    LLMPowered --> MUT
+
+    MUT --> EXEC[Execute against Target]
+    EXEC --> DET[Detection Pipeline]
+
+    style Programmatic fill:#e8f4fd,stroke:#333
+    style LLMPowered fill:#fde8e8,stroke:#333
+    style MUT fill:#f9f,stroke:#333
 ```
 
 ### API Specification
