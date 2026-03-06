@@ -14,12 +14,19 @@ PROGRAMMATIC_TYPES = [
     MutationType.BASE64_ENCODE,
     MutationType.LEETSPEAK,
     MutationType.CONTEXT_OVERFLOW,
+    MutationType.ROT13,
+    MutationType.UNICODE_HOMOGLYPH,
+    MutationType.CHAR_SPLIT,
+    MutationType.REVERSED_WORDS,
+    MutationType.MORSE_CODE,
+    MutationType.CAESAR_CIPHER,
 ]
 
 LLM_TYPES = [
     MutationType.PARAPHRASE,
     MutationType.ROLEPLAY_WRAP,
     MutationType.GRADUAL_ESCALATION,
+    MutationType.TRANSLATION,
 ]
 
 

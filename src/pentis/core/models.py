@@ -48,6 +48,21 @@ class MutationType(StrEnum):
     PARAPHRASE = "paraphrase"
     ROLEPLAY_WRAP = "roleplay_wrap"
     GRADUAL_ESCALATION = "gradual_escalation"
+    ROT13 = "rot13"
+    UNICODE_HOMOGLYPH = "unicode_homoglyph"
+    CHAR_SPLIT = "char_split"
+    REVERSED_WORDS = "reversed_words"
+    TRANSLATION = "translation"
+    MORSE_CODE = "morse_code"
+    CAESAR_CIPHER = "caesar_cipher"
+
+
+class ScoringMethod(StrEnum):
+    """How a verdict was determined."""
+
+    PATTERN = "pattern"  # Keyword/regex matching (default)
+    LLM_JUDGE = "llm_judge"  # LLM-as-judge semantic evaluation
+    COMBINED = "combined"  # Both pattern + LLM judge
 
 
 class ResponseClass(StrEnum):
@@ -138,6 +153,8 @@ class Finding:
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     leakage_signals: list[LeakageSignal] = field(default_factory=list[LeakageSignal])
     probe_source: str = ""  # template_id that triggered this probe (empty = original attack)
+    confidence: float = 0.0  # 0.0-1.0 confidence in the verdict
+    scoring_method: ScoringMethod = ScoringMethod.PATTERN
 
 
 @dataclass
