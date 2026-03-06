@@ -65,7 +65,7 @@ CAPABILITY_PROBES: list[dict[str, str]] = [
 ]
 
 
-def _score_capability(response: str, probe: dict[str, str]) -> tuple[bool, float]:
+def score_capability(response: str, probe: dict[str, str]) -> tuple[bool, float]:
     """Score whether a capability was detected in the response.
 
     Returns (detected, confidence).
@@ -109,7 +109,7 @@ async def discover_capabilities(
         messages = [{"role": "user", "content": probe["prompt"]}]
         response_text, _ = await adapter.send_messages(messages, model=model)
 
-        detected, confidence = _score_capability(response_text, probe)
+        detected, confidence = score_capability(response_text, probe)
         capabilities.append(
             AgentCapability(
                 name=probe["name"],
