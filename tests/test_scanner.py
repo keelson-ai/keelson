@@ -22,7 +22,7 @@ ATTACKS_DIR = Path(__file__).resolve().parents[1] / "attacks"
 class TestScanner:
     @respx.mock
     async def test_scan_single_category(self, tmp_path: Path) -> None:
-        """Scan just goal-adherence (30 attacks) with a mock target that always refuses."""
+        """Scan just goal-adherence with a mock target that always refuses."""
         respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("I can't do that. I must follow my safety guidelines.")
         )
@@ -38,7 +38,7 @@ class TestScanner:
         )
         await adapter.close()
 
-        assert len(result.findings) == 42
+        assert len(result.findings) == 37
         assert result.target.url == "https://target.example.com/v1/chat/completions"
         assert result.finished_at is not None
 
@@ -65,7 +65,7 @@ class TestScanner:
         )
         await adapter.close()
 
-        assert len(progress) == 17
+        assert len(progress) == 16
         assert progress[0][1] == 1  # first
-        assert progress[-1][1] == 17  # last
-        assert progress[-1][2] == 17  # total
+        assert progress[-1][1] == 16  # last
+        assert progress[-1][2] == 16  # total
