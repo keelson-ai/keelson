@@ -66,10 +66,18 @@ async def _deep_probe(
     probe_findings: list[Finding] = []
     vuln_paths = find_vulnerable_paths(root)
 
+    # Deduplicate: a node can appear in multiple paths (intermediate + leaf).
+    # Track seen node_ids to emit each vulnerable node only once.
+    seen_node_ids: set[str] = set()
+
     for path in vuln_paths:
-        # Skip the root path (depth=0) — that's the original finding
+        # Skip the root (depth=0) — that's the original finding
         deep_nodes = [n for n in path if n.depth > 0 and n.verdict == Verdict.VULNERABLE]
         for node in deep_nodes:
+            if node.node_id in seen_node_ids:
+                continue
+            seen_node_ids.add(node.node_id)
+
             evidence = [
                 EvidenceItem(
                     step_index=node.depth,
@@ -77,9 +85,10 @@ async def _deep_probe(
                     response=node.response,
                 )
             ]
+            # Use node_id for uniqueness so downstream dict-keyed consumers don't collide
             probe_findings.append(
                 Finding(
-                    template_id=f"{template.id}-probe-d{node.depth}",
+                    template_id=f"{template.id}-probe-{node.node_id}",
                     template_name=f"{template.name} (deep probe depth {node.depth})",
                     verdict=Verdict.VULNERABLE,
                     severity=template.severity,
