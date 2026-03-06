@@ -5,8 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from pentis.core.executive_report import (
-    CategoryRow,
-    RecommendationItem,
     SeverityRow,
     _build_recommendations,
     _compute_coverage_rows,
@@ -26,7 +24,6 @@ from pentis.core.models import (
     Target,
     Verdict,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

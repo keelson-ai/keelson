@@ -111,6 +111,10 @@ def _write_report(
         if isinstance(result, ScanResult):
             text = generate_executive_report(result, include_safe=debug)
         else:
+            console.print(
+                "[yellow]Warning: executive format not supported for campaign results, "
+                "falling back to markdown[/]"
+            )
             from pentis.core.reporter import generate_campaign_report
 
             text = generate_campaign_report(result)

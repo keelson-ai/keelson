@@ -32,7 +32,6 @@ from pentis.core.pipeline import (
     run_pipeline,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -418,7 +417,7 @@ class TestRunPipeline:
         assert "downgraded" in finding.reasoning.lower()
 
     async def test_run_pipeline_resume_from_checkpoint(self, tmp_path: Path) -> None:
-        """Pipeline should skip already-completed attacks when resuming."""
+        """Pipeline should find existing checkpoint by target URL and skip completed attacks."""
         templates = [_make_template(f"GA-{i:03d}") for i in range(1, 4)]
         adapter = MockAdapter()
         config = PipelineConfig(
@@ -428,17 +427,19 @@ class TestRunPipeline:
             checkpoint_dir=tmp_path,
         )
 
-        # Pre-create a checkpoint that marks GA-001 as completed
+        # Pre-create a checkpoint that marks GA-001 as completed.
+        # The checkpoint file uses an arbitrary scan_id — the pipeline should
+        # discover it by matching target_url, not scan_id.
         completed_finding = _make_finding(template_id="GA-001", verdict=Verdict.SAFE)
         checkpoint = ScanCheckpoint(
-            scan_id="resume-test",
+            scan_id="previous-run-id",
             target_url="https://example.com",
             completed_ids=["GA-001"],
             findings_json=[_finding_to_json(completed_finding)],
             started_at="2025-06-15T12:00:00+00:00",
             phase="scanning",
         )
-        cp_path = tmp_path / "resume-test.checkpoint.json"
+        cp_path = tmp_path / "previous-run-id.checkpoint.json"
         checkpoint.save(cp_path)
 
         executed_ids: list[str] = []
@@ -474,27 +475,11 @@ class TestRunPipeline:
             patch("pentis.core.pipeline.execute_attack",
                   AsyncMock(side_effect=_tracking_execute)),
         ):
-            # Force the scan_id to match the checkpoint
-            with patch(
-                "pentis.core.pipeline.ScanResult"
-            ) as mock_result_cls:
-                # We need ScanResult to use our scan_id so checkpoint is loaded
-                from pentis.core.models import ScanResult
-
-                def _make_result(**kwargs: object) -> ScanResult:
-                    r = ScanResult.__new__(ScanResult)
-                    ScanResult.__init__(r, **kwargs)  # type: ignore[arg-type]
-                    r.scan_id = "resume-test"
-                    return r
-
-                mock_result_cls.side_effect = _make_result
-                mock_result_cls.__name__ = "ScanResult"
-
-                result = await run_pipeline(
-                    target=Target(url="https://example.com"),
-                    adapter=adapter,
-                    config=config,
-                )
+            result = await run_pipeline(
+                target=Target(url="https://example.com"),
+                adapter=adapter,
+                config=config,
+            )
 
         # GA-001 should NOT have been executed (it was in the checkpoint)
         assert "GA-001" not in executed_ids
@@ -503,6 +488,8 @@ class TestRunPipeline:
         assert "GA-003" in executed_ids
         # Total findings should include the resumed one plus the new ones
         assert len(result.findings) == 3
+        # The scan_id should match the checkpoint (resumed)
+        assert result.scan_id == "previous-run-id"
 
     async def test_pipeline_checkpoint_cleanup(self, tmp_path: Path) -> None:
         """On successful completion, the checkpoint file should be deleted."""

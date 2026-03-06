@@ -178,6 +178,30 @@ def _checkpoint_path(config: PipelineConfig, scan_id: str) -> Path | None:
     return config.checkpoint_dir / f"{scan_id}.checkpoint.json"
 
 
+def _find_existing_checkpoint(
+    checkpoint_dir: Path, target_url: str
+) -> ScanCheckpoint | None:
+    """Search checkpoint dir for an existing checkpoint matching the target URL.
+
+    Returns the most recent checkpoint for this target, or None.
+    """
+    if not checkpoint_dir.exists():
+        return None
+    candidates: list[tuple[Path, ScanCheckpoint]] = []
+    for cp_file in checkpoint_dir.glob("*.checkpoint.json"):
+        try:
+            cp = ScanCheckpoint.load(cp_file)
+            if cp.target_url == target_url:
+                candidates.append((cp_file, cp))
+        except (json.JSONDecodeError, KeyError):
+            continue
+    if not candidates:
+        return None
+    # Return the checkpoint from the most recently modified file
+    candidates.sort(key=lambda x: x[0].stat().st_mtime, reverse=True)
+    return candidates[0][1]
+
+
 async def run_pipeline(
     target: Target,
     adapter: BaseAdapter,
@@ -216,6 +240,15 @@ async def run_pipeline(
     logger.info("Loaded %d attack templates", len(templates))
 
     result = ScanResult(target=target)
+
+    # Search for an existing checkpoint for this target URL
+    existing_cp: ScanCheckpoint | None = None
+    if config.checkpoint_dir is not None:
+        existing_cp = _find_existing_checkpoint(config.checkpoint_dir, target.url)
+
+    if existing_cp is not None:
+        result.scan_id = existing_cp.scan_id
+
     cp_path = _checkpoint_path(config, result.scan_id)
 
     # Attempt checkpoint resume
