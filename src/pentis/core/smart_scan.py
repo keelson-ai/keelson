@@ -11,6 +11,7 @@ from pathlib import Path
 from pentis.adapters.base import BaseAdapter
 from pentis.attacker.discovery import CAPABILITY_PROBES, score_capability
 from pentis.core.engine import execute_attack
+from pentis.core.execution import verify_findings
 from pentis.core.memo import MemoTable, infer_techniques_from_template, score_attack_by_memo
 from pentis.core.models import (
     AgentCapability,
@@ -20,6 +21,7 @@ from pentis.core.models import (
     Finding,
     ScanResult,
     Target,
+    Verdict,
 )
 from pentis.core.strategist import (
     ReconResponse,
@@ -134,14 +136,12 @@ async def _execute_session(
     """Execute a group of attacks within a single conversational session.
 
     Uses a shared message history within the session so social manipulation
-    builds naturally. Resets the thread/session at the start.
+    builds naturally. Resets the session at the start.
 
     When a memo table is provided, each finding is recorded into it so
     subsequent sessions within the same scan benefit from accumulated knowledge.
     """
-    # Reset to a fresh session
-    if hasattr(adapter, "reset_thread"):
-        adapter.reset_thread()  # type: ignore[union-attr]
+    adapter.reset_session()
 
     findings: list[Finding] = []
 
@@ -168,8 +168,9 @@ async def run_smart_scan(
     delay: float = 2.0,
     on_finding: Callable[[Finding, int, int], None] | None = None,
     on_phase: Callable[[str, str], None] | None = None,
+    verify: bool = False,
 ) -> ScanResult:
-    """Run an adaptive smart scan: discover → classify → select → execute.
+    """Run an adaptive smart scan: discover -> classify -> select -> execute.
 
     Unlike run_scan which blindly runs all attacks, smart_scan:
     1. Discovers target capabilities (8 probes)
@@ -177,6 +178,7 @@ async def run_smart_scan(
     3. Selects only relevant attacks based on profile
     4. Groups attacks into conversational sessions for natural social manipulation
     5. Adapts the plan based on findings (escalate/de-escalate)
+    6. Optionally verifies VULNERABLE findings with confirmation probes
 
     Args:
         target: The target to scan.
@@ -185,6 +187,7 @@ async def run_smart_scan(
         delay: Seconds to wait between requests.
         on_finding: Optional callback(finding, current_index, total) for progress.
         on_phase: Optional callback(phase_name, detail) for phase transitions.
+        verify: When True, re-probe VULNERABLE findings to confirm them.
     """
     result = ScanResult(target=target)
 
@@ -199,8 +202,7 @@ async def run_smart_scan(
         on_phase("discovery", f"Detected capabilities: {', '.join(detected_caps) or 'none'}")
 
     # Reset thread after discovery
-    if hasattr(adapter, "reset_thread"):
-        adapter.reset_thread()  # type: ignore[union-attr]
+    adapter.reset_session()
 
     # --- Phase 2: Classification ---
     if on_phase:
@@ -290,24 +292,36 @@ async def run_smart_scan(
             if old_cp.priority != new_cp.priority and on_phase:
                 on_phase(
                     "adapt",
-                    f"  {new_cp.category.value}: {old_cp.priority.value} → "
+                    f"  {new_cp.category.value}: {old_cp.priority.value} -> "
                     f"{new_cp.priority.value} ({new_cp.rationale})",
                 )
 
         plan = updated_plan
 
         # Re-group remaining sessions with updated memo knowledge.
-        # Find remaining attack IDs (not yet executed).
         executed_ids = {f.template_id for f in all_findings}
         remaining_ids = [aid for aid in all_attack_ids if aid not in executed_ids]
         if remaining_ids:
             remaining_sessions = _group_into_sessions(remaining_ids, templates_by_id, memo=memo)
-            # Replace remaining sessions (skip already-processed ones)
-            sessions_left = remaining_sessions
-            # We'll re-iterate from the next index; break and restart loop
-            # Actually, we need to restructure to iterate over a mutable list.
-            # Instead, update sessions in place for the next iteration.
-            sessions[session_idx + 1 :] = sessions_left
+            sessions[session_idx + 1 :] = remaining_sessions
+
+    # --- Phase 6: Verification (optional) ---
+    if verify:
+        vulnerable = [f for f in all_findings if f.verdict == Verdict.VULNERABLE]
+        if vulnerable:
+            if on_phase:
+                on_phase("verify", f"Re-probing {len(vulnerable)} vulnerable findings")
+            verified = await verify_findings(
+                vulnerable,
+                adapter,
+                model=target.model,
+                delay=delay,
+            )
+            verified_map = {f.template_id: f for f in verified}
+            all_findings = [
+                verified_map.get(f.template_id, f) if f.verdict == Verdict.VULNERABLE else f
+                for f in all_findings
+            ]
 
     # Log final memo summary
     if on_phase and memo.entries:

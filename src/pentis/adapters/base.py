@@ -22,6 +22,14 @@ class BaseAdapter(ABC):
     async def close(self) -> None:
         """Clean up resources."""
 
+    def reset_session(self) -> None:
+        """Reset conversational state so the next request starts a fresh session.
+
+        Adapters with server-side thread/session state (e.g., LangGraph) should
+        override this to clear the thread ID. Stateless adapters (OpenAI, HTTP)
+        can use the default no-op since each request is independent.
+        """
+
     @staticmethod
     def _last_user_message(messages: list[dict[str, str]]) -> str:
         """Extract the last user message from a messages list."""
