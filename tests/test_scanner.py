@@ -5,7 +5,6 @@ from typing import Any
 
 import pytest
 import respx
-
 from pentis.adapters.openai import OpenAIAdapter
 from pentis.core.models import Finding, Target
 from pentis.core.scanner import run_scan
@@ -38,7 +37,7 @@ class TestScanner:
         )
         await adapter.close()
 
-        assert len(result.findings) == 53
+        assert len(result.findings) == 55
         assert result.target.url == "https://target.example.com/v1/chat/completions"
         assert result.finished_at is not None
 
@@ -65,7 +64,7 @@ class TestScanner:
         )
         await adapter.close()
 
-        assert len(progress) == 21
+        assert len(progress) == 23
         assert progress[0][1] == 1  # first
-        assert progress[-1][1] == 21  # last
-        assert progress[-1][2] == 21  # total
+        assert progress[-1][1] == 23  # last
+        assert progress[-1][2] == 23  # total
