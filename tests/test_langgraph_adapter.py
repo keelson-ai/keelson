@@ -187,8 +187,8 @@ class TestLangGraphAdapter:
         await adapter.close()
         assert str(respx.calls[-1].request.url) == _runs_url()  # type: ignore[reportUnknownMemberType]
 
-    def test_reset_thread(self) -> None:
+    def test_reset_session(self) -> None:
         adapter = LangGraphAdapter(url=BASE_URL, thread_id="old-thread")
         assert adapter.thread_id == "old-thread"
-        adapter.reset_thread()
+        adapter.reset_session()
         assert adapter.thread_id is None

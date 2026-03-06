@@ -34,3 +34,6 @@ class AttackerAdapter(BaseAdapter):
 
     async def close(self) -> None:
         await self._adapter.close()
+
+    def reset_session(self) -> None:
+        self._adapter.reset_session()

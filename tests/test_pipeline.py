@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from pentis.adapters.base import BaseAdapter
+from pentis.core.execution import verify_findings
 from pentis.core.models import (
     AttackStep,
     AttackTemplate,
@@ -26,9 +27,8 @@ from pentis.core.models import (
 from pentis.core.pipeline import (
     PipelineConfig,
     ScanCheckpoint,
-    _finding_from_json,
-    _finding_to_json,
-    _verify_findings,
+    _finding_from_json,  # pyright: ignore[reportPrivateUsage]
+    _finding_to_json,  # pyright: ignore[reportPrivateUsage]
     run_pipeline,
 )
 
@@ -224,7 +224,7 @@ class TestFindingSerialization:
         assert restored.evidence[0].response_time_ms == original.evidence[0].response_time_ms
         assert len(restored.leakage_signals) == len(original.leakage_signals)
         assert restored.leakage_signals[0].signal_type == "progressive_disclosure"
-        assert restored.leakage_signals[0].confidence == pytest.approx(0.85)
+        assert restored.leakage_signals[0].confidence == pytest.approx(0.85)  # pyright: ignore[reportUnknownMemberType]
         # Timestamp should survive the roundtrip
         assert restored.timestamp == original.timestamp
 
@@ -310,7 +310,7 @@ class TestRunPipeline:
 
         with (
             patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.pipeline.execute_attack", mock_execute),
+            patch("pentis.core.execution.execute_attack", mock_execute),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"), adapter=adapter, config=config
@@ -366,7 +366,7 @@ class TestRunPipeline:
 
         with (
             patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.pipeline.execute_attack", AsyncMock(side_effect=_mixed_execute)),
+            patch("pentis.core.execution.execute_attack", AsyncMock(side_effect=_mixed_execute)),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -404,7 +404,7 @@ class TestRunPipeline:
 
         with (
             patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.pipeline.execute_attack", mock_execute),
+            patch("pentis.core.execution.execute_attack", mock_execute),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -473,7 +473,7 @@ class TestRunPipeline:
 
         with (
             patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.pipeline.execute_attack", AsyncMock(side_effect=_tracking_execute)),
+            patch("pentis.core.execution.execute_attack", AsyncMock(side_effect=_tracking_execute)),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -506,7 +506,7 @@ class TestRunPipeline:
 
         with (
             patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.pipeline.execute_attack", mock_execute),
+            patch("pentis.core.execution.execute_attack", mock_execute),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -583,7 +583,7 @@ class TestParallelAttacks:
         with (
             patch("pentis.core.pipeline.load_all_templates", return_value=templates),
             patch(
-                "pentis.core.pipeline.execute_attack", AsyncMock(side_effect=_concurrent_execute)
+                "pentis.core.execution.execute_attack", AsyncMock(side_effect=_concurrent_execute)
             ),
         ):
             result = await run_pipeline(
@@ -598,7 +598,7 @@ class TestParallelAttacks:
 
 
 # ---------------------------------------------------------------------------
-# _verify_findings
+# verify_findings
 # ---------------------------------------------------------------------------
 
 
@@ -606,7 +606,7 @@ class TestVerifyFindings:
     async def test_verify_findings_empty(self) -> None:
         """No findings to verify should return an empty list."""
         adapter = MockAdapter()
-        result = await _verify_findings([], adapter, "default", delay=0)
+        result = await verify_findings([], adapter, "default", delay=0)
         assert result == []
 
     async def test_verify_findings_refusal_downgrades(self) -> None:
@@ -617,7 +617,7 @@ class TestVerifyFindings:
         )
         adapter = MockAdapter(responses=["I'm unable to do that."])
 
-        result = await _verify_findings([finding], adapter, "default", delay=0)
+        result = await verify_findings([finding], adapter, "default", delay=0)
 
         assert len(result) == 1
         assert result[0].verdict == Verdict.INCONCLUSIVE
@@ -633,7 +633,7 @@ class TestVerifyFindings:
         )
         adapter = MockAdapter(responses=["Sure, here it is again: PWNED"])
 
-        result = await _verify_findings([finding], adapter, "default", delay=0)
+        result = await verify_findings([finding], adapter, "default", delay=0)
 
         assert len(result) == 1
         assert result[0].verdict == Verdict.VULNERABLE
@@ -648,7 +648,7 @@ class TestVerifyFindings:
         )
         adapter = MockAdapter()
 
-        result = await _verify_findings([finding], adapter, "default", delay=0)
+        result = await verify_findings([finding], adapter, "default", delay=0)
 
         assert len(result) == 1
         assert result[0].verdict == Verdict.VULNERABLE
@@ -676,7 +676,7 @@ class TestVerifyFindings:
         )
         adapter = FailingAdapter()
 
-        result = await _verify_findings([finding], adapter, "default", delay=0)
+        result = await verify_findings([finding], adapter, "default", delay=0)
 
         assert len(result) == 1
         assert result[0].verdict == Verdict.VULNERABLE

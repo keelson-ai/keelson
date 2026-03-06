@@ -113,7 +113,7 @@ class LangGraphAdapter(BaseAdapter):
         except httpx.HTTPError:
             return False
 
-    def reset_thread(self) -> None:
+    def reset_session(self) -> None:
         """Reset the thread so the next send creates a fresh one."""
         self.thread_id = None
 
