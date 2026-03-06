@@ -182,11 +182,13 @@ async def run_pair(
         max_iterations,
         template.id,
     )
-    final_verdict, final_reasoning = detect(template, all_evidence)
+    observer = StreamingObserver()
+    final_leakage = observer.observe(all_evidence)
+    final_verdict, final_reasoning = detect(template, all_evidence, leakage_signals=final_leakage)
     return _build_result(
         template,
         all_evidence,
-        [],
+        final_leakage,
         refinement_history,
         max_iterations,
         max_iterations,
@@ -239,6 +241,11 @@ def _build_result(
     reasoning: str,
 ) -> PAIRResult:
     """Build a PAIRResult from the iteration state."""
+    if verdict in {Verdict.VULNERABLE, Verdict.SAFE}:
+        confidence = 0.7
+    else:
+        confidence = 0.3
+
     finding = Finding(
         template_id=template.id,
         template_name=template.name,
@@ -249,6 +256,7 @@ def _build_result(
         evidence=evidence,
         reasoning=f"[PAIR] {reasoning}",
         leakage_signals=leakage_signals,
+        confidence=confidence,
     )
     return PAIRResult(
         template_id=template.id,

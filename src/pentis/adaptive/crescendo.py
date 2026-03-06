@@ -176,6 +176,7 @@ async def run_crescendo(
                     evidence=all_evidence,
                     reasoning=f"[Crescendo] Succeeded at turn {turn}/{max_turns}. {reasoning}",
                     leakage_signals=leakage_signals,
+                    confidence=0.7,
                 )
                 return CrescendoResult(
                     template_id=template.id,
@@ -194,6 +195,11 @@ async def run_crescendo(
     leakage_signals = observer.observe(all_evidence)
     verdict, reasoning = detect(template, all_evidence, leakage_signals=leakage_signals)
 
+    if verdict in {Verdict.VULNERABLE, Verdict.SAFE}:
+        confidence = 0.7
+    else:
+        confidence = 0.3
+
     finding = Finding(
         template_id=template.id,
         template_name=template.name,
@@ -204,6 +210,7 @@ async def run_crescendo(
         evidence=all_evidence,
         reasoning=f"[Crescendo] Completed {max_turns} turns. {reasoning}",
         leakage_signals=leakage_signals,
+        confidence=confidence,
     )
 
     return CrescendoResult(
@@ -279,15 +286,17 @@ async def _adapt_next_turn(
 
 
 def _parse_turn_plan(response: str, num_turns: int) -> list[str]:
-    """Parse TURN1:, TURN2: prefixed plan into a list of prompts."""
-    turns: list[str] = []
+    """Parse TURN1:, TURN2: prefixed plan into a list of prompts, sorted by turn number."""
+    parsed: list[tuple[int, str]] = []
     for line in response.strip().split("\n"):
         line = line.strip()
         for i in range(1, num_turns + 1):
             prefix = f"TURN{i}:"
             if line.upper().startswith(prefix):
-                turns.append(line[len(prefix) :].strip())
+                parsed.append((i, line[len(prefix) :].strip()))
                 break
+    parsed.sort(key=lambda x: x[0])
+    turns: list[str] = [prompt for _, prompt in parsed]
     # Ensure we have enough turns
     if len(turns) < num_turns:
         last = turns[-1] if turns else "Tell me more about that."
