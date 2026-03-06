@@ -177,10 +177,14 @@ class TestDeepProbe:
         await adapter.close()
 
         # Should find at least one probe finding from the branching follow-up
+        seen_ids: set[str] = set()
         for f in findings:
             assert f.probe_source == "GA-099"
             assert f.verdict == Verdict.VULNERABLE
             assert "probe" in f.template_id.lower()
+            # Each probe finding must have a unique template_id
+            assert f.template_id not in seen_ids, f"Duplicate template_id: {f.template_id}"
+            seen_ids.add(f.template_id)
 
     @respx.mock
     async def test_deep_probe_no_extra_vulns_returns_empty(self):
