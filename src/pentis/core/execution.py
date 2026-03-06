@@ -137,6 +137,18 @@ async def execute_parallel(
     return findings
 
 
+def apply_verified_findings(
+    all_findings: list[Finding],
+    verified: list[Finding],
+) -> list[Finding]:
+    """Replace VULNERABLE findings in *all_findings* with their verified versions."""
+    verified_map = {f.template_id: f for f in verified}
+    return [
+        verified_map.get(f.template_id, f) if f.verdict == Verdict.VULNERABLE else f
+        for f in all_findings
+    ]
+
+
 async def verify_findings(
     findings: list[Finding],
     adapter: BaseAdapter,
