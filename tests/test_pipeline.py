@@ -58,9 +58,7 @@ class MockAdapter(BaseAdapter):
         pass
 
 
-def _make_template(
-    id: str, category: Category = Category.GOAL_ADHERENCE
-) -> AttackTemplate:
+def _make_template(id: str, category: Category = Category.GOAL_ADHERENCE) -> AttackTemplate:
     return AttackTemplate(
         id=id,
         name=f"Test {id}",
@@ -180,10 +178,14 @@ class TestScanCheckpoint:
     def test_checkpoint_missing_optional_fields(self, tmp_path: Path) -> None:
         """Loading a checkpoint with only required fields should use defaults."""
         cp_path = tmp_path / "minimal.checkpoint.json"
-        cp_path.write_text(json.dumps({
-            "scan_id": "xyz",
-            "target_url": "https://example.com",
-        }))
+        cp_path.write_text(
+            json.dumps(
+                {
+                    "scan_id": "xyz",
+                    "target_url": "https://example.com",
+                }
+            )
+        )
         loaded = ScanCheckpoint.load(cp_path)
         assert loaded.scan_id == "xyz"
         assert loaded.completed_ids == []
@@ -287,9 +289,7 @@ class TestRunPipeline:
         adapter = MockAdapter()
         target = Target(url="https://example.com")
 
-        with patch(
-            "pentis.core.pipeline.load_all_templates", return_value=[]
-        ):
+        with patch("pentis.core.pipeline.load_all_templates", return_value=[]):
             result = await run_pipeline(target, adapter)
 
         assert result.findings == []
@@ -312,8 +312,9 @@ class TestRunPipeline:
             patch("pentis.core.pipeline.load_all_templates", return_value=templates),
             patch("pentis.core.pipeline.execute_attack", mock_execute),
         ):
-            result = await run_pipeline(target=Target(url="https://example.com"),
-                                        adapter=adapter, config=config)
+            result = await run_pipeline(
+                target=Target(url="https://example.com"), adapter=adapter, config=config
+            )
 
         assert len(result.findings) == 3
         assert all(f.verdict == Verdict.SAFE for f in result.findings)
@@ -472,8 +473,7 @@ class TestRunPipeline:
 
         with (
             patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.pipeline.execute_attack",
-                  AsyncMock(side_effect=_tracking_execute)),
+            patch("pentis.core.pipeline.execute_attack", AsyncMock(side_effect=_tracking_execute)),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -582,8 +582,9 @@ class TestParallelAttacks:
 
         with (
             patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.pipeline.execute_attack",
-                  AsyncMock(side_effect=_concurrent_execute)),
+            patch(
+                "pentis.core.pipeline.execute_attack", AsyncMock(side_effect=_concurrent_execute)
+            ),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),

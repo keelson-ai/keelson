@@ -178,9 +178,7 @@ def _checkpoint_path(config: PipelineConfig, scan_id: str) -> Path | None:
     return config.checkpoint_dir / f"{scan_id}.checkpoint.json"
 
 
-def _find_existing_checkpoint(
-    checkpoint_dir: Path, target_url: str
-) -> ScanCheckpoint | None:
+def _find_existing_checkpoint(checkpoint_dir: Path, target_url: str) -> ScanCheckpoint | None:
     """Search checkpoint dir for an existing checkpoint matching the target URL.
 
     Returns the most recent checkpoint for this target, or None.

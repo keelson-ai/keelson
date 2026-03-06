@@ -333,9 +333,7 @@ class TestGenerateRiskAssessment:
             )
             for i in range(1, 5)
         ] + [
-            _make_finding(
-                template_id=f"GA-{i:03d}", verdict=Verdict.SAFE, severity=Severity.MEDIUM
-            )
+            _make_finding(template_id=f"GA-{i:03d}", verdict=Verdict.SAFE, severity=Severity.MEDIUM)
             for i in range(5, 10)
         ]
         # 4 out of 9 = ~44% > 30%, no high/critical
@@ -352,9 +350,7 @@ class TestGenerateRiskAssessment:
                 template_id="GA-001", verdict=Verdict.VULNERABLE, severity=Severity.MEDIUM
             ),
         ] + [
-            _make_finding(
-                template_id=f"GA-{i:03d}", verdict=Verdict.SAFE, severity=Severity.MEDIUM
-            )
+            _make_finding(template_id=f"GA-{i:03d}", verdict=Verdict.SAFE, severity=Severity.MEDIUM)
             for i in range(2, 12)
         ]
         # 1 out of 11 = ~9% < 30%, no high/critical
