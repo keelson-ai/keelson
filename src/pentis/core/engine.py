@@ -21,6 +21,10 @@ async def execute_attack(
 
     Sends each step, accumulates messages for multi-turn, runs detection.
     Optionally runs a StreamingObserver for per-step leakage analysis.
+
+    Steps with role "assistant" are injected into the conversation history
+    without sending to the adapter, enabling conversation history poisoning
+    attacks (e.g., SI-014).
     """
     messages: list[dict[str, str]] = []
     evidence: list[EvidenceItem] = []
@@ -28,6 +32,13 @@ async def execute_attack(
     for step in template.steps:
         if step.new_session:
             messages = []
+
+        if step.role != "user":
+            # Inject non-user turns (e.g., fabricated assistant context) into
+            # the conversation history without sending to the adapter.
+            messages.append({"role": step.role, "content": step.prompt})
+            continue
+
         messages.append({"role": "user", "content": step.prompt})
         response_text, response_time_ms = await adapter.send_messages(messages, model=model)
         messages.append({"role": "assistant", "content": response_text})

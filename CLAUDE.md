@@ -22,7 +22,8 @@ claude --plugin-dir /path/to/Pentis-Monorepo
 ```text
 Pentis-Monorepo/
 ├── agents/
-│   └── pentester.md             # Main pentester agent instructions
+│   ├── pentester.md             # Main pentester agent instructions
+│   └── strategist.md            # Recon & adaptive attack selection
 ├── commands/
 │   ├── scan.md                  # /pentis:scan — full security scan
 │   ├── attack.md                # /pentis:attack — single attack
