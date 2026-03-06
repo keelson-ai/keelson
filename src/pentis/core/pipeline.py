@@ -201,7 +201,7 @@ def _find_existing_checkpoint(checkpoint_dir: Path, target_url: str) -> ScanChec
             cp = ScanCheckpoint.load(cp_file)
             if cp.target_url == target_url:
                 candidates.append((cp_file, cp))
-        except (json.JSONDecodeError, KeyError):
+        except (json.JSONDecodeError, KeyError, ValueError):
             continue
     if not candidates:
         return None

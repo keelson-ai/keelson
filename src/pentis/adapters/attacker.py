@@ -27,7 +27,7 @@ class AttackerAdapter(BaseAdapter):
             {"role": "system", "content": self._system_prompt},
             *messages,
         ]
-        return await self._adapter.send_messages(full_messages, model=model)
+        return await self._adapter._send_messages_impl(full_messages, model=model)
 
     async def health_check(self) -> bool:
         return await self._adapter.health_check()

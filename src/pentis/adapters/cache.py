@@ -98,7 +98,9 @@ class CachingAdapter(BaseAdapter):
         self._evict_expired()
         self._evict_lru()
 
-        response_text, response_time_ms = await self._adapter.send_messages(messages, model=model)
+        response_text, response_time_ms = await self._adapter._send_messages_impl(
+            messages, model=model
+        )
 
         self._cache[key] = CacheEntry(
             response_text=response_text,
