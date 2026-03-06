@@ -5,7 +5,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://img.shields.io/badge/tests-703%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 160 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
+**Autonomous red team agent for AI systems.** Pentis ships 205 attack playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
 
 ```
 pip install pentis
@@ -26,7 +26,7 @@ pentis smart-scan https://api.example.com/v1/chat/completions --api-key $KEY
 # Single attack
 pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
 
-# List all 160 attacks
+# List all 205 attacks
 pentis list
 
 # Statistical campaign (10 trials per attack)
@@ -53,8 +53,8 @@ pentis test-chain my_agent.py
 ```
 Playbooks (.yaml)   Target Agent        Pentis Engine
 ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 160 attacks  │───>│ OpenAI /     │───>│ Scan Modes           │
-│ 7 categories │    │ Anthropic /  │    │  scan (sequential)   │
+│ 205 attacks  │───>│ OpenAI /     │───>│ Scan Modes           │
+│ 13 categories│    │ Anthropic /  │    │  scan (sequential)   │
 │ OWASP mapped │    │ CrewAI / ... │    │  pipeline (parallel) │
 └──────────────┘    └──────────────┘    │  smart (adaptive)    │
                                         └──────────┬───────────┘
@@ -89,6 +89,12 @@ Playbooks (.yaml)   Target Agent        Pentis Engine
 | **Delegation Integrity** | DI | 7 | LLM08/LLM09 | Unauthorized sub-agents, trust boundary violation, delegation scope laundering, cross-agent lateral movement |
 | **Execution Safety** | ES | 13 | LLM02/LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization, HTML/script output injection, destructive command injection |
 | **Session Isolation** | SI | 13 | LLM01/LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, model fingerprinting, conversation history poisoning, debug harness extraction |
+| **Cognitive Architecture** | CA | 8 | LLM01/LLM09 | Chain-of-thought poisoning, reasoning manipulation, meta-cognitive attacks |
+| **Conversational Exfiltration** | EX | 8 | LLM01/LLM06 | Data extraction via conversation, behavioral fingerprinting |
+| **Supply Chain Language** | SL | 8 | LLM03/LLM05 | RAG document injection, dependency confusion, plugin poisoning |
+| **Output Weaponization** | OW | 7 | LLM02/LLM06 | Backdoor code generation, malicious output crafting |
+| **Temporal Persistence** | TP | 7 | LLM05/LLM08 | Delayed action injection, time-based persistence |
+| **Multi-Agent Security** | MA | 7 | LLM08/LLM09 | Agent impersonation, cross-agent attacks |
 
 ## Adapters
 
@@ -350,14 +356,20 @@ pentis/
 │   ├── scan.md                     # /pentis:scan
 │   ├── attack.md                   # /pentis:attack
 │   └── report.md                   # /pentis:report
-├── attacks/                        # 160 attack playbooks (YAML)
-│   ├── goal-adherence/             # GA-001..064 (54 attacks)
-│   ├── tool-safety/                # TS-001..044 (38 attacks)
-│   ├── memory-integrity/           # MI-001..026 (23 attacks)
-│   ├── permission-boundaries/      # PB-001..012 (12 attacks)
-│   ├── delegation-integrity/       # DI-001..008 (7 attacks)
-│   ├── execution-safety/           # ES-001..013 (13 attacks)
-│   └── session-isolation/          # SI-001..015 (13 attacks)
+├── attacks/                        # 205 attack playbooks (YAML)
+│   ├── goal-adherence/             # GA (54 attacks)
+│   ├── tool-safety/                # TS (38 attacks)
+│   ├── memory-integrity/           # MI (23 attacks)
+│   ├── session-isolation/          # SI (13 attacks)
+│   ├── execution-safety/           # ES (13 attacks)
+│   ├── permission-boundaries/      # PB (12 attacks)
+│   ├── cognitive-architecture/     # CA (8 attacks)
+│   ├── conversational-exfiltration/# EX (8 attacks)
+│   ├── supply-chain-language/      # SL (8 attacks)
+│   ├── delegation-integrity/       # DI (7 attacks)
+│   ├── multi-agent-security/       # MA (7 attacks)
+│   ├── output-weaponization/       # OW (7 attacks)
+│   └── temporal-persistence/       # TP (7 attacks)
 ├── src/pentis/                     # Python engine
 │   ├── cli/                        # Typer CLI (17 commands)
 │   │   ├── __init__.py             # App setup, shared helpers
