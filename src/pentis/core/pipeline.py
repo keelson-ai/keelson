@@ -1,4 +1,4 @@
-"""Shannon-inspired parallel scan pipeline with checkpoint/resume."""
+"""Parallel scan pipeline with checkpoint/resume."""
 
 from __future__ import annotations
 
@@ -209,7 +209,7 @@ async def run_pipeline(
     attacks_dir: Path | None = None,
     category: str | None = None,
 ) -> ScanResult:
-    """Run a Shannon-inspired parallel scan pipeline.
+    """Run a parallel scan pipeline.
 
     Phases:
         1. Discovery  -- load templates and restore checkpoint

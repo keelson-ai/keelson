@@ -1,4 +1,4 @@
-"""Tests for the Shannon-inspired parallel scan pipeline."""
+"""Tests for the parallel scan pipeline."""
 
 from __future__ import annotations
 

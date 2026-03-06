@@ -370,7 +370,7 @@ def pipeline_scan(
 ) -> None:
     """Run a parallel pipeline scan with checkpoint/resume and verification.
 
-    Shannon-inspired multi-phase pipeline:
+    Multi-phase pipeline:
       1. Discovery  -- load attack templates
       2. Scanning   -- parallel attack execution with checkpointing
       3. Verification -- re-probe vulnerable findings for confirmation

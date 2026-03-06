@@ -1,4 +1,4 @@
-"""Shannon-inspired executive report generator with PoC sections."""
+"""Executive report generator with PoC sections."""
 
 from __future__ import annotations
 
@@ -492,7 +492,7 @@ def generate_executive_report(
     *,
     include_safe: bool = False,
 ) -> str:
-    """Generate a Shannon-inspired executive security assessment report.
+    """Generate an executive security assessment report.
 
     Produces a pentest-grade markdown report with:
     - Executive summary with severity breakdown
