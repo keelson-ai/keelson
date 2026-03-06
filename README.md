@@ -3,9 +3,9 @@
 [![PyPI version](https://img.shields.io/pypi/v/pentis)](https://pypi.org/project/pentis/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-524%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-578%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 105 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
+**Autonomous red team agent for AI systems.** Pentis ships 131 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
 
 ```
 pip install pentis
@@ -20,7 +20,7 @@ pentis scan https://api.example.com/v1/chat/completions --api-key $KEY
 # Single attack
 pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
 
-# List all 105 attacks
+# List all 131 attacks
 pentis list
 
 # Statistical campaign (10 trials per attack)
@@ -47,7 +47,7 @@ pentis test-chain my_agent.py
 ```
 Playbooks (.yaml)   Target Agent        Pentis Engine
 ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 105 attacks  │───>│ OpenAI /     │───>│ Detection pipeline   │
+│ 131 attacks  │───>│ OpenAI /     │───>│ Detection pipeline   │
 │ 7 categories │    │ Anthropic /  │    │ Streaming observer    │
 │ OWASP mapped │    │ CrewAI / ... │    │ Statistical analysis  │
 └──────────────┘    └──────────────┘    └──────────────────────┘
@@ -69,13 +69,13 @@ Playbooks (.yaml)   Target Agent        Pentis Engine
 
 | Category | Prefix | Count | OWASP | What It Tests |
 |----------|--------|-------|-------|---------------|
-| **Goal Adherence** | GA | 33 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) attacks, rapport exploitation |
-| **Tool Safety** | TS | 28 | LLM02/LLM06/LLM07 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal, MCP tool poisoning, MCP rug pull, cross-server contamination, SSRF, side-effect detection, excessive agency |
-| **Memory Integrity** | MI | 14 | LLM05 | History poisoning, identity persistence, false tool results, cross-turn exfiltration, error info leakage |
-| **Permission Boundaries** | PB | 8 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
+| **Goal Adherence** | GA | 39 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) attacks, rapport exploitation, structured data injection, model fingerprinting |
+| **Tool Safety** | TS | 34 | LLM02/LLM06/LLM07 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal, MCP tool poisoning, MCP rug pull, cross-server contamination, SSRF, side-effect detection, excessive agency |
+| **Memory Integrity** | MI | 16 | LLM05 | History poisoning, identity persistence, false tool results, cross-turn exfiltration, error info leakage, stored payload injection |
+| **Permission Boundaries** | PB | 12 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
 | **Delegation Integrity** | DI | 6 | LLM08/LLM09 | Unauthorized sub-agents, trust boundary violation, delegation scope laundering |
-| **Execution Safety** | ES | 8 | LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization |
-| **Session Isolation** | SI | 8 | LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, model fingerprinting |
+| **Execution Safety** | ES | 12 | LLM02/LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization, HTML/script output injection |
+| **Session Isolation** | SI | 12 | LLM01/LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, model fingerprinting, conversation history poisoning |
 
 ## Adapters
 
@@ -335,14 +335,14 @@ pentis/
 │   ├── scan.md                     # /pentis:scan
 │   ├── attack.md                   # /pentis:attack
 │   └── report.md                   # /pentis:report
-├── attacks/                        # 105 attack playbooks (YAML)
-│   ├── goal-adherence/             # GA-001..042 (33 attacks)
-│   ├── tool-safety/                # TS-001..033 (28 attacks)
-│   ├── memory-integrity/           # MI-001..017 (14 attacks)
-│   ├── permission-boundaries/      # PB-001..008
+├── attacks/                        # 131 attack playbooks (YAML)
+│   ├── goal-adherence/             # GA-001..048 (39 attacks)
+│   ├── tool-safety/                # TS-001..040 (34 attacks)
+│   ├── memory-integrity/           # MI-001..019 (16 attacks)
+│   ├── permission-boundaries/      # PB-001..012 (12 attacks)
 │   ├── delegation-integrity/       # DI-001..007 (6 attacks)
-│   ├── execution-safety/           # ES-001..008
-│   └── session-isolation/          # SI-001..010 (8 attacks)
+│   ├── execution-safety/           # ES-001..012 (12 attacks)
+│   └── session-isolation/          # SI-001..014 (12 attacks)
 ├── src/pentis/                     # Python engine
 │   ├── cli.py                      # Typer CLI (15 commands)
 │   ├── adapters/                   # 8 target adapters
@@ -392,7 +392,7 @@ pentis/
 │   │   └── comparator.py           # Regression detection
 │   └── state/                      # Persistence
 │       └── store.py                # SQLite storage
-├── tests/                          # 524 tests
+├── tests/                          # 578 tests
 ├── docs/                           # Documentation
 │   ├── adr/                        # Architecture Decision Records
 │   │   ├── ADR-001-framework.md    # FastAPI selection

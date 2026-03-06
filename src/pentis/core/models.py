@@ -77,6 +77,7 @@ class AttackStep:
     prompt: str
     is_followup: bool = False
     new_session: bool = False
+    role: str = "user"
 
 
 @dataclass
