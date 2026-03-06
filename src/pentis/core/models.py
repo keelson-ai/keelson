@@ -131,6 +131,7 @@ class Finding:
     reasoning: str = ""
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     leakage_signals: list[LeakageSignal] = field(default_factory=list[LeakageSignal])
+    probe_source: str = ""  # template_id that triggered this probe (empty = original attack)
 
 
 @dataclass
