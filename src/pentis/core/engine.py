@@ -54,11 +54,11 @@ async def execute_attack(
         if step != template.steps[-1]:
             await asyncio.sleep(delay)
 
-    verdict, reasoning = detect(template, evidence)
+    # Always run observer for leakage detection; use caller's if provided
+    effective_observer = observer if observer is not None else StreamingObserver()
+    leakage_signals = effective_observer.observe(evidence)
 
-    leakage_signals = []
-    if observer is not None:
-        leakage_signals = observer.observe(evidence)
+    verdict, reasoning = detect(template, evidence, leakage_signals=leakage_signals)
 
     return Finding(
         template_id=template.id,
