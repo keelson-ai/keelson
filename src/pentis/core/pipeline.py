@@ -62,7 +62,7 @@ class ScanCheckpoint:
         }
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, indent=2, default=str))
-        tmp.rename(path)
+        tmp.replace(path)
         logger.debug("Checkpoint saved to %s (%d completed)", path, len(self.completed_ids))
 
     @classmethod
