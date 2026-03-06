@@ -42,6 +42,7 @@ async def execute_sequential(
     on_each: Callable[[Finding], None] | None = None,
     offset: int = 0,
     total: int | None = None,
+    max_response_tokens: int | None = 512,
 ) -> list[Finding]:
     """Execute attacks sequentially, returning collected findings.
 
@@ -55,13 +56,20 @@ async def execute_sequential(
             Useful for recording findings into external state (e.g. memo tables).
         offset: Starting index for progress reporting (for session-based execution).
         total: Total count for progress reporting. Defaults to len(templates).
+        max_response_tokens: Limit target response length to save tokens.
     """
     if total is None:
         total = len(templates) + offset
 
     findings: list[Finding] = []
     for i, template in enumerate(templates):
-        finding = await execute_attack(template, adapter, model=model, delay=delay)
+        finding = await execute_attack(
+            template,
+            adapter,
+            model=model,
+            delay=delay,
+            max_response_tokens=max_response_tokens,
+        )
         findings.append(finding)
 
         if on_each:
@@ -85,6 +93,7 @@ async def execute_parallel(
     on_finding: Callable[[Finding, int, int], None] | None = None,
     offset: int = 0,
     total: int | None = None,
+    max_response_tokens: int | None = 512,
 ) -> list[Finding]:
     """Execute attacks in parallel with semaphore-based concurrency control.
 
@@ -97,6 +106,7 @@ async def execute_parallel(
         on_finding: Progress callback(finding, current_index, total_count).
         offset: Starting index for progress reporting.
         total: Total count for progress reporting. Defaults to len(templates).
+        max_response_tokens: Limit target response length to save tokens.
     """
     if not templates:
         return []
@@ -112,7 +122,13 @@ async def execute_parallel(
         nonlocal completed
         async with semaphore:
             try:
-                finding = await execute_attack(template, adapter, model=model, delay=delay)
+                finding = await execute_attack(
+                    template,
+                    adapter,
+                    model=model,
+                    delay=delay,
+                    max_response_tokens=max_response_tokens,
+                )
             except Exception:
                 logger.exception("Attack %s failed with error", template.id)
                 finding = Finding(
@@ -148,6 +164,21 @@ def apply_verified_findings(
     ]
 
 
+# Leakage confidence threshold above which verification is skipped
+_HIGH_CONFIDENCE_THRESHOLD = 0.8
+
+
+def _is_high_confidence_vulnerable(finding: Finding) -> bool:
+    """Check if a finding has high-confidence leakage signals.
+
+    High-confidence findings don't need re-probing — the evidence is already strong.
+    """
+    return any(
+        s.confidence >= _HIGH_CONFIDENCE_THRESHOLD and s.severity == "high"
+        for s in finding.leakage_signals
+    )
+
+
 async def verify_findings(
     findings: list[Finding],
     adapter: BaseAdapter,
@@ -159,12 +190,40 @@ async def verify_findings(
     Sends the original attack's last prompt context plus a follow-up asking
     the agent to confirm it can perform the action. If the agent refuses,
     the verdict is downgraded to INCONCLUSIVE.
+
+    High-confidence findings (strong leakage signals) are auto-confirmed
+    without an extra API call to save tokens.
     """
     verified: list[Finding] = []
 
     for finding in findings:
         if not finding.evidence:
             verified.append(finding)
+            continue
+
+        # Skip verification for high-confidence detections
+        if _is_high_confidence_vulnerable(finding):
+            logger.info(
+                "Verification: %s auto-confirmed (high-confidence leakage signals)",
+                finding.template_id,
+            )
+            verified.append(
+                Finding(
+                    template_id=finding.template_id,
+                    template_name=finding.template_name,
+                    verdict=Verdict.VULNERABLE,
+                    severity=finding.severity,
+                    category=finding.category,
+                    owasp=finding.owasp,
+                    evidence=finding.evidence,
+                    reasoning=(
+                        f"{finding.reasoning} "
+                        "[Verification: auto-confirmed via high-confidence leakage signals]"
+                    ),
+                    timestamp=finding.timestamp,
+                    leakage_signals=finding.leakage_signals,
+                )
+            )
             continue
 
         last_evidence = finding.evidence[-1]

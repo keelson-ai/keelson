@@ -37,7 +37,10 @@ class AnthropicAdapter(BaseAdapter):
         self._client = httpx.AsyncClient(headers=headers, timeout=timeout)
 
     async def _send_messages_impl(
-        self, messages: list[dict[str, str]], model: str = "default"
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",
+        max_response_tokens: int | None = None,
     ) -> tuple[str, int]:
         """Send messages and return (response_text, response_time_ms).
 
@@ -55,9 +58,12 @@ class AnthropicAdapter(BaseAdapter):
         if model == "default":
             model = "claude-sonnet-4-6"
 
+        resolved_max_tokens = (
+            max_response_tokens if max_response_tokens is not None else self.max_tokens
+        )
         payload: dict[str, object] = {
             "model": model,
-            "max_tokens": self.max_tokens,
+            "max_tokens": resolved_max_tokens,
             "messages": api_messages,
         }
         if system_parts:

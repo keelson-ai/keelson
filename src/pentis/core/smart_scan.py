@@ -131,6 +131,7 @@ async def _execute_session(
     current_offset: int,
     total: int,
     memo: MemoTable | None = None,
+    max_response_tokens: int | None = 512,
 ) -> list[Finding]:
     """Execute a group of attacks within a single conversational session.
 
@@ -153,6 +154,7 @@ async def _execute_session(
         on_each=on_each,
         offset=current_offset,
         total=total,
+        max_response_tokens=max_response_tokens,
     )
 
 
@@ -164,6 +166,7 @@ async def run_smart_scan(
     on_finding: Callable[[Finding, int, int], None] | None = None,
     on_phase: Callable[[str, str], None] | None = None,
     verify: bool = False,
+    max_response_tokens: int | None = 512,
 ) -> ScanResult:
     """Run an adaptive smart scan: discover -> classify -> select -> execute.
 
@@ -183,6 +186,7 @@ async def run_smart_scan(
         on_finding: Optional callback(finding, current_index, total) for progress.
         on_phase: Optional callback(phase_name, detail) for phase transitions.
         verify: When True, re-probe VULNERABLE findings to confirm them.
+        max_response_tokens: Limit target response length to save tokens.
     """
     result = ScanResult(target=target)
 
@@ -274,7 +278,15 @@ async def run_smart_scan(
                 on_phase("memo", f"  Leaked info: {len(leaked)} items")
 
         session_findings = await _execute_session(
-            session, adapter, target.model, delay, on_finding, current_offset, total, memo=memo
+            session,
+            adapter,
+            target.model,
+            delay,
+            on_finding,
+            current_offset,
+            total,
+            memo=memo,
+            max_response_tokens=max_response_tokens,
         )
         all_findings.extend(session_findings)
         current_offset += len(session)
