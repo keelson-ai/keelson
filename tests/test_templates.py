@@ -25,7 +25,21 @@ class TestLoadTemplates:
 
     def test_id_format(self):
         templates = load_all_templates(attacks_dir=ATTACKS_DIR)
-        valid_prefixes = ("GA", "TS", "MI", "PB", "DI", "ES", "SI")
+        valid_prefixes = (
+            "GA",
+            "TS",
+            "MI",
+            "PB",
+            "DI",
+            "ES",
+            "SI",
+            "OW",
+            "MA",
+            "TP",
+            "CA",
+            "EX",
+            "SL",
+        )
         for t in templates:
             assert t.id[:2] in valid_prefixes, f"Unexpected id prefix: {t.id}"
             assert "-" in t.id, f"ID missing dash: {t.id}"
