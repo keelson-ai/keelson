@@ -31,6 +31,12 @@ class Category(StrEnum):
     DELEGATION_INTEGRITY = "Delegation Integrity"
     EXECUTION_SAFETY = "Execution Safety"
     SESSION_ISOLATION = "Session Isolation"
+    OUTPUT_WEAPONIZATION = "Output Weaponization"
+    MULTI_AGENT_SECURITY = "Multi-Agent Security"
+    TEMPORAL_PERSISTENCE = "Temporal Persistence"
+    COGNITIVE_ARCHITECTURE = "Cognitive Architecture"
+    CONVERSATIONAL_EXFILTRATION = "Conversational Exfiltration"
+    SUPPLY_CHAIN_LANGUAGE = "Supply Chain Language"
 
 
 class MutationType(StrEnum):
