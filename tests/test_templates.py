@@ -36,7 +36,7 @@ class TestLoadTemplates:
         ts = [t for t in templates if t.category == Category.TOOL_SAFETY]
         mi = [t for t in templates if t.category == Category.MEMORY_INTEGRITY]
         assert len(ga) == 39
-        assert len(ts) == 33
+        assert len(ts) == 34
         assert len(mi) == 16
 
     def test_filter_by_category(self):
@@ -45,7 +45,7 @@ class TestLoadTemplates:
         assert all(t.category == Category.GOAL_ADHERENCE for t in ga)
 
         ts = load_all_templates(attacks_dir=ATTACKS_DIR, category="tool-safety")
-        assert len(ts) == 33
+        assert len(ts) == 34
 
         mi = load_all_templates(attacks_dir=ATTACKS_DIR, category="memory-integrity")
         assert len(mi) == 16
