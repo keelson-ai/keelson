@@ -55,6 +55,7 @@ class A2AAdapter(BaseAdapter):
         self,
         messages: list[dict[str, str]],
         model: str = "default",  # noqa: ARG002
+        max_response_tokens: int | None = None,  # noqa: ARG002
     ) -> tuple[str, int]:
         """Send messages via A2A tasks/send JSON-RPC method."""
         user_message = self._last_user_message(messages)

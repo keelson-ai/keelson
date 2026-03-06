@@ -24,7 +24,10 @@ class MockAdapter(BaseAdapter):
         self._call_idx = 0
 
     async def _send_messages_impl(
-        self, messages: list[dict[str, str]], model: str = "default"
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",
+        max_response_tokens: int | None = None,
     ) -> tuple[str, int]:
         resp = self._responses[self._call_idx % len(self._responses)]
         self._call_idx += 1

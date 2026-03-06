@@ -24,11 +24,15 @@ class BaseAdapter(ABC):
 
     @abstractmethod
     async def _send_messages_impl(
-        self, messages: list[dict[str, str]], model: str = "default"
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",
+        max_response_tokens: int | None = None,
     ) -> tuple[str, int]:
         """Send messages to the target and return (response_text, response_time_ms).
 
         Subclasses implement this. Retry logic is handled by send_messages().
+        If max_response_tokens is set, the target should limit its response length.
         """
 
     async def send_messages(
@@ -37,6 +41,7 @@ class BaseAdapter(ABC):
         model: str = "default",
         *,
         max_retries: int = _MAX_RETRIES,
+        max_response_tokens: int | None = None,
     ) -> tuple[str, int]:
         """Send messages with automatic retry on transient failures.
 
@@ -45,7 +50,9 @@ class BaseAdapter(ABC):
         last_exc: Exception | None = None
         for attempt in range(max_retries + 1):
             try:
-                return await self._send_messages_impl(messages, model=model)
+                return await self._send_messages_impl(
+                    messages, model=model, max_response_tokens=max_response_tokens
+                )
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code not in _RETRYABLE_STATUS_CODES:
                     raise

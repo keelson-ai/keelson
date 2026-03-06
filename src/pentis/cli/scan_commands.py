@@ -59,6 +59,11 @@ def scan(
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
     debug: bool = typer.Option(False, "--debug", help="Include SAFE findings in report"),
+    max_tokens: int | None = typer.Option(
+        512,
+        "--max-tokens",
+        help="Max response tokens per request (saves tokens). Use 0 for unlimited",
+    ),
 ) -> None:
     """Run a full security scan against an AI agent endpoint."""
     target = Target(url=url, api_key=api_key, model=model)
@@ -123,6 +128,8 @@ def scan(
         console.print(f"Category: {category}")
     console.print()
 
+    resolved_max_tokens = max_tokens if max_tokens != 0 else None
+
     result = run_with_adapter(
         lambda: run_scan(
             target=target,
@@ -130,6 +137,7 @@ def scan(
             category=category,
             delay=delay,
             on_finding=on_finding,
+            max_response_tokens=resolved_max_tokens,
         ),
         target_adapter,
     )
@@ -184,6 +192,11 @@ def pipeline_scan(
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
     debug: bool = typer.Option(False, "--debug", help="Include SAFE findings in report"),
+    max_tokens: int | None = typer.Option(
+        512,
+        "--max-tokens",
+        help="Max response tokens per request (saves tokens). Use 0 for unlimited",
+    ),
 ) -> None:
     """Run a parallel pipeline scan with checkpoint/resume and verification."""
     from pentis.core.pipeline import PipelineConfig, run_pipeline
@@ -192,12 +205,15 @@ def pipeline_scan(
     target_adapter = make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
     on_finding = make_finding_callback()
 
+    resolved_max_tokens = max_tokens if max_tokens != 0 else None
+
     config = PipelineConfig(
         max_concurrent=concurrency,
         delay=delay,
         checkpoint_dir=checkpoint_dir,
         verify_vulnerabilities=not no_verify,
         on_finding=on_finding,
+        max_response_tokens=resolved_max_tokens,
     )
 
     console.print("\n[bold]Pentis Pipeline Scan[/bold]")
@@ -264,6 +280,11 @@ def smart_scan(
     verify: bool = typer.Option(
         False, "--verify", help="Re-probe VULNERABLE findings to confirm them"
     ),
+    max_tokens: int | None = typer.Option(
+        512,
+        "--max-tokens",
+        help="Max response tokens per request (saves tokens). Use 0 for unlimited",
+    ),
 ) -> None:
     """Adaptive smart scan: discover, classify, select relevant attacks, execute in sessions."""
     from pentis.core.smart_scan import run_smart_scan
@@ -293,6 +314,8 @@ def smart_scan(
         icon = phase_icons.get(phase, f"[dim]{phase:8s}[/]")
         console.print(f"  {icon} {detail}")
 
+    resolved_max_tokens = max_tokens if max_tokens != 0 else None
+
     result = run_with_adapter(
         lambda: run_smart_scan(
             target=target,
@@ -301,6 +324,7 @@ def smart_scan(
             on_finding=on_finding,
             on_phase=on_phase,
             verify=verify,
+            max_response_tokens=resolved_max_tokens,
         ),
         target_adapter,
     )

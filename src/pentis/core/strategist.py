@@ -332,7 +332,7 @@ def _build_rationale(
 # --- Adaptation ---
 
 _ESCALATION_THRESHOLD = 3
-_DEESCALATION_THRESHOLD = 5
+_DEESCALATION_THRESHOLD = 3
 
 
 def adapt_plan(

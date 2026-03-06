@@ -20,14 +20,19 @@ class AttackerAdapter(BaseAdapter):
         self._system_prompt = system_prompt
 
     async def _send_messages_impl(
-        self, messages: list[dict[str, str]], model: str = "default"
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",
+        max_response_tokens: int | None = None,
     ) -> tuple[str, int]:
         """Send messages with attacker system prompt prepended."""
         full_messages = [
             {"role": "system", "content": self._system_prompt},
             *messages,
         ]
-        return await self._adapter._send_messages_impl(full_messages, model=model)
+        return await self._adapter._send_messages_impl(
+            full_messages, model=model, max_response_tokens=max_response_tokens
+        )
 
     async def health_check(self) -> bool:
         return await self._adapter.health_check()

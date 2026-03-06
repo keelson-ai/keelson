@@ -45,7 +45,10 @@ class MockAdapter(BaseAdapter):
         self._call_count = 0
 
     async def _send_messages_impl(
-        self, messages: list[dict[str, str]], model: str = "default"
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",
+        max_response_tokens: int | None = None,
     ) -> tuple[str, int]:
         response = self.responses[self._call_count % len(self.responses)]
         self._call_count += 1
@@ -277,6 +280,7 @@ def _mock_execute_attack_factory(
         model: str = "default",
         delay: float = 1.0,
         observer: object = None,
+        max_response_tokens: int | None = None,
     ) -> Finding:
         return Finding(
             template_id=template.id,
@@ -348,6 +352,7 @@ class TestRunPipeline:
             model: str = "default",
             delay: float = 1.0,
             observer: object = None,
+            max_response_tokens: int | None = None,
         ) -> Finding:
             nonlocal call_count
             call_count += 1
@@ -467,6 +472,7 @@ class TestRunPipeline:
             model: str = "default",
             delay: float = 1.0,
             observer: object = None,
+            max_response_tokens: int | None = None,
         ) -> Finding:
             executed_ids.append(template.id)
             return Finding(
@@ -565,6 +571,7 @@ class TestParallelAttacks:
             model: str = "default",
             delay: float = 1.0,
             observer: object = None,
+            max_response_tokens: int | None = None,
         ) -> Finding:
             nonlocal peak_concurrent, current_concurrent
             async with lock:
@@ -676,7 +683,10 @@ class TestVerifyFindings:
 
         class FailingAdapter(BaseAdapter):
             async def _send_messages_impl(
-                self, messages: list[dict[str, str]], model: str = "default"
+                self,
+                messages: list[dict[str, str]],
+                model: str = "default",
+                max_response_tokens: int | None = None,
             ) -> tuple[str, int]:
                 raise ConnectionError("Network error")
 

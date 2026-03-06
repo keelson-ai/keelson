@@ -22,10 +22,15 @@ class OpenAIAdapter(BaseAdapter):
         self._client = httpx.AsyncClient(headers=headers, timeout=timeout)
 
     async def _send_messages_impl(
-        self, messages: list[dict[str, str]], model: str = "default"
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",
+        max_response_tokens: int | None = None,
     ) -> tuple[str, int]:
         """Send messages and return (response_text, response_time_ms)."""
-        payload = {"model": model, "messages": messages}
+        payload: dict[str, object] = {"model": model, "messages": messages}
+        if max_response_tokens is not None:
+            payload["max_tokens"] = max_response_tokens
         start = time.monotonic()
         resp = await self._client.post(self.url, json=payload)
         elapsed_ms = int((time.monotonic() - start) * 1000)
