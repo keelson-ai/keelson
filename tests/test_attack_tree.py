@@ -161,9 +161,9 @@ class TestBuiltinTrees:
         for tree in BUILTIN_TREES:
             for response_class, branch_list in tree.branches.items():
                 for branch in branch_list:
-                    assert (
-                        branch.technique
-                    ), f"{tree.id} branch for {response_class} missing technique"
+                    assert branch.technique, (
+                        f"{tree.id} branch for {response_class} missing technique"
+                    )
 
 
 def _simple_tree() -> AttackTree:
