@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pentis.adapters.base import BaseAdapter
 from pentis.adaptive.branching import classify_response
 from pentis.core.detection import detect
-from pentis.core.memo import MemoTable, Technique
+from pentis.core.memo import MemoTable, Technique, score_attack_by_memo
 from pentis.core.models import (
     AttackTemplate,
     Category,
@@ -215,30 +215,18 @@ def _select_branch(
 ) -> TreeBranch:
     """Pick the best branch, informed by memo table.
 
-    Uses promising_techniques (VULNERABLE + INCONCLUSIVE signals) for scoring,
-    matching the cross-category learning used by score_attack_by_memo.
-    If a technique is a dead end, deprioritize it.
+    Delegates to score_attack_by_memo for consistent scoring with smart scan
+    reordering (including INCONCLUSIVE signals and cross-category learning).
     Falls back to first branch if no memo or no differentiation.
     """
     if not memo or not memo.entries or len(branches) == 1:
         return branches[0]
 
-    promising = memo.promising_techniques(category)
-    dead_ends = memo.dead_end_techniques(category)
-    global_promising = memo.promising_techniques(category=None)
-
     best_score = float("-inf")
     best_branch = branches[0]
 
     for branch in branches:
-        score = 0.0
-        if branch.technique in promising:
-            score += promising[branch.technique] * 2.0
-        elif branch.technique in global_promising:
-            # Cross-category signal: worked elsewhere, worth trying here
-            score += global_promising[branch.technique] * 0.5
-        if branch.technique in dead_ends:
-            score -= dead_ends[branch.technique] * 1.0
+        score = score_attack_by_memo([branch.technique], memo, category)
         if score > best_score:
             best_score = score
             best_branch = branch
