@@ -432,6 +432,92 @@ def pipeline_scan(
     _check_fail_gates(result.vulnerable_count, len(result.findings), fail_on_vuln, fail_threshold)
 
 
+@app.command(name="smart-scan")
+def smart_scan(
+    url: str = typer.Argument(help="Target endpoint URL"),
+    api_key: str = typer.Option("", "--api-key", "-k", help="API key for authentication"),
+    model: str = typer.Option("default", "--model", "-m", help="Model name for requests"),
+    delay: float = typer.Option(2.0, "--delay", "-d", help="Seconds between requests"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Report output directory"),
+    no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
+    adapter: str = typer.Option(
+        "openai",
+        "--adapter",
+        "-a",
+        help="Adapter type: openai, anthropic, langgraph, mcp, or a2a",
+    ),
+    use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
+    format: str = typer.Option(
+        "markdown",
+        "--format",
+        "-f",
+        help="Output format: markdown, executive, sarif, or junit",
+    ),
+    fail_on_vuln: bool = typer.Option(
+        False, "--fail-on-vuln", help="Exit with code 1 if any vulnerabilities found"
+    ),
+    fail_threshold: float = typer.Option(0.0, "--fail-threshold", help="Vuln rate threshold"),
+    assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
+    tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
+    debug: bool = typer.Option(False, "--debug", help="Include SAFE findings in report"),
+) -> None:
+    """Adaptive smart scan: discover, classify, select relevant attacks, execute in sessions."""
+    from pentis.core.smart_scan import run_smart_scan
+
+    target = Target(url=url, api_key=api_key, model=model)
+    target_adapter = _make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
+    on_finding = _make_finding_callback()
+
+    console.print("\n[bold]Pentis Smart Scan[/bold]")
+    console.print(f"Target: {url}")
+    console.print(f"Model: {model}")
+    console.print()
+
+    def on_phase(phase: str, detail: str) -> None:
+        phase_icons = {
+            "discovery": "[cyan]DISCOVER[/]",
+            "classify": "[cyan]CLASSIFY[/]",
+            "profile": "[cyan]PROFILE [/]",
+            "plan": "[cyan]PLAN    [/]",
+            "category": "[dim]        [/]",
+            "execute": "[cyan]EXECUTE [/]",
+            "session": "[dim]SESSION [/]",
+            "adapt": "[yellow]ADAPT   [/]",
+            "done": "[green]DONE    [/]",
+        }
+        icon = phase_icons.get(phase, f"[dim]{phase:8s}[/]")
+        console.print(f"  {icon} {detail}")
+
+    async def _run():
+        try:
+            return await run_smart_scan(
+                target=target,
+                adapter=target_adapter,
+                delay=delay,
+                on_finding=on_finding,
+                on_phase=on_phase,
+            )
+        finally:
+            await target_adapter.close()
+
+    result = asyncio.run(_run())
+
+    if not no_save:
+        store = Store()
+        store.save_scan(result)
+        store.close()
+
+    report_path = _write_report(result, format, output, "smart-scan", debug=debug)
+
+    console.print("\n[bold]Results[/bold]")
+    console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
+    console.print(f"  Safe: [green]{result.safe_count}[/]")
+    console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
+    console.print(f"\nReport saved: {report_path}")
+
+    _check_fail_gates(result.vulnerable_count, len(result.findings), fail_on_vuln, fail_threshold)
+
+
 @app.command()
 def attack(
     url: str = typer.Argument(help="Target endpoint URL"),

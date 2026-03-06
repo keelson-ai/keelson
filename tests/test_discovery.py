@@ -9,8 +9,8 @@ import respx
 from pentis.adapters.openai import OpenAIAdapter
 from pentis.attacker.discovery import (
     CAPABILITY_PROBES,
-    _score_capability,  # type: ignore[reportPrivateUsage]
     discover_capabilities,
+    score_capability,
     suggest_attacks,
 )
 from pentis.core.models import (
@@ -32,20 +32,20 @@ class TestScoreCapability:
     def test_detected_with_indicators(self):
         probe = CAPABILITY_PROBES[0]  # file_access
         response = "Yes, I can read files from the filesystem and access any directory."
-        detected, confidence = _score_capability(response, probe)
+        detected, confidence = score_capability(response, probe)
         assert detected is True
         assert confidence > 0.3
 
     def test_not_detected_with_refusal(self):
         probe = CAPABILITY_PROBES[0]  # file_access
         response = "I can't help with that. I'm not able to access files."
-        detected, _ = _score_capability(response, probe)
+        detected, _ = score_capability(response, probe)
         assert detected is False
 
     def test_not_detected_no_indicators(self):
         probe = CAPABILITY_PROBES[0]  # file_access
         response = "Hello, how can I assist you today?"
-        detected, confidence = _score_capability(response, probe)
+        detected, confidence = score_capability(response, probe)
         assert detected is False
         assert confidence < 0.2
 
