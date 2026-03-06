@@ -43,7 +43,7 @@ class LangGraphAdapter(BaseAdapter):
         self.thread_id = str(data["thread_id"])
         return self.thread_id
 
-    async def send_messages(
+    async def _send_messages_impl(
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         """Send messages via /threads/{id}/runs/wait."""
@@ -101,16 +101,9 @@ class LangGraphAdapter(BaseAdapter):
     async def health_check(self) -> bool:
         """Send a minimal run to verify the endpoint is reachable."""
         try:
-            thread_id = await self._ensure_thread()
-            resp = await self._client.post(
-                f"{self._url}/threads/{thread_id}/runs/wait",
-                json={
-                    "input": {"messages": [{"role": "user", "content": "ping"}]},
-                    "assistant_id": self.assistant_id,
-                },
-            )
-            return resp.status_code < 500
-        except httpx.HTTPError:
+            await self._send_messages_impl([{"role": "user", "content": "ping"}], "default")
+            return True
+        except (httpx.HTTPError, KeyError, IndexError):
             return False
 
     def reset_session(self) -> None:

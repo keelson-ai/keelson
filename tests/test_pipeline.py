@@ -44,7 +44,7 @@ class MockAdapter(BaseAdapter):
         self.responses = responses or ["I cannot do that."]
         self._call_count = 0
 
-    async def send_messages(
+    async def _send_messages_impl(
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         response = self.responses[self._call_count % len(self.responses)]
@@ -181,6 +181,7 @@ class TestScanCheckpoint:
         cp_path.write_text(
             json.dumps(
                 {
+                    "version": 2,
                     "scan_id": "xyz",
                     "target_url": "https://example.com",
                 }
@@ -192,6 +193,21 @@ class TestScanCheckpoint:
         assert loaded.findings_json == []
         assert loaded.started_at == ""
         assert loaded.phase == "scanning"
+
+    def test_checkpoint_version_mismatch_raises(self, tmp_path: Path) -> None:
+        """Loading a checkpoint with wrong version should raise ValueError."""
+        cp_path = tmp_path / "old.checkpoint.json"
+        cp_path.write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "scan_id": "xyz",
+                    "target_url": "https://example.com",
+                }
+            )
+        )
+        with pytest.raises(ValueError, match="version mismatch"):
+            ScanCheckpoint.load(cp_path)
 
 
 # ---------------------------------------------------------------------------
@@ -659,7 +675,7 @@ class TestVerifyFindings:
         """If the adapter raises during verification, keep the original verdict."""
 
         class FailingAdapter(BaseAdapter):
-            async def send_messages(
+            async def _send_messages_impl(
                 self, messages: list[dict[str, str]], model: str = "default"
             ) -> tuple[str, int]:
                 raise ConnectionError("Network error")

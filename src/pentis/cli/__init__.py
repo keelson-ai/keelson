@@ -46,7 +46,7 @@ SEVERITY_COLORS: dict[str, str] = {
 }
 
 
-def make_finding_callback():  # type: ignore[no-untyped-def]
+def make_finding_callback() -> Callable[[Finding, int, int], None]:
     def _cb(finding: Finding, current: int, total: int) -> None:
         icon = VERDICT_ICONS.get(finding.verdict.value, finding.verdict.value)
         console.print(
@@ -56,7 +56,7 @@ def make_finding_callback():  # type: ignore[no-untyped-def]
     return _cb
 
 
-def make_stat_finding_callback():  # type: ignore[no-untyped-def]
+def make_stat_finding_callback() -> Callable[[StatisticalFinding, int, int], None]:
     def _cb(finding: StatisticalFinding, current: int, total: int) -> None:
         icon = VERDICT_ICONS.get(finding.verdict.value, finding.verdict.value)
         console.print(

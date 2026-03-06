@@ -24,7 +24,7 @@ class GenericHTTPAdapter(BaseAdapter):
         self._default_model = default_model
         self._client = httpx.AsyncClient(timeout=timeout)
 
-    async def send_messages(
+    async def _send_messages_impl(
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         """Send messages to the endpoint and return (response_text, response_time_ms)."""
@@ -47,7 +47,7 @@ class GenericHTTPAdapter(BaseAdapter):
     async def health_check(self) -> bool:
         """Return True if the endpoint responds without a server error."""
         try:
-            _, _ = await self.send_messages([{"role": "user", "content": "ping"}], "default")
+            await self._send_messages_impl([{"role": "user", "content": "ping"}], "default")
             return True
         except (httpx.HTTPError, KeyError, IndexError):
             return False

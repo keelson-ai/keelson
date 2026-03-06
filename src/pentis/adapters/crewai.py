@@ -34,7 +34,7 @@ class CrewAIAdapter(BaseAdapter):
         self._crew = crew
         self._task_description = task_description
 
-    async def send_messages(
+    async def _send_messages_impl(
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         """Send messages by running the CrewAI agent/crew."""
