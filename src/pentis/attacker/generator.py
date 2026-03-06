@@ -23,6 +23,12 @@ OWASP_MAP = {
     Category.DELEGATION_INTEGRITY: "LLM08 — Excessive Agency",
     Category.EXECUTION_SAFETY: "LLM06 — Sensitive Information Disclosure",
     Category.SESSION_ISOLATION: "LLM05 — Supply Chain Vulnerabilities",
+    Category.OUTPUT_WEAPONIZATION: "LLM02 — Insecure Output Handling",
+    Category.MULTI_AGENT_SECURITY: "LLM08 — Excessive Agency",
+    Category.TEMPORAL_PERSISTENCE: "LLM01 — Prompt Injection",
+    Category.COGNITIVE_ARCHITECTURE: "LLM01 — Prompt Injection",
+    Category.CONVERSATIONAL_EXFILTRATION: "LLM06 — Sensitive Information Disclosure",
+    Category.SUPPLY_CHAIN_LANGUAGE: "LLM05 — Supply Chain Vulnerabilities",
 }
 
 # Capability → relevant attack categories

@@ -60,7 +60,7 @@ def make_stat_finding_callback():  # type: ignore[no-untyped-def]
     def _cb(finding: StatisticalFinding, current: int, total: int) -> None:
         icon = VERDICT_ICONS.get(finding.verdict.value, finding.verdict.value)
         console.print(
-            f"  [{current}/{total}] {finding.template_id}: {icon} "
+            f"  [{current}/{total}] {finding.template_id}: {finding.template_name} — {icon} "
             f"({finding.success_rate:.0%} in {finding.num_trials} trials)"
         )
 
