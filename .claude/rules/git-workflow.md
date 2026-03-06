@@ -10,15 +10,23 @@ git fetch origin
 # 2. Pull and merge (no rebase)
 git pull origin main --no-rebase
 
-# 3. Commit changes
+# 3. Run lint and format BEFORE committing (MANDATORY)
+uv run ruff check src/ tests/ --fix && uv run ruff format src/ tests/
+
+# 4. Commit changes
 git add <specific-files> && git commit -m "<type>: <description>"
 
-# 4. Push to remote
+# 5. Push to remote
 git push origin <branch-name>
 
-# 5. Create PR (MANDATORY)
+# 6. Create PR (MANDATORY)
 gh pr create --title "<type>: <description>" --body "<summary>"
 ```
+
+## Pre-Commit Lint Rule
+**ALWAYS run `uv run ruff check src/ tests/ --fix && uv run ruff format src/ tests/` before every commit.**
+This catches line-length violations, import sorting, and formatting issues before they reach CI.
+Pre-commit hooks are configured in `.pre-commit-config.yaml` and must be installed via `uv run pre-commit install`.
 
 ## PR Title Format
 ```
