@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
 import typer
@@ -13,6 +12,7 @@ from pentis.cli import (
     app,
     console,
     make_adapter,
+    run_with_adapter,
 )
 from pentis.core.reporter import save_report
 from pentis.core.templates import load_all_templates
@@ -52,9 +52,8 @@ def report(
     debug: bool = typer.Option(False, "--debug", help="Include SAFE findings in report"),
 ) -> None:
     """Generate a report from a saved scan."""
-    store = Store()
-    result = store.get_scan(scan_id)
-    store.close()
+    with Store() as store:
+        result = store.get_scan(scan_id)
     if not result:
         console.print(f"[red]Scan {scan_id} not found[/]")
         raise typer.Exit(1)
@@ -67,9 +66,8 @@ def history(
     limit: int = typer.Option(20, "--limit", "-n", help="Number of scans to show"),
 ) -> None:
     """Show scan history."""
-    store = Store()
-    scans = store.list_scans(limit=limit)
-    store.close()
+    with Store() as store:
+        scans = store.list_scans(limit=limit)
     if not scans:
         console.print("No scans recorded yet.")
         return
@@ -115,18 +113,14 @@ def discover(
     console.print(f"Target: {url}")
     console.print()
 
-    async def _run():
-        try:
-            return await discover_capabilities(target_adapter, model=model, target_url=url)
-        finally:
-            await target_adapter.close()
-
-    profile = asyncio.run(_run())
+    profile = run_with_adapter(
+        lambda: discover_capabilities(target_adapter, model=model, target_url=url),
+        target_adapter,
+    )
 
     if not no_save:
-        store = Store()
-        store.save_agent_profile(profile)
-        store.close()
+        with Store() as store:
+            store.save_agent_profile(profile)
 
     table = Table(title="Agent Capabilities")
     table.add_column("Capability", style="bold")
@@ -151,55 +145,56 @@ def diff(
     """Compare two scans and show regressions/improvements."""
     from pentis.diff.comparator import diff_scans, enhanced_diff_scans, format_diff_report
 
-    store = Store()
-    result_a = store.get_scan(scan_a)
-    result_b = store.get_scan(scan_b)
+    with Store() as store:
+        result_a = store.get_scan(scan_a)
+        result_b = store.get_scan(scan_b)
 
-    if not result_a:
-        store.close()
-        console.print(f"[red]Scan {scan_a} not found[/]")
-        raise typer.Exit(1)
-    if not result_b:
-        store.close()
-        console.print(f"[red]Scan {scan_b} not found[/]")
-        raise typer.Exit(1)
+        if not result_a:
+            console.print(f"[red]Scan {scan_a} not found[/]")
+            raise typer.Exit(1)
+        if not result_b:
+            console.print(f"[red]Scan {scan_b} not found[/]")
+            raise typer.Exit(1)
 
-    if enhanced:
-        scan_diff, alerts = enhanced_diff_scans(result_a, result_b)
-        report_text = format_diff_report(scan_diff)
-        console.print(report_text)
+        if enhanced:
+            scan_diff, alerts = enhanced_diff_scans(result_a, result_b)
+            report_text = format_diff_report(scan_diff)
+            console.print(report_text)
 
-        if alerts:
-            console.print("\n[bold]Regression Alerts[/bold]")
-            alert_table = Table()
-            alert_table.add_column("Severity", style="bold")
-            alert_table.add_column("Attack")
-            alert_table.add_column("Change")
-            alert_table.add_column("Description")
+            if alerts:
+                console.print("\n[bold]Regression Alerts[/bold]")
+                alert_table = Table()
+                alert_table.add_column("Severity", style="bold")
+                alert_table.add_column("Attack")
+                alert_table.add_column("Change")
+                alert_table.add_column("Description")
 
-            alert_sev_colors = {"critical": "red", "high": "red", "medium": "yellow", "low": "dim"}
-            for alert in alerts:
-                table_color = alert_sev_colors.get(alert.alert_severity, "white")
-                alert_table.add_row(
-                    f"[{table_color}]{alert.alert_severity.upper()}[/]",
-                    alert.template_id,
-                    alert.change_type,
-                    alert.description,
+                alert_sev_colors = {
+                    "critical": "red",
+                    "high": "red",
+                    "medium": "yellow",
+                    "low": "dim",
+                }
+                for alert in alerts:
+                    table_color = alert_sev_colors.get(alert.alert_severity, "white")
+                    alert_table.add_row(
+                        f"[{table_color}]{alert.alert_severity.upper()}[/]",
+                        alert.template_id,
+                        alert.change_type,
+                        alert.description,
+                    )
+                console.print(alert_table)
+
+                store.save_regression_alerts(scan_a, scan_b, alerts)
+        else:
+            scan_diff = diff_scans(result_a, result_b)
+            report_text = format_diff_report(scan_diff)
+            console.print(report_text)
+
+            if scan_diff.regressions:
+                console.print(
+                    f"\n[red bold]WARNING: {len(scan_diff.regressions)} regressions detected![/]"
                 )
-            console.print(alert_table)
-
-            store.save_regression_alerts(scan_a, scan_b, alerts)
-    else:
-        scan_diff = diff_scans(result_a, result_b)
-        report_text = format_diff_report(scan_diff)
-        console.print(report_text)
-
-        if scan_diff.regressions:
-            console.print(
-                f"\n[red bold]WARNING: {len(scan_diff.regressions)} regressions detected![/]"
-            )
-
-    store.close()
 
 
 @app.command()
@@ -208,14 +203,12 @@ def baseline(
     label: str = typer.Option("", "--label", "-l", help="Label for this baseline"),
 ) -> None:
     """Set a scan as a regression baseline."""
-    store = Store()
-    result = store.get_scan(scan_id)
-    if not result:
-        store.close()
-        console.print(f"[red]Scan {scan_id} not found[/]")
-        raise typer.Exit(1)
-    store.save_baseline(scan_id, label=label)
-    store.close()
+    with Store() as store:
+        result = store.get_scan(scan_id)
+        if not result:
+            console.print(f"[red]Scan {scan_id} not found[/]")
+            raise typer.Exit(1)
+        store.save_baseline(scan_id, label=label)
     label_str = f' (label: "{label}")' if label else ""
     console.print(f"Baseline set: {scan_id}{label_str}")
 
@@ -234,9 +227,8 @@ def compliance_report(
     """Generate a compliance report for a scan against a security framework."""
     from pentis.core.reporter import generate_compliance_report
 
-    store = Store()
-    result = store.get_scan(scan_id)
-    store.close()
+    with Store() as store:
+        result = store.get_scan(scan_id)
     if not result:
         console.print(f"[red]Scan {scan_id} not found[/]")
         raise typer.Exit(1)

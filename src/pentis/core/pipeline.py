@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from pentis.adapters.base import BaseAdapter
-from pentis.core.execution import execute_parallel, verify_findings
+from pentis.core.execution import apply_verified_findings, execute_parallel, verify_findings
 from pentis.core.models import (
     Category,
     EvidenceItem,
@@ -311,11 +311,7 @@ async def run_pipeline(
                 model=target.model,
                 delay=config.delay,
             )
-            verified_map = {f.template_id: f for f in verified}
-            all_findings = [
-                verified_map.get(f.template_id, f) if f.verdict == Verdict.VULNERABLE else f
-                for f in all_findings
-            ]
+            all_findings = apply_verified_findings(all_findings, verified)
         else:
             logger.info("Phase 3/4: Verification — no vulnerable findings to verify")
     else:
