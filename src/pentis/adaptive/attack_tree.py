@@ -225,6 +225,7 @@ def _select_branch(
 
     promising = memo.promising_techniques(category)
     dead_ends = memo.dead_end_techniques(category)
+    global_promising = memo.promising_techniques(category=None)
 
     best_score = float("-inf")
     best_branch = branches[0]
@@ -233,6 +234,9 @@ def _select_branch(
         score = 0.0
         if branch.technique in promising:
             score += promising[branch.technique] * 2.0
+        elif branch.technique in global_promising:
+            # Cross-category signal: worked elsewhere, worth trying here
+            score += global_promising[branch.technique] * 0.5
         if branch.technique in dead_ends:
             score -= dead_ends[branch.technique] * 1.0
         if score > best_score:
