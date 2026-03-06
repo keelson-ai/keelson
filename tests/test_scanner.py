@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 import respx
+
 from pentis.adapters.openai import OpenAIAdapter
 from pentis.core.models import Finding, Target
 from pentis.core.scanner import run_scan
