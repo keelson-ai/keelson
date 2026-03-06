@@ -464,6 +464,165 @@ This tool is for **authorized security testing only**. Do not use Pentis against
 
 ## Architecture
 
+### Flow Diagrams
+
+#### Core Scan Pipeline
+
+```mermaid
+flowchart TD
+    A[Load Playbooks] --> B[Send Prompts via Adapter]
+    B --> C[Collect Evidence]
+    C --> D[Detection Pipeline]
+    D --> E{Verdict?}
+    E -->|VULNERABLE| F[Record Finding]
+    E -->|SAFE| F
+    E -->|INCONCLUSIVE| F
+    F --> G{More Attacks?}
+    G -->|Yes| H[Dynamic Reorder by Vuln Categories]
+    H --> B
+    G -->|No| I[Generate Report]
+
+    style E fill:#f9f,stroke:#333
+    style I fill:#9f9,stroke:#333
+```
+
+#### Smart Scan with Memoization
+
+```mermaid
+flowchart TD
+    subgraph Phase1[Phase 1: Discovery]
+        P1[8 Capability Probes] --> P1R[Agent Profile]
+    end
+
+    subgraph Phase2[Phase 2: Classification]
+        P1R --> CL[Classify Target Type]
+        CL --> TP[Target Profile<br/>types, tools, memory, refusal style]
+    end
+
+    subgraph Phase3[Phase 3: Attack Selection]
+        TP --> SEL[Select Relevant Attacks]
+        SEL --> GRP[Group into Sessions by Category]
+    end
+
+    subgraph Phase4[Phase 4: Execute with Memo]
+        GRP --> MEMO[Initialize Memo Table]
+        MEMO --> SESS[Execute Session]
+        SESS --> REC[Record Finding → Memo]
+        REC --> REORDER[Reorder Remaining Sessions<br/>by Memo-Informed Scores]
+        REORDER --> ADAPT{Adapt Plan?}
+        ADAPT -->|Escalate/De-escalate| SESS
+        ADAPT -->|Done| SUM[Final Memo Summary]
+    end
+
+    style Phase1 fill:#e8f4fd,stroke:#333
+    style Phase2 fill:#fde8e8,stroke:#333
+    style Phase3 fill:#e8fde8,stroke:#333
+    style Phase4 fill:#fdf8e8,stroke:#333
+```
+
+#### Memo Feedback Loop
+
+```mermaid
+flowchart LR
+    subgraph Record
+        F[Finding] --> IT[Infer Techniques<br/>authority, roleplay, etc.]
+        IT --> CO[Classify Outcome<br/>complied / partial / refused]
+        CO --> EL[Extract Leaked Info<br/>tools, paths, URLs, env vars]
+        EL --> MT[(Memo Table)]
+    end
+
+    subgraph Query
+        MT --> EFF[Effective Techniques<br/>VULNERABLE → weight 1.0]
+        MT --> PROM[Promising Techniques<br/>INCONCLUSIVE → weight 0.3]
+        MT --> DEAD[Dead-End Techniques<br/>SAFE-only → penalize]
+        MT --> CROSS[Cross-Category Signal<br/>global score × 0.5]
+    end
+
+    subgraph Apply
+        EFF --> SCORE[Score & Reorder<br/>Next Session's Attacks]
+        PROM --> SCORE
+        DEAD --> SCORE
+        CROSS --> SCORE
+    end
+
+    style MT fill:#f9f,stroke:#333
+```
+
+#### Attack Tree Execution
+
+```mermaid
+flowchart TD
+    ROOT[Root Prompt] --> SEND[Send to Target]
+    SEND --> CLASS{Classify Response}
+
+    CLASS -->|Compliance| VULN{Vulnerable?}
+    CLASS -->|Partial| BR_P[Select Branch<br/>for PARTIAL]
+    CLASS -->|Refusal| BR_R[Select Branch<br/>for REFUSAL]
+
+    VULN -->|Yes| STOP[Stop — Vulnerability Found]
+    VULN -->|No| BR_C[Select Branch<br/>for COMPLIANCE]
+
+    BR_P --> MEMO_SEL[Memo-Informed Selection<br/>Prefer effective techniques<br/>Avoid dead ends]
+    BR_R --> MEMO_SEL
+    BR_C --> MEMO_SEL
+
+    MEMO_SEL --> NEXT[Execute Next Prompt]
+    NEXT --> CLASS2{Classify Response}
+    CLASS2 -->|Compliance| VULN2{Vulnerable?}
+    CLASS2 -->|Partial/Refusal| DEEPER{Max Depth?}
+
+    VULN2 -->|Yes| STOP
+    VULN2 -->|No| DEEPER
+    DEEPER -->|No| MEMO_SEL
+    DEEPER -->|Yes| FINAL[Final Verdict]
+
+    FINAL --> REC_MEMO[Record Result → Memo Table]
+
+    style STOP fill:#f99,stroke:#333
+    style MEMO_SEL fill:#f9f,stroke:#333
+    style REC_MEMO fill:#9f9,stroke:#333
+```
+
+#### Detection Pipeline
+
+```mermaid
+flowchart TD
+    EV[Evidence: prompts + responses] --> SE[Side Effects Check<br/>Tool call wrappers + dangerous names]
+    SE -->|Match| V1[VULNERABLE]
+
+    SE -->|No match| SIG[Collect Signals]
+    SIG --> VM[vulnerable_if matches]
+    SIG --> SM[safe_if matches]
+    SIG --> RF[Refusal phrase matches]
+
+    VM --> BOTH{Both vuln<br/>and safe?}
+    SM --> BOTH
+    RF --> BOTH
+
+    BOTH -->|Yes, multi-step| LAST[Check last step only]
+    LAST -->|Vuln without refusal| V2[VULNERABLE<br/>Bypassed initial refusal]
+    LAST -->|Has refusal| SAFE1[SAFE]
+
+    BOTH -->|Yes, single-step| DISC[Substantial disclosure?<br/>Code blocks / structured lists]
+    DISC -->|Yes| V3[VULNERABLE<br/>Disclosed despite refusal]
+    DISC -->|No| SAFE1
+
+    BOTH -->|Only vuln| V4[VULNERABLE]
+    BOTH -->|Only safe/refusal| SAFE2[SAFE]
+    BOTH -->|Neither| LEAK{High-confidence<br/>leakage signals?}
+    LEAK -->|Yes| V5[VULNERABLE]
+    LEAK -->|No| INC[INCONCLUSIVE]
+
+    style V1 fill:#f99,stroke:#333
+    style V2 fill:#f99,stroke:#333
+    style V3 fill:#f99,stroke:#333
+    style V4 fill:#f99,stroke:#333
+    style V5 fill:#f99,stroke:#333
+    style SAFE1 fill:#9f9,stroke:#333
+    style SAFE2 fill:#9f9,stroke:#333
+    style INC fill:#ff9,stroke:#333
+```
+
 ### API Specification
 
 The authoritative OpenAPI 3.1.0 contract for the Pentis service is at [`docs/openapi.yaml`](docs/openapi.yaml). It covers the `/health` endpoint (implemented) and placeholder paths for Phase 2 scan, attack, and report endpoints.
