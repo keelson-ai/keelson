@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +16,8 @@ from pentis.cli import (
     make_finding_callback,
     make_stat_finding_callback,
     print_cache_stats,
+    print_scan_summary,
+    run_with_adapter,
     write_report,
 )
 from pentis.core.models import ScanTier, Target
@@ -84,20 +85,16 @@ def scan(
         console.print(f"Trials/attack: {config.trials_per_attack} | Concurrency: {concurrency}")
         console.print()
 
-        async def _run_tier():
-            try:
-                return await run_campaign(
-                    target=target, adapter=target_adapter, config=config, on_finding=on_finding_tier
-                )
-            finally:
-                await target_adapter.close()
-
-        result = asyncio.run(_run_tier())
+        result = run_with_adapter(
+            lambda: run_campaign(
+                target=target, adapter=target_adapter, config=config, on_finding=on_finding_tier
+            ),
+            target_adapter,
+        )
 
         if not no_save:
-            store = Store()
-            store.save_campaign(result)
-            store.close()
+            with Store() as store:
+                store.save_campaign(result)
 
         report_path = write_report(result, format, output, f"scan-{tier}", debug=debug)
 
@@ -126,34 +123,25 @@ def scan(
         console.print(f"Category: {category}")
     console.print()
 
-    async def _run():
-        try:
-            return await run_scan(
-                target=target,
-                adapter=target_adapter,
-                category=category,
-                delay=delay,
-                on_finding=on_finding,
-            )
-        finally:
-            await target_adapter.close()
-
-    result = asyncio.run(_run())
+    result = run_with_adapter(
+        lambda: run_scan(
+            target=target,
+            adapter=target_adapter,
+            category=category,
+            delay=delay,
+            on_finding=on_finding,
+        ),
+        target_adapter,
+    )
 
     if not no_save:
-        store = Store()
-        store.save_scan(result)
-        store.close()
+        with Store() as store:
+            store.save_scan(result)
 
     report_path = write_report(result, format, output, "scan", debug=debug)
 
     print_cache_stats(target_adapter)
-
-    console.print("\n[bold]Results[/bold]")
-    console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
-    console.print(f"  Safe: [green]{result.safe_count}[/]")
-    console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
-    console.print(f"\nReport saved: {report_path}")
+    print_scan_summary(result, report_path)
 
     check_fail_gates(result.vulnerable_count, len(result.findings), fail_on_vuln, fail_threshold)
 
@@ -223,33 +211,24 @@ def pipeline_scan(
         console.print(f"Category: {category}")
     console.print()
 
-    async def _run():
-        try:
-            return await run_pipeline(
-                target=target,
-                adapter=target_adapter,
-                config=config,
-                category=category,
-            )
-        finally:
-            await target_adapter.close()
-
-    result = asyncio.run(_run())
+    result = run_with_adapter(
+        lambda: run_pipeline(
+            target=target,
+            adapter=target_adapter,
+            config=config,
+            category=category,
+        ),
+        target_adapter,
+    )
 
     if not no_save:
-        store = Store()
-        store.save_scan(result)
-        store.close()
+        with Store() as store:
+            store.save_scan(result)
 
     report_path = write_report(result, format, output, "pipeline-scan", debug=debug)
 
     print_cache_stats(target_adapter)
-
-    console.print("\n[bold]Pipeline Results[/bold]")
-    console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
-    console.print(f"  Safe: [green]{result.safe_count}[/]")
-    console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
-    console.print(f"\nReport saved: {report_path}")
+    print_scan_summary(result, report_path)
 
     check_fail_gates(result.vulnerable_count, len(result.findings), fail_on_vuln, fail_threshold)
 
@@ -314,33 +293,25 @@ def smart_scan(
         icon = phase_icons.get(phase, f"[dim]{phase:8s}[/]")
         console.print(f"  {icon} {detail}")
 
-    async def _run():
-        try:
-            return await run_smart_scan(
-                target=target,
-                adapter=target_adapter,
-                delay=delay,
-                on_finding=on_finding,
-                on_phase=on_phase,
-                verify=verify,
-            )
-        finally:
-            await target_adapter.close()
-
-    result = asyncio.run(_run())
+    result = run_with_adapter(
+        lambda: run_smart_scan(
+            target=target,
+            adapter=target_adapter,
+            delay=delay,
+            on_finding=on_finding,
+            on_phase=on_phase,
+            verify=verify,
+        ),
+        target_adapter,
+    )
 
     if not no_save:
-        store = Store()
-        store.save_scan(result)
-        store.close()
+        with Store() as store:
+            store.save_scan(result)
 
     report_path = write_report(result, format, output, "smart-scan", debug=debug)
 
-    console.print("\n[bold]Results[/bold]")
-    console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
-    console.print(f"  Safe: [green]{result.safe_count}[/]")
-    console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
-    console.print(f"\nReport saved: {report_path}")
+    print_scan_summary(result, report_path)
 
     check_fail_gates(result.vulnerable_count, len(result.findings), fail_on_vuln, fail_threshold)
 
@@ -373,13 +344,10 @@ def attack(
     console.print(f"Severity: {template.severity.value} | Category: {template.category.value}")
     console.print()
 
-    async def _run():
-        try:
-            return await execute_attack(template, target_adapter, model=model)
-        finally:
-            await target_adapter.close()
-
-    finding = asyncio.run(_run())
+    finding = run_with_adapter(
+        lambda: execute_attack(template, target_adapter, model=model),
+        target_adapter,
+    )
 
     console.print(
         f"Verdict: {VERDICT_ICONS_FULL.get(finding.verdict.value, finding.verdict.value)}"

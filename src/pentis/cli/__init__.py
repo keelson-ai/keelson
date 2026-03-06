@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import typer
 from rich.console import Console
 
+from pentis.adapters.base import BaseAdapter
 from pentis.adapters.openai import OpenAIAdapter
 from pentis.core.models import (
     CampaignResult,
@@ -15,6 +18,8 @@ from pentis.core.models import (
     ScanResult,
     StatisticalFinding,
 )
+
+_T = TypeVar("_T")
 
 app = typer.Typer(name="pentis", help="AI agent security scanner — Living Red Team")
 console = Console()
@@ -130,6 +135,41 @@ def check_fail_gates(vuln_count: int, total: int, fail_on_vuln: bool, threshold:
             raise typer.Exit(1)
 
 
+def run_with_adapter(
+    coro_fn: Callable[[], Awaitable[_T]],
+    *adapters: BaseAdapter,
+) -> _T:
+    """Run an async function and close adapters on completion.
+
+    Replaces the repeated pattern of::
+
+        async def _run():
+            try:
+                return await some_coroutine(...)
+            finally:
+                await adapter.close()
+        result = asyncio.run(_run())
+    """
+
+    async def _run() -> _T:
+        try:
+            return await coro_fn()
+        finally:
+            for adapter in adapters:
+                await adapter.close()
+
+    return asyncio.run(_run())
+
+
+def print_scan_summary(result: ScanResult, report_path: Path) -> None:
+    """Print the standard scan result summary block."""
+    console.print("\n[bold]Results[/bold]")
+    console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
+    console.print(f"  Safe: [green]{result.safe_count}[/]")
+    console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
+    console.print(f"\nReport saved: {report_path}")
+
+
 def make_adapter(
     url: str,
     api_key: str,
@@ -139,8 +179,6 @@ def make_adapter(
     tool_name: str = "chat",
 ):
     """Create the appropriate adapter stack based on CLI flags."""
-    from pentis.adapters.base import BaseAdapter
-
     base: BaseAdapter
     if adapter_type == "anthropic":
         from pentis.adapters.anthropic import AnthropicAdapter
