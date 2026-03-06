@@ -38,7 +38,7 @@ class TestScanner:
         )
         await adapter.close()
 
-        assert len(result.findings) == 43
+        assert len(result.findings) == 53
         assert result.target.url == "https://target.example.com/v1/chat/completions"
         assert result.finished_at is not None
 
@@ -65,7 +65,7 @@ class TestScanner:
         )
         await adapter.close()
 
-        assert len(progress) == 16
+        assert len(progress) == 21
         assert progress[0][1] == 1  # first
-        assert progress[-1][1] == 16  # last
-        assert progress[-1][2] == 16  # total
+        assert progress[-1][1] == 21  # last
+        assert progress[-1][2] == 21  # total
