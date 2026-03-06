@@ -36,6 +36,7 @@ class PipelineConfig:
     checkpoint_dir: Path | None = None
     verify_vulnerabilities: bool = True
     on_finding: Callable[[Finding, int, int], None] | None = None
+    max_response_tokens: int | None = 512
 
 
 # Checkpoint schema version — increment when checkpoint format changes
@@ -318,6 +319,7 @@ async def run_pipeline(
         on_finding=_checkpointing_callback,
         offset=len(checkpoint.completed_ids),
         total=len(templates),
+        max_response_tokens=config.max_response_tokens,
     )
 
     all_findings = resumed_findings + scan_findings

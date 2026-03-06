@@ -113,6 +113,7 @@ async def run_scan(
     on_finding: Callable[[Finding, int, int], None] | None = None,
     reorder: bool = False,
     deep_probe: bool = False,
+    max_response_tokens: int | None = 512,
 ) -> ScanResult:
     """Run a full scan: load templates, execute attacks, collect findings.
 
@@ -125,6 +126,8 @@ async def run_scan(
         on_finding: Optional callback(finding, current_index, total) for progress.
         reorder: Dynamically reorder remaining attacks based on findings.
         deep_probe: When a vulnerability is found, probe deeper with branching.
+        max_response_tokens: Limit target response length to save tokens (default 512).
+            Set to None to allow unlimited responses.
     """
     templates = load_all_templates(attacks_dir=attacks_dir, category=category)
     result = ScanResult(target=target)
@@ -136,7 +139,13 @@ async def run_scan(
 
     while remaining:
         template = remaining.pop(0)
-        finding = await execute_attack(template, adapter, model=target.model, delay=delay)
+        finding = await execute_attack(
+            template,
+            adapter,
+            model=target.model,
+            delay=delay,
+            max_response_tokens=max_response_tokens,
+        )
         result.findings.append(finding)
         executed += 1
 

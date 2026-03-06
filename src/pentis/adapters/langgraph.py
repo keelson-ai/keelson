@@ -44,7 +44,10 @@ class LangGraphAdapter(BaseAdapter):
         return self.thread_id
 
     async def _send_messages_impl(
-        self, messages: list[dict[str, str]], model: str = "default"
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",
+        max_response_tokens: int | None = None,  # noqa: ARG002
     ) -> tuple[str, int]:
         """Send messages via /threads/{id}/runs/wait."""
         thread_id = await self._ensure_thread()

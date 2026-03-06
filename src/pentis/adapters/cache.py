@@ -54,9 +54,14 @@ class CachingAdapter(BaseAdapter):
         return self._stats
 
     @staticmethod
-    def _cache_key(messages: list[dict[str, str]], model: str) -> str:
-        """Generate a deterministic cache key from messages and model."""
-        payload = json.dumps({"messages": messages, "model": model}, sort_keys=True)
+    def _cache_key(
+        messages: list[dict[str, str]], model: str, max_response_tokens: int | None = None
+    ) -> str:
+        """Generate a deterministic cache key from messages, model, and max_response_tokens."""
+        payload = json.dumps(
+            {"messages": messages, "model": model, "max_tokens": max_response_tokens},
+            sort_keys=True,
+        )
         return hashlib.sha256(payload.encode()).hexdigest()
 
     def _evict_expired(self) -> None:
@@ -76,10 +81,13 @@ class CachingAdapter(BaseAdapter):
             self._stats.evictions += 1
 
     async def _send_messages_impl(
-        self, messages: list[dict[str, str]], model: str = "default"
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",
+        max_response_tokens: int | None = None,
     ) -> tuple[str, int]:
         """Send messages, returning cached response if available."""
-        key = self._cache_key(messages, model)
+        key = self._cache_key(messages, model, max_response_tokens)
 
         # Check cache
         entry = self._cache.get(key)
@@ -99,7 +107,7 @@ class CachingAdapter(BaseAdapter):
         self._evict_lru()
 
         response_text, response_time_ms = await self._adapter._send_messages_impl(
-            messages, model=model
+            messages, model=model, max_response_tokens=max_response_tokens
         )
 
         self._cache[key] = CacheEntry(

@@ -25,14 +25,19 @@ class GenericHTTPAdapter(BaseAdapter):
         self._client = httpx.AsyncClient(timeout=timeout)
 
     async def _send_messages_impl(
-        self, messages: list[dict[str, str]], model: str = "default"
+        self,
+        messages: list[dict[str, str]],
+        model: str = "default",
+        max_response_tokens: int | None = None,
     ) -> tuple[str, int]:
         """Send messages to the endpoint and return (response_text, response_time_ms)."""
         headers: dict[str, str] = {"Content-Type": "application/json"}
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
         resolved_model = model if model != "default" else self._default_model
-        payload = {"model": resolved_model, "messages": messages}
+        payload: dict[str, object] = {"model": resolved_model, "messages": messages}
+        if max_response_tokens is not None:
+            payload["max_tokens"] = max_response_tokens
         start = time.monotonic()
         resp = await self._client.post(
             f"{self._base_url}/v1/chat/completions",
