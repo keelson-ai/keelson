@@ -105,6 +105,20 @@ def _write_report(
 
         text = to_junit_xml(result)
         path = out_dir / f"{prefix}-{timestamp}.junit.xml"
+    elif fmt == "executive":
+        from pentis.core.executive_report import generate_executive_report
+
+        if isinstance(result, ScanResult):
+            text = generate_executive_report(result, include_safe=debug)
+        else:
+            console.print(
+                "[yellow]Warning: executive format not supported for campaign results, "
+                "falling back to markdown[/]"
+            )
+            from pentis.core.reporter import generate_campaign_report
+
+            text = generate_campaign_report(result)
+        path = out_dir / f"{prefix}-{timestamp}.md"
     else:
         from pentis.core.reporter import generate_campaign_report, generate_report
 
@@ -197,7 +211,10 @@ def scan(
         None, "--tier", "-t", help="Scan tier: fast, deep, or continuous"
     ),
     format: str = typer.Option(
-        "markdown", "--format", "-f", help="Output format: markdown, sarif, or junit"
+        "markdown",
+        "--format",
+        "-f",
+        help="Output format: markdown, executive, sarif, or junit",
     ),
     fail_on_vuln: bool = typer.Option(
         False, "--fail-on-vuln", help="Exit with code 1 if any vulnerabilities found"
@@ -304,6 +321,109 @@ def scan(
     _print_cache_stats(target_adapter)
 
     console.print("\n[bold]Results[/bold]")
+    console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
+    console.print(f"  Safe: [green]{result.safe_count}[/]")
+    console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
+    console.print(f"\nReport saved: {report_path}")
+
+    _check_fail_gates(result.vulnerable_count, len(result.findings), fail_on_vuln, fail_threshold)
+
+
+@app.command(name="pipeline-scan")
+def pipeline_scan(
+    url: str = typer.Argument(help="Target endpoint URL (OpenAI-compatible chat completions)"),
+    api_key: str = typer.Option("", "--api-key", "-k", help="API key for authentication"),
+    model: str = typer.Option("default", "--model", "-m", help="Model name for requests"),
+    category: str | None = typer.Option(None, "--category", "-c", help="Filter by category"),
+    delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Report output directory"),
+    no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
+    adapter: str = typer.Option(
+        "openai",
+        "--adapter",
+        "-a",
+        help="Adapter type: openai, anthropic, langgraph, mcp, or a2a",
+    ),
+    use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
+    concurrency: int = typer.Option(5, "--concurrency", help="Max concurrent attacks"),
+    no_verify: bool = typer.Option(
+        False, "--no-verify", help="Skip vulnerability verification phase"
+    ),
+    checkpoint_dir: Path | None = typer.Option(
+        None, "--checkpoint-dir", help="Directory for checkpoint files (enables resume)"
+    ),
+    format: str = typer.Option(
+        "executive",
+        "--format",
+        "-f",
+        help="Output format: executive, markdown, sarif, or junit",
+    ),
+    fail_on_vuln: bool = typer.Option(
+        False, "--fail-on-vuln", help="Exit with code 1 if any vulnerabilities found"
+    ),
+    fail_threshold: float = typer.Option(
+        0.0, "--fail-threshold", help="Vulnerability rate threshold (0.0-1.0) to trigger failure"
+    ),
+    assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
+    tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
+    debug: bool = typer.Option(False, "--debug", help="Include SAFE findings in report"),
+) -> None:
+    """Run a parallel pipeline scan with checkpoint/resume and verification.
+
+    Multi-phase pipeline:
+      1. Discovery  -- load attack templates
+      2. Scanning   -- parallel attack execution with checkpointing
+      3. Verification -- re-probe vulnerable findings for confirmation
+      4. Reporting  -- generate pentest-grade executive report
+    """
+    from pentis.core.pipeline import PipelineConfig, run_pipeline
+
+    target = Target(url=url, api_key=api_key, model=model)
+    target_adapter = _make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
+    on_finding = _make_finding_callback()
+
+    config = PipelineConfig(
+        max_concurrent=concurrency,
+        delay=delay,
+        checkpoint_dir=checkpoint_dir,
+        verify_vulnerabilities=not no_verify,
+        on_finding=on_finding,
+    )
+
+    console.print("\n[bold]Pentis Pipeline Scan[/bold]")
+    console.print(f"Target: {url}")
+    console.print(f"Model: {model}")
+    console.print(f"Concurrency: {concurrency}")
+    console.print(f"Verification: {'enabled' if not no_verify else 'disabled'}")
+    if checkpoint_dir:
+        console.print(f"Checkpoints: {checkpoint_dir}")
+    if category:
+        console.print(f"Category: {category}")
+    console.print()
+
+    async def _run():
+        try:
+            return await run_pipeline(
+                target=target,
+                adapter=target_adapter,
+                config=config,
+                category=category,
+            )
+        finally:
+            await target_adapter.close()
+
+    result = asyncio.run(_run())
+
+    if not no_save:
+        store = Store()
+        store.save_scan(result)
+        store.close()
+
+    report_path = _write_report(result, format, output, "pipeline-scan", debug=debug)
+
+    _print_cache_stats(target_adapter)
+
+    console.print("\n[bold]Pipeline Results[/bold]")
     console.print(f"  Vulnerable: [red]{result.vulnerable_count}[/]")
     console.print(f"  Safe: [green]{result.safe_count}[/]")
     console.print(f"  Inconclusive: [yellow]{result.inconclusive_count}[/]")
