@@ -40,7 +40,7 @@ Read `agents/strategist.md` and follow Phase 1:
 
 ### Step 4: Attack (Strategist Phase 3)
 
-9. **Load attack playbooks**: Use `Glob` to find `attacks/**/*.yaml` files. Filter to attacks selected by the plan.
+9. **Load attack playbooks**: Use `Glob` to find `attacks/**/*.yaml` files (all playbooks are YAML format). Filter to attacks selected by the plan.
 
 10. **Read the pentester agent** instructions from `agents/pentester.md` for evaluation guidance.
 

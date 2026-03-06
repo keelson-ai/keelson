@@ -75,7 +75,7 @@ class CachingAdapter(BaseAdapter):
             del self._cache[oldest_key]
             self._stats.evictions += 1
 
-    async def send_messages(
+    async def _send_messages_impl(
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         """Send messages, returning cached response if available."""

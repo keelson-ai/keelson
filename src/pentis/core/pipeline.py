@@ -37,6 +37,10 @@ class PipelineConfig:
     on_finding: Callable[[Finding, int, int], None] | None = None
 
 
+# Checkpoint schema version — increment when checkpoint format changes
+_CHECKPOINT_VERSION = 2
+
+
 @dataclass
 class ScanCheckpoint:
     """Persistent checkpoint for resuming interrupted scans."""
@@ -47,11 +51,13 @@ class ScanCheckpoint:
     findings_json: list[dict[str, object]] = field(default_factory=list[dict[str, object]])
     started_at: str = ""
     phase: str = "scanning"
+    version: int = _CHECKPOINT_VERSION
 
     def save(self, path: Path) -> None:
         """Persist checkpoint to a JSON file."""
         path.parent.mkdir(parents=True, exist_ok=True)
         data = {
+            "version": self.version,
             "scan_id": self.scan_id,
             "target_url": self.target_url,
             "completed_ids": self.completed_ids,
@@ -66,8 +72,17 @@ class ScanCheckpoint:
 
     @classmethod
     def load(cls, path: Path) -> ScanCheckpoint:
-        """Load a checkpoint from a JSON file."""
+        """Load a checkpoint from a JSON file.
+
+        Raises ValueError if the checkpoint version doesn't match the current schema.
+        """
         data = json.loads(path.read_text())
+        stored_version = data.get("version", 1)
+        if stored_version != _CHECKPOINT_VERSION:
+            raise ValueError(
+                f"Checkpoint version mismatch: file has v{stored_version}, "
+                f"expected v{_CHECKPOINT_VERSION}. Delete the checkpoint to start fresh."
+            )
         return cls(
             scan_id=data["scan_id"],
             target_url=data["target_url"],
@@ -75,6 +90,7 @@ class ScanCheckpoint:
             findings_json=data.get("findings_json", []),
             started_at=data.get("started_at", ""),
             phase=data.get("phase", "scanning"),
+            version=stored_version,
         )
 
 
@@ -252,6 +268,8 @@ async def run_pipeline(
                 len(templates),
                 checkpoint.phase,
             )
+        except ValueError as exc:
+            logger.warning("Incompatible checkpoint at %s: %s — starting fresh", cp_path, exc)
         except (json.JSONDecodeError, KeyError):
             logger.warning("Corrupt checkpoint at %s — starting fresh", cp_path)
             checkpoint = ScanCheckpoint(

@@ -51,7 +51,7 @@ class A2AAdapter(BaseAdapter):
         self._agent_card = card
         return card
 
-    async def send_messages(
+    async def _send_messages_impl(
         self,
         messages: list[dict[str, str]],
         model: str = "default",  # noqa: ARG002

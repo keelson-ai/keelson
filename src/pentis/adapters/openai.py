@@ -21,7 +21,7 @@ class OpenAIAdapter(BaseAdapter):
             headers["Authorization"] = f"Bearer {api_key}"
         self._client = httpx.AsyncClient(headers=headers, timeout=timeout)
 
-    async def send_messages(
+    async def _send_messages_impl(
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         """Send messages and return (response_text, response_time_ms)."""
@@ -37,12 +37,9 @@ class OpenAIAdapter(BaseAdapter):
     async def health_check(self) -> bool:
         """Send a simple request to verify the target is reachable."""
         try:
-            resp = await self._client.post(
-                self.url,
-                json={"model": "default", "messages": [{"role": "user", "content": "ping"}]},
-            )
-            return resp.status_code < 500
-        except httpx.HTTPError:
+            await self._send_messages_impl([{"role": "user", "content": "ping"}], "default")
+            return True
+        except (httpx.HTTPError, KeyError, IndexError):
             return False
 
     async def close(self) -> None:
