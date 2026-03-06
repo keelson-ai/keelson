@@ -48,7 +48,6 @@ class MutationType(StrEnum):
     PARAPHRASE = "paraphrase"
     ROLEPLAY_WRAP = "roleplay_wrap"
     GRADUAL_ESCALATION = "gradual_escalation"
-    # New mutations inspired by garak buffs and PyRIT converters
     ROT13 = "rot13"
     UNICODE_HOMOGLYPH = "unicode_homoglyph"
     CHAR_SPLIT = "char_split"

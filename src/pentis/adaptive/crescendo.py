@@ -1,8 +1,7 @@
 """Crescendo — multi-turn gradual escalation attack strategy.
 
-Inspired by PyRIT's CrescendoOrchestrator and the Crescendo paper
-(Russinovich et al., 2024). Unlike PAIR which refines a single prompt,
-Crescendo builds rapport over many turns, gradually steering the conversation
+Unlike PAIR which refines a single prompt, Crescendo builds rapport over
+many turns, gradually steering the conversation
 toward the attack objective.
 
 Flow:

@@ -1,10 +1,5 @@
 """LLM-as-judge scoring — semantic evaluation of attack responses.
 
-Inspired by:
-- PyRIT's self-ask scoring and LikertScaleScoringStrategy
-- promptfoo's model-graded assertions and red-team grading
-- garak's LLM-based detectors
-
 Uses an attacker/judge LLM to semantically evaluate whether a target response
 indicates vulnerability, going beyond keyword/regex matching. This catches
 subtle compliance, partial disclosures, and creative evasion that pattern
@@ -150,7 +145,7 @@ async def combined_detect(
 ) -> tuple[Verdict, float, str]:
     """Combine pattern-based and LLM-judge verdicts for higher accuracy.
 
-    Resolution strategy (inspired by PyRIT's multi-scorer approach):
+    Resolution strategy:
     - If both agree → use that verdict with boosted confidence
     - If pattern says VULNERABLE but judge says SAFE → trust judge (fewer false positives)
     - If pattern says SAFE but judge says VULNERABLE → trust judge (catches subtle compliance)

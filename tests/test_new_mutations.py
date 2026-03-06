@@ -1,4 +1,4 @@
-"""Tests for new mutation types inspired by garak/PyRIT/promptfoo."""
+"""Tests for new mutation types."""
 
 import codecs
 

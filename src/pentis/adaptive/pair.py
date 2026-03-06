@@ -1,9 +1,7 @@
 """PAIR — Prompt Automatic Iterative Refinement.
 
-Inspired by PyRIT's PAIR orchestrator and the PAIR paper
-(Chao et al., 2023). An attacker LLM iteratively refines jailbreak
-prompts based on the target's responses until it succeeds or hits
-the max iterations.
+An attacker LLM iteratively refines jailbreak prompts based on the
+target's responses until it succeeds or hits the max iterations.
 
 Flow:
 1. Start with an initial attack prompt

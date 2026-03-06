@@ -1,10 +1,4 @@
-"""Prompt mutation engine — programmatic and LLM-powered mutations.
-
-Mutation types inspired by:
-- garak buffs (encoding, character manipulation, translation)
-- PyRIT converters (homoglyphs, ROT13, morse, caesar)
-- promptfoo strategies (multi-language, character splitting)
-"""
+"""Prompt mutation engine — programmatic and LLM-powered mutations."""
 
 from __future__ import annotations
 
@@ -325,7 +319,6 @@ async def mutate_translation(
 ) -> MutatedAttack:
     """Use an LLM to translate the attack prompt to another language.
 
-    Inspired by garak's translation buff and promptfoo's multilingual strategy.
     Many safety filters are weaker on non-English input.
     """
     messages = [
