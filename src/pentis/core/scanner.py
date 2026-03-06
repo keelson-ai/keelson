@@ -111,7 +111,7 @@ async def run_scan(
     category: str | None = None,
     delay: float = 1.5,
     on_finding: Callable[[Finding, int, int], None] | None = None,
-    reorder: bool = True,
+    reorder: bool = False,
     deep_probe: bool = False,
 ) -> ScanResult:
     """Run a full scan: load templates, execute attacks, collect findings.

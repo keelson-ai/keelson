@@ -294,8 +294,10 @@ async def run_smart_scan(
         plan = updated_plan
 
         # Re-group remaining sessions with updated memo knowledge.
+        # Recompute from adapted plan so de-escalated categories are excluded.
+        adapted_attack_ids = [aid for cp in plan.categories for aid in cp.attack_ids]
         executed_ids = {f.template_id for f in all_findings}
-        remaining_ids = [aid for aid in all_attack_ids if aid not in executed_ids]
+        remaining_ids = [aid for aid in adapted_attack_ids if aid not in executed_ids]
         if remaining_ids:
             remaining_sessions = _group_into_sessions(remaining_ids, templates_by_id, memo=memo)
             sessions[session_idx + 1 :] = remaining_sessions
