@@ -5,7 +5,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://img.shields.io/badge/tests-618%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 153 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
+**Autonomous red team agent for AI systems.** Pentis ships 152 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
 
 ```
 pip install pentis
@@ -20,7 +20,7 @@ pentis scan https://api.example.com/v1/chat/completions --api-key $KEY
 # Single attack
 pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
 
-# List all 153 attacks
+# List all 152 attacks
 pentis list
 
 # Statistical campaign (10 trials per attack)
@@ -47,7 +47,7 @@ pentis test-chain my_agent.py
 ```
 Playbooks (.yaml)   Target Agent        Pentis Engine
 ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 153 attacks  │───>│ OpenAI /     │───>│ Detection pipeline   │
+│ 152 attacks  │───>│ OpenAI /     │───>│ Detection pipeline   │
 │ 7 categories │    │ Anthropic /  │    │ Streaming observer    │
 │ OWASP mapped │    │ CrewAI / ... │    │ Statistical analysis  │
 └──────────────┘    └──────────────┘    └──────────────────────┘
@@ -69,7 +69,7 @@ Playbooks (.yaml)   Target Agent        Pentis Engine
 
 | Category | Prefix | Count | OWASP | What It Tests |
 |----------|--------|-------|-------|---------------|
-| **Goal Adherence** | GA | 53 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) attacks, rapport exploitation, structured data injection, model fingerprinting, indirect prompt injection (IDPI), Unicode/homoglyph evasion, authority simulation, multilingual repetition, multi-vector psychological exploitation, enterprise framing bypass, syllogistic reasoning manipulation, hypothetical counterfactual bypass, meta-reasoning inversion, logical paradox exploitation |
+| **Goal Adherence** | GA | 52 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) attacks, rapport exploitation, structured data injection, model fingerprinting, indirect prompt injection (IDPI), Unicode/homoglyph evasion, authority simulation, multilingual repetition, multi-vector psychological exploitation, enterprise framing bypass, syllogistic reasoning manipulation, hypothetical counterfactual bypass, meta-reasoning inversion, logical paradox exploitation |
 | **Tool Safety** | TS | 35 | LLM02/LLM06/LLM07 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal, MCP tool poisoning, MCP rug pull, cross-server contamination, SSRF, side-effect detection, excessive agency, forced financial transactions |
 | **Memory Integrity** | MI | 21 | LLM05 | History poisoning, identity persistence, false tool results, cross-turn exfiltration, error info leakage, stored payload injection, context window flooding, gradual memory poisoning, false memory implantation, contradictory fact confusion, RAG poisoning |
 | **Permission Boundaries** | PB | 12 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
@@ -335,8 +335,8 @@ pentis/
 │   ├── scan.md                     # /pentis:scan
 │   ├── attack.md                   # /pentis:attack
 │   └── report.md                   # /pentis:report
-├── attacks/                        # 153 attack playbooks (YAML)
-│   ├── goal-adherence/             # GA-001..062 (53 attacks)
+├── attacks/                        # 152 attack playbooks (YAML)
+│   ├── goal-adherence/             # GA-001..062 (52 attacks)
 │   ├── tool-safety/                # TS-001..041 (35 attacks)
 │   ├── memory-integrity/           # MI-001..024 (21 attacks)
 │   ├── permission-boundaries/      # PB-001..012 (12 attacks)
