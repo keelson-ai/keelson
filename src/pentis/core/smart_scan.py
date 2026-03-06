@@ -10,7 +10,7 @@ from pathlib import Path
 
 from pentis.adapters.base import BaseAdapter
 from pentis.attacker.discovery import CAPABILITY_PROBES, score_capability
-from pentis.core.execution import execute_sequential, verify_findings
+from pentis.core.execution import apply_verified_findings, execute_sequential, verify_findings
 from pentis.core.memo import MemoTable, infer_techniques_from_template, score_attack_by_memo
 from pentis.core.models import (
     AgentCapability,
@@ -312,11 +312,7 @@ async def run_smart_scan(
                 model=target.model,
                 delay=delay,
             )
-            verified_map = {f.template_id: f for f in verified}
-            all_findings = [
-                verified_map.get(f.template_id, f) if f.verdict == Verdict.VULNERABLE else f
-                for f in all_findings
-            ]
+            all_findings = apply_verified_findings(all_findings, verified)
 
     # Log final memo summary
     if on_phase and memo.entries:
