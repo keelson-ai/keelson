@@ -23,7 +23,7 @@ class MockAdapter(BaseAdapter):
         self._responses = responses or ["Generated attack prompt"]
         self._call_idx = 0
 
-    async def send_messages(
+    async def _send_messages_impl(
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         resp = self._responses[self._call_idx % len(self._responses)]

@@ -29,6 +29,21 @@ jobs:
       - name: Ruff format check
         run: ruff format --check src/ tests/
 
+  validate-attacks:
+    runs-on: [self-hosted, Linux, X64, railway]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate attack playbooks
+        run: python scripts/validate_attacks.py
+
   test:
     runs-on: [self-hosted, Linux, X64, railway]
     strategy:

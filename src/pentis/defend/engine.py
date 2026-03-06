@@ -8,15 +8,15 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from pentis.core.detection import DANGEROUS_TOOL_NAMES, TOOL_CALL_WRAPPERS
+from pentis.core.detection import DANGEROUS_TOOL_NAME_RE, TOOL_CALL_WRAPPER_RE
 from pentis.defend.models import ContentRule, DefendPolicy, PolicyAction
 
 # Pre-compile side-effect patterns at module level (they never change)
 _COMPILED_WRAPPERS: list[re.Pattern[str]] = [
-    re.compile(p, re.IGNORECASE) for p in TOOL_CALL_WRAPPERS
+    re.compile(p, re.IGNORECASE) for p in TOOL_CALL_WRAPPER_RE
 ]
 _COMPILED_TOOL_NAMES: list[re.Pattern[str]] = [
-    re.compile(p, re.IGNORECASE) for p in DANGEROUS_TOOL_NAMES
+    re.compile(p, re.IGNORECASE) for p in DANGEROUS_TOOL_NAME_RE
 ]
 
 

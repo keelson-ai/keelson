@@ -36,7 +36,7 @@ class AnthropicAdapter(BaseAdapter):
         }
         self._client = httpx.AsyncClient(headers=headers, timeout=timeout)
 
-    async def send_messages(
+    async def _send_messages_impl(
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         """Send messages and return (response_text, response_time_ms).
@@ -77,16 +77,11 @@ class AnthropicAdapter(BaseAdapter):
     async def health_check(self) -> bool:
         """Send a minimal request to verify the API is reachable."""
         try:
-            resp = await self._client.post(
-                self.url,
-                json={
-                    "model": "claude-sonnet-4-6",
-                    "max_tokens": 10,
-                    "messages": [{"role": "user", "content": "ping"}],
-                },
+            await self._send_messages_impl(
+                [{"role": "user", "content": "ping"}], "claude-sonnet-4-6"
             )
-            return resp.status_code < 500
-        except httpx.HTTPError:
+            return True
+        except (httpx.HTTPError, KeyError, IndexError):
             return False
 
     async def close(self) -> None:

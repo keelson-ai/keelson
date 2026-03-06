@@ -101,8 +101,7 @@ async def execute_parallel(
     if not templates:
         return []
 
-    if total is None:
-        total = len(templates) + offset
+    resolved_total: int = total if total is not None else len(templates) + offset
 
     semaphore = asyncio.Semaphore(max_concurrent)
     findings: list[Finding] = []
@@ -130,7 +129,7 @@ async def execute_parallel(
                 findings.append(finding)
                 completed += 1
                 if on_finding:
-                    on_finding(finding, completed, total)  # type: ignore[arg-type]
+                    on_finding(finding, completed, resolved_total)
 
     tasks = [asyncio.create_task(_run_one(t)) for t in templates]
     await asyncio.gather(*tasks)

@@ -69,7 +69,7 @@ class MCPAdapter(BaseAdapter):
 
         self._initialized = True
 
-    async def send_messages(
+    async def _send_messages_impl(
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
         """Call tools/call on the MCP server and return (response_text, response_time_ms)."""
