@@ -17,6 +17,7 @@ from pentis.core.models import (
     Finding,
     LeakageSignal,
     ScanResult,
+    ScoringMethod,
     Severity,
     Target,
     Verdict,
@@ -104,6 +105,8 @@ def _finding_to_json(finding: Finding) -> dict[str, object]:
         "category": str(finding.category),
         "owasp": finding.owasp,
         "reasoning": finding.reasoning,
+        "confidence": finding.confidence,
+        "scoring_method": str(finding.scoring_method),
         "timestamp": finding.timestamp.isoformat(),
         "evidence": [
             {
@@ -170,6 +173,12 @@ def _finding_from_json(data: dict[str, object]) -> Finding:
     except (ValueError, TypeError):
         timestamp = datetime.now(UTC)
 
+    scoring_str = _get_str(data, "scoring_method", "pattern")
+    try:
+        scoring_method = ScoringMethod(scoring_str)
+    except ValueError:
+        scoring_method = ScoringMethod.PATTERN
+
     return Finding(
         template_id=_get_str(data, "template_id"),
         template_name=_get_str(data, "template_name"),
@@ -181,6 +190,8 @@ def _finding_from_json(data: dict[str, object]) -> Finding:
         reasoning=_get_str(data, "reasoning"),
         timestamp=timestamp,
         leakage_signals=leakage_signals,
+        confidence=_get_float(data, "confidence"),
+        scoring_method=scoring_method,
     )
 
 
