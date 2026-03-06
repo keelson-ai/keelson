@@ -113,6 +113,9 @@ class CachingAdapter(BaseAdapter):
     async def close(self) -> None:
         await self._adapter.close()
 
+    def reset_session(self) -> None:
+        self._adapter.reset_session()
+
     def clear(self) -> None:
         """Clear the entire cache."""
         self._cache.clear()
