@@ -56,6 +56,12 @@ Use the next sequential ID in the category:
 - `PB-NNN` — permission-boundaries
 - `ES-NNN` — execution-safety
 - `DI-NNN` — delegation-integrity
+- `OW-NNN` — output-weaponization
+- `MA-NNN` — multi-agent-security
+- `TP-NNN` — temporal-persistence
+- `CA-NNN` — cognitive-architecture
+- `EX-NNN` — conversational-exfiltration
+- `SL-NNN` — supply-chain-language
 
 Check existing files to find the current highest ID before assigning.
 
