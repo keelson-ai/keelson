@@ -215,14 +215,15 @@ def _select_branch(
 ) -> TreeBranch:
     """Pick the best branch, informed by memo table.
 
-    If the memo knows which techniques work, prefer branches using those.
+    Uses promising_techniques (VULNERABLE + INCONCLUSIVE signals) for scoring,
+    matching the cross-category learning used by score_attack_by_memo.
     If a technique is a dead end, deprioritize it.
     Falls back to first branch if no memo or no differentiation.
     """
     if not memo or not memo.entries or len(branches) == 1:
         return branches[0]
 
-    effective = memo.effective_techniques(category)
+    promising = memo.promising_techniques(category)
     dead_ends = memo.dead_end_techniques(category)
 
     best_score = float("-inf")
@@ -230,8 +231,8 @@ def _select_branch(
 
     for branch in branches:
         score = 0.0
-        if branch.technique in effective:
-            score += effective[branch.technique] * 2.0
+        if branch.technique in promising:
+            score += promising[branch.technique] * 2.0
         if branch.technique in dead_ends:
             score -= dead_ends[branch.technique] * 1.0
         if score > best_score:
