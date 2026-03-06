@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/pentis)](https://pypi.org/project/pentis/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-618%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-703%20passing-brightgreen)]()
 
 **Autonomous red team agent for AI systems.** Pentis ships 160 attack playbooks across 7 behavior categories mapped to the OWASP LLM Top 10. It supports 8 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
 
@@ -16,6 +16,12 @@ pip install pentis
 ```bash
 # Scan an OpenAI-compatible endpoint
 pentis scan https://api.example.com/v1/chat/completions --api-key $KEY
+
+# Parallel pipeline scan with verification
+pentis pipeline-scan https://api.example.com/v1/chat/completions --api-key $KEY
+
+# Adaptive smart scan (discover → classify → execute with memo feedback)
+pentis smart-scan https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Single attack
 pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
@@ -47,16 +53,23 @@ pentis test-chain my_agent.py
 ```
 Playbooks (.yaml)   Target Agent        Pentis Engine
 ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 160 attacks  │───>│ OpenAI /     │───>│ Detection pipeline   │
-│ 7 categories │    │ Anthropic /  │    │ Streaming observer    │
-│ OWASP mapped │    │ CrewAI / ... │    │ Statistical analysis  │
-└──────────────┘    └──────────────┘    └──────────────────────┘
-                                               │
-                                    ┌──────────┴──────────┐
-                                    │  Reports             │
-                                    │  Markdown / SARIF /  │
-                                    │  JUnit / Compliance  │
-                                    └─────────────────────┘
+│ 160 attacks  │───>│ OpenAI /     │───>│ Scan Modes           │
+│ 7 categories │    │ Anthropic /  │    │  scan (sequential)   │
+│ OWASP mapped │    │ CrewAI / ... │    │  pipeline (parallel) │
+└──────────────┘    └──────────────┘    │  smart (adaptive)    │
+                                        └──────────┬───────────┘
+                                                   │
+                                        ┌──────────┴──────────┐
+                                        │  Detection pipeline  │
+                                        │  Verification pass   │
+                                        │  Memo feedback loop  │
+                                        └──────────┬──────────┘
+                                                   │
+                                        ┌──────────┴──────────┐
+                                        │  Reports             │
+                                        │  Markdown / SARIF /  │
+                                        │  JUnit / Compliance  │
+                                        └─────────────────────┘
 ```
 
 1. **Load** attack playbooks from `attacks/**/*.yaml` (structured YAML, no code)
@@ -119,7 +132,9 @@ pentis test-chain path/to/my_agent.py
 
 | Command | Description |
 |---------|-------------|
-| `pentis scan <url>` | Full security scan against an endpoint |
+| `pentis scan <url>` | Full security scan (sequential, with dynamic reorder) |
+| `pentis pipeline-scan <url>` | Parallel scan with checkpoint/resume and verification |
+| `pentis smart-scan <url>` | Adaptive scan: discover, classify, memo-guided sessions |
 | `pentis attack <url> <id>` | Run a single attack |
 | `pentis list` | List all available attacks |
 | `pentis campaign <config.toml>` | Statistical campaign (N trials per attack) |
@@ -344,7 +359,12 @@ pentis/
 │   ├── execution-safety/           # ES-001..013 (13 attacks)
 │   └── session-isolation/          # SI-001..015 (13 attacks)
 ├── src/pentis/                     # Python engine
-│   ├── cli.py                      # Typer CLI (15 commands)
+│   ├── cli/                        # Typer CLI (17 commands)
+│   │   ├── __init__.py             # App setup, shared helpers
+│   │   ├── commands.py             # Command module registration
+│   │   ├── scan_commands.py        # scan, pipeline-scan, smart-scan, attack
+│   │   ├── ops_commands.py         # list, report, history, diff, discover, baseline, compliance
+│   │   └── advanced_commands.py    # campaign, evolve, chain, generate, test-crew, test-chain
 │   ├── adapters/                   # 8 target adapters
 │   │   ├── base.py                 # BaseAdapter interface
 │   │   ├── openai.py               # OpenAI API
@@ -359,13 +379,19 @@ pentis/
 │   │   └── attacker.py             # Attacker LLM wrapper
 │   ├── core/                       # Engine, scanner, detection
 │   │   ├── engine.py               # Multi-turn attack executor
-│   │   ├── scanner.py              # Full scan orchestrator
+│   │   ├── execution.py            # Shared primitives (sequential, parallel, verify)
+│   │   ├── scanner.py              # Sequential scan with dynamic reorder
+│   │   ├── pipeline.py             # Parallel scan with checkpoint/resume
+│   │   ├── smart_scan.py           # Adaptive scan with memo feedback
+│   │   ├── memo.py                 # Memo table for technique tracking
+│   │   ├── strategist.py           # LLM-based target classification
 │   │   ├── detection.py            # Pattern-based verdict detection
 │   │   ├── observer.py             # Streaming leakage analysis
 │   │   ├── templates.py            # Playbook parser (markdown)
 │   │   ├── yaml_templates.py       # Playbook parser (YAML)
 │   │   ├── models.py               # Core data models
 │   │   ├── reporter.py             # Markdown report generation
+│   │   ├── executive_report.py     # Executive summary format
 │   │   ├── sarif.py                # SARIF v2.1.0 output
 │   │   ├── junit.py                # JUnit XML output
 │   │   └── compliance.py           # 6 compliance frameworks
@@ -392,7 +418,7 @@ pentis/
 │   │   └── comparator.py           # Regression detection
 │   └── state/                      # Persistence
 │       └── store.py                # SQLite storage
-├── tests/                          # 618 tests
+├── tests/                          # 703 tests
 ├── docs/                           # Documentation
 │   ├── adr/                        # Architecture Decision Records
 │   │   ├── ADR-001-framework.md    # FastAPI selection
@@ -446,7 +472,7 @@ pip install "pentis[all]"
 Contributions are welcome. Here's how to help:
 
 1. **Add attack playbooks** — Write new `.yaml` files in `attacks/`. Follow the format above.
-2. **Add adapters** — Implement the `BaseAdapter` interface (3 methods: `send_messages`, `health_check`, `close`).
+2. **Add adapters** — Implement the `BaseAdapter` interface (3 required methods: `send_messages`, `health_check`, `close`; optional: `reset_session`).
 3. **Improve detection** — Enhance patterns in `core/detection.py` or add new evaluation strategies.
 4. **Report bugs** — Open an issue with reproduction steps.
 
@@ -466,7 +492,7 @@ This tool is for **authorized security testing only**. Do not use Pentis against
 
 ### Flow Diagrams
 
-#### Core Scan Pipeline
+#### Core Scan Pipeline (Sequential)
 
 ```mermaid
 flowchart TD
@@ -484,6 +510,47 @@ flowchart TD
 
     style E fill:#f9f,stroke:#333
     style I fill:#9f9,stroke:#333
+```
+
+#### Pipeline Scan (Parallel + Checkpoint + Verify)
+
+```mermaid
+flowchart TD
+    subgraph Phase1[Phase 1: Load]
+        L[Load Playbooks] --> CP{Checkpoint<br/>exists?}
+        CP -->|Yes| RESUME[Resume from checkpoint<br/>skip completed attacks]
+        CP -->|No| ALL[All templates]
+    end
+
+    subgraph Phase2[Phase 2: Parallel Execution]
+        RESUME --> SEM[Semaphore-based concurrency<br/>max_concurrent attacks]
+        ALL --> SEM
+        SEM --> EX1[Attack 1]
+        SEM --> EX2[Attack 2]
+        SEM --> EXN[Attack N]
+        EX1 --> COLL[Collect Findings]
+        EX2 --> COLL
+        EXN --> COLL
+    end
+
+    subgraph Phase3[Phase 3: Verification]
+        COLL --> VULN[Filter VULNERABLE]
+        VULN --> RE[Re-probe each finding]
+        RE --> CONF{Agent complies<br/>again?}
+        CONF -->|Yes| CONFIRMED[VULNERABLE confirmed]
+        CONF -->|Refused| DOWN[Downgrade to INCONCLUSIVE]
+    end
+
+    subgraph Phase4[Phase 4: Report]
+        CONFIRMED --> MERGE[Merge verified findings]
+        DOWN --> MERGE
+        MERGE --> RPT[Generate Report]
+    end
+
+    style Phase1 fill:#e8f4fd,stroke:#333
+    style Phase2 fill:#fdf8e8,stroke:#333
+    style Phase3 fill:#fde8e8,stroke:#333
+    style Phase4 fill:#e8fde8,stroke:#333
 ```
 
 #### Smart Scan with Memoization
