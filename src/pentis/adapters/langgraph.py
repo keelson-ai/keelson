@@ -33,21 +33,30 @@ class LangGraphAdapter(BaseAdapter):
             headers["Authorization"] = f"Bearer {api_key}"
         self._client = httpx.AsyncClient(headers=headers, timeout=timeout)
 
+    async def _ensure_thread(self) -> str:
+        """Create a new thread if one isn't set, return thread_id."""
+        if self.thread_id:
+            return self.thread_id
+        resp = await self._client.post(f"{self._url}/threads", json={})
+        resp.raise_for_status()
+        data: dict[str, Any] = resp.json()
+        self.thread_id = str(data["thread_id"])
+        return self.thread_id
+
     async def send_messages(
         self, messages: list[dict[str, str]], model: str = "default"
     ) -> tuple[str, int]:
-        """Send messages via /runs/wait and return (response_text, response_time_ms)."""
+        """Send messages via /threads/{id}/runs/wait."""
+        thread_id = await self._ensure_thread()
         payload: dict[str, Any] = {
             "input": {"messages": messages},
             "assistant_id": self.assistant_id,
         }
-        if self.thread_id:
-            payload["thread_id"] = self.thread_id
         if model != "default":
             payload["config"] = {"configurable": {"model": model}}
 
         start = time.monotonic()
-        resp = await self._client.post(f"{self._url}/runs/wait", json=payload)
+        resp = await self._client.post(f"{self._url}/threads/{thread_id}/runs/wait", json=payload)
         elapsed_ms = int((time.monotonic() - start) * 1000)
         resp.raise_for_status()
         data: dict[str, Any] = resp.json()
@@ -92,8 +101,9 @@ class LangGraphAdapter(BaseAdapter):
     async def health_check(self) -> bool:
         """Send a minimal run to verify the endpoint is reachable."""
         try:
+            thread_id = await self._ensure_thread()
             resp = await self._client.post(
-                f"{self._url}/runs/wait",
+                f"{self._url}/threads/{thread_id}/runs/wait",
                 json={
                     "input": {"messages": [{"role": "user", "content": "ping"}]},
                     "assistant_id": self.assistant_id,
@@ -102,6 +112,10 @@ class LangGraphAdapter(BaseAdapter):
             return resp.status_code < 500
         except httpx.HTTPError:
             return False
+
+    def reset_thread(self) -> None:
+        """Reset the thread so the next send creates a fresh one."""
+        self.thread_id = None
 
     async def close(self) -> None:
         await self._client.aclose()

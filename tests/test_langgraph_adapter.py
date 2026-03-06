@@ -11,7 +11,16 @@ import respx
 from pentis.adapters.langgraph import LangGraphAdapter
 
 BASE_URL = "https://example.langgraph.app"
-RUNS_URL = f"{BASE_URL}/runs/wait"
+THREADS_URL = f"{BASE_URL}/threads"
+THREAD_ID = "test-thread-001"
+
+
+def _thread_response() -> dict[str, Any]:
+    return {"thread_id": THREAD_ID}
+
+
+def _runs_url(thread_id: str = THREAD_ID) -> str:
+    return f"{BASE_URL}/threads/{thread_id}/runs/wait"
 
 
 def _langgraph_response(text: str, nested: bool = False) -> dict[str, Any]:
@@ -25,11 +34,21 @@ def _langgraph_response(text: str, nested: bool = False) -> dict[str, Any]:
     return {"messages": messages}
 
 
+def _mock_thread_and_run(response: dict[str, Any] | None = None) -> respx.Route:
+    """Mock the thread creation and run endpoints."""
+    respx.post(THREADS_URL).respond(json=_thread_response())  # type: ignore[reportUnknownMemberType]
+    route = respx.post(_runs_url()).respond(  # type: ignore[reportUnknownMemberType]
+        json=response or _langgraph_response("ok")
+    )
+    return route
+
+
 @pytest.mark.asyncio
 class TestLangGraphAdapter:
     @respx.mock
     async def test_send_messages_basic(self) -> None:
-        respx.post(RUNS_URL).respond(json=_langgraph_response("Hello!"))  # type: ignore[reportUnknownMemberType]
+        respx.post(THREADS_URL).respond(json=_thread_response())  # type: ignore[reportUnknownMemberType]
+        respx.post(_runs_url()).respond(json=_langgraph_response("Hello!"))  # type: ignore[reportUnknownMemberType]
         adapter = LangGraphAdapter(url=BASE_URL, api_key="test-key")
         text, ms = await adapter.send_messages([{"role": "user", "content": "Hi"}])
         await adapter.close()
@@ -38,36 +57,41 @@ class TestLangGraphAdapter:
 
     @respx.mock
     async def test_payload_format(self) -> None:
-        route = respx.post(RUNS_URL).respond(json=_langgraph_response("ok"))  # type: ignore[reportUnknownMemberType]
+        _mock_thread_and_run()
         adapter = LangGraphAdapter(url=BASE_URL, assistant_id="docs_agent")
         await adapter.send_messages([{"role": "user", "content": "Hi"}], model="gpt-4")
         await adapter.close()
-        body: dict[str, Any] = json.loads(route.calls[0].request.content)  # type: ignore[reportUnknownMemberType]
+        # The run request is the second call (first is thread creation)
+        run_route = respx.calls[-1]  # type: ignore[reportUnknownMemberType]
+        body: dict[str, Any] = json.loads(run_route.request.content)  # type: ignore[reportUnknownMemberType]
         assert body["assistant_id"] == "docs_agent"
         assert body["input"]["messages"] == [{"role": "user", "content": "Hi"}]
         assert body["config"]["configurable"]["model"] == "gpt-4"
 
     @respx.mock
     async def test_default_model_omits_config(self) -> None:
-        route = respx.post(RUNS_URL).respond(json=_langgraph_response("ok"))  # type: ignore[reportUnknownMemberType]
+        _mock_thread_and_run()
         adapter = LangGraphAdapter(url=BASE_URL)
         await adapter.send_messages([{"role": "user", "content": "Hi"}], model="default")
         await adapter.close()
-        body: dict[str, Any] = json.loads(route.calls[0].request.content)  # type: ignore[reportUnknownMemberType]
+        run_route = respx.calls[-1]  # type: ignore[reportUnknownMemberType]
+        body: dict[str, Any] = json.loads(run_route.request.content)  # type: ignore[reportUnknownMemberType]
         assert "config" not in body
 
     @respx.mock
-    async def test_thread_id_included(self) -> None:
-        route = respx.post(RUNS_URL).respond(json=_langgraph_response("ok"))  # type: ignore[reportUnknownMemberType]
+    async def test_thread_id_included_in_url(self) -> None:
+        """When thread_id is pre-set, no thread creation call is needed."""
+        respx.post(_runs_url("thread-123")).respond(  # type: ignore[reportUnknownMemberType]
+            json=_langgraph_response("ok")
+        )
         adapter = LangGraphAdapter(url=BASE_URL, thread_id="thread-123")
         await adapter.send_messages([{"role": "user", "content": "Hi"}])
         await adapter.close()
-        body: dict[str, Any] = json.loads(route.calls[0].request.content)  # type: ignore[reportUnknownMemberType]
-        assert body["thread_id"] == "thread-123"
+        assert str(respx.calls[0].request.url) == _runs_url("thread-123")  # type: ignore[reportUnknownMemberType]
 
     @respx.mock
     async def test_multi_turn(self) -> None:
-        route = respx.post(RUNS_URL).respond(json=_langgraph_response("ok"))  # type: ignore[reportUnknownMemberType]
+        _mock_thread_and_run()
         adapter = LangGraphAdapter(url=BASE_URL)
         messages: list[dict[str, str]] = [
             {"role": "user", "content": "First"},
@@ -76,12 +100,16 @@ class TestLangGraphAdapter:
         ]
         await adapter.send_messages(messages)
         await adapter.close()
-        body: dict[str, Any] = json.loads(route.calls[0].request.content)  # type: ignore[reportUnknownMemberType]
+        run_route = respx.calls[-1]  # type: ignore[reportUnknownMemberType]
+        body: dict[str, Any] = json.loads(run_route.request.content)  # type: ignore[reportUnknownMemberType]
         assert len(body["input"]["messages"]) == 3
 
     @respx.mock
     async def test_nested_output_format(self) -> None:
-        respx.post(RUNS_URL).respond(json=_langgraph_response("Nested!", nested=True))  # type: ignore[reportUnknownMemberType]
+        respx.post(THREADS_URL).respond(json=_thread_response())  # type: ignore[reportUnknownMemberType]
+        respx.post(_runs_url()).respond(  # type: ignore[reportUnknownMemberType]
+            json=_langgraph_response("Nested!", nested=True)
+        )
         adapter = LangGraphAdapter(url=BASE_URL)
         text, _ = await adapter.send_messages([{"role": "user", "content": "Hi"}])
         await adapter.close()
@@ -100,7 +128,8 @@ class TestLangGraphAdapter:
                 },
             ]
         }
-        respx.post(RUNS_URL).respond(json=response)  # type: ignore[reportUnknownMemberType]
+        respx.post(THREADS_URL).respond(json=_thread_response())  # type: ignore[reportUnknownMemberType]
+        respx.post(_runs_url()).respond(json=response)  # type: ignore[reportUnknownMemberType]
         adapter = LangGraphAdapter(url=BASE_URL)
         text, _ = await adapter.send_messages([{"role": "user", "content": "Hi"}])
         await adapter.close()
@@ -108,7 +137,8 @@ class TestLangGraphAdapter:
 
     @respx.mock
     async def test_empty_response(self) -> None:
-        respx.post(RUNS_URL).respond(json={"messages": []})  # type: ignore[reportUnknownMemberType]
+        respx.post(THREADS_URL).respond(json=_thread_response())  # type: ignore[reportUnknownMemberType]
+        respx.post(_runs_url()).respond(json={"messages": []})  # type: ignore[reportUnknownMemberType]
         adapter = LangGraphAdapter(url=BASE_URL)
         text, _ = await adapter.send_messages([{"role": "user", "content": "Hi"}])
         await adapter.close()
@@ -116,30 +146,33 @@ class TestLangGraphAdapter:
 
     @respx.mock
     async def test_auth_header(self) -> None:
-        route = respx.post(RUNS_URL).respond(json=_langgraph_response("ok"))  # type: ignore[reportUnknownMemberType]
+        _mock_thread_and_run()
         adapter = LangGraphAdapter(url=BASE_URL, api_key="sk-test-123")
         await adapter.send_messages([{"role": "user", "content": "Hi"}])
         await adapter.close()
-        headers: Any = route.calls[0].request.headers  # type: ignore[reportUnknownMemberType]
+        headers: Any = respx.calls[-1].request.headers  # type: ignore[reportUnknownMemberType]
         assert headers["authorization"] == "Bearer sk-test-123"
 
     @respx.mock
     async def test_health_check_success(self) -> None:
-        respx.post(RUNS_URL).respond(json=_langgraph_response("pong"))  # type: ignore[reportUnknownMemberType]
+        respx.post(THREADS_URL).respond(json=_thread_response())  # type: ignore[reportUnknownMemberType]
+        respx.post(_runs_url()).respond(json=_langgraph_response("pong"))  # type: ignore[reportUnknownMemberType]
         adapter = LangGraphAdapter(url=BASE_URL)
         assert await adapter.health_check() is True
         await adapter.close()
 
     @respx.mock
     async def test_health_check_failure(self) -> None:
-        respx.post(RUNS_URL).respond(status_code=500)  # type: ignore[reportUnknownMemberType]
+        respx.post(THREADS_URL).respond(json=_thread_response())  # type: ignore[reportUnknownMemberType]
+        respx.post(_runs_url()).respond(status_code=500)  # type: ignore[reportUnknownMemberType]
         adapter = LangGraphAdapter(url=BASE_URL)
         assert await adapter.health_check() is False
         await adapter.close()
 
     @respx.mock
     async def test_http_error_raises(self) -> None:
-        respx.post(RUNS_URL).respond(status_code=422)  # type: ignore[reportUnknownMemberType]
+        respx.post(THREADS_URL).respond(json=_thread_response())  # type: ignore[reportUnknownMemberType]
+        respx.post(_runs_url()).respond(status_code=422)  # type: ignore[reportUnknownMemberType]
         adapter = LangGraphAdapter(url=BASE_URL)
         with pytest.raises(Exception):
             await adapter.send_messages([{"role": "user", "content": "Hi"}])
@@ -147,8 +180,15 @@ class TestLangGraphAdapter:
 
     @respx.mock
     async def test_trailing_slash_stripped(self) -> None:
-        route = respx.post(RUNS_URL).respond(json=_langgraph_response("ok"))  # type: ignore[reportUnknownMemberType]
+        respx.post(THREADS_URL).respond(json=_thread_response())  # type: ignore[reportUnknownMemberType]
+        respx.post(_runs_url()).respond(json=_langgraph_response("ok"))  # type: ignore[reportUnknownMemberType]
         adapter = LangGraphAdapter(url=f"{BASE_URL}/")
         await adapter.send_messages([{"role": "user", "content": "Hi"}])
         await adapter.close()
-        assert route.calls[0].request.url == RUNS_URL  # type: ignore[reportUnknownMemberType]
+        assert str(respx.calls[-1].request.url) == _runs_url()  # type: ignore[reportUnknownMemberType]
+
+    def test_reset_thread(self) -> None:
+        adapter = LangGraphAdapter(url=BASE_URL, thread_id="old-thread")
+        assert adapter.thread_id == "old-thread"
+        adapter.reset_thread()
+        assert adapter.thread_id is None
