@@ -38,13 +38,13 @@
 
 | File                             | Action   | Notes                                                                                      |
 |----------------------------------|----------|--------------------------------------------------------------------------------------------|
-| `src/pentis_service/__init__.py` | Created  | Skeleton package, `__version__ = "0.1.0"`                                                  |
-| `src/pentis_service/main.py`     | Created  | FastAPI app with `GET /health` endpoint                                                    |
+| `src/keelson_service/__init__.py` | Created  | Skeleton package, `__version__ = "0.1.0"`                                                  |
+| `src/keelson_service/main.py`     | Created  | FastAPI app with `GET /health` endpoint                                                    |
 | `Dockerfile`                     | Created  | Multi-stage production build (builder → runtime)                                           |
 | `Dockerfile.dev`                 | Created  | Single-stage dev image with hot-reload                                                     |
 | `docker-compose.yml`             | Created  | `api` service with port 8000, volume mount, env_file, healthcheck                          |
 | `.env.example`                   | Created  | All required variables documented                                                          |
-| `pyproject.toml`                 | Modified | Added `fastapi>=0.111`, `uvicorn[standard]>=0.30`; added `pentis_service` to build targets |
+| `pyproject.toml`                 | Modified | Added `fastapi>=0.111`, `uvicorn[standard]>=0.30`; added `keelson_service` to build targets |
 
 ### Usage
 
@@ -62,7 +62,7 @@ The API will be available at `http://localhost:8000` and the health endpoint at 
 | File                 | Fix                                                                                                                        |
 |----------------------|----------------------------------------------------------------------------------------------------------------------------|
 | `Dockerfile.dev`     | Changed `uv sync` → `uv sync --extra dev` so dev tools (pytest, ruff, pyright) are actually installed                      |
-| `docker-compose.yml` | Added `extra_hosts: host.docker.internal:host-gateway` for Linux Docker compatibility with the default `PENTIS_TARGET_URL` |
+| `docker-compose.yml` | Added `extra_hosts: host.docker.internal:host-gateway` for Linux Docker compatibility with the default `KEELSON_TARGET_URL` |
 
 ### Notes
 
@@ -80,26 +80,26 @@ The API will be available at `http://localhost:8000` and the health endpoint at 
 
 | File                                     | Action   | Notes                                                                                                 |
 |------------------------------------------|----------|-------------------------------------------------------------------------------------------------------|
-| `src/pentis_service/routers/__init__.py` | Created  | Empty router package marker                                                                           |
-| `src/pentis_service/routers/health.py`   | Created  | `HealthResponse` dataclass, `GET /health` route returning `{"status":"ok","version":"<version>"}`     |
-| `src/pentis_service/main.py`             | Modified | `create_app()` factory, JSON structured logging via `logging.config.dictConfig`, `serve()` entrypoint |
-| `pyproject.toml`                         | Modified | Added `pentis-service = "pentis_service.main:serve"` to `[project.scripts]`                           |
+| `src/keelson_service/routers/__init__.py` | Created  | Empty router package marker                                                                           |
+| `src/keelson_service/routers/health.py`   | Created  | `HealthResponse` dataclass, `GET /health` route returning `{"status":"ok","version":"<version>"}`     |
+| `src/keelson_service/main.py`             | Modified | `create_app()` factory, JSON structured logging via `logging.config.dictConfig`, `serve()` entrypoint |
+| `pyproject.toml`                         | Modified | Added `keelson-service = "keelson_service.main:serve"` to `[project.scripts]`                           |
 
 ### Usage
 
 ```bash
 # Run directly (after uv sync)
-pentis-service
+keelson-service
 
 # Or via Python module
-python -m pentis_service.main
+python -m keelson_service.main
 ```
 
 ### QA Review Fixes (automated)
 
 | File                                   | Fix                                                                                                                                            |
 |----------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| `src/pentis_service/routers/health.py` | Removed redundant `response_class=JSONResponse` (FastAPI default) and unused `JSONResponse` import                                             |
+| `src/keelson_service/routers/health.py` | Removed redundant `response_class=JSONResponse` (FastAPI default) and unused `JSONResponse` import                                             |
 | `tests/test_health_service.py`         | Created — 7 tests covering status 200, `status: ok`, version field, content-type, response keys, `create_app()` type, and 404 on unknown route |
 
 ### Notes
@@ -107,9 +107,9 @@ python -m pentis_service.main
 - `create_app()` factory makes the app importable and testable without starting the server
 - JSON log format uses stdlib `logging.Formatter` (no extra dependencies)
 - `LOG_LEVEL` env var controls log verbosity (default: `INFO`)
-- `PENTIS_PORT` env var controls server port (default: `8000`)
+- `KEELSON_PORT` env var controls server port (default: `8000`)
 - JSON log formatter does not serialize `extra={}` kwargs — `logger.info(..., extra={"version": ...})` version field is silently dropped from output (stdlib limitation; acceptable for skeleton)
-- `pentis_service.__version__` (`0.1.0`) is intentionally separate from the top-level `pentis` package version (`0.4.0`)
+- `keelson_service.__version__` (`0.1.0`) is intentionally separate from the top-level `keelson` package version (`0.4.0`)
 
 ---
 

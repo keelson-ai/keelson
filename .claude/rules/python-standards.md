@@ -24,7 +24,7 @@
 - Use `logging` module, not `print` for diagnostic output
 
 ## Testing
-- Test files mirror source structure: `src/pentis/core/engine.py` -> `tests/test_engine.py`
+- Test files mirror source structure: `src/keelson/core/engine.py` -> `tests/test_engine.py`
 - Use `respx` for mocking HTTP calls
 - Use `pytest.fixture` for shared setup
 - Async tests use `pytest-asyncio` with `asyncio_mode = "auto"`

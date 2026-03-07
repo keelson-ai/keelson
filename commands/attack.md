@@ -1,11 +1,11 @@
-# /pentis:attack — Run Single Attack
+# /keelson:attack — Run Single Attack
 
 Execute a single attack playbook against a target AI agent.
 
 ## Usage
 
 ```
-/pentis:attack <url> <attack-id> [--api-key KEY] [--model MODEL]
+/keelson:attack <url> <attack-id> [--api-key KEY] [--model MODEL]
 ```
 
 **Arguments** (from `$ARGUMENTS`):

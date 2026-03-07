@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from pentis.adapters.anthropic import AnthropicAdapter
-from pentis.adapters.http import GenericHTTPAdapter
-from pentis.attacker.provider import PROVIDER_ROTATION, detect_provider, select_attacker_adapter
+from keelson.adapters.anthropic import AnthropicAdapter
+from keelson.adapters.http import GenericHTTPAdapter
+from keelson.attacker.provider import PROVIDER_ROTATION, detect_provider, select_attacker_adapter
 
 
 class TestDetectProvider:

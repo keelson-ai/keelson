@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The Pentis service will be deployed in containerised environments (Docker, Kubernetes) where logs are the primary signal for debugging, alerting, and auditing. As the service grows to include async scan workers and multi-tenant operation, distributed tracing and metrics will become necessary.
+The Keelson service will be deployed in containerised environments (Docker, Kubernetes) where logs are the primary signal for debugging, alerting, and auditing. As the service grows to include async scan workers and multi-tenant operation, distributed tracing and metrics will become necessary.
 
 The team needs to decide:
 
@@ -56,7 +56,7 @@ Key factors for deferring OTel:
 **Neutral:**
 - The `LOG_LEVEL` environment variable controls verbosity at startup; default is `INFO`.
 - Audit logs (which attacks ran, which target, what verdict) will be emitted at `INFO` level with structured fields for compliance purposes.
-- A future `PENTIS_OTEL_ENDPOINT` environment variable is reserved for the OTel OTLP exporter URL.
+- A future `KEELSON_OTEL_ENDPOINT` environment variable is reserved for the OTel OTLP exporter URL.
 
 ## Future Work
 
@@ -65,4 +65,4 @@ When Phase 2 begins:
 1. Add `structlog` and `python-json-logger` to `[project.dependencies]`
 2. Replace `logging.config.dictConfig` formatter with structlog's `JSONRenderer`
 3. Add `opentelemetry-sdk`, `opentelemetry-instrumentation-fastapi`, and `opentelemetry-instrumentation-httpx` to `[project.optional-dependencies]` under a `[otel]` group
-4. Emit traces to an OTLP collector via `PENTIS_OTEL_ENDPOINT`
+4. Emit traces to an OTLP collector via `KEELSON_OTEL_ENDPOINT`

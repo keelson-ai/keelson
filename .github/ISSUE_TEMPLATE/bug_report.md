@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in Pentis
+about: Report a bug in Keelson
 labels: bug
 ---
 
@@ -21,5 +21,5 @@ labels: bug
 ## Environment
 - Python version:
 - OS:
-- Pentis version:
+- Keelson version:
 - Target endpoint type:

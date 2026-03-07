@@ -10,9 +10,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from pentis.adapters.base import BaseAdapter
-from pentis.core.execution import verify_findings
-from pentis.core.models import (
+from keelson.adapters.base import BaseAdapter
+from keelson.core.execution import verify_findings
+from keelson.core.models import (
     AttackStep,
     AttackTemplate,
     Category,
@@ -24,7 +24,7 @@ from pentis.core.models import (
     Target,
     Verdict,
 )
-from pentis.core.pipeline import (
+from keelson.core.pipeline import (
     PipelineConfig,
     ScanCheckpoint,
     _finding_from_json,  # pyright: ignore[reportPrivateUsage]
@@ -136,12 +136,12 @@ class TestPipelineConfig:
         config = PipelineConfig(
             max_concurrent=10,
             delay=0.5,
-            checkpoint_dir=Path("/tmp/pentis"),
+            checkpoint_dir=Path("/tmp/keelson"),
             verify_vulnerabilities=False,
         )
         assert config.max_concurrent == 10
         assert config.delay == 0.5
-        assert config.checkpoint_dir == Path("/tmp/pentis")
+        assert config.checkpoint_dir == Path("/tmp/keelson")
         assert config.verify_vulnerabilities is False
 
 
@@ -309,7 +309,7 @@ class TestRunPipeline:
         adapter = MockAdapter()
         target = Target(url="https://example.com")
 
-        with patch("pentis.core.pipeline.load_all_templates", return_value=[]):
+        with patch("keelson.core.pipeline.load_all_templates", return_value=[]):
             result = await run_pipeline(target, adapter)
 
         assert result.findings == []
@@ -329,8 +329,8 @@ class TestRunPipeline:
         mock_execute = _mock_execute_attack_factory(verdict=Verdict.SAFE)
 
         with (
-            patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.execution.execute_attack", mock_execute),
+            patch("keelson.core.pipeline.load_all_templates", return_value=templates),
+            patch("keelson.core.execution.execute_attack", mock_execute),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"), adapter=adapter, config=config
@@ -386,8 +386,8 @@ class TestRunPipeline:
         )
 
         with (
-            patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.execution.execute_attack", AsyncMock(side_effect=_mixed_execute)),
+            patch("keelson.core.pipeline.load_all_templates", return_value=templates),
+            patch("keelson.core.execution.execute_attack", AsyncMock(side_effect=_mixed_execute)),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -424,8 +424,8 @@ class TestRunPipeline:
         )
 
         with (
-            patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.execution.execute_attack", mock_execute),
+            patch("keelson.core.pipeline.load_all_templates", return_value=templates),
+            patch("keelson.core.execution.execute_attack", mock_execute),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -494,8 +494,10 @@ class TestRunPipeline:
             )
 
         with (
-            patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.execution.execute_attack", AsyncMock(side_effect=_tracking_execute)),
+            patch("keelson.core.pipeline.load_all_templates", return_value=templates),
+            patch(
+                "keelson.core.execution.execute_attack", AsyncMock(side_effect=_tracking_execute)
+            ),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -527,8 +529,8 @@ class TestRunPipeline:
         mock_execute = _mock_execute_attack_factory(verdict=Verdict.SAFE)
 
         with (
-            patch("pentis.core.pipeline.load_all_templates", return_value=templates),
-            patch("pentis.core.execution.execute_attack", mock_execute),
+            patch("keelson.core.pipeline.load_all_templates", return_value=templates),
+            patch("keelson.core.execution.execute_attack", mock_execute),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -604,9 +606,9 @@ class TestParallelAttacks:
             )
 
         with (
-            patch("pentis.core.pipeline.load_all_templates", return_value=templates),
+            patch("keelson.core.pipeline.load_all_templates", return_value=templates),
             patch(
-                "pentis.core.execution.execute_attack", AsyncMock(side_effect=_concurrent_execute)
+                "keelson.core.execution.execute_attack", AsyncMock(side_effect=_concurrent_execute)
             ),
         ):
             result = await run_pipeline(

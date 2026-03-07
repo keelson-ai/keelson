@@ -15,6 +15,6 @@ NEVER reference competitor products, external tools, or third-party inspirations
 - If a technique has an academic name (e.g., "PAIR", "crescendo"), use the technique name without attributing it to a specific tool
 
 ## Why
-- Pentis is original work; code should stand on its own
+- Keelson is original work; code should stand on its own
 - Vendor references create unnecessary associations
 - Keep the codebase clean and professional

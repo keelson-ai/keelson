@@ -5,12 +5,12 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
 
-from pentis.core.junit import (
+from keelson.core.junit import (
     campaign_to_junit,
     scan_to_junit,
     to_junit_xml,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     CampaignConfig,
     CampaignResult,
     Category,
@@ -111,7 +111,7 @@ class TestScanToJunit:
         xml_str = scan_to_junit(scan)
         root = ET.fromstring(xml_str)
 
-        assert root.get("name") == "pentis-scan-test123"
+        assert root.get("name") == "keelson-scan-test123"
         assert root.get("tests") == "1"
         assert root.get("errors") == "0"
 
@@ -258,7 +258,7 @@ class TestCampaignToJunit:
         xml_str = campaign_to_junit(campaign)
         root = ET.fromstring(xml_str)
 
-        assert root.get("name") == "pentis-campaign-camp123"
+        assert root.get("name") == "keelson-campaign-camp123"
         assert root.get("tests") == "2"
         assert root.get("failures") == "1"
 
@@ -353,7 +353,7 @@ class TestToJunitXml:
         scan = _make_scan(_make_finding())
         xml_str = to_junit_xml(scan)
         root = ET.fromstring(xml_str)
-        assert "pentis-scan" in (root.get("name") or "")
+        assert "keelson-scan" in (root.get("name") or "")
 
     def test_dispatches_campaign(self) -> None:
         campaign = CampaignResult(
@@ -364,7 +364,7 @@ class TestToJunitXml:
         )
         xml_str = to_junit_xml(campaign)
         root = ET.fromstring(xml_str)
-        assert "pentis-campaign" in (root.get("name") or "")
+        assert "keelson-campaign" in (root.get("name") or "")
 
     def test_output_is_parseable_xml(self) -> None:
         scan = _make_scan(

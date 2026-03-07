@@ -7,11 +7,11 @@ import click.exceptions
 import pytest
 from typer.testing import CliRunner
 
-from pentis.cli import (
+from keelson.cli import (
     app,
     check_fail_gates,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     Category,
     Finding,
     ScanResult,
@@ -19,7 +19,7 @@ from pentis.core.models import (
     Target,
     Verdict,
 )
-from pentis.state.store import Store
+from keelson.state.store import Store
 
 runner = CliRunner()
 

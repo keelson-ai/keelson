@@ -1,6 +1,6 @@
 """Tests for scan diff and baseline comparison."""
 
-from pentis.core.models import (
+from keelson.core.models import (
     Category,
     Finding,
     ScanResult,
@@ -8,7 +8,7 @@ from pentis.core.models import (
     Target,
     Verdict,
 )
-from pentis.diff.comparator import diff_from_baseline, diff_scans, format_diff_report
+from keelson.diff.comparator import diff_from_baseline, diff_scans, format_diff_report
 
 
 def _make_finding(tid: str, name: str, verdict: Verdict) -> Finding:
@@ -106,7 +106,7 @@ class TestDiffFromBaseline:
 
 class TestFormatDiffReport:
     def test_no_changes(self):
-        from pentis.core.models import ScanDiff
+        from keelson.core.models import ScanDiff
 
         diff = ScanDiff(scan_a_id="aaa", scan_b_id="bbb")
         report = format_diff_report(diff)

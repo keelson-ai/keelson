@@ -72,6 +72,6 @@ Check existing files to find the current highest ID before assigning.
 - Evaluation criteria must be specific and unambiguous — avoid vague phrases
 
 ## After Creating/Modifying
-1. Copy the file to `src/pentis/attacks/<category>/` to keep the mirror in sync
+1. Copy the file to `src/keelson/attacks/<category>/` to keep the mirror in sync
 2. Validate YAML has all required fields (id, turns, evaluation, vulnerable_if, safe_if)
 3. Verify the attack is self-contained by re-reading the prompt as if you know nothing about the target

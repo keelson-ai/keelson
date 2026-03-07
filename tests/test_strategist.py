@@ -1,6 +1,6 @@
 """Tests for the attack strategist — classify, select, adapt."""
 
-from pentis.core.models import (
+from keelson.core.models import (
     AttackStep,
     AttackTemplate,
     Category,
@@ -9,7 +9,7 @@ from pentis.core.models import (
     Severity,
     Verdict,
 )
-from pentis.core.strategist import (
+from keelson.core.strategist import (
     AgentType,
     AttackPlan,
     CategoryPlan,

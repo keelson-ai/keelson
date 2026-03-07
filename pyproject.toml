@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pentis"
+name = "keelson-ai"
 version = "0.4.0"
 description = "AI agent security scanner — Living Red Team"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
-authors = [{ name = "Pentis AI" }]
+authors = [{ name = "Keelson AI" }]
 keywords = ["security", "pentesting", "llm", "agent", "owasp"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -33,10 +33,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/pentis-ai/pentis"
-Documentation = "https://github.com/pentis-ai/pentis#readme"
-Repository = "https://github.com/pentis-ai/pentis"
-Issues = "https://github.com/pentis-ai/pentis/issues"
+Homepage = "https://github.com/keelson-ai/keelson"
+Documentation = "https://github.com/keelson-ai/keelson#readme"
+Repository = "https://github.com/keelson-ai/keelson"
+Issues = "https://github.com/keelson-ai/keelson/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -49,17 +49,17 @@ dev = [
 ]
 crewai = ["crewai>=0.80"]
 langchain = ["langchain-core>=0.3"]
-all = ["pentis[crewai,langchain]"]
+all = ["keelson[crewai,langchain]"]
 
 [project.scripts]
-pentis = "pentis.cli:app"
-pentis-service = "pentis_service.main:serve"
+keelson = "keelson.cli:app"
+keelson-service = "keelson_service.main:serve"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/pentis", "src/pentis_service"]
+packages = ["src/keelson", "src/keelson_service"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"src/pentis/attacks" = "pentis/attacks"
+"src/keelson/attacks" = "keelson/attacks"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -92,4 +92,4 @@ per-file-ignores = {"tests/**" = ["C901"]}
 max-complexity = 25
 
 [tool.ruff.lint.isort]
-known-first-party = ["pentis", "pentis_service"]
+known-first-party = ["keelson", "keelson_service"]

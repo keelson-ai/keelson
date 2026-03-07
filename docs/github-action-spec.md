@@ -1,8 +1,8 @@
-# Pentis GitHub Action Spec
+# Keelson GitHub Action Spec
 
-## `pentis-ai/pentis-action@v1`
+## `keelson-ai/keelson-action@v1`
 
-Composite GitHub Action that runs Pentis security scans against AI agent endpoints and uploads SARIF results to GitHub Code Scanning.
+Composite GitHub Action that runs Keelson security scans against AI agent endpoints and uploads SARIF results to GitHub Code Scanning.
 
 ## Design
 
@@ -28,14 +28,14 @@ Composite GitHub Action that runs Pentis security scans against AI agent endpoin
 |--------------------|---------------------------------|
 | `sarif-file`       | Path to SARIF output file       |
 | `vulnerable-count` | Number of vulnerabilities found |
-| `scan-id`          | Pentis scan ID                  |
+| `scan-id`          | Keelson scan ID                  |
 
 ## Composite Action Steps
 
 ```yaml
 # action.yml
-name: 'Pentis AI Security Scan'
-description: 'Run AI agent security testing with Pentis'
+name: 'Keelson AI Security Scan'
+description: 'Run AI agent security testing with Keelson'
 branding:
   icon: shield
   color: red
@@ -82,24 +82,24 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install Pentis
+    - name: Install Keelson
       shell: bash
-      run: pip install pentis
+      run: pip install keelson
 
     - name: Run scan
       id: scan
       shell: bash
       env:
-        PENTIS_API_KEY: ${{ inputs.api-key }}
+        KEELSON_API_KEY: ${{ inputs.api-key }}
       run: |
         ARGS="--format sarif --tier ${{ inputs.tier }} --adapter ${{ inputs.adapter }} --model ${{ inputs.model }}"
-        if [ -n "$PENTIS_API_KEY" ]; then
-          ARGS="$ARGS --api-key $PENTIS_API_KEY"
+        if [ -n "$KEELSON_API_KEY" ]; then
+          ARGS="$ARGS --api-key $KEELSON_API_KEY"
         fi
         if [ -n "${{ inputs.category }}" ]; then
           ARGS="$ARGS --category ${{ inputs.category }}"
         fi
-        pentis scan ${{ inputs.target-url }} $ARGS --output results/ --no-save
+        keelson scan ${{ inputs.target-url }} $ARGS --output results/ --no-save
         SARIF_FILE=$(ls results/*.sarif.json | head -1)
         echo "sarif-file=$SARIF_FILE" >> $GITHUB_OUTPUT
         VULN_COUNT=$(python -c "import json; d=json.load(open('$SARIF_FILE')); print(sum(1 for r in d['runs'][0]['results'] if r['kind']=='fail'))")
@@ -116,7 +116,7 @@ runs:
       shell: bash
       run: |
         if [ "${{ steps.scan.outputs.vulnerable-count }}" -gt 0 ]; then
-          echo "::error::Pentis found ${{ steps.scan.outputs.vulnerable-count }} vulnerabilities"
+          echo "::error::Keelson found ${{ steps.scan.outputs.vulnerable-count }} vulnerabilities"
           exit 1
         fi
 ```
@@ -135,12 +135,12 @@ on:
     - cron: '0 6 * * 1'  # Weekly Monday 6am
 
 jobs:
-  pentis-scan:
+  keelson-scan:
     runs-on: ubuntu-latest
     permissions:
       security-events: write  # Required for SARIF upload
     steps:
-      - uses: pentis-ai/pentis-action@v1
+      - uses: keelson-ai/keelson-action@v1
         with:
           target-url: ${{ vars.AGENT_ENDPOINT }}
           api-key: ${{ secrets.AGENT_API_KEY }}
@@ -152,12 +152,12 @@ jobs:
 
 ```yaml
 jobs:
-  pentis-deep:
+  keelson-deep:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
     steps:
-      - uses: pentis-ai/pentis-action@v1
+      - uses: keelson-ai/keelson-action@v1
         with:
           target-url: ${{ vars.AGENT_ENDPOINT }}
           api-key: ${{ secrets.AGENT_API_KEY }}

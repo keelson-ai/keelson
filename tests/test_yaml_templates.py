@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from pentis.core.models import AttackTemplate, Category, Finding, Severity, Verdict
-from pentis.core.yaml_templates import (
+from keelson.core.models import AttackTemplate, Category, Finding, Severity, Verdict
+from keelson.core.yaml_templates import (
     load_yaml_template,
     load_yaml_templates_dir,
     update_effectiveness_scores,
@@ -138,8 +138,8 @@ def test_load_yaml_templates_dir_empty(tmp_path: Path) -> None:
 
 def test_all_categories_supported() -> None:
     """Every Category enum member must be loadable from YAML."""
-    from pentis.core.models import Category
-    from pentis.core.yaml_templates import CATEGORY_MAP
+    from keelson.core.models import Category
+    from keelson.core.yaml_templates import CATEGORY_MAP
 
     for cat in Category:
         snake = cat.name.lower()

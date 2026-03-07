@@ -1,4 +1,4 @@
-# Pentis — Claude Code Plugin
+# Keelson — Claude Code Plugin
 
 AI agent security scanner implemented as a pure Claude Code plugin. Claude Code becomes the pentester: reads attack playbooks, sends prompts via curl, semantically evaluates responses, and generates reports.
 
@@ -6,28 +6,28 @@ AI agent security scanner implemented as a pure Claude Code plugin. Claude Code 
 
 ```bash
 # Load as a Claude Code plugin
-claude --plugin-dir /path/to/Pentis-Monorepo
+claude --plugin-dir /path/to/Keelson
 ```
 
 ## Usage
 
 ```bash
-/pentis:scan <url> [--api-key KEY] [--model MODEL] [--category CATEGORY]
-/pentis:attack <url> <attack-id> [--api-key KEY] [--model MODEL]
-/pentis:report [report-file]
+/keelson:scan <url> [--api-key KEY] [--model MODEL] [--category CATEGORY]
+/keelson:attack <url> <attack-id> [--api-key KEY] [--model MODEL]
+/keelson:report [report-file]
 ```
 
 ## Structure
 
 ```text
-Pentis-Monorepo/
+Keelson/
 ├── agents/
 │   ├── pentester.md             # Main pentester agent instructions
 │   └── strategist.md            # Recon & adaptive attack selection
 ├── commands/
-│   ├── scan.md                  # /pentis:scan — full security scan
-│   ├── attack.md                # /pentis:attack — single attack
-│   └── report.md                # /pentis:report — generate report
+│   ├── scan.md                  # /keelson:scan — full security scan
+│   ├── attack.md                # /keelson:attack — single attack
+│   └── report.md                # /keelson:report — generate report
 ├── attacks/                     # 105 attack playbooks (.yaml)
 │   ├── goal-adherence/          # GA-001..035 (OWASP LLM01)
 │   ├── tool-safety/             # TS-001..035 (OWASP LLM02/LLM06)

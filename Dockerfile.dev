@@ -13,8 +13,8 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --extra dev
 
 # Create non-root user
-RUN useradd -m -u 1000 pentis && \
-    chown -R pentis:pentis /app
+RUN useradd -m -u 1000 keelson && \
+    chown -R keelson:keelson /app
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app/src"
@@ -22,9 +22,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Drop to non-root
-USER pentis
+USER keelson
 
 EXPOSE 8000
 
 # Source is mounted at runtime via docker-compose volume for hot-reload
-CMD ["uvicorn", "pentis_service.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "keelson_service.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
