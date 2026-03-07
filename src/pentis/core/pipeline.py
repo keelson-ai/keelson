@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 from pentis.adapters.base import BaseAdapter
 from pentis.core.execution import apply_verified_findings, execute_parallel, verify_findings
@@ -49,8 +50,8 @@ class ScanCheckpoint:
 
     scan_id: str
     target_url: str
-    completed_ids: list[str] = field(default_factory=list[str])
-    findings_json: list[dict[str, object]] = field(default_factory=list[dict[str, object]])
+    completed_ids: list[str] = field(default_factory=lambda: [])
+    findings_json: list[dict[str, object]] = field(default_factory=lambda: [])
     started_at: str = ""
     phase: str = "scanning"
     version: int = _CHECKPOINT_VERSION
@@ -145,28 +146,36 @@ def _get_float(d: dict[str, object], key: str, default: float = 0.0) -> float:
 
 def _finding_from_json(data: dict[str, object]) -> Finding:
     """Deserialize a Finding from a JSON-compatible dict."""
-    evidence_raw: list[dict[str, object]] = data.get("evidence", [])  # type: ignore[assignment]
-    evidence = [
-        EvidenceItem(
-            step_index=_get_int(e, "step_index"),
-            prompt=_get_str(e, "prompt"),
-            response=_get_str(e, "response"),
-            response_time_ms=_get_int(e, "response_time_ms"),
+    raw_evidence: object = data.get("evidence", [])
+    if not isinstance(raw_evidence, list):
+        raise ValueError(f"Expected evidence to be list, got {type(raw_evidence).__name__}")
+    evidence_list = cast(list[dict[str, object]], raw_evidence)
+    evidence: list[EvidenceItem] = []
+    for e in evidence_list:
+        evidence.append(
+            EvidenceItem(
+                step_index=_get_int(e, "step_index"),
+                prompt=_get_str(e, "prompt"),
+                response=_get_str(e, "response"),
+                response_time_ms=_get_int(e, "response_time_ms"),
+            )
         )
-        for e in evidence_raw
-    ]
 
-    signals_raw: list[dict[str, object]] = data.get("leakage_signals", [])  # type: ignore[assignment]
-    leakage_signals = [
-        LeakageSignal(
-            step_index=_get_int(s, "step_index"),
-            signal_type=_get_str(s, "signal_type"),
-            severity=_get_str(s, "severity"),
-            description=_get_str(s, "description"),
-            confidence=_get_float(s, "confidence"),
+    raw_signals: object = data.get("leakage_signals", [])
+    if not isinstance(raw_signals, list):
+        raise ValueError(f"Expected leakage_signals to be list, got {type(raw_signals).__name__}")
+    signals_list = cast(list[dict[str, object]], raw_signals)
+    leakage_signals: list[LeakageSignal] = []
+    for s in signals_list:
+        leakage_signals.append(
+            LeakageSignal(
+                step_index=_get_int(s, "step_index"),
+                signal_type=_get_str(s, "signal_type"),
+                severity=_get_str(s, "severity"),
+                description=_get_str(s, "description"),
+                confidence=_get_float(s, "confidence"),
+            )
         )
-        for s in signals_raw
-    ]
 
     ts_str = _get_str(data, "timestamp")
     try:

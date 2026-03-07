@@ -20,15 +20,22 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Create non-root user
+RUN useradd -m -u 1000 pentis && \
+    chown -R pentis:pentis /app
+
 # Copy the populated venv from builder
-COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/src /app/src
+COPY --from=builder --chown=pentis:pentis /app/.venv /app/.venv
+COPY --from=builder --chown=pentis:pentis /app/src /app/src
 
 # Make venv binaries available on PATH
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app/src"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+
+# Drop to non-root
+USER pentis
 
 EXPOSE 8000
 
