@@ -1,6 +1,6 @@
 """Tests for enhanced regression alerts and campaign diff."""
 
-from pentis.core.models import (
+from keelson.core.models import (
     CampaignConfig,
     CampaignResult,
     Category,
@@ -12,7 +12,7 @@ from pentis.core.models import (
     Target,
     Verdict,
 )
-from pentis.diff.comparator import (
+from keelson.diff.comparator import (
     classify_alert_severity,
     diff_campaigns,
     enhanced_diff_scans,

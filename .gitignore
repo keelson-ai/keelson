@@ -22,6 +22,6 @@ build/
 .venv/
 venv/
 
-# Pentis state
-~/.pentis/
+# Keelson state
+~/.keelson/
 .worktrees/

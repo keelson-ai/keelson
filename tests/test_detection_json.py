@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from pentis.core.detection import _check_json_tool_calls, _detect_side_effects
+from keelson.core.detection import _check_json_tool_calls, _detect_side_effects
 
 
 class TestCheckJsonToolCalls:

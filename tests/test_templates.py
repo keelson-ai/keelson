@@ -1,7 +1,7 @@
 """Tests for the attack template loader."""
 
-from pentis.core.models import Category
-from pentis.core.templates import ATTACKS_DIR, load_all_templates, load_template
+from keelson.core.models import Category
+from keelson.core.templates import ATTACKS_DIR, load_all_templates, load_template
 
 
 class TestLoadTemplates:

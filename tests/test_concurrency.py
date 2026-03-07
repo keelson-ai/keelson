@@ -6,13 +6,13 @@ from typing import Any
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
-from pentis.campaign.runner import (
+from keelson.adapters.openai import OpenAIAdapter
+from keelson.campaign.runner import (
     _run_trials_concurrent,  # type: ignore[reportPrivateUsage]
     _should_terminate_early,  # type: ignore[reportPrivateUsage]
     run_campaign,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     AttackStep,
     AttackTemplate,
     CampaignConfig,

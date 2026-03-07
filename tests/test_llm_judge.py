@@ -1,7 +1,7 @@
 """Tests for the LLM-as-judge scoring module."""
 
-from pentis.core.llm_judge import _parse_judge_response  # pyright: ignore[reportPrivateUsage]
-from pentis.core.models import Verdict
+from keelson.core.llm_judge import _parse_judge_response  # pyright: ignore[reportPrivateUsage]
+from keelson.core.models import Verdict
 
 
 class TestParseJudgeResponse:

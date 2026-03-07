@@ -4,7 +4,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from pentis_service.main import create_app
+from keelson_service.main import create_app
 
 
 @pytest.fixture

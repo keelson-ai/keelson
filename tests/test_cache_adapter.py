@@ -5,8 +5,8 @@ from typing import Any
 import pytest
 import respx
 
-from pentis.adapters.cache import CachingAdapter
-from pentis.adapters.openai import OpenAIAdapter
+from keelson.adapters.cache import CachingAdapter
+from keelson.adapters.openai import OpenAIAdapter
 
 
 def _chat_response(content: str) -> dict[str, Any]:

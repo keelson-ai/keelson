@@ -1,11 +1,11 @@
 """Tests for the detection pipeline."""
 
-from pentis.core.detection import (
+from keelson.core.detection import (
     _extract_keywords,  # pyright: ignore[reportPrivateUsage]  # testing private helper
     _has_substantial_disclosure,  # pyright: ignore[reportPrivateUsage]  # testing private helper
     detect,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     AttackStep,
     AttackTemplate,
     Category,

@@ -1,10 +1,10 @@
-"""Tests for pentis.core.executive_report."""
+"""Tests for keelson.core.executive_report."""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from pentis.core.executive_report import (
+from keelson.core.executive_report import (
     SeverityRow,
     _build_recommendations,
     _compute_coverage_rows,
@@ -15,7 +15,7 @@ from pentis.core.executive_report import (
     _severity_sort_key,
     generate_executive_report,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     Category,
     EvidenceItem,
     Finding,

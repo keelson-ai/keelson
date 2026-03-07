@@ -6,14 +6,14 @@ import httpx
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
-from pentis.attacker.discovery import (
+from keelson.adapters.openai import OpenAIAdapter
+from keelson.attacker.discovery import (
     CAPABILITY_PROBES,
     discover_capabilities,
     score_capability,
     suggest_attacks,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     AgentCapability,
     AgentProfile,
     AttackStep,
