@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 
-from pentis.adapters.http import GenericHTTPAdapter
+from keelson.adapters.http import GenericHTTPAdapter
 
 
 @pytest.mark.asyncio

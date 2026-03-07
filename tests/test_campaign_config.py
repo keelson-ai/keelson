@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pentis.campaign.config import parse_campaign_config
+from keelson.campaign.config import parse_campaign_config
 
 
 class TestCampaignConfig:

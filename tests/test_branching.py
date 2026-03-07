@@ -6,13 +6,13 @@ import httpx
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
-from pentis.adaptive.branching import (
+from keelson.adapters.openai import OpenAIAdapter
+from keelson.adaptive.branching import (
     classify_response,
     execute_branching_attack,
     find_vulnerable_paths,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     AttackStep,
     AttackTemplate,
     Category,

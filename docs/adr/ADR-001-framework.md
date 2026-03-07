@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The Pentis service needs an HTTP API layer to expose scan, attack, and report operations. The service is I/O-heavy (network calls to LLM targets, SQLite reads/writes) and will serve a mix of synchronous and long-running asynchronous operations. The team has chosen Python as the implementation language (see ADR-002 for dependency tooling).
+The Keelson service needs an HTTP API layer to expose scan, attack, and report operations. The service is I/O-heavy (network calls to LLM targets, SQLite reads/writes) and will serve a mix of synchronous and long-running asynchronous operations. The team has chosen Python as the implementation language (see ADR-002 for dependency tooling).
 
 Options considered:
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from pentis.core.models import (
+from keelson.core.models import (
     Category,
     EvidenceItem,
     Finding,
@@ -15,7 +15,7 @@ from pentis.core.models import (
     Target,
     Verdict,
 )
-from pentis.state.store import Store
+from keelson.state.store import Store
 
 
 @pytest.fixture

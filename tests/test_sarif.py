@@ -6,7 +6,7 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from pentis.core.models import (
+from keelson.core.models import (
     CampaignConfig,
     CampaignResult,
     Category,
@@ -19,7 +19,7 @@ from pentis.core.models import (
     TrialResult,
     Verdict,
 )
-from pentis.core.sarif import (
+from keelson.core.sarif import (
     SARIF_SCHEMA,
     SARIF_VERSION,
     TOOL_NAME,

@@ -7,7 +7,7 @@ import httpx
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
+from keelson.adapters.openai import OpenAIAdapter
 
 
 @pytest.mark.asyncio

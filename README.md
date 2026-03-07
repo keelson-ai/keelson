@@ -1,60 +1,60 @@
-# Pentis
+# Keelson
 
-[![PyPI version](https://img.shields.io/pypi/v/pentis)](https://pypi.org/project/pentis/)
+[![PyPI version](https://img.shields.io/pypi/v/keelson-ai)](https://pypi.org/project/keelson-ai/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://img.shields.io/badge/tests-774%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 210 attack playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), 12 adaptive attack trees, 10 compound attack chains, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, iterative convergence scanning with cross-category feedback, runtime defense hooks, and compliance reporting for 6 frameworks. Attack strategies are informed by field-tested effectiveness data from real scans.
+**Autonomous red team agent for AI systems.** Keelson ships 210 attack playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), 12 adaptive attack trees, 10 compound attack chains, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, iterative convergence scanning with cross-category feedback, runtime defense hooks, and compliance reporting for 6 frameworks. Attack strategies are informed by field-tested effectiveness data from real scans.
 
 ```
-pip install pentis
+pip install keelson-ai
 ```
 
 ## Quick Start
 
 ```bash
 # Scan an OpenAI-compatible endpoint
-pentis scan https://api.example.com/v1/chat/completions --api-key $KEY
+keelson scan https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Parallel pipeline scan with verification
-pentis pipeline-scan https://api.example.com/v1/chat/completions --api-key $KEY
+keelson pipeline-scan https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Adaptive smart scan (discover → classify → execute with memo feedback)
-pentis smart-scan https://api.example.com/v1/chat/completions --api-key $KEY
+keelson smart-scan https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Convergence scan (iterative cross-category feedback loop)
-pentis convergence-scan https://api.example.com/v1/chat/completions --api-key $KEY
+keelson convergence-scan https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Single attack
-pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
+keelson attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
 
 # List all 210 attacks
-pentis list
+keelson list
 
 # Statistical campaign (10 trials per attack)
-pentis scan https://api.example.com/v1/chat/completions --tier deep --api-key $KEY
+keelson scan https://api.example.com/v1/chat/completions --tier deep --api-key $KEY
 
 # SARIF output for GitHub Code Scanning
-pentis scan https://api.example.com/v1/chat/completions --format sarif --api-key $KEY
+keelson scan https://api.example.com/v1/chat/completions --format sarif --api-key $KEY
 
 # JUnit XML output for CI/CD
-pentis scan https://api.example.com/v1/chat/completions --format junit --api-key $KEY
+keelson scan https://api.example.com/v1/chat/completions --format junit --api-key $KEY
 
 # Fail CI if vulnerabilities found
-pentis scan https://api.example.com/v1/chat/completions --fail-on-vuln --api-key $KEY
+keelson scan https://api.example.com/v1/chat/completions --fail-on-vuln --api-key $KEY
 
 # Scan a CrewAI agent directly
-pentis test-crew my_crew.py
+keelson test-crew my_crew.py
 
 # Scan a LangChain agent directly
-pentis test-chain my_agent.py
+keelson test-chain my_agent.py
 ```
 
 ## How It Works
 
 ```
-Playbooks (.yaml)   Target Agent        Pentis Engine
+Playbooks (.yaml)   Target Agent        Keelson Engine
 ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
 │ 210 attacks  │───>│ 9 Adapters   │───>│ Scan Modes           │
 │ 13 categories│    │ OpenAI /     │    │  scan (sequential)   │
@@ -105,7 +105,7 @@ Playbooks (.yaml)   Target Agent        Pentis Engine
 
 ## Adapters
 
-Pentis communicates with targets through a pluggable adapter interface:
+Keelson communicates with targets through a pluggable adapter interface:
 
 | Adapter | Flag | Protocol | Use Case |
 |---------|------|----------|----------|
@@ -121,59 +121,59 @@ Pentis communicates with targets through a pluggable adapter interface:
 
 ```bash
 # OpenAI-compatible (default)
-pentis scan http://localhost:11434/v1/chat/completions
+keelson scan http://localhost:11434/v1/chat/completions
 
 # Anthropic
-pentis scan https://api.anthropic.com --adapter anthropic --api-key $KEY
+keelson scan https://api.anthropic.com --adapter anthropic --api-key $KEY
 
 # LangGraph Platform
-pentis scan https://my-agent.langraph.com --adapter langgraph --assistant-id my-agent
+keelson scan https://my-agent.langraph.com --adapter langgraph --assistant-id my-agent
 
 # MCP server
-pentis scan http://localhost:3000 --adapter mcp --tool-name ask
+keelson scan http://localhost:3000 --adapter mcp --tool-name ask
 
 # A2A agent
-pentis scan http://localhost:8000 --adapter a2a
+keelson scan http://localhost:8000 --adapter a2a
 
 # CrewAI (in-process, no HTTP)
-pentis test-crew path/to/my_crew.py
+keelson test-crew path/to/my_crew.py
 
 # LangChain (in-process, no HTTP)
-pentis test-chain path/to/my_agent.py
+keelson test-chain path/to/my_agent.py
 
 # SiteGPT chatbot (WebSocket or REST)
-pentis scan https://widget.sitegpt.ai --adapter sitegpt --chatbot-id YOUR_CHATBOT_ID
+keelson scan https://widget.sitegpt.ai --adapter sitegpt --chatbot-id YOUR_CHATBOT_ID
 ```
 
 ## CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `pentis scan <url>` | Full security scan (sequential, with dynamic reorder) |
-| `pentis pipeline-scan <url>` | Parallel scan with checkpoint/resume and verification |
-| `pentis smart-scan <url>` | Adaptive scan: discover, classify, memo-guided sessions |
-| `pentis convergence-scan <url>` | Iterative scan with cross-category feedback and leakage harvesting |
-| `pentis attack <url> <id>` | Run a single attack |
-| `pentis list` | List all available attacks |
-| `pentis campaign <config.toml>` | Statistical campaign (N trials per attack) |
-| `pentis discover <url>` | Fingerprint agent capabilities |
-| `pentis evolve <url> <id>` | Mutate an attack to find bypasses |
-| `pentis chain <url> <profile-id>` | Synthesize and run compound attack chains |
-| `pentis generate <attacker-url>` | Generate novel attacks using an attacker LLM |
-| `pentis test-crew <module.py>` | Scan a CrewAI agent directly |
-| `pentis test-chain <module.py>` | Scan a LangChain agent directly |
-| `pentis diff <scan-a> <scan-b>` | Compare two scans for regressions |
-| `pentis baseline <scan-id>` | Set a regression baseline |
-| `pentis compliance <scan-id>` | Generate compliance report |
-| `pentis report <scan-id>` | Regenerate a scan report |
-| `pentis history` | Show scan history |
+| `keelson scan <url>` | Full security scan (sequential, with dynamic reorder) |
+| `keelson pipeline-scan <url>` | Parallel scan with checkpoint/resume and verification |
+| `keelson smart-scan <url>` | Adaptive scan: discover, classify, memo-guided sessions |
+| `keelson convergence-scan <url>` | Iterative scan with cross-category feedback and leakage harvesting |
+| `keelson attack <url> <id>` | Run a single attack |
+| `keelson list` | List all available attacks |
+| `keelson campaign <config.toml>` | Statistical campaign (N trials per attack) |
+| `keelson discover <url>` | Fingerprint agent capabilities |
+| `keelson evolve <url> <id>` | Mutate an attack to find bypasses |
+| `keelson chain <url> <profile-id>` | Synthesize and run compound attack chains |
+| `keelson generate <attacker-url>` | Generate novel attacks using an attacker LLM |
+| `keelson test-crew <module.py>` | Scan a CrewAI agent directly |
+| `keelson test-chain <module.py>` | Scan a LangChain agent directly |
+| `keelson diff <scan-a> <scan-b>` | Compare two scans for regressions |
+| `keelson baseline <scan-id>` | Set a regression baseline |
+| `keelson compliance <scan-id>` | Generate compliance report |
+| `keelson report <scan-id>` | Regenerate a scan report |
+| `keelson history` | Show scan history |
 
 ## Output Formats
 
 ### Markdown Report
 
 ```bash
-pentis scan <url> --api-key $KEY
+keelson scan <url> --api-key $KEY
 # -> reports/scan-2026-03-04-120000.md
 ```
 
@@ -182,7 +182,7 @@ Reports include executive summary, findings grouped by category with evidence (p
 ### SARIF (for CI/CD)
 
 ```bash
-pentis scan <url> --format sarif --api-key $KEY
+keelson scan <url> --format sarif --api-key $KEY
 # -> reports/scan-2026-03-04-120000.sarif.json
 ```
 
@@ -191,7 +191,7 @@ SARIF v2.1.0 output integrates with GitHub Code Scanning, VS Code SARIF Viewer, 
 ### JUnit XML (for CI/CD)
 
 ```bash
-pentis scan <url> --format junit --api-key $KEY
+keelson scan <url> --format junit --api-key $KEY
 # -> reports/scan-2026-03-04-120000.junit.xml
 ```
 
@@ -201,21 +201,21 @@ JUnit XML integrates with Jenkins, GitLab CI, GitHub Actions, and any CI system 
 
 ```bash
 # Fail pipeline if any vulnerability found
-pentis scan <url> --fail-on-vuln --api-key $KEY
+keelson scan <url> --fail-on-vuln --api-key $KEY
 
 # Fail if vulnerability rate exceeds threshold (0.0–1.0)
-pentis scan <url> --fail-threshold 0.1 --api-key $KEY
+keelson scan <url> --fail-threshold 0.1 --api-key $KEY
 ```
 
 ### Compliance Reports
 
 ```bash
-pentis compliance <scan-id> --framework owasp-llm-top10
-pentis compliance <scan-id> --framework nist-ai-rmf
-pentis compliance <scan-id> --framework eu-ai-act
-pentis compliance <scan-id> --framework iso-42001
-pentis compliance <scan-id> --framework soc2
-pentis compliance <scan-id> --framework pci-dss-v4
+keelson compliance <scan-id> --framework owasp-llm-top10
+keelson compliance <scan-id> --framework nist-ai-rmf
+keelson compliance <scan-id> --framework eu-ai-act
+keelson compliance <scan-id> --framework iso-42001
+keelson compliance <scan-id> --framework soc2
+keelson compliance <scan-id> --framework pci-dss-v4
 ```
 
 ## GitHub Actions
@@ -226,7 +226,7 @@ name: AI Agent Security
 on: [push, pull_request]
 
 jobs:
-  pentis:
+  keelson:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -235,9 +235,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install pentis
+      - run: pip install keelson-ai
 
-      - run: pentis scan ${{ vars.AGENT_URL }} --api-key ${{ secrets.AGENT_KEY }} --format sarif --output results/ --fail-on-vuln --no-save
+      - run: keelson scan ${{ vars.AGENT_URL }} --api-key ${{ secrets.AGENT_KEY }} --format sarif --output results/ --fail-on-vuln --no-save
 
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -251,13 +251,13 @@ Run each attack N times to get statistically significant results with Wilson sco
 
 ```bash
 # Quick scan (1 trial, fast)
-pentis scan <url> --tier fast --api-key $KEY
+keelson scan <url> --tier fast --api-key $KEY
 
 # Deep scan (10 trials, concurrent)
-pentis scan <url> --tier deep --api-key $KEY
+keelson scan <url> --tier deep --api-key $KEY
 
 # Custom campaign via TOML config
-pentis campaign config.toml
+keelson campaign config.toml
 ```
 
 Campaign config example:
@@ -277,9 +277,9 @@ max_concurrent_trials = 5
 early_termination_threshold = 3
 ```
 
-## Pentis Defend (Runtime Protection)
+## Keelson Defend (Runtime Protection)
 
-Pentis Defend is a policy engine that intercepts unsafe tool calls and content at runtime, integrating directly with CrewAI and LangChain agents.
+Keelson Defend is a policy engine that intercepts unsafe tool calls and content at runtime, integrating directly with CrewAI and LangChain agents.
 
 ### Policy Configuration
 
@@ -309,7 +309,7 @@ log_all: false
 ### CrewAI Integration
 
 ```python
-from pentis.defend import load_policy, PolicyEngine, register_crewai_hooks
+from keelson.defend import load_policy, PolicyEngine, register_crewai_hooks
 
 policy = load_policy("defend-policy.yaml")
 engine = PolicyEngine(policy)
@@ -320,11 +320,11 @@ register_crewai_hooks(engine)
 ### LangChain Integration
 
 ```python
-from pentis.defend import load_policy, PolicyEngine, PentisDefendMiddleware
+from keelson.defend import load_policy, PolicyEngine, KeelsonDefendMiddleware
 
 policy = load_policy("defend-policy.yaml")
 engine = PolicyEngine(policy)
-middleware = PentisDefendMiddleware(engine)
+middleware = KeelsonDefendMiddleware(engine)
 # Wrap your agent's tool and model calls
 ```
 
@@ -361,13 +361,13 @@ evaluation:
 ## Project Structure
 
 ```
-pentis/
+keelson/
 ├── agents/                         # Agent instructions
 │   └── pentester.md                # Pentester agent prompt
 ├── commands/                       # Plugin slash commands
-│   ├── scan.md                     # /pentis:scan
-│   ├── attack.md                   # /pentis:attack
-│   └── report.md                   # /pentis:report
+│   ├── scan.md                     # /keelson:scan
+│   ├── attack.md                   # /keelson:attack
+│   └── report.md                   # /keelson:report
 ├── attacks/                        # 210 attack playbooks (YAML)
 │   ├── goal-adherence/             # GA (56 attacks)
 │   ├── tool-safety/                # TS (40 attacks)
@@ -382,7 +382,7 @@ pentis/
 │   ├── multi-agent-security/       # MA (7 attacks)
 │   ├── output-weaponization/       # OW (7 attacks)
 │   └── temporal-persistence/       # TP (7 attacks)
-├── src/pentis/                     # Python engine
+├── src/keelson/                     # Python engine
 │   ├── cli/                        # Typer CLI (18 commands)
 │   │   ├── __init__.py             # App setup, shared helpers
 │   │   ├── commands.py             # Command module registration
@@ -467,8 +467,8 @@ pentis/
 
 ```bash
 # Clone
-git clone https://github.com/pentis-ai/pentis.git
-cd pentis
+git clone https://github.com/keelson-ai/keelson.git
+cd keelson
 
 # Install with dev dependencies
 pip install -e ".[dev]"
@@ -490,13 +490,13 @@ pyright
 
 ```bash
 # CrewAI adapter
-pip install "pentis[crewai]"
+pip install "keelson-ai[crewai]"
 
 # LangChain adapter
-pip install "pentis[langchain]"
+pip install "keelson-ai[langchain]"
 
 # All optional adapters
-pip install "pentis[all]"
+pip install "keelson-ai[all]"
 ```
 
 ## Contributing
@@ -518,7 +518,7 @@ Contributions are welcome. Here's how to help:
 
 ### Security
 
-This tool is for **authorized security testing only**. Do not use Pentis against systems you don't have permission to test. If you discover a security issue in Pentis itself, please report it via [GitHub Security Advisories](https://github.com/pentis-ai/pentis/security/advisories).
+This tool is for **authorized security testing only**. Do not use Keelson against systems you don't have permission to test. If you discover a security issue in Keelson itself, please report it via [GitHub Security Advisories](https://github.com/keelson-ai/keelson/security/advisories).
 
 ## Architecture
 
@@ -880,7 +880,7 @@ flowchart LR
 
 ### API Specification
 
-The authoritative OpenAPI 3.1.0 contract for the Pentis service is at [`docs/openapi.yaml`](docs/openapi.yaml). It covers the `/health` endpoint (implemented) and placeholder paths for Phase 2 scan, attack, and report endpoints.
+The authoritative OpenAPI 3.1.0 contract for the Keelson service is at [`docs/openapi.yaml`](docs/openapi.yaml). It covers the `/health` endpoint (implemented) and placeholder paths for Phase 2 scan, attack, and report endpoints.
 
 ### Architecture Decision Records
 
@@ -900,7 +900,7 @@ See [docs/plans/](docs/plans/) for the full roadmap.
 - Drift detection and continuous monitoring
 - Semantic coverage tracking
 - REST API and web dashboard
-- GitHub Action (`pentis-ai/pentis-action`)
+- GitHub Action (`keelson-ai/keelson-action`)
 
 ## License
 

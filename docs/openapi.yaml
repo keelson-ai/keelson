@@ -1,15 +1,15 @@
 openapi: "3.1.0"
 
 info:
-  title: Pentis Service API
+  title: Keelson Service API
   version: "0.1.0"
   description: >
-    REST API for the Pentis autonomous AI security scanner service.
+    REST API for the Keelson autonomous AI security scanner service.
     Exposes health, scan, attack, and report endpoints for orchestrating
     LLM security assessments.
   contact:
-    name: Pentis
-    url: https://github.com/Othentic-Labs/Pentis
+    name: Keelson
+    url: https://github.com/Othentic-Labs/Keelson
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
@@ -17,7 +17,7 @@ info:
 servers:
   - url: http://localhost:8000
     description: Local development server
-  - url: https://api.pentis.example.com
+  - url: https://api.keelson.example.com
     description: Production server (placeholder)
 
 paths:
@@ -361,6 +361,6 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
-      description: API key for authenticating requests to the Pentis service
+      description: API key for authenticating requests to the Keelson service
 
 security: []

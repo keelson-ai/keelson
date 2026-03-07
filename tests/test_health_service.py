@@ -3,8 +3,8 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from pentis_service import __version__
-from pentis_service.main import create_app
+from keelson_service import __version__
+from keelson_service.main import create_app
 
 
 @pytest.fixture

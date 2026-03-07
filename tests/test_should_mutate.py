@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pentis.adaptive.strategies import should_mutate
+from keelson.adaptive.strategies import should_mutate
 
 
 class TestShouldMutate:

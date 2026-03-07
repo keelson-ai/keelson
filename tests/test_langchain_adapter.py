@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from pentis.adapters.langchain import LangChainAdapter
+from keelson.adapters.langchain import LangChainAdapter
 
 
 class TestLangChainAdapter:

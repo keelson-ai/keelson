@@ -1,7 +1,7 @@
 """Tests for the streaming leakage observer."""
 
-from pentis.core.models import EvidenceItem
-from pentis.core.observer import StreamingObserver
+from keelson.core.models import EvidenceItem
+from keelson.core.observer import StreamingObserver
 
 
 class TestStreamingObserver:

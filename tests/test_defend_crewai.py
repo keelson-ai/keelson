@@ -1,4 +1,4 @@
-"""Tests for Pentis Defend CrewAI hooks."""
+"""Tests for Keelson Defend CrewAI hooks."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pentis.defend.models import ContentRule, DefendPolicy, PolicyAction, ToolRule
+from keelson.defend.models import ContentRule, DefendPolicy, PolicyAction, ToolRule
 
 
 @pytest.fixture()
@@ -54,7 +54,7 @@ class TestRegisterCrewAIHooks:
     """Test CrewAI hook registration."""
 
     def test_registers_hooks(self, mock_crewai_hooks: types.ModuleType) -> None:
-        from pentis.defend.crewai_hook import register_crewai_hooks
+        from keelson.defend.crewai_hook import register_crewai_hooks
 
         engine = register_crewai_hooks()
         registered: dict[str, list[Any]] = mock_crewai_hooks._registered  # type: ignore[attr-defined]
@@ -64,7 +64,7 @@ class TestRegisterCrewAIHooks:
         assert engine is not None
 
     def test_blocked_tool_returns_false(self, mock_crewai_hooks: types.ModuleType) -> None:
-        from pentis.defend.crewai_hook import register_crewai_hooks
+        from keelson.defend.crewai_hook import register_crewai_hooks
 
         policy = DefendPolicy(
             tool_rules=[ToolRule(pattern="dangerous_tool", action=PolicyAction.DENY)]
@@ -81,7 +81,7 @@ class TestRegisterCrewAIHooks:
         assert result is False
 
     def test_allowed_tool_returns_none(self, mock_crewai_hooks: types.ModuleType) -> None:
-        from pentis.defend.crewai_hook import register_crewai_hooks
+        from keelson.defend.crewai_hook import register_crewai_hooks
 
         policy = DefendPolicy(
             tool_rules=[ToolRule(pattern="dangerous_tool", action=PolicyAction.DENY)]
@@ -97,7 +97,7 @@ class TestRegisterCrewAIHooks:
         assert result is None
 
     def test_output_redaction(self, mock_crewai_hooks: types.ModuleType) -> None:
-        from pentis.defend.crewai_hook import register_crewai_hooks
+        from keelson.defend.crewai_hook import register_crewai_hooks
 
         register_crewai_hooks()
 
@@ -107,10 +107,10 @@ class TestRegisterCrewAIHooks:
         context = MagicMock()
         context.result = '{"tool_calls": [{"name": "execute"}]}'
         result: str | None = after_tool(context)
-        assert result == "[REDACTED by Pentis Defend]"
+        assert result == "[REDACTED by Keelson Defend]"
 
     def test_llm_input_blocking(self, mock_crewai_hooks: types.ModuleType) -> None:
-        from pentis.defend.crewai_hook import register_crewai_hooks
+        from keelson.defend.crewai_hook import register_crewai_hooks
 
         policy = DefendPolicy(
             content_rules=[

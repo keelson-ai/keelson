@@ -7,7 +7,7 @@ from typing import Any
 import respx
 from httpx import Response
 
-from pentis.adapters.a2a import A2AAdapter
+from keelson.adapters.a2a import A2AAdapter
 
 
 class TestA2AAdapter:

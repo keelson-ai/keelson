@@ -1,11 +1,11 @@
-# /pentis:scan — Full Security Scan
+# /keelson:scan — Full Security Scan
 
 Run a comprehensive security scan against an AI agent endpoint.
 
 ## Usage
 
 ```
-/pentis:scan <url> [--api-key KEY] [--model MODEL] [--category CATEGORY]
+/keelson:scan <url> [--api-key KEY] [--model MODEL] [--category CATEGORY]
 ```
 
 **Arguments** (from `$ARGUMENTS`):
