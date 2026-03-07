@@ -85,7 +85,7 @@ consult a qualified attorney in your jurisdiction.
 ## Indemnification
 
 By using this software, you agree to indemnify, defend, and hold harmless
-Keelson AI, its contributors, maintainers, and affiliates from and against any
+Othentic Labs LTD, its contributors, maintainers, and affiliates from and against any
 and all claims, damages, obligations, losses, liabilities, costs, and expenses
 (including reasonable attorneys' fees) arising from:
 
