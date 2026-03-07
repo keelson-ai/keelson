@@ -2,12 +2,24 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from pathlib import Path
 from typing import Any, cast
 
 import yaml
 
-from pentis.core.models import AttackStep, AttackTemplate, Category, EvalCriteria, Severity
+from pentis.core.models import (
+    AttackStep,
+    AttackTemplate,
+    Category,
+    EvalCriteria,
+    Finding,
+    Severity,
+    Verdict,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def _build_category_map() -> dict[str, Category]:
@@ -106,3 +118,108 @@ def load_yaml_templates_dir(directory: Path) -> list[AttackTemplate]:
     for path in sorted(directory.rglob("*.yaml")):
         templates.append(load_yaml_template(path))
     return templates
+
+
+# Regex matching the effectiveness block in YAML files
+_EFF_BLOCK_RE = re.compile(
+    r"^effectiveness:\n\s+success_rate:\s*[\d.]+\n\s+times_tested:\s*\d+",
+    re.MULTILINE,
+)
+
+
+def _update_yaml_effectiveness(path: Path, new_rate: float, new_tested: int) -> bool:
+    """Rewrite the effectiveness block in a YAML file. Returns True on success."""
+    text = path.read_text(encoding="utf-8")
+    replacement = (
+        f"effectiveness:\n  success_rate: {round(new_rate, 2)}\n  times_tested: {new_tested}"
+    )
+    updated, count = _EFF_BLOCK_RE.subn(replacement, text, count=1)
+    if count == 0:
+        return False
+    path.write_text(updated, encoding="utf-8")
+    return True
+
+
+def update_effectiveness_scores(
+    findings: list[Finding],
+    templates: list[AttackTemplate],
+) -> int:
+    """Update YAML attack files with new effectiveness scores from scan findings.
+
+    Computes an incremental weighted average: new results are merged with the
+    existing success_rate and times_tested already stored in each template.
+    Skips probe findings (template_id contains '-probe-').
+
+    Returns the number of YAML files updated.
+    """
+    # Group findings by template_id (skip probes)
+    by_template: dict[str, list[Finding]] = {}
+    for f in findings:
+        if "-probe-" in f.template_id:
+            continue
+        by_template.setdefault(f.template_id, []).append(f)
+
+    templates_by_id = {t.id: t for t in templates}
+    updated = 0
+
+    for template_id, template_findings in by_template.items():
+        template = templates_by_id.get(template_id)
+        if not template or not template.source_path:
+            continue
+
+        new_tests = len(template_findings)
+        new_vulns = sum(1 for f in template_findings if f.verdict == Verdict.VULNERABLE)
+
+        # Incremental average: merge with existing scores
+        old_tested = template.times_tested
+        old_rate = template.success_rate
+        total_tested = old_tested + new_tests
+        total_vulns = round(old_rate * old_tested) + new_vulns
+        merged_rate = total_vulns / total_tested if total_tested > 0 else 0.0
+
+        source = Path(template.source_path)
+        if not source.exists():
+            logger.debug("Template file not found: %s", source)
+            continue
+
+        if _update_yaml_effectiveness(source, merged_rate, total_tested):
+            updated += 1
+
+            # Update the mirror copy if it exists
+            mirror = _find_mirror(source)
+            if mirror and mirror.exists():
+                _update_yaml_effectiveness(mirror, merged_rate, total_tested)
+
+    if updated:
+        logger.info("Updated effectiveness scores for %d attacks", updated)
+    return updated
+
+
+def _find_mirror(source: Path) -> Path | None:
+    """Find the mirror copy of a YAML file (src/pentis/attacks ↔ attacks)."""
+    parts = source.parts
+    # Find the 'attacks' directory in the path
+    try:
+        idx = parts.index("attacks")
+    except ValueError:
+        return None
+
+    relative = Path(*parts[idx:])  # attacks/category/XX-NNN.yaml
+
+    # Determine which root this file belongs to and find the other
+    src_marker = "pentis"
+    if src_marker in parts:
+        # source is in src/pentis/attacks/ → mirror is at repo-root attacks/
+        repo_root = source
+        for _ in range(len(parts) - idx):
+            repo_root = repo_root.parent
+        # Go up past src/pentis to repo root
+        while repo_root.name in ("attacks", "pentis", "src"):
+            repo_root = repo_root.parent
+        return repo_root / relative
+    else:
+        # source is at repo-root attacks/ → mirror is in src/pentis/attacks/
+        repo_root = source
+        for _ in range(len(parts) - idx):
+            repo_root = repo_root.parent
+        return repo_root / "src" / "pentis" / relative
