@@ -12,10 +12,17 @@ COPY pyproject.toml uv.lock ./
 # Install all dependencies including dev extras (pytest, ruff, pyright)
 RUN uv sync --extra dev
 
+# Create non-root user
+RUN useradd -m -u 1000 pentis && \
+    chown -R pentis:pentis /app
+
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app/src"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+
+# Drop to non-root
+USER pentis
 
 EXPOSE 8000
 

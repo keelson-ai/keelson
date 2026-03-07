@@ -45,12 +45,12 @@ class ReconResponse:
 class TargetProfile:
     """What we know about the target after recon."""
 
-    agent_types: list[AgentType] = field(default_factory=list)
-    detected_tools: list[str] = field(default_factory=list)
+    agent_types: list[AgentType] = field(default_factory=lambda: [])
+    detected_tools: list[str] = field(default_factory=lambda: [])
     has_memory: bool = False
     has_write_access: bool = False
     refusal_style: str = "unknown"  # "rigid", "polite", "leaky"
-    notes: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=lambda: [])
 
 
 @dataclass
@@ -59,7 +59,7 @@ class CategoryPlan:
 
     category: Category
     priority: Priority
-    attack_ids: list[str] = field(default_factory=list)
+    attack_ids: list[str] = field(default_factory=lambda: [])
     rationale: str = ""
 
 
@@ -68,8 +68,8 @@ class AttackPlan:
     """Full attack plan produced by the strategist."""
 
     profile: TargetProfile
-    categories: list[CategoryPlan] = field(default_factory=list)
-    recon_findings: list[Finding] = field(default_factory=list)
+    categories: list[CategoryPlan] = field(default_factory=lambda: [])
+    recon_findings: list[Finding] = field(default_factory=lambda: [])
 
     @property
     def total_attacks(self) -> int:
