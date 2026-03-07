@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Python dependency management has historically been fragmented: `pip` + `requirements.txt`, `poetry`, `pipenv`, `conda`, and `hatch` each solve different subsets of the problem with varying performance and UX. The Pentis service requires:
+Python dependency management has historically been fragmented: `pip` + `requirements.txt`, `poetry`, `pipenv`, `conda`, and `hatch` each solve different subsets of the problem with varying performance and UX. The Keelson service requires:
 
 - Reproducible installs across developer machines and CI
 - Fast installs in Docker build layers

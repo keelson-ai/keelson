@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 import respx
 
-from pentis.adapters.mcp import MCPAdapter
+from keelson.adapters.mcp import MCPAdapter
 
 BASE_URL = "https://example.mcp.dev"
 
@@ -134,7 +134,7 @@ class TestMCPAdapter:
         init_body: dict[str, Any] = json.loads(route.calls[0].request.content)  # type: ignore[reportUnknownMemberType]
         assert init_body["method"] == "initialize"
         assert init_body["jsonrpc"] == "2.0"
-        assert init_body["params"]["clientInfo"]["name"] == "pentis"
+        assert init_body["params"]["clientInfo"]["name"] == "keelson"
 
     @respx.mock
     async def test_jsonrpc_error_raises(self) -> None:

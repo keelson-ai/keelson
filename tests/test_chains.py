@@ -3,15 +3,15 @@
 import pytest
 import respx
 
-from pentis.adapters.attacker import AttackerAdapter
-from pentis.adapters.openai import OpenAIAdapter
-from pentis.attacker.chains import (
+from keelson.adapters.attacker import AttackerAdapter
+from keelson.adapters.openai import OpenAIAdapter
+from keelson.attacker.chains import (
     CHAIN_TEMPLATES,
     _parse_llm_chains,  # type: ignore[reportPrivateUsage]
     synthesize_chains,
     synthesize_chains_llm,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     AgentCapability,
     AgentProfile,
     Severity,

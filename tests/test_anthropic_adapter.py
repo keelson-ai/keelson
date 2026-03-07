@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 import respx
 
-from pentis.adapters.anthropic import ANTHROPIC_API_URL, AnthropicAdapter
+from keelson.adapters.anthropic import ANTHROPIC_API_URL, AnthropicAdapter
 
 
 def _anthropic_response(text: str) -> dict[str, Any]:

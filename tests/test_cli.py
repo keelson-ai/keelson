@@ -4,7 +4,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from pentis.cli import app
+from keelson.cli import app
 
 runner = CliRunner()
 

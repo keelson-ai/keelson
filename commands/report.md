@@ -1,11 +1,11 @@
-# /pentis:report — Generate or Reformat Report
+# /keelson:report — Generate or Reformat Report
 
 Regenerate or reformat a security scan report from previous findings.
 
 ## Usage
 
 ```
-/pentis:report [report-file]
+/keelson:report [report-file]
 ```
 
 **Arguments** (from `$ARGUMENTS`):

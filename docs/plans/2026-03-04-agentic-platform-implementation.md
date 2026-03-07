@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Evolve the current Pentis MVP into a full agentic pentesting platform with statistical measurement, LLM-generated attacks, semantic coverage tracking, and cross-scan learning.
+**Goal:** Evolve the current Keelson MVP into a full agentic pentesting platform with statistical measurement, LLM-generated attacks, semantic coverage tracking, and cross-scan learning.
 
 **Architecture:** Three-phase build: Execution Layer first (statistical runner, multi-turn branching, scan tiers, adapters), then Generation Layer (LLM attacker, mutation engine), then Learning Layer (semantic coverage, graph KB, RAG). Each phase delivers standalone value. See `agentic-pentesting-architecture.md` for full design.
 
@@ -57,8 +57,8 @@
 | #   | Task                                                        | Status | Notes     |
 |-----|-------------------------------------------------------------|--------|-----------|
 | D.1 | CI/CD integration (JUnit XML, `--fail-on-vuln`, exit codes) | ⬜ TODO |           |
-| D.2 | Pentis Defend: CrewAI hook (step_callback + policy engine)  | ⬜ TODO |           |
-| D.3 | Pentis Defend: LangChain hook (BaseCallbackHandler)         | ⬜ TODO | Deps: D.2 |
+| D.2 | Keelson Defend: CrewAI hook (step_callback + policy engine)  | ⬜ TODO |           |
+| D.3 | Keelson Defend: LangChain hook (BaseCallbackHandler)         | ⬜ TODO | Deps: D.2 |
 | D.4 | Drift detection & monitoring (auto-diff, webhooks)          | ⬜ TODO |           |
 | D.5 | Compliance expansion (PB/DI/ES/SI mappings, PCI DSS 4.0)    | ⬜ TODO |           |
 
@@ -96,9 +96,9 @@
 
 **Files:**
 
-- Create: `src/pentis/core/runner.py`
+- Create: `src/keelson/core/runner.py`
 - Create: `tests/test_runner.py`
-- Read first: `src/pentis/core/engine.py`, `src/pentis/core/models.py`
+- Read first: `src/keelson/core/engine.py`, `src/keelson/core/models.py`
 
 **Step 1: Write failing tests**
 
@@ -106,8 +106,8 @@
 # tests/test_runner.py
 import pytest
 from unittest.mock import AsyncMock, patch
-from pentis.core.runner import wilson_score, run_statistical
-from pentis.core.models import Verdict
+from keelson.core.runner import wilson_score, run_statistical
+from keelson.core.models import Verdict
 
 def test_wilson_score_all_success():
     lo, hi = wilson_score(successes=10, trials=10)
@@ -154,8 +154,8 @@ async def test_run_statistical_respects_concurrency(sample_template, mock_adapte
 
 **Files:**
 
-- Modify: `src/pentis/core/models.py`
-- Modify: `src/pentis/state/store.py`
+- Modify: `src/keelson/core/models.py`
+- Modify: `src/keelson/state/store.py`
 - Modify: `tests/test_store.py`
 
 ---
@@ -166,19 +166,19 @@ async def test_run_statistical_respects_concurrency(sample_template, mock_adapte
 
 **Files:**
 
-- Create: `src/pentis/core/tiers.py`
+- Create: `src/keelson/core/tiers.py`
 - Create: `tests/test_tiers.py`
 
 ---
 
 ### Task 1.4 — CLI `--tier` Flag + Tier-Aware Scan Pipeline ✅ Completed
 
-**What:** Wire tiers into the CLI and scanner. `pentis scan --tier deep --url http://...` runs with N=10 reps, etc.
+**What:** Wire tiers into the CLI and scanner. `keelson scan --tier deep --url http://...` runs with N=10 reps, etc.
 
 **Files:**
 
-- Modify: `src/pentis/cli.py`
-- Modify: `src/pentis/core/scanner.py`
+- Modify: `src/keelson/cli.py`
+- Modify: `src/keelson/core/scanner.py`
 - Modify: `tests/test_cli.py`
 - Modify: `tests/test_scanner.py`
 
@@ -190,9 +190,9 @@ async def test_run_statistical_respects_concurrency(sample_template, mock_adapte
 
 **Files:**
 
-- Create: `src/pentis/state/base.py`
-- Modify: `src/pentis/state/store.py` (rename class to `SqliteStore`, implement protocol)
-- Modify: `src/pentis/cli.py` (use `SqliteStore` explicitly)
+- Create: `src/keelson/state/base.py`
+- Modify: `src/keelson/state/store.py` (rename class to `SqliteStore`, implement protocol)
+- Modify: `src/keelson/cli.py` (use `SqliteStore` explicitly)
 - Modify: `tests/test_store.py`
 
 ---
@@ -203,18 +203,18 @@ async def test_run_statistical_respects_concurrency(sample_template, mock_adapte
 
 **Files:**
 
-- Create: `src/pentis/core/discovery.py`
+- Create: `src/keelson/core/discovery.py`
 - Create: `tests/test_discovery.py`
 
 ---
 
 ### Task 1.7 — Anthropic Messages API Adapter ✅ Completed
 
-**What:** Adapter for Anthropic's Messages API so Pentis can test Claude-based agents directly.
+**What:** Adapter for Anthropic's Messages API so Keelson can test Claude-based agents directly.
 
 **Files:**
 
-- Create: `src/pentis/adapters/anthropic.py`
+- Create: `src/keelson/adapters/anthropic.py`
 - Create: `tests/test_adapter_anthropic.py`
 
 ---
@@ -225,7 +225,7 @@ async def test_run_statistical_respects_concurrency(sample_template, mock_adapte
 
 **Files:**
 
-- Create: `src/pentis/adapters/http.py`
+- Create: `src/keelson/adapters/http.py`
 - Create: `tests/test_adapter_http.py`
 
 ---
@@ -236,9 +236,9 @@ async def test_run_statistical_respects_concurrency(sample_template, mock_adapte
 
 **Files:**
 
-- Create: `src/pentis/core/yaml_templates.py`
+- Create: `src/keelson/core/yaml_templates.py`
 - Create: `tests/test_yaml_templates.py`
-- Modify: `src/pentis/core/templates.py` (unified loader)
+- Modify: `src/keelson/core/templates.py` (unified loader)
 
 ---
 
@@ -248,8 +248,8 @@ async def test_run_statistical_respects_concurrency(sample_template, mock_adapte
 
 **Files:**
 
-- Create: `src/pentis/core/branch.py`
-- Modify: `src/pentis/core/engine.py`
+- Create: `src/keelson/core/branch.py`
+- Modify: `src/keelson/core/engine.py`
 - Create: `tests/test_branch.py`
 
 ---
@@ -262,7 +262,7 @@ async def test_run_statistical_respects_concurrency(sample_template, mock_adapte
 
 **Files:**
 
-- Create: `src/pentis/state/postgres.py`
+- Create: `src/keelson/state/postgres.py`
 - Create: `tests/test_store_postgres.py`
 - Modify: `pyproject.toml` (add optional `asyncpg` dependency)
 
@@ -283,19 +283,19 @@ pytest.importorskip("asyncpg", reason="asyncpg not installed")
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_postgres_store_save_and_load(pg_dsn):
-    from pentis.state.postgres import PostgresStore
+    from keelson.state.postgres import PostgresStore
     store = PostgresStore(dsn=pg_dsn)
     await store.initialize()
     # ... save and load a ScanResult
     await store.close()
 ```
 
-**Step 3: Implement `src/pentis/state/postgres.py`**
+**Step 3: Implement `src/keelson/state/postgres.py`**
 
 ```python
 import asyncpg
-from pentis.state.base import BaseStore
-from pentis.core.models import ScanResult, StatisticalFinding
+from keelson.state.base import BaseStore
+from keelson.core.models import ScanResult, StatisticalFinding
 
 class PostgresStore:
     def __init__(self, dsn: str) -> None:
@@ -331,8 +331,8 @@ class PostgresStore:
 
 **Files:**
 
-- Create: `src/pentis/workers/tasks.py`
-- Create: `src/pentis/workers/__init__.py`
+- Create: `src/keelson/workers/tasks.py`
+- Create: `src/keelson/workers/__init__.py`
 - Modify: `pyproject.toml` (add `dramatiq[redis]`)
 - Create: `tests/test_tasks.py`
 
@@ -344,7 +344,7 @@ class PostgresStore:
 
 **Files:**
 
-- Create: `src/pentis/core/detection/streaming.py`
+- Create: `src/keelson/core/detection/streaming.py`
 - Create: `tests/test_streaming_observer.py`
 
 ---
@@ -361,13 +361,13 @@ class PostgresStore:
 
 **What:** SARIF v2.1.0 JSON generation from ScanResult/CampaignResult. Maps severity to SARIF level, attacks to rules, findings to results. `--format sarif` CLI flag.
 
-**Files:** `src/pentis/core/sarif.py`, `tests/test_sarif.py`
+**Files:** `src/keelson/core/sarif.py`, `tests/test_sarif.py`
 
 ---
 
 ### Task 1.16 — GitHub Action Spec ✅ Completed
 
-**What:** `pentis-ai/pentis-action@v1` design (composite action: pip install, scan, upload SARIF).
+**What:** `keelson-ai/keelson-action@v1` design (composite action: pip install, scan, upload SARIF).
 
 **Files:** `docs/github-action-spec.md`
 
@@ -377,7 +377,7 @@ class PostgresStore:
 
 **What:** `CrewAIAdapter(BaseAdapter)` wrapping `crew.kickoff()` directly (not HTTP). Optional dependency.
 
-**Files:** `src/pentis/adapters/crewai.py`, `tests/test_crewai_adapter.py`
+**Files:** `src/keelson/adapters/crewai.py`, `tests/test_crewai_adapter.py`
 
 ---
 
@@ -385,7 +385,7 @@ class PostgresStore:
 
 **What:** `LangChainAdapter(BaseAdapter)` wrapping `agent.invoke()` directly. Optional dependency.
 
-**Files:** `src/pentis/adapters/langchain.py`, `tests/test_langchain_adapter.py`
+**Files:** `src/keelson/adapters/langchain.py`, `tests/test_langchain_adapter.py`
 
 ---
 
@@ -393,7 +393,7 @@ class PostgresStore:
 
 **What:** Google Agent-to-Agent protocol via JSON-RPC 2.0. Agent card discovery via `GET /.well-known/agent.json`.
 
-**Files:** `src/pentis/adapters/a2a.py`, `tests/test_a2a_adapter.py`
+**Files:** `src/keelson/adapters/a2a.py`, `tests/test_a2a_adapter.py`
 
 ---
 
@@ -401,7 +401,7 @@ class PostgresStore:
 
 **What:** Model Context Protocol adapter for testing MCP-connected agents.
 
-**Files:** `src/pentis/adapters/mcp.py`, `tests/test_mcp_adapter.py`
+**Files:** `src/keelson/adapters/mcp.py`, `tests/test_mcp_adapter.py`
 
 ---
 
@@ -409,7 +409,7 @@ class PostgresStore:
 
 **What:** LangGraph adapter for testing stateful graph-based agents.
 
-**Files:** `src/pentis/adapters/langgraph.py`, `tests/test_langgraph_adapter.py`
+**Files:** `src/keelson/adapters/langgraph.py`, `tests/test_langgraph_adapter.py`
 
 ---
 
@@ -419,14 +419,14 @@ class PostgresStore:
 
 ### Task 2.1 — Seed Library Migration to YAML 🔄 In Progress
 
-**What:** Convert all existing `.md` attack templates to YAML format in `src/pentis/attacks/`. Keep `.md` files alongside for human readability. Update the loader to prefer YAML when both exist.
+**What:** Convert all existing `.md` attack templates to YAML format in `src/keelson/attacks/`. Keep `.md` files alongside for human readability. Update the loader to prefer YAML when both exist.
 
 **Status:** YAML loader is ready (`core/yaml_templates.py`). Attacks are still in `.md` format — conversion pending.
 
 **Files:**
 
 - Create: YAML versions of all 72 attack playbooks
-- Modify: `src/pentis/core/templates.py`
+- Modify: `src/keelson/core/templates.py`
 
 ---
 
@@ -434,7 +434,7 @@ class PostgresStore:
 
 **What:** Use a cross-provider LLM to generate novel attacks from discovered capabilities. The attacker LLM must differ from the target (no same-family bias).
 
-**Files:** `src/pentis/attacker/generator.py`, `tests/test_generator_v2.py`
+**Files:** `src/keelson/attacker/generator.py`, `tests/test_generator_v2.py`
 
 ---
 
@@ -442,7 +442,7 @@ class PostgresStore:
 
 **What:** Automatically select a different LLM provider for the attacker than the target. Config-driven.
 
-**Files:** `src/pentis/attacker/provider.py`
+**Files:** `src/keelson/attacker/provider.py`
 
 ---
 
@@ -450,7 +450,7 @@ class PostgresStore:
 
 **What:** From discovered capabilities (Task 1.6), synthesize attack chains automatically.
 
-**Files:** `src/pentis/attacker/discovery.py`
+**Files:** `src/keelson/attacker/discovery.py`
 
 ---
 
@@ -458,7 +458,7 @@ class PostgresStore:
 
 **What:** Free-tier mutation strategies that require no LLM calls (base64, leetspeak, unicode substitution, rot13, zero-width insertion).
 
-**Files:** `src/pentis/adaptive/mutations.py`
+**Files:** `src/keelson/adaptive/mutations.py`
 
 ---
 
@@ -466,7 +466,7 @@ class PostgresStore:
 
 **What:** LLM-powered mutation strategies: paraphrase, role-play reframe, gradual escalation, authority persona.
 
-**Files:** `src/pentis/adaptive/mutations.py`
+**Files:** `src/keelson/adaptive/mutations.py`
 
 ---
 
@@ -474,7 +474,7 @@ class PostgresStore:
 
 **What:** Wire the mutation trigger into the statistical runner. After deep scan, automatically queue mutations for partial successes (5–80% success rate).
 
-**Files:** `src/pentis/adaptive/strategies.py`
+**Files:** `src/keelson/adaptive/strategies.py`
 
 ---
 
@@ -488,8 +488,8 @@ class PostgresStore:
 
 **Files:**
 
-- Create: `src/pentis/core/junit.py`
-- Modify: `src/pentis/cli.py`
+- Create: `src/keelson/core/junit.py`
+- Modify: `src/keelson/cli.py`
 
 **Key design:**
 
@@ -500,10 +500,10 @@ class PostgresStore:
 - Compatible with GitHub Actions, GitLab CI, Jenkins, CircleCI test result uploads
 
 ```python
-# src/pentis/core/junit.py
+# src/keelson/core/junit.py
 def scan_result_to_junit(result: ScanResult) -> str:
     """Convert ScanResult to JUnit XML string."""
-    # <testsuite name="pentis" tests="72" failures="3">
+    # <testsuite name="keelson" tests="72" failures="3">
     #   <testcase name="GA-001 Direct Override" classname="goal_adherence">
     #     <failure message="Vulnerable (80% success rate)">...</failure>
     #   </testcase>
@@ -512,16 +512,16 @@ def scan_result_to_junit(result: ScanResult) -> str:
 
 ---
 
-### Task D.2 — Pentis Defend: CrewAI Hook
+### Task D.2 — Keelson Defend: CrewAI Hook
 
-**What:** Runtime defense layer for CrewAI agents. `PentisCrewAICallback` implementing CrewAI's `step_callback` to intercept and block unsafe tool calls in real time. YAML-configurable policy engine for allow/deny/require-approval rules.
+**What:** Runtime defense layer for CrewAI agents. `KeelsonCrewAICallback` implementing CrewAI's `step_callback` to intercept and block unsafe tool calls in real time. YAML-configurable policy engine for allow/deny/require-approval rules.
 
 **Files:**
 
-- Create: `src/pentis/defend/__init__.py`
-- Create: `src/pentis/defend/crewai_hook.py`
-- Create: `src/pentis/defend/rules.py` (YAML policy engine)
-- Create: `src/pentis/defend/models.py`
+- Create: `src/keelson/defend/__init__.py`
+- Create: `src/keelson/defend/crewai_hook.py`
+- Create: `src/keelson/defend/rules.py` (YAML policy engine)
+- Create: `src/keelson/defend/models.py`
 - Create: `tests/test_defend_crewai.py`
 
 **Key design:**
@@ -530,7 +530,7 @@ def scan_result_to_junit(result: ScanResult) -> str:
 - YAML policy format:
 
 ```yaml
-# pentis-policy.yaml
+# keelson-policy.yaml
 rules:
   - action: deny
     tool: shell_exec
@@ -544,45 +544,45 @@ rules:
     paths: ["./data/*"]
 ```
 
-- `PentisCrewAICallback.on_step(step)` → check against policy → allow/deny/log
+- `KeelsonCrewAICallback.on_step(step)` → check against policy → allow/deny/log
 - Emit structured audit log for every intercepted action
 
 ---
 
-### Task D.3 — Pentis Defend: LangChain Hook
+### Task D.3 — Keelson Defend: LangChain Hook
 
-**What:** `PentisLangChainCallback(BaseCallbackHandler)` implementing `on_tool_start()` and `on_llm_start()` hooks. Shares the policy engine from Task D.2.
+**What:** `KeelsonLangChainCallback(BaseCallbackHandler)` implementing `on_tool_start()` and `on_llm_start()` hooks. Shares the policy engine from Task D.2.
 
 > **Prerequisites:** Task D.2 must be complete (policy engine).
 
 **Files:**
 
-- Create: `src/pentis/defend/langchain_hook.py`
+- Create: `src/keelson/defend/langchain_hook.py`
 - Create: `tests/test_defend_langchain.py`
 
 **Key design:**
 
 - `on_tool_start(tool_name, input_str)` → evaluate against `defend/rules.py` policy
 - `on_llm_start(serialized, prompts)` → check for prompt injection patterns
-- Raise `PentisBlockedError` when policy denies an action
+- Raise `KeelsonBlockedError` when policy denies an action
 - Same audit log format as CrewAI hook
 
 ---
 
 ### Task D.4 — Drift Detection & Monitoring
 
-**What:** Auto-diff after scheduled campaigns, webhook alerts on regressions. New `pentis monitor` command for continuous security posture tracking.
+**What:** Auto-diff after scheduled campaigns, webhook alerts on regressions. New `keelson monitor` command for continuous security posture tracking.
 
 **Files:**
 
-- Create: `src/pentis/campaign/drift.py`
-- Create: `src/pentis/campaign/alerts.py`
-- Modify: `src/pentis/campaign/scheduler.py`
-- Modify: `src/pentis/cli.py`
+- Create: `src/keelson/campaign/drift.py`
+- Create: `src/keelson/campaign/alerts.py`
+- Modify: `src/keelson/campaign/scheduler.py`
+- Modify: `src/keelson/cli.py`
 
 **Key design:**
 
-- `pentis monitor <url> --baseline <scan_id> --interval 24h --alert-webhook <url>`
+- `keelson monitor <url> --baseline <scan_id> --interval 24h --alert-webhook <url>`
 - Compare new scan results against baseline: flag newly vulnerable attacks, newly safe attacks, and success rate changes
 - Webhook payload: JSON with `regressions[]`, `improvements[]`, `unchanged[]`
 - Support Slack, PagerDuty, and generic webhook endpoints
@@ -595,7 +595,7 @@ rules:
 
 **Files:**
 
-- Modify: `src/pentis/core/compliance.py`
+- Modify: `src/keelson/core/compliance.py`
 
 **Key design:**
 
@@ -615,8 +615,8 @@ rules:
 
 **Files:**
 
-- Create: `src/pentis/learning/__init__.py`
-- Create: `src/pentis/learning/embedder.py`
+- Create: `src/keelson/learning/__init__.py`
+- Create: `src/keelson/learning/embedder.py`
 
 ```python
 # Uses OpenAI text-embedding-3-small
@@ -635,7 +635,7 @@ Store vectors in `attack_embeddings` table (pgvector `vector(1536)` column).
 
 **Files:**
 
-- Create: `src/pentis/learning/coverage.py`
+- Create: `src/keelson/learning/coverage.py`
 
 ```python
 def compute_coverage(embeddings: list[list[float]]) -> CoverageReport:
@@ -734,9 +734,9 @@ GET    /api/v1/coverage/:scan_id   — Semantic coverage report
 
 **Files:**
 
-- Create: `src/pentis/api/__init__.py`
-- Create: `src/pentis/api/app.py`
-- Create: `src/pentis/api/routes/`
+- Create: `src/keelson/api/__init__.py`
+- Create: `src/keelson/api/app.py`
+- Create: `src/keelson/api/routes/`
 
 ---
 
@@ -787,11 +787,11 @@ Week 27-32: 3.6-3.7 (regression + RAG) + I.2/I.4 (enterprise)      ⬜ TODO
 | Week | Milestone                                  | Go/No-Go                          |
 |------|--------------------------------------------|-----------------------------------|
 | 2    | 72 playbooks across 7 categories           | ✅ Achieved                       |
-| 4    | `pip install pentis` on PyPI               | Must work end-to-end              |
+| 4    | `pip install keelson` on PyPI               | Must work end-to-end              |
 | 8    | All 7 adapters functional                  | ✅ Achieved                       |
 | 10   | Mutation engine + cross-provider selection | ✅ Achieved                       |
 | 12   | CI/CD integration (JUnit + fail gates)     | First CI/CD-capable product       |
-| 14   | Pentis Defend MVP (CrewAI + LangChain)     | First revenue-capable product     |
+| 14   | Keelson Defend MVP (CrewAI + LangChain)     | First revenue-capable product     |
 | 16   | 100 GitHub stars                           | If <50 → reassess positioning     |
 | 18   | 3 paying customers (Defend)                | If 0 → pivot to consulting        |
 | 22   | Continuous mode + drift detection shipped  | Must ship before Aug 2 EU AI Act  |
@@ -800,7 +800,7 @@ Week 27-32: 3.6-3.7 (regression + RAG) + I.2/I.4 (enterprise)      ⬜ TODO
 
 ## Architectural Decisions
 
-1. **Attacks move into Python package** (`src/pentis/attacks/`) for reliable pip install
+1. **Attacks move into Python package** (`src/keelson/attacks/`) for reliable pip install
 2. **SQLite for OSS, PostgreSQL optional for Cloud** — extract BaseStore interface later
 3. **Defend hooks are in-process, not HTTP proxies** — CrewAI step_callback, LangChain BaseCallbackHandler
 4. **Detection stays pattern-based** — LLM evaluation as optional enhancement, not replacement
@@ -809,13 +809,13 @@ Week 27-32: 3.6-3.7 (regression + RAG) + I.2/I.4 (enterprise)      ⬜ TODO
 ## Verification
 
 - `pytest tests/ -v` — all existing + new tests pass
-- `pentis list` — shows 72 attacks across 7 categories
-- `pentis scan <url> --format sarif` — valid SARIF JSON
-- `pentis scan <url> --format junit` — valid JUnit XML
-- `pentis test-crew <file>` — runs against CrewAI agent
-- `pentis campaign <url> --behaviors all --repetitions 5` — statistical results
-- `pip install pentis && pentis --help` — works from clean install
-- `pentis monitor <url> --baseline <id>` — drift detection running
+- `keelson list` — shows 72 attacks across 7 categories
+- `keelson scan <url> --format sarif` — valid SARIF JSON
+- `keelson scan <url> --format junit` — valid JUnit XML
+- `keelson test-crew <file>` — runs against CrewAI agent
+- `keelson campaign <url> --behaviors all --repetitions 5` — statistical results
+- `pip install keelson && keelson --help` — works from clean install
+- `keelson monitor <url> --baseline <id>` — drift detection running
 
 ---
 
@@ -859,7 +859,7 @@ pytest tests/ -v -m integration
 pytest tests/ -v
 
 # Coverage report
-pytest tests/ --cov=pentis --cov-report=html
+pytest tests/ --cov=keelson --cov-report=html
 ```
 
 **Test markers to add to `pyproject.toml`:**

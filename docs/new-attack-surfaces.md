@@ -6,7 +6,7 @@
 
 Applied to AI agent pentesting, this means: every conversation is potential code
 execution. You're not just talking TO the system -- you're programming it with
-natural language. Here are 6 new attack surfaces that Pentis should cover,
+natural language. Here are 6 new attack surfaces that Keelson should cover,
 beyond what the current 189 attacks already test.
 
 ---
@@ -179,7 +179,7 @@ operate in real-world environments.
 ## Implementation Priority
 
 1. **Output Weaponization** -- Highest impact, least tested anywhere
-2. **Supply Chain Language Attacks** -- Critical for coding agents (most Pentis users)
+2. **Supply Chain Language Attacks** -- Critical for coding agents (most Keelson users)
 3. **Exfiltration via Conversation** -- Hardest to detect, most realistic threat
 4. **Cognitive Architecture Exploitation** -- Unique to CoT/ReAct agents
 5. **Multi-Agent Social Engineering** -- Growing rapidly with agentic frameworks

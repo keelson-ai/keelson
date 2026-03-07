@@ -1,10 +1,10 @@
-"""Tests for Pentis Defend PolicyEngine."""
+"""Tests for Keelson Defend PolicyEngine."""
 
 from __future__ import annotations
 
-from pentis.defend.engine import PolicyEngine
-from pentis.defend.loader import default_policy
-from pentis.defend.models import (
+from keelson.defend.engine import PolicyEngine
+from keelson.defend.loader import default_policy
+from keelson.defend.models import (
     ContentRule,
     DefendPolicy,
     PolicyAction,

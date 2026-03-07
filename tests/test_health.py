@@ -4,7 +4,7 @@ import httpx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from pentis_service import __version__
+from keelson_service import __version__
 
 # --- Synchronous tests using TestClient fixture from conftest.py ---
 

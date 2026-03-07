@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from pentis.core.models import (
+from keelson.core.models import (
     AttackChain,
     AttackStep,
     Category,
     RegressionAlert,
     Severity,
 )
-from pentis.state.store import Store
+from keelson.state.store import Store
 
 
 @pytest.fixture
@@ -128,7 +128,7 @@ class TestAttackChainPersistence:
 
     def test_list_chains(self, store: Store) -> None:
         # Insert a profile first to satisfy FK constraint
-        from pentis.core.models import AgentCapability, AgentProfile
+        from keelson.core.models import AgentCapability, AgentProfile
 
         profile = AgentProfile(
             profile_id="profile-1",

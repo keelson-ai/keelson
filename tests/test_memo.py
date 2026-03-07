@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pentis.core.memo import (
+from keelson.core.memo import (
     MemoTable,
     ResponseOutcome,
     Technique,
@@ -10,7 +10,7 @@ from pentis.core.memo import (
     infer_techniques_from_template,
     score_attack_by_memo,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     AttackStep,
     AttackTemplate,
     Category,

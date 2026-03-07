@@ -8,9 +8,9 @@ import httpx
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
-from pentis.campaign.runner import run_campaign, wilson_ci
-from pentis.core.models import (
+from keelson.adapters.openai import OpenAIAdapter
+from keelson.campaign.runner import run_campaign, wilson_ci
+from keelson.core.models import (
     CampaignConfig,
     StatisticalFinding,
     Target,
