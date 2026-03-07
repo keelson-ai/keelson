@@ -103,9 +103,9 @@ class AttackStep:
 
 @dataclass
 class EvalCriteria:
-    vulnerable_if: list[str] = field(default_factory=list[str])
-    safe_if: list[str] = field(default_factory=list[str])
-    inconclusive_if: list[str] = field(default_factory=list[str])
+    vulnerable_if: list[str] = field(default_factory=lambda: [])
+    safe_if: list[str] = field(default_factory=lambda: [])
+    inconclusive_if: list[str] = field(default_factory=lambda: [])
 
 
 @dataclass
@@ -148,10 +148,10 @@ class Finding:
     severity: Severity
     category: Category
     owasp: str
-    evidence: list[EvidenceItem] = field(default_factory=list[EvidenceItem])
+    evidence: list[EvidenceItem] = field(default_factory=lambda: [])
     reasoning: str = ""
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
-    leakage_signals: list[LeakageSignal] = field(default_factory=list[LeakageSignal])
+    leakage_signals: list[LeakageSignal] = field(default_factory=lambda: [])
     probe_source: str = ""  # template_id that triggered this probe (empty = original attack)
     confidence: float = 0.0  # 0.0-1.0 confidence in the verdict
     scoring_method: ScoringMethod = ScoringMethod.PATTERN
@@ -173,7 +173,7 @@ class Target:
 class ScanResult:
     scan_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     target: Target = field(default_factory=lambda: Target(url=""))
-    findings: list[Finding] = field(default_factory=list[Finding])
+    findings: list[Finding] = field(default_factory=lambda: [])
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
 
@@ -199,7 +199,7 @@ class TrialResult:
 
     trial_index: int
     verdict: Verdict
-    evidence: list[EvidenceItem] = field(default_factory=list[EvidenceItem])
+    evidence: list[EvidenceItem] = field(default_factory=lambda: [])
     reasoning: str = ""
     response_time_ms: int = 0
 
@@ -213,7 +213,7 @@ class StatisticalFinding:
     severity: Severity
     category: Category
     owasp: str
-    trials: list[TrialResult] = field(default_factory=list[TrialResult])
+    trials: list[TrialResult] = field(default_factory=lambda: [])
     success_rate: float = 0.0
     ci_lower: float = 0.0
     ci_upper: float = 0.0
@@ -246,7 +246,7 @@ class CampaignConfig:
     delay_between_trials: float = 1.0
     delay_between_attacks: float = 2.0
     category: str | None = None
-    attack_ids: list[str] = field(default_factory=list[str])
+    attack_ids: list[str] = field(default_factory=lambda: [])
     target_url: str = ""
     api_key: str = ""
     model: str = "default"
@@ -260,7 +260,7 @@ class CampaignResult:
     campaign_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     config: CampaignConfig = field(default_factory=CampaignConfig)
     target: Target = field(default_factory=lambda: Target(url=""))
-    findings: list[StatisticalFinding] = field(default_factory=list[StatisticalFinding])
+    findings: list[StatisticalFinding] = field(default_factory=lambda: [])
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
 
@@ -290,7 +290,7 @@ class ScanDiff:
 
     scan_a_id: str
     scan_b_id: str
-    items: list[ScanDiffItem] = field(default_factory=list[ScanDiffItem])
+    items: list[ScanDiffItem] = field(default_factory=lambda: [])
 
     @property
     def regressions(self) -> list[ScanDiffItem]:
@@ -328,7 +328,7 @@ class AgentProfile:
 
     profile_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     target_url: str = ""
-    capabilities: list[AgentCapability] = field(default_factory=list[AgentCapability])
+    capabilities: list[AgentCapability] = field(default_factory=lambda: [])
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
@@ -344,7 +344,7 @@ class ConversationNode:
     prompt: str = ""
     response: str = ""
     response_class: ResponseClass = ResponseClass.REFUSAL
-    children: list[ConversationNode] = field(default_factory=list)  # type: ignore[arg-type]
+    children: list[ConversationNode] = field(default_factory=lambda: [])
     depth: int = 0
     verdict: Verdict | None = None
 
@@ -371,8 +371,8 @@ class AttackChain:
 
     chain_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     name: str = ""
-    capabilities: list[str] = field(default_factory=list[str])
-    steps: list[AttackStep] = field(default_factory=list[AttackStep])
+    capabilities: list[str] = field(default_factory=lambda: [])
+    steps: list[AttackStep] = field(default_factory=lambda: [])
     severity: Severity = Severity.HIGH
     category: Category = Category.AGENTIC_SECURITY
     owasp: str = ""

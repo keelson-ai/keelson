@@ -64,6 +64,12 @@ packages = ["src/pentis", "src/pentis_service"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+timeout = 300
+addopts = ["-ra", "--strict-markers", "--tb=short"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
 
 [tool.pyright]
 include = ["src", "tests"]
@@ -79,7 +85,11 @@ target-version = "py311"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP"]
+select = ["E", "F", "I", "UP", "W", "C901"]
+per-file-ignores = {"tests/**" = ["C901"]}
+
+[tool.ruff.lint.mccabe]
+max-complexity = 25
 
 [tool.ruff.lint.isort]
 known-first-party = ["pentis", "pentis_service"]

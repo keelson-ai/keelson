@@ -252,9 +252,9 @@ def _extract_leaked_info(finding: Finding) -> list[str]:
     for ev in finding.evidence:
         response = ev.response
 
-        # Extract backtick-wrapped tool/function names
-        tool_names = re.findall(r"`([a-z_][a-z0-9_]{2,})`", response)
-        for name in tool_names:
+        # Extract backtick-wrapped tool/function names (limit count and length)
+        tool_names = re.findall(r"`([a-z_][a-z0-9_]{2,50})`", response)
+        for name in tool_names[:10]:
             leaked.append(f"tool:{name}")
 
         # Extract URLs (http/https)
