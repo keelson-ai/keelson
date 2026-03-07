@@ -3,9 +3,9 @@
 [![PyPI version](https://img.shields.io/pypi/v/pentis)](https://pypi.org/project/pentis/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-703%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-748%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 205 attack playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks.
+**Autonomous red team agent for AI systems.** Pentis ships 210 attack playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), 12 adaptive attack trees, 10 compound attack chains, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks. Attack strategies are informed by field-tested effectiveness data from real scans.
 
 ```
 pip install pentis
@@ -26,7 +26,7 @@ pentis smart-scan https://api.example.com/v1/chat/completions --api-key $KEY
 # Single attack
 pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
 
-# List all 205 attacks
+# List all 210 attacks
 pentis list
 
 # Statistical campaign (10 trials per attack)
@@ -53,7 +53,7 @@ pentis test-chain my_agent.py
 ```
 Playbooks (.yaml)   Target Agent        Pentis Engine
 ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 205 attacks  │───>│ 9 Adapters   │───>│ Scan Modes           │
+│ 210 attacks  │───>│ 9 Adapters   │───>│ Scan Modes           │
 │ 13 categories│    │ OpenAI /     │    │  scan (sequential)   │
 │ OWASP mapped │    │ Anthropic /  │    │  pipeline (parallel) │
 └──────────────┘    │ MCP / A2A /  │    │  smart (adaptive)    │
@@ -84,15 +84,15 @@ Playbooks (.yaml)   Target Agent        Pentis Engine
 
 | Category | Prefix | Count | OWASP | What It Tests |
 |----------|--------|-------|-------|---------------|
-| **Goal Adherence** | GA | 54 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) attacks, rapport exploitation, structured data injection, model fingerprinting, indirect prompt injection (IDPI), Unicode/homoglyph evasion, authority simulation, multilingual repetition, multi-vector psychological exploitation, enterprise framing bypass, syllogistic reasoning manipulation, hypothetical counterfactual bypass, meta-reasoning inversion, logical paradox exploitation, response template hijacking, shared resource injection |
-| **Tool Safety** | TS | 38 | LLM02/LLM06/LLM07 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal, MCP tool poisoning, MCP rug pull, cross-server contamination, SSRF, side-effect detection, excessive agency, forced financial transactions, two-phase URL exfiltration, URI scheme redirect, forced URL opening |
+| **Goal Adherence** | GA | 56 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) attacks, rapport exploitation, structured data injection, model fingerprinting, indirect prompt injection (IDPI), Unicode/homoglyph evasion, authority simulation, multilingual repetition, multi-vector psychological exploitation, enterprise framing bypass, syllogistic reasoning manipulation, hypothetical counterfactual bypass, meta-reasoning inversion, logical paradox exploitation, response template hijacking, shared resource injection, **legitimate knowledge extraction**, **incremental architecture disclosure** |
+| **Tool Safety** | TS | 40 | LLM02/LLM06/LLM07 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal, MCP tool poisoning, MCP rug pull, cross-server contamination, SSRF, side-effect detection, excessive agency, forced financial transactions, two-phase URL exfiltration, URI scheme redirect, forced URL opening, **private data source enumeration**, **write access probing** |
 | **Memory Integrity** | MI | 23 | LLM05 | History poisoning, identity persistence, false tool results, cross-turn exfiltration, error info leakage, stored payload injection, context window flooding, gradual memory poisoning, false memory implantation, contradictory fact confusion, RAG poisoning, natural language sleeper triggers, collapsed UI content poisoning |
 | **Permission Boundaries** | PB | 12 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
 | **Delegation Integrity** | DI | 7 | LLM08/LLM09 | Unauthorized sub-agents, trust boundary violation, delegation scope laundering, cross-agent lateral movement |
 | **Execution Safety** | ES | 13 | LLM02/LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization, HTML/script output injection, destructive command injection |
 | **Session Isolation** | SI | 13 | LLM01/LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, model fingerprinting, conversation history poisoning, debug harness extraction |
 | **Cognitive Architecture** | CA | 8 | LLM01/LLM09 | Chain-of-thought poisoning, reasoning manipulation, meta-cognitive attacks |
-| **Conversational Exfiltration** | EX | 8 | LLM01/LLM06 | Data extraction via conversation, behavioral fingerprinting |
+| **Conversational Exfiltration** | EX | 9 | LLM01/LLM06 | Data extraction via conversation, behavioral fingerprinting, **framework/infrastructure fingerprinting** |
 | **Supply Chain Language** | SL | 8 | LLM03/LLM05 | RAG document injection, dependency confusion, plugin poisoning |
 | **Output Weaponization** | OW | 7 | LLM02/LLM06 | Backdoor code generation, malicious output crafting |
 | **Temporal Persistence** | TP | 7 | LLM05/LLM08 | Delayed action injection, time-based persistence |
@@ -362,15 +362,15 @@ pentis/
 │   ├── scan.md                     # /pentis:scan
 │   ├── attack.md                   # /pentis:attack
 │   └── report.md                   # /pentis:report
-├── attacks/                        # 205 attack playbooks (YAML)
-│   ├── goal-adherence/             # GA (54 attacks)
-│   ├── tool-safety/                # TS (38 attacks)
+├── attacks/                        # 210 attack playbooks (YAML)
+│   ├── goal-adherence/             # GA (56 attacks)
+│   ├── tool-safety/                # TS (40 attacks)
 │   ├── memory-integrity/           # MI (23 attacks)
 │   ├── session-isolation/          # SI (13 attacks)
 │   ├── execution-safety/           # ES (13 attacks)
 │   ├── permission-boundaries/      # PB (12 attacks)
 │   ├── cognitive-architecture/     # CA (8 attacks)
-│   ├── conversational-exfiltration/# EX (8 attacks)
+│   ├── conversational-exfiltration/# EX (9 attacks)
 │   ├── supply-chain-language/      # SL (8 attacks)
 │   ├── delegation-integrity/       # DI (7 attacks)
 │   ├── multi-agent-security/       # MA (7 attacks)
@@ -443,7 +443,7 @@ pentis/
 │   └── state/                      # Persistence
 │       ├── base.py                 # Storage base interface
 │       └── store.py                # SQLite storage
-├── tests/                          # 703 tests
+├── tests/                          # 748 tests
 ├── docs/                           # Documentation
 │   ├── adr/                        # Architecture Decision Records
 │   │   ├── ADR-001-framework.md    # FastAPI selection
