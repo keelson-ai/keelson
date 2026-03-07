@@ -17,7 +17,6 @@ from pentis.core.models import (
     AgentProfile,
     AttackTemplate,
     Category,
-    Effectiveness,
     Finding,
     ScanResult,
     Target,
@@ -99,15 +98,10 @@ def _group_into_sessions(
     sessions: list[list[AttackTemplate]] = []
     for category, templates in by_category.items():
         if memo and memo.entries:
-            # Reorder by memo insights + effectiveness
             templates = _reorder_by_memo(templates, memo, category)
         else:
-            # No memo yet — sort by effectiveness alone (proven first)
-            templates = sorted(
-                templates,
-                key=lambda t: _EFFECTIVENESS_WEIGHT.get(t.effectiveness, 0.0),
-                reverse=True,
-            )
+            # No memo yet — sort by success rate (higher = first)
+            templates = sorted(templates, key=_effectiveness_score, reverse=True)
 
         # Split into chunks of _SESSION_MAX_TURNS
         for i in range(0, len(templates), _SESSION_MAX_TURNS):
@@ -116,13 +110,19 @@ def _group_into_sessions(
     return sessions
 
 
-# Effectiveness weight bonus applied before memo scoring
-_EFFECTIVENESS_WEIGHT: dict[Effectiveness, float] = {
-    Effectiveness.PROVEN: 2.0,
-    Effectiveness.PROMISING: 1.0,
-    Effectiveness.UNTESTED: 0.0,
-    Effectiveness.BASELINE: -0.5,
-}
+def _effectiveness_score(t: AttackTemplate) -> float:
+    """Score an attack by its field-tested success rate, weighted by confidence.
+
+    Attacks with more tests get a stronger signal. Untested attacks (times_tested=0)
+    score 0.0 (neutral). Tested attacks with 0% rate get a small penalty (-0.1)
+    so proven attacks always sort above them.
+    """
+    if t.times_tested == 0:
+        return 0.0
+    confidence = min(t.times_tested / 10.0, 1.0)
+    if t.success_rate == 0.0:
+        return -0.1 * confidence
+    return t.success_rate * confidence
 
 
 def _reorder_by_memo(
@@ -132,15 +132,13 @@ def _reorder_by_memo(
 ) -> list[AttackTemplate]:
     """Reorder templates so effective techniques come first, dead ends last.
 
-    Combines field-tested effectiveness ratings with memo-informed scoring.
-    Proven attacks get a +2.0 bonus, baseline attacks get a -0.5 penalty.
+    Combines field-tested success rates with memo-informed scoring.
     """
 
     def _score(t: AttackTemplate) -> float:
         techniques = infer_techniques_from_template(t)
         memo_score = score_attack_by_memo(techniques, memo, category)
-        eff_bonus = _EFFECTIVENESS_WEIGHT.get(t.effectiveness, 0.0)
-        return memo_score + eff_bonus
+        return memo_score + _effectiveness_score(t)
 
     return sorted(templates, key=_score, reverse=True)
 

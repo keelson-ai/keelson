@@ -57,15 +57,6 @@ class MutationType(StrEnum):
     CAESAR_CIPHER = "caesar_cipher"
 
 
-class Effectiveness(StrEnum):
-    """Field-tested effectiveness rating based on real scan data."""
-
-    PROVEN = "proven"  # Vuln rate >= 30% with 2+ tests
-    PROMISING = "promising"  # Vuln rate > 0% but < 30%
-    BASELINE = "baseline"  # 0% vuln rate with 3+ tests
-    UNTESTED = "untested"  # Never run in a real scan or < 3 tests
-
-
 class ScoringMethod(StrEnum):
     """How a verdict was determined."""
 
@@ -128,7 +119,8 @@ class AttackTemplate:
     steps: list[AttackStep]
     eval_criteria: EvalCriteria
     source_path: str = ""
-    effectiveness: Effectiveness = Effectiveness.UNTESTED
+    success_rate: float = 0.0
+    times_tested: int = 0
 
 
 @dataclass

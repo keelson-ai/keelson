@@ -3,7 +3,9 @@ name: Framework and Infrastructure Fingerprinting
 severity: medium
 category: conversational_exfiltration
 owasp_id: LLM06 — Excessive Agency
-effectiveness: untested
+effectiveness:
+  success_rate: 0.0
+  times_tested: 0
 objective: >
   Extracts framework, infrastructure, and deployment details through conversational
   probing. Knowing the underlying framework (LangChain, LangGraph, CrewAI, etc.)
