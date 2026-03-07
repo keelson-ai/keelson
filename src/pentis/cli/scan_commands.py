@@ -340,6 +340,97 @@ def smart_scan(
     check_fail_gates(result.vulnerable_count, len(result.findings), fail_on_vuln, fail_threshold)
 
 
+@app.command(name="convergence-scan")
+def convergence_scan(
+    url: str = typer.Argument(help="Target endpoint URL (OpenAI-compatible chat completions)"),
+    api_key: str = typer.Option("", "--api-key", "-k", help="API key for authentication"),
+    model: str = typer.Option("default", "--model", "-m", help="Model name for requests"),
+    category: str | None = typer.Option(None, "--category", "-c", help="Category for initial pass"),
+    delay: float = typer.Option(1.5, "--delay", "-d", help="Seconds between requests"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Report output directory"),
+    no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
+    adapter: str = typer.Option(
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
+    ),
+    use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
+    format: str = typer.Option(
+        "markdown",
+        "--format",
+        "-f",
+        help="Output format: markdown, executive, sarif, or junit",
+    ),
+    fail_on_vuln: bool = typer.Option(
+        False, "--fail-on-vuln", help="Exit with code 1 if any vulnerabilities found"
+    ),
+    fail_threshold: float = typer.Option(
+        0.0, "--fail-threshold", help="Vuln rate threshold (0.0-1.0) to trigger failure"
+    ),
+    assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
+    tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
+    debug: bool = typer.Option(False, "--debug", help="Include SAFE findings in report"),
+    max_tokens: int | None = typer.Option(
+        512,
+        "--max-tokens",
+        help="Max response tokens per request (saves tokens). Use 0 for unlimited",
+    ),
+    max_passes: int = typer.Option(
+        4, "--max-passes", help="Maximum convergence passes (default 4)"
+    ),
+) -> None:
+    """Convergence scan: cross-category feedback loop with iterative passes.
+
+    Runs multiple passes — each pass feeds findings into the next via cross-category
+    relationships and leaked information analysis. Converges when no new vulnerabilities
+    are discovered.
+    """
+    from pentis.core.convergence import run_convergence_scan
+
+    target = Target(url=url, api_key=api_key, model=model)
+    target_adapter = make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
+    on_finding = make_finding_callback()
+
+    console.print("\n[bold]Pentis Convergence Scan[/bold]")
+    console.print(f"Target: {url}")
+    console.print(f"Model: {model}")
+    console.print(f"Max passes: {max_passes}")
+    if category:
+        console.print(f"Initial category: {category}")
+    console.print()
+
+    def on_pass(pass_num: int, detail: str) -> None:
+        if pass_num == 0:
+            console.print(f"\n  [bold green]RESULT[/]  {detail}")
+        else:
+            console.print(f"  [cyan]PASS {pass_num}[/]   {detail}")
+
+    resolved_max_tokens = max_tokens if max_tokens != 0 else None
+
+    result = run_with_adapter(
+        lambda: run_convergence_scan(
+            target=target,
+            adapter=target_adapter,
+            category=category,
+            delay=delay,
+            on_finding=on_finding,
+            on_pass=on_pass,
+            max_passes=max_passes,
+            max_response_tokens=resolved_max_tokens,
+        ),
+        target_adapter,
+    )
+
+    if not no_save:
+        with Store() as store:
+            store.save_scan(result)
+
+    report_path = write_report(result, format, output, "convergence-scan", debug=debug)
+
+    print_cache_stats(target_adapter)
+    print_scan_summary(result, report_path)
+
+    check_fail_gates(result.vulnerable_count, len(result.findings), fail_on_vuln, fail_threshold)
+
+
 @app.command()
 def attack(
     url: str = typer.Argument(help="Target endpoint URL"),
