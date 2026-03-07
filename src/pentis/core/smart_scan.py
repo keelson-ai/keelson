@@ -29,6 +29,7 @@ from pentis.core.strategist import (
     select_attacks,
 )
 from pentis.core.templates import load_all_templates
+from pentis.core.yaml_templates import update_effectiveness_scores
 
 logger = logging.getLogger(__name__)
 
@@ -360,4 +361,5 @@ async def run_smart_scan(
 
     result.findings = all_findings
     result.finished_at = datetime.now(UTC)
+    update_effectiveness_scores(all_findings, all_templates)
     return result
