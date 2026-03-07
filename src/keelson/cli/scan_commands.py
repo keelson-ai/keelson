@@ -1,4 +1,4 @@
-"""Scan commands: scan, pipeline-scan, smart-scan, attack."""
+"""Scan commands: scan, pipeline-scan, smart-scan, test."""
 
 from __future__ import annotations
 
@@ -432,9 +432,9 @@ def convergence_scan(
 
 
 @app.command()
-def attack(
+def test(
     url: str = typer.Argument(help="Target endpoint URL"),
-    attack_id: str = typer.Argument(help="Attack template ID (e.g., GA-001)"),
+    attack_id: str = typer.Argument(help="Test ID (e.g., GA-001)"),
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
     adapter: str = typer.Option(
@@ -443,13 +443,13 @@ def attack(
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
-    """Run a single attack against a target."""
+    """Run a single security test against a target."""
     from keelson.core.engine import execute_attack
 
     templates = load_all_templates()
     template = next((t for t in templates if t.id == attack_id), None)
     if not template:
-        console.print(f"[red]Attack {attack_id} not found[/]")
+        console.print(f"[red]Test {attack_id} not found[/]")
         raise typer.Exit(1)
 
     target_adapter = make_adapter(
@@ -472,3 +472,19 @@ def attack(
         console.print(f"\n  Step {ev.step_index}:")
         console.print(f"  Prompt: {ev.prompt[:150]}...")
         console.print(f"  Response ({ev.response_time_ms}ms): {ev.response[:200]}...")
+
+
+@app.command(hidden=True, deprecated=True)
+def attack(
+    url: str = typer.Argument(help="Target endpoint URL"),
+    attack_id: str = typer.Argument(help="Test ID (e.g., GA-001)"),
+    api_key: str = typer.Option("", "--api-key", "-k"),
+    model: str = typer.Option("default", "--model", "-m"),
+    adapter: str = typer.Option(
+        "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
+    ),
+    assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
+    tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
+) -> None:
+    """Run a single security test (use 'test' instead)."""
+    test(url, attack_id, api_key, model, adapter, assistant_id, tool_name)

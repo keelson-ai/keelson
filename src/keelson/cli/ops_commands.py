@@ -23,9 +23,9 @@ from keelson.state.store import Store
 def list_attacks(
     category: str | None = typer.Option(None, "--category", "-c", help="Filter by category"),
 ) -> None:
-    """List all available attack templates."""
+    """List all available security tests."""
     templates = load_all_templates(category=category)
-    table = Table(title="Attack Templates")
+    table = Table(title="Security Tests")
     table.add_column("ID", style="bold")
     table.add_column("Name")
     table.add_column("Severity")

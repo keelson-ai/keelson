@@ -5,7 +5,9 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://img.shields.io/badge/tests-774%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Keelson ships 210 attack playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), 12 adaptive attack trees, 10 compound attack chains, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, iterative convergence scanning with cross-category feedback, runtime defense hooks, and compliance reporting for 6 frameworks. Attack strategies are informed by field-tested effectiveness data from real scans.
+**Autonomous security testing agent for AI systems.** Keelson ships 210 security test playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), 12 adaptive test trees, 10 compound test chains, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, iterative convergence scanning with cross-category feedback, runtime defense hooks, and compliance reporting for 6 frameworks. Test strategies are informed by field-tested effectiveness data from real scans.
+
+> **Authorized use only.** Keelson is designed for testing AI systems you own or have explicit written permission to test. Unauthorized use may violate applicable laws including the Computer Fraud and Abuse Act (CFAA). See [SECURITY.md](SECURITY.md) for details.
 
 ```
 pip install keelson-ai
@@ -26,13 +28,13 @@ keelson smart-scan https://api.example.com/v1/chat/completions --api-key $KEY
 # Convergence scan (iterative cross-category feedback loop)
 keelson convergence-scan https://api.example.com/v1/chat/completions --api-key $KEY
 
-# Single attack
-keelson attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
+# Run a single security test
+keelson test https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
 
-# List all 210 attacks
+# List all 210 security tests
 keelson list
 
-# Statistical campaign (10 trials per attack)
+# Statistical campaign (10 trials per test)
 keelson scan https://api.example.com/v1/chat/completions --tier deep --api-key $KEY
 
 # SARIF output for GitHub Code Scanning
@@ -85,7 +87,7 @@ Playbooks (.yaml)   Target Agent        Keelson Engine
 6. **Evaluate** each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
 7. **Report** findings with OWASP mapping, evidence, and remediation recommendations
 
-## Attack Categories
+## Test Categories
 
 | Category | Prefix | Count | OWASP | What It Tests |
 |----------|--------|-------|-------|---------------|
@@ -153,7 +155,7 @@ keelson scan https://widget.sitegpt.ai --adapter sitegpt --chatbot-id YOUR_CHATB
 | `keelson pipeline-scan <url>` | Parallel scan with checkpoint/resume and verification |
 | `keelson smart-scan <url>` | Adaptive scan: discover, classify, memo-guided sessions |
 | `keelson convergence-scan <url>` | Iterative scan with cross-category feedback and leakage harvesting |
-| `keelson attack <url> <id>` | Run a single attack |
+| `keelson test <url> <id>` | Run a single security test |
 | `keelson list` | List all available attacks |
 | `keelson campaign <config.toml>` | Statistical campaign (N trials per attack) |
 | `keelson discover <url>` | Fingerprint agent capabilities |
@@ -328,7 +330,7 @@ middleware = KeelsonDefendMiddleware(engine)
 # Wrap your agent's tool and model calls
 ```
 
-## Adding Custom Attacks
+## Adding Custom Tests
 
 Create a `.yaml` file in the appropriate `attacks/` subdirectory:
 
