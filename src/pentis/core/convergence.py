@@ -76,7 +76,7 @@ _INTERNAL_URL_PATTERNS = [
 
 _CONFIG_PATTERNS = [
     r"(\.env\b|config\.\w+|settings\.\w+|\.mcp\.json|\.claude/)",
-    r"(database[_\s]?url|redis[_\s]?url|connection[_\s]?string)\s*[:=]\s*\S+",
+    r"((?:database[_\s]?url|redis[_\s]?url|connection[_\s]?string)\s*[:=]\s*\S+)",
 ]
 
 _MODEL_NAME_PATTERNS = [
@@ -347,6 +347,20 @@ async def run_convergence_scan(
                 f"{len(next_templates)} attacks",
             )
 
+        # Build a set of crossfeed template IDs for accurate source attribution
+        crossfeed_ids = {t.id for t in crossfeed}
+
+        # Map each crossfeed template's category back to the vuln finding(s) that triggered it
+        crossfeed_sources: dict[str, list[str]] = {}
+        for t in crossfeed:
+            t_cat = t.category.value.lower().replace(" ", "-")
+            sources = []
+            for vf in vuln_findings:
+                vf_cat = vf.category.value.lower().replace(" ", "-")
+                if t_cat in CROSS_CATEGORY_MAP.get(vf_cat, []):
+                    sources.append(vf.template_id)
+            crossfeed_sources[t.id] = sources[:3]
+
         # Execute cross-feed attacks
         pass_findings: list[Finding] = []
         total_pass = len(next_templates)
@@ -359,10 +373,9 @@ async def run_convergence_scan(
                 max_response_tokens=max_response_tokens,
             )
             finding.discovery_pass = pass_num
-            # Tag with cross-feed source if this came from a cross-category selection
-            if vuln_findings:
-                sources = [f.template_id for f in vuln_findings[:3]]
-                finding.cross_feed_source = ", ".join(sources)
+            # Only tag findings that came from cross-category feed (not leakage-targeted)
+            if template.id in crossfeed_ids and crossfeed_sources.get(template.id):
+                finding.cross_feed_source = ", ".join(crossfeed_sources[template.id])
 
             pass_findings.append(finding)
             executed_ids.add(template.id)

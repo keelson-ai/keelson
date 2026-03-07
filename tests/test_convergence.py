@@ -152,6 +152,19 @@ class TestHarvestLeakedInfo:
         contents = [li.content for li in leaked]
         assert len(contents) == len(set(contents))
 
+    def test_detects_config_values_not_just_keys(self) -> None:
+        finding = _make_finding(
+            "EX-004",
+            Category.CONVERSATIONAL_EXFILTRATION,
+            Verdict.VULNERABLE,
+            "The database_url = postgres://admin:secret@db.internal:5432/prod",
+        )
+        leaked = harvest_leaked_info([finding])
+        config_leaks = [li for li in leaked if li.info_type == "config"]
+        assert len(config_leaks) >= 1
+        # The captured content should include the value, not just the key name
+        assert any("postgres" in li.content for li in config_leaks)
+
     def test_no_leakage_from_clean_response(self) -> None:
         finding = _make_finding(
             "GA-001",
