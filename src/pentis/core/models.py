@@ -157,6 +157,8 @@ class Finding:
     probe_source: str = ""  # template_id that triggered this probe (empty = original attack)
     confidence: float = 0.0  # 0.0-1.0 confidence in the verdict
     scoring_method: ScoringMethod = ScoringMethod.PATTERN
+    discovery_pass: int = 0  # Nemesis pass that discovered this (0 = non-nemesis, 1+ = pass N)
+    cross_feed_source: str = ""  # Finding(s) that triggered this cross-feed attack
 
 
 @dataclass
