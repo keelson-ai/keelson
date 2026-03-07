@@ -7,7 +7,14 @@ from typing import Any, cast
 
 import yaml
 
-from pentis.core.models import AttackStep, AttackTemplate, Category, EvalCriteria, Severity
+from pentis.core.models import (
+    AttackStep,
+    AttackTemplate,
+    Category,
+    Effectiveness,
+    EvalCriteria,
+    Severity,
+)
 
 
 def _build_category_map() -> dict[str, Category]:
@@ -77,6 +84,10 @@ def load_yaml_template(path: Path) -> AttackTemplate:
         inconclusive_if=list(ev.get("inconclusive_if", [])),
     )
 
+    effectiveness_map: dict[str, Effectiveness] = {e.value: e for e in Effectiveness}
+    raw_eff = str(data.get("effectiveness", "untested")).lower()
+    effectiveness = effectiveness_map.get(raw_eff, Effectiveness.UNTESTED)
+
     return AttackTemplate(
         id=str(data["id"]),
         name=str(data["name"]),
@@ -87,6 +98,7 @@ def load_yaml_template(path: Path) -> AttackTemplate:
         steps=steps,
         eval_criteria=eval_criteria,
         source_path=str(path),
+        effectiveness=effectiveness,
     )
 
 
