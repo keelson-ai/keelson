@@ -119,6 +119,8 @@ class AttackTemplate:
     steps: list[AttackStep]
     eval_criteria: EvalCriteria
     source_path: str = ""
+    success_rate: float = 0.0
+    times_tested: int = 0
 
 
 @dataclass

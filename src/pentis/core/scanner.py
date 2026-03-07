@@ -20,6 +20,7 @@ from pentis.core.models import (
     Verdict,
 )
 from pentis.core.templates import load_all_templates
+from pentis.core.yaml_templates import update_effectiveness_scores
 
 # Reorder remaining attacks every N findings
 _REORDER_INTERVAL = 10
@@ -170,4 +171,5 @@ async def run_scan(
             await asyncio.sleep(delay)
 
     result.finished_at = datetime.now(UTC)
+    update_effectiveness_scores(result.findings, templates)
     return result

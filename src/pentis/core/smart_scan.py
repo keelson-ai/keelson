@@ -29,6 +29,7 @@ from pentis.core.strategist import (
     select_attacks,
 )
 from pentis.core.templates import load_all_templates
+from pentis.core.yaml_templates import update_effectiveness_scores
 
 logger = logging.getLogger(__name__)
 
@@ -97,9 +98,11 @@ def _group_into_sessions(
 
     sessions: list[list[AttackTemplate]] = []
     for category, templates in by_category.items():
-        # Reorder by memo insights if available
         if memo and memo.entries:
             templates = _reorder_by_memo(templates, memo, category)
+        else:
+            # No memo yet — sort by success rate (higher = first)
+            templates = sorted(templates, key=_effectiveness_score, reverse=True)
 
         # Split into chunks of _SESSION_MAX_TURNS
         for i in range(0, len(templates), _SESSION_MAX_TURNS):
@@ -108,16 +111,37 @@ def _group_into_sessions(
     return sessions
 
 
+def _effectiveness_score(t: AttackTemplate) -> float:
+    """Score an attack by its field-tested success rate, weighted by confidence.
+
+    Untested attacks (times_tested=0) score 0.0 (neutral).
+    Tested attacks scale from -1.0 (proven failure) to +1.0 (always works):
+      - 0% rate after 10+ tests → -1.0 (strong deprioritization)
+      - 0% rate after 1 test → -0.1 (mild penalty, could still work)
+      - 50% rate after 10 tests → +0.5
+    """
+    if t.times_tested == 0:
+        return 0.0
+    confidence = min(t.times_tested / 10.0, 1.0)
+    if t.success_rate == 0.0:
+        return -1.0 * confidence
+    return t.success_rate * confidence
+
+
 def _reorder_by_memo(
     templates: list[AttackTemplate],
     memo: MemoTable,
     category: Category,
 ) -> list[AttackTemplate]:
-    """Reorder templates so effective techniques come first, dead ends last."""
+    """Reorder templates so effective techniques come first, dead ends last.
+
+    Combines field-tested success rates with memo-informed scoring.
+    """
 
     def _score(t: AttackTemplate) -> float:
         techniques = infer_techniques_from_template(t)
-        return score_attack_by_memo(techniques, memo, category)
+        memo_score = score_attack_by_memo(techniques, memo, category)
+        return memo_score + _effectiveness_score(t)
 
     return sorted(templates, key=_score, reverse=True)
 
@@ -339,4 +363,5 @@ async def run_smart_scan(
 
     result.findings = all_findings
     result.finished_at = datetime.now(UTC)
+    update_effectiveness_scores(all_findings, all_templates)
     return result
