@@ -25,6 +25,7 @@ venv/
 # Keelson state
 ~/.keelson/
 .worktrees/
+.claude/worktrees/
 
 # Build artifacts
 mdpdf.log
