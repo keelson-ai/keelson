@@ -17,6 +17,7 @@ from pentis.core.models import (
     AgentProfile,
     AttackTemplate,
     Category,
+    Effectiveness,
     Finding,
     ScanResult,
     Target,
@@ -97,9 +98,16 @@ def _group_into_sessions(
 
     sessions: list[list[AttackTemplate]] = []
     for category, templates in by_category.items():
-        # Reorder by memo insights if available
         if memo and memo.entries:
+            # Reorder by memo insights + effectiveness
             templates = _reorder_by_memo(templates, memo, category)
+        else:
+            # No memo yet — sort by effectiveness alone (proven first)
+            templates = sorted(
+                templates,
+                key=lambda t: _EFFECTIVENESS_WEIGHT.get(t.effectiveness, 0.0),
+                reverse=True,
+            )
 
         # Split into chunks of _SESSION_MAX_TURNS
         for i in range(0, len(templates), _SESSION_MAX_TURNS):
@@ -108,16 +116,31 @@ def _group_into_sessions(
     return sessions
 
 
+# Effectiveness weight bonus applied before memo scoring
+_EFFECTIVENESS_WEIGHT: dict[Effectiveness, float] = {
+    Effectiveness.PROVEN: 2.0,
+    Effectiveness.PROMISING: 1.0,
+    Effectiveness.UNTESTED: 0.0,
+    Effectiveness.BASELINE: -0.5,
+}
+
+
 def _reorder_by_memo(
     templates: list[AttackTemplate],
     memo: MemoTable,
     category: Category,
 ) -> list[AttackTemplate]:
-    """Reorder templates so effective techniques come first, dead ends last."""
+    """Reorder templates so effective techniques come first, dead ends last.
+
+    Combines field-tested effectiveness ratings with memo-informed scoring.
+    Proven attacks get a +2.0 bonus, baseline attacks get a -0.5 penalty.
+    """
 
     def _score(t: AttackTemplate) -> float:
         techniques = infer_techniques_from_template(t)
-        return score_attack_by_memo(techniques, memo, category)
+        memo_score = score_attack_by_memo(techniques, memo, category)
+        eff_bonus = _EFFECTIVENESS_WEIGHT.get(t.effectiveness, 0.0)
+        return memo_score + eff_bonus
 
     return sorted(templates, key=_score, reverse=True)
 
