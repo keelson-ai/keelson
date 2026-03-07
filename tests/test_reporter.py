@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pentis.core.models import (
+from keelson.core.models import (
     Category,
     EvidenceItem,
     Finding,
@@ -12,7 +12,7 @@ from pentis.core.models import (
     Target,
     Verdict,
 )
-from pentis.core.reporter import generate_report, save_report
+from keelson.core.reporter import generate_report, save_report
 
 
 def _make_scan() -> ScanResult:
@@ -80,7 +80,7 @@ def _make_scan() -> ScanResult:
 class TestReporter:
     def test_report_contains_header(self):
         report = generate_report(_make_scan())
-        assert "# Pentis Security Scan Report" in report
+        assert "# Keelson Security Scan Report" in report
         assert "https://example.com/v1/chat/completions" in report
         assert "gpt-4" in report
 
@@ -121,7 +121,7 @@ class TestReporter:
         assert path.exists()
         assert path.suffix == ".md"
         content = path.read_text()
-        assert "Pentis Security Scan Report" in content
+        assert "Keelson Security Scan Report" in content
 
     def test_report_no_vulns(self):
         scan = ScanResult(

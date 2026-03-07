@@ -6,10 +6,17 @@ import httpx
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
-from pentis.core.engine import execute_attack
-from pentis.core.models import AttackStep, AttackTemplate, Category, EvalCriteria, Severity, Verdict
-from pentis.core.observer import StreamingObserver
+from keelson.adapters.openai import OpenAIAdapter
+from keelson.core.engine import execute_attack
+from keelson.core.models import (
+    AttackStep,
+    AttackTemplate,
+    Category,
+    EvalCriteria,
+    Severity,
+    Verdict,
+)
+from keelson.core.observer import StreamingObserver
 
 
 def _make_template(steps: list[AttackStep] | None = None) -> AttackTemplate:

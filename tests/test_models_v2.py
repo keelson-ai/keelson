@@ -1,6 +1,6 @@
 """Tests for Phase 2 data models."""
 
-from pentis.core.models import (
+from keelson.core.models import (
     AgentCapability,
     AgentProfile,
     CampaignConfig,

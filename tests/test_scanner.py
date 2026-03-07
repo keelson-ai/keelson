@@ -8,8 +8,8 @@ import httpx
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
-from pentis.core.models import (
+from keelson.adapters.openai import OpenAIAdapter
+from keelson.core.models import (
     AttackStep,
     AttackTemplate,
     Category,
@@ -19,7 +19,7 @@ from pentis.core.models import (
     Target,
     Verdict,
 )
-from pentis.core.scanner import (
+from keelson.core.scanner import (
     _deep_probe,  # pyright: ignore[reportPrivateUsage]  # testing private helper
     _prioritize_templates,  # pyright: ignore[reportPrivateUsage]  # testing private helper
     run_scan,

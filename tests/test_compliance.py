@@ -1,13 +1,13 @@
 """Tests for compliance report generation."""
 
-from pentis.core.compliance import (
+from keelson.core.compliance import (
     PCI_DSS_V4_CONTROLS,
     ComplianceFramework,
     _control_status,  # type: ignore[reportPrivateUsage]
     _map_findings_to_owasp,  # type: ignore[reportPrivateUsage]
     generate_compliance_report,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     Category,
     Finding,
     ScanResult,

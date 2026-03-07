@@ -1,6 +1,6 @@
 """Tests for Phase 3 model additions."""
 
-from pentis.core.models import (
+from keelson.core.models import (
     AttackChain,
     AttackStep,
     CampaignConfig,

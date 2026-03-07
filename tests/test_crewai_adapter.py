@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pentis.adapters.crewai import CrewAIAdapter
+from keelson.adapters.crewai import CrewAIAdapter
 
 
 class TestCrewAIAdapter:
@@ -60,7 +60,7 @@ class TestCrewAIAdapter:
         mock_agent = MagicMock()
 
         # We need to mock the CrewAI Task and Crew classes
-        with patch("pentis.adapters.crewai.CrewAIAdapter._run_agent") as mock_run:
+        with patch("keelson.adapters.crewai.CrewAIAdapter._run_agent") as mock_run:
             mock_run.return_value = "Agent response"
             adapter = CrewAIAdapter(agent=mock_agent)
             response, _ms = await adapter.send_messages(

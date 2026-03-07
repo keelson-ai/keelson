@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pentis.adapters.base import BaseAdapter
-from pentis.attacker.generator import (
+from keelson.adapters.base import BaseAdapter
+from keelson.attacker.generator import (
     CAPABILITY_CATEGORY_MAP,
     OWASP_MAP,
     generate_attack_template,
@@ -11,7 +11,7 @@ from pentis.attacker.generator import (
     generate_capability_informed_attacks,
     generate_multistep_attack,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     AgentCapability,
     AgentProfile,
     Category,

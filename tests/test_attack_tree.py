@@ -8,8 +8,8 @@ import httpx
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
-from pentis.adaptive.attack_tree import (
+from keelson.adapters.openai import OpenAIAdapter
+from keelson.adaptive.attack_tree import (
     BUILTIN_TREES,
     AttackTree,
     TreeBranch,
@@ -18,8 +18,8 @@ from pentis.adaptive.attack_tree import (
     _tree_to_template,  # pyright: ignore[reportPrivateUsage]
     execute_attack_tree,
 )
-from pentis.core.memo import MemoTable, Technique
-from pentis.core.models import (
+from keelson.core.memo import MemoTable, Technique
+from keelson.core.models import (
     Category,
     EvalCriteria,
     EvidenceItem,

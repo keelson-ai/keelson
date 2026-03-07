@@ -21,12 +21,12 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Create non-root user
-RUN useradd -m -u 1000 pentis && \
-    chown -R pentis:pentis /app
+RUN useradd -m -u 1000 keelson && \
+    chown -R keelson:keelson /app
 
 # Copy the populated venv from builder
-COPY --from=builder --chown=pentis:pentis /app/.venv /app/.venv
-COPY --from=builder --chown=pentis:pentis /app/src /app/src
+COPY --from=builder --chown=keelson:keelson /app/.venv /app/.venv
+COPY --from=builder --chown=keelson:keelson /app/src /app/src
 
 # Make venv binaries available on PATH
 ENV PATH="/app/.venv/bin:$PATH"
@@ -35,8 +35,8 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Drop to non-root
-USER pentis
+USER keelson
 
 EXPOSE 8000
 
-ENTRYPOINT ["uvicorn", "pentis_service.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["uvicorn", "keelson_service.main:app", "--host", "0.0.0.0", "--port", "8000"]

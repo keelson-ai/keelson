@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 import respx
 
-from pentis.adapters.langgraph import LangGraphAdapter
+from keelson.adapters.langgraph import LangGraphAdapter
 
 BASE_URL = "https://example.langgraph.app"
 THREADS_URL = f"{BASE_URL}/threads"

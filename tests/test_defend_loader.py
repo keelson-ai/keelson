@@ -1,12 +1,12 @@
-"""Tests for Pentis Defend YAML policy loader."""
+"""Tests for Keelson Defend YAML policy loader."""
 
 from __future__ import annotations
 
 import tempfile
 from pathlib import Path
 
-from pentis.defend.loader import default_policy, load_policy
-from pentis.defend.models import PolicyAction
+from keelson.defend.loader import default_policy, load_policy
+from keelson.defend.models import PolicyAction
 
 
 class TestLoadPolicy:

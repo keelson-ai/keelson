@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
-from pentis.core.convergence import (
+from keelson.adapters.openai import OpenAIAdapter
+from keelson.core.convergence import (
     CROSS_CATEGORY_MAP,
     LeakedInfo,
     harvest_leaked_info,
@@ -16,7 +16,7 @@ from pentis.core.convergence import (
     select_crossfeed_attacks,
     select_leakage_targeted_attacks,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     AttackStep,
     AttackTemplate,
     Category,

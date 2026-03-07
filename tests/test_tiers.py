@@ -1,7 +1,7 @@
 """Tests for scan tier presets."""
 
-from pentis.campaign.tiers import TIER_PRESETS, get_tier_config
-from pentis.core.models import ScanTier
+from keelson.campaign.tiers import TIER_PRESETS, get_tier_config
+from keelson.core.models import ScanTier
 
 
 class TestTierPresets:

@@ -8,13 +8,13 @@ import httpx
 import pytest
 import respx
 
-from pentis.adapters.openai import OpenAIAdapter
-from pentis.adaptive.attack_tree import (
+from keelson.adapters.openai import OpenAIAdapter
+from keelson.adaptive.attack_tree import (
     AttackTree,
     TreeBranch,
     execute_attack_tree,
 )
-from pentis.core.memo import (
+from keelson.core.memo import (
     MemoTable,
     Technique,
     _extract_leaked_info,  # pyright: ignore[reportPrivateUsage]
@@ -22,7 +22,7 @@ from pentis.core.memo import (
     infer_techniques,
     score_attack_by_memo,
 )
-from pentis.core.models import (
+from keelson.core.models import (
     AttackStep,
     AttackTemplate,
     Category,
@@ -520,7 +520,7 @@ class TestAttackTreeConversation:
 class TestMemoReorder:
     def test_reorder_puts_effective_first(self) -> None:
         """Templates using effective techniques should sort to front."""
-        from pentis.core.smart_scan import _reorder_by_memo  # pyright: ignore[reportPrivateUsage]
+        from keelson.core.smart_scan import _reorder_by_memo  # pyright: ignore[reportPrivateUsage]
 
         memo = MemoTable()
         # Roleplay works
@@ -570,7 +570,7 @@ class TestMemoReorder:
 
     def test_reorder_stable_when_no_signal(self) -> None:
         """With no relevant memo entries, order should be stable."""
-        from pentis.core.smart_scan import _reorder_by_memo  # pyright: ignore[reportPrivateUsage]
+        from keelson.core.smart_scan import _reorder_by_memo  # pyright: ignore[reportPrivateUsage]
 
         memo = MemoTable()
         # Record something in a DIFFERENT category
