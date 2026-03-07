@@ -30,6 +30,7 @@ def _make_profile(capabilities: list[str]) -> AgentProfile:
         "tool_usage",
         "memory_persistence",
         "system_access",
+        "search",
     ]:
         caps.append(
             AgentCapability(
@@ -69,6 +70,7 @@ class TestSynthesizeChains:
                 "tool_usage",
                 "memory_persistence",
                 "system_access",
+                "search",
             ]
         )
         chains = synthesize_chains(profile)

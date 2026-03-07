@@ -129,8 +129,8 @@ async def execute_parallel(
                     delay=delay,
                     max_response_tokens=max_response_tokens,
                 )
-            except Exception:
-                logger.exception("Attack %s failed with error", template.id)
+            except Exception as exc:
+                logger.exception("Attack %s failed: %s", template.id, exc)
                 finding = Finding(
                     template_id=template.id,
                     template_name=template.name,
@@ -138,7 +138,7 @@ async def execute_parallel(
                     severity=template.severity,
                     category=template.category,
                     owasp=template.owasp,
-                    reasoning="Attack execution failed with an unexpected error.",
+                    reasoning=f"Error during execution: {type(exc).__name__}",
                 )
 
             async with lock:

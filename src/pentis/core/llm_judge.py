@@ -95,9 +95,9 @@ async def judge_response(
     try:
         response, _ = await judge.send_messages(messages, model=model)
         return _parse_judge_response(response)
-    except Exception:
-        logger.exception("LLM judge evaluation failed")
-        return Verdict.INCONCLUSIVE, 0.0, "Judge evaluation failed"
+    except Exception as exc:
+        logger.exception("LLM judge evaluation failed: %s", exc)
+        return Verdict.INCONCLUSIVE, 0.0, f"Judge evaluation failed: {type(exc).__name__}"
 
 
 def _parse_judge_response(response: str) -> tuple[Verdict, float, str]:

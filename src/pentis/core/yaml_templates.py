@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -42,11 +42,22 @@ def validate_yaml_template(data: dict[str, Any]) -> None:
 def load_yaml_template(path: Path) -> AttackTemplate:
     """Parse a YAML attack template file into an AttackTemplate."""
     text = path.read_text(encoding="utf-8")
-    data: dict[str, Any] = yaml.safe_load(text)
-    validate_yaml_template(data)
+    raw: object = yaml.safe_load(text)
+    if not isinstance(raw, dict):
+        raise ValueError(f"YAML template must be a mapping, got {type(raw).__name__} in {path}")
+    data: dict[str, Any] = cast(dict[str, Any], raw)
+    try:
+        validate_yaml_template(data)
+    except ValueError as exc:
+        raise ValueError(f"Invalid template {path}: {exc}") from exc
+
+    turns_raw: object = data["turns"]
+    if not isinstance(turns_raw, list):
+        raise ValueError(f"'turns' must be a list in {path}, got {type(turns_raw).__name__}")
+    turns = cast(list[dict[str, Any]], turns_raw)
 
     steps: list[AttackStep] = []
-    for i, turn in enumerate(data["turns"]):
+    for i, turn in enumerate(turns):
         new_session = bool(turn.get("new_session", False))
         role = str(turn.get("role", "user"))
         steps.append(
