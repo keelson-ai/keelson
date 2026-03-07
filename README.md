@@ -53,6 +53,29 @@ keelson test-crew my_crew.py
 keelson test-chain my_agent.py
 ```
 
+## CI/CD Integration
+
+Add AI security testing to your GitHub Actions pipeline:
+
+```yaml
+# .github/workflows/ai-security.yml
+name: AI Agent Security
+on: [push, pull_request]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: keelson-ai/keelson-action@v1
+        with:
+          target-url: ${{ vars.AGENT_ENDPOINT }}
+          api-key: ${{ secrets.AGENT_API_KEY }}
+```
+
+Results appear in the **Security** tab under Code Scanning. See [keelson-action](https://github.com/keelson-ai/keelson-action) for full options.
+
 ## How It Works
 
 ```
