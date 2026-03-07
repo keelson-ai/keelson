@@ -114,15 +114,17 @@ def _group_into_sessions(
 def _effectiveness_score(t: AttackTemplate) -> float:
     """Score an attack by its field-tested success rate, weighted by confidence.
 
-    Attacks with more tests get a stronger signal. Untested attacks (times_tested=0)
-    score 0.0 (neutral). Tested attacks with 0% rate get a small penalty (-0.1)
-    so proven attacks always sort above them.
+    Untested attacks (times_tested=0) score 0.0 (neutral).
+    Tested attacks scale from -1.0 (proven failure) to +1.0 (always works):
+      - 0% rate after 10+ tests → -1.0 (strong deprioritization)
+      - 0% rate after 1 test → -0.1 (mild penalty, could still work)
+      - 50% rate after 10 tests → +0.5
     """
     if t.times_tested == 0:
         return 0.0
     confidence = min(t.times_tested / 10.0, 1.0)
     if t.success_rate == 0.0:
-        return -0.1 * confidence
+        return -1.0 * confidence
     return t.success_rate * confidence
 
 
