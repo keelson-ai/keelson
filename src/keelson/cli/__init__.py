@@ -21,7 +21,7 @@ from keelson.core.models import (
 
 _T = TypeVar("_T")
 
-app = typer.Typer(name="keelson", help="AI agent security testing tool")
+app = typer.Typer(name="keelson", help="AI agent security scanner — Living Red Team")
 console = Console()
 
 # --- Shared constants ---
