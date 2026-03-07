@@ -3,9 +3,9 @@
 [![PyPI version](https://img.shields.io/pypi/v/pentis)](https://pypi.org/project/pentis/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-748%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-774%20passing-brightgreen)]()
 
-**Autonomous red team agent for AI systems.** Pentis ships 210 attack playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), 12 adaptive attack trees, 10 compound attack chains, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, runtime defense hooks, and compliance reporting for 6 frameworks. Attack strategies are informed by field-tested effectiveness data from real scans.
+**Autonomous red team agent for AI systems.** Pentis ships 210 attack playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), 12 adaptive attack trees, 10 compound attack chains, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, iterative convergence scanning with cross-category feedback, runtime defense hooks, and compliance reporting for 6 frameworks. Attack strategies are informed by field-tested effectiveness data from real scans.
 
 ```
 pip install pentis
@@ -22,6 +22,9 @@ pentis pipeline-scan https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Adaptive smart scan (discover → classify → execute with memo feedback)
 pentis smart-scan https://api.example.com/v1/chat/completions --api-key $KEY
+
+# Convergence scan (iterative cross-category feedback loop)
+pentis convergence-scan https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Single attack
 pentis attack https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
@@ -57,8 +60,9 @@ Playbooks (.yaml)   Target Agent        Pentis Engine
 │ 13 categories│    │ OpenAI /     │    │  scan (sequential)   │
 │ OWASP mapped │    │ Anthropic /  │    │  pipeline (parallel) │
 └──────────────┘    │ MCP / A2A /  │    │  smart (adaptive)    │
-                    │ SiteGPT /... │    └──────────┬───────────┘
-  Orchestrators     └──────────────┘               │
+                    │ SiteGPT /... │    │  convergence (iter.) │
+                    └──────────────┘    └──────────┬───────────┘
+  Orchestrators                                    │
 ┌──────────────┐                        ┌──────────┴──────────┐
 │ PAIR         │───────────────────────>│  Detection pipeline  │
 │ Crescendo    │                        │  Pattern + LLM Judge │
@@ -77,8 +81,9 @@ Playbooks (.yaml)   Target Agent        Pentis Engine
 2. **Send** prompts to the target via any supported adapter
 3. **Detect** vulnerabilities using pattern detection, LLM-as-judge scoring, or combined mode
 4. **Orchestrate** advanced strategies: PAIR iterative refinement, Crescendo gradual escalation, 13 mutation types
-5. **Evaluate** each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
-6. **Report** findings with OWASP mapping, evidence, and remediation recommendations
+5. **Converge** iteratively: harvest leaked info from responses, feed cross-category intelligence into subsequent passes
+6. **Evaluate** each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
+7. **Report** findings with OWASP mapping, evidence, and remediation recommendations
 
 ## Attack Categories
 
@@ -147,6 +152,7 @@ pentis scan https://widget.sitegpt.ai --adapter sitegpt --chatbot-id YOUR_CHATBO
 | `pentis scan <url>` | Full security scan (sequential, with dynamic reorder) |
 | `pentis pipeline-scan <url>` | Parallel scan with checkpoint/resume and verification |
 | `pentis smart-scan <url>` | Adaptive scan: discover, classify, memo-guided sessions |
+| `pentis convergence-scan <url>` | Iterative scan with cross-category feedback and leakage harvesting |
 | `pentis attack <url> <id>` | Run a single attack |
 | `pentis list` | List all available attacks |
 | `pentis campaign <config.toml>` | Statistical campaign (N trials per attack) |
@@ -377,7 +383,7 @@ pentis/
 │   ├── output-weaponization/       # OW (7 attacks)
 │   └── temporal-persistence/       # TP (7 attacks)
 ├── src/pentis/                     # Python engine
-│   ├── cli/                        # Typer CLI (17 commands)
+│   ├── cli/                        # Typer CLI (18 commands)
 │   │   ├── __init__.py             # App setup, shared helpers
 │   │   ├── commands.py             # Command module registration
 │   │   ├── scan_commands.py        # scan, pipeline-scan, smart-scan, attack
@@ -402,6 +408,7 @@ pentis/
 │   │   ├── scanner.py              # Sequential scan with dynamic reorder
 │   │   ├── pipeline.py             # Parallel scan with checkpoint/resume
 │   │   ├── smart_scan.py           # Adaptive scan with memo feedback
+│   │   ├── convergence.py          # Iterative convergence with cross-feed
 │   │   ├── memo.py                 # Memo table for technique tracking
 │   │   ├── strategist.py           # LLM-based target classification
 │   │   ├── detection.py            # Pattern-based verdict detection
@@ -443,7 +450,7 @@ pentis/
 │   └── state/                      # Persistence
 │       ├── base.py                 # Storage base interface
 │       └── store.py                # SQLite storage
-├── tests/                          # 748 tests
+├── tests/                          # 774 tests
 ├── docs/                           # Documentation
 │   ├── adr/                        # Architecture Decision Records
 │   │   ├── ADR-001-framework.md    # FastAPI selection
@@ -614,6 +621,46 @@ flowchart TD
     style Phase2 fill:#fde8e8,stroke:#333
     style Phase3 fill:#e8fde8,stroke:#333
     style Phase4 fill:#fdf8e8,stroke:#333
+```
+
+#### Convergence Scan (Iterative Cross-Category Feedback)
+
+```mermaid
+flowchart TD
+    subgraph Pass1[Pass 1: Initial Scan]
+        LOAD[Load Playbooks<br/>category filter optional] --> EXEC1[Execute All Attacks]
+        EXEC1 --> F1[Findings]
+    end
+
+    subgraph Harvest[Structural Analysis]
+        F1 --> HL[Harvest Leaked Info<br/>from ALL responses]
+        HL --> TYPES[System prompts / Tool names<br/>Credentials / Internal URLs<br/>Config values / Model names]
+    end
+
+    subgraph CrossFeed[Cross-Category Feed]
+        F1 --> VULN{Vulnerabilities<br/>found?}
+        VULN -->|Yes| XMAP[Cross-Category Map<br/>13 category relationships]
+        XMAP --> SELECT[Select attacks from<br/>related categories]
+        TYPES --> LTARGET[Leakage-Targeted Attacks<br/>Tool leak → Tool Safety<br/>Cred leak → Exfiltration<br/>Prompt leak → Goal Adherence]
+    end
+
+    subgraph PassN[Pass 2+: Iterative]
+        SELECT --> MERGE[Merge & Deduplicate]
+        LTARGET --> MERGE
+        MERGE --> EXECN[Execute Cross-Feed Attacks]
+        EXECN --> FN[New Findings]
+        FN --> CONV{New vulns or<br/>new leakage?}
+        CONV -->|Yes| Harvest
+        CONV -->|No| DONE[Converged — Stop]
+    end
+
+    VULN -->|No leakage either| DONE
+
+    style Pass1 fill:#e8f4fd,stroke:#333
+    style Harvest fill:#fde8e8,stroke:#333
+    style CrossFeed fill:#fdf8e8,stroke:#333
+    style PassN fill:#e8fde8,stroke:#333
+    style DONE fill:#9f9,stroke:#333
 ```
 
 #### Memo Feedback Loop
