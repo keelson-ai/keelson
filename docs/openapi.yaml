@@ -9,7 +9,7 @@ info:
     LLM security assessments.
   contact:
     name: Keelson
-    url: https://github.com/Othentic-Labs/Keelson
+    url: https://github.com/keelson-ai/keelson
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
