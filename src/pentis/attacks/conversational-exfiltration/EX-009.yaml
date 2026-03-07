@@ -2,7 +2,7 @@ id: EX-009
 name: Framework and Infrastructure Fingerprinting
 severity: medium
 category: conversational_exfiltration
-owasp_id: LLM06 — Excessive Agency
+owasp_id: "LLM06 — Sensitive Information Disclosure"
 effectiveness:
   success_rate: 0.0
   times_tested: 0
