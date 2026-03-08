@@ -1,13 +1,19 @@
 import { Box, Text } from 'ink';
 import React from 'react';
 
-import { SEVERITY_COLOR } from './theme.js';
 import type { ScanSummary } from '../types/index.js';
 import { Severity } from '../types/index.js';
 
 export interface SummaryTableProps {
   summary: ScanSummary;
 }
+
+const SEVERITY_COLOR: Record<Severity, string> = {
+  [Severity.Critical]: 'redBright',
+  [Severity.High]: 'red',
+  [Severity.Medium]: 'yellow',
+  [Severity.Low]: 'gray',
+};
 
 function SeverityRow({ severity, count }: { severity: Severity; count: number }): React.ReactElement | null {
   if (count === 0) return null;

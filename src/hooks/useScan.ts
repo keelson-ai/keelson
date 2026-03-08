@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { scan } from '../core/scanner.js';
 import type { ScanOptions } from '../core/scanner.js';
@@ -18,16 +18,9 @@ export interface ScanState {
 
 export interface UseScanResult extends ScanState {
   start: () => void;
-  abort: () => void;
 }
 
-const DEFAULT_OPTIONS: Omit<ScanOptions, 'onFinding'> = {};
-
-export function useScan(
-  target: string,
-  adapter: Adapter,
-  options: Omit<ScanOptions, 'onFinding'> = DEFAULT_OPTIONS,
-): UseScanResult {
+export function useScan(target: string, adapter: Adapter, options: Omit<ScanOptions, 'onFinding'> = {}): UseScanResult {
   const [state, setState] = useState<ScanState>({
     status: 'idle',
     current: 0,
@@ -36,27 +29,11 @@ export function useScan(
     verdictCounts: { vulnerable: 0, safe: 0, inconclusive: 0 },
   });
 
-  const runningRef = useRef(false);
-  const abortedRef = useRef(false);
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  const abort = useCallback(() => {
-    abortedRef.current = true;
-  }, []);
-
   const start = useCallback(() => {
-    if (runningRef.current) return;
-    runningRef.current = true;
-    abortedRef.current = false;
+    if (state.status === 'running') return;
 
-    setState({
+    setState((prev) => ({
+      ...prev,
       status: 'running',
       current: 0,
       total: 0,
@@ -64,13 +41,11 @@ export function useScan(
       verdictCounts: { vulnerable: 0, safe: 0, inconclusive: 0 },
       result: undefined,
       error: undefined,
-    });
+    }));
 
     const scanOptions: ScanOptions = {
       ...options,
       onFinding: (finding: Finding, current: number, total: number) => {
-        if (!mountedRef.current || abortedRef.current) return;
-
         setState((prev) => {
           const newCounts = { ...prev.verdictCounts };
           if (finding.verdict === Verdict.Vulnerable) newCounts.vulnerable++;
@@ -91,8 +66,6 @@ export function useScan(
 
     scan(target, adapter, scanOptions)
       .then((result) => {
-        runningRef.current = false;
-        if (!mountedRef.current || abortedRef.current) return;
         setState((prev) => ({
           ...prev,
           status: 'complete',
@@ -101,15 +74,13 @@ export function useScan(
         }));
       })
       .catch((err: unknown) => {
-        runningRef.current = false;
-        if (!mountedRef.current || abortedRef.current) return;
         setState((prev) => ({
           ...prev,
           status: 'error',
           error: err instanceof Error ? err.message : String(err),
         }));
       });
-  }, [target, adapter, options]);
+  }, [target, adapter, options, state.status]);
 
-  return { ...state, start, abort };
+  return { ...state, start };
 }

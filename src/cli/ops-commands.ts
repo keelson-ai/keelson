@@ -3,28 +3,25 @@ import { readFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 
-import { SEVERITY_COLORS, countBy, printScanSummary, writeReport } from './utils.js';
+import { colorSeverity, printScanSummary, writeReport } from './utils.js';
 import { loadProbes } from '../core/templates.js';
-import { scanResultSchema } from '../schemas/scan-result.js';
 import type { ProbeTemplate, ScanResult } from '../types/index.js';
-import { SEVERITY_ORDER } from '../types/index.js';
+import { Severity } from '../types/index.js';
+
+const SEVERITY_ORDER: Record<Severity, number> = {
+  [Severity.Critical]: 0,
+  [Severity.High]: 1,
+  [Severity.Medium]: 2,
+  [Severity.Low]: 3,
+};
 
 function formatProbeRow(probe: ProbeTemplate): string {
   const id = chalk.bold(probe.id.padEnd(8));
   const name = probe.name.padEnd(40).slice(0, 40);
-  const colorFn = SEVERITY_COLORS[probe.severity];
-  const sev = colorFn(probe.severity.padEnd(20));
+  const sev = colorSeverity(probe.severity).padEnd(20);
   const cat = probe.category.padEnd(25).slice(0, 25);
   const steps = String(probe.turns.length).padStart(5);
   return `  ${id} ${name} ${sev} ${cat} ${steps}`;
-}
-
-function printCategorySummary(categories: Map<string, number>): void {
-  if (categories.size <= 1) return;
-  console.log(chalk.bold('\n  Categories:'));
-  for (const [cat, count] of [...categories.entries()].sort()) {
-    console.log(`    ${cat}: ${count}`);
-  }
 }
 
 export function registerOpsCommands(program: Command): void {
@@ -32,7 +29,7 @@ export function registerOpsCommands(program: Command): void {
     .command('list')
     .description('List all available probes')
     .option('--category <category>', 'Filter by category')
-    .action(async (opts: { category?: string }) => {
+    .action(async (opts) => {
       const probes = await loadProbes();
 
       let filtered = probes;
@@ -41,6 +38,7 @@ export function registerOpsCommands(program: Command): void {
         filtered = probes.filter((p) => p.category.toLowerCase() === cat);
       }
 
+      // Sort by severity (critical first) then by ID
       filtered.sort((a, b) => {
         const sevDiff = (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99);
         if (sevDiff !== 0) return sevDiff;
@@ -50,6 +48,7 @@ export function registerOpsCommands(program: Command): void {
       console.log(chalk.bold('\nAvailable Security Probes'));
       console.log(chalk.dim('─'.repeat(110)));
 
+      // Header
       const header =
         `  ${'ID'.padEnd(8)} ${'Name'.padEnd(40)} ` +
         `${'Severity'.padEnd(20)} ${'Category'.padEnd(25)} ${'Steps'.padStart(5)}`;
@@ -63,7 +62,17 @@ export function registerOpsCommands(program: Command): void {
       console.log(chalk.dim('─'.repeat(110)));
       console.log(`  Total: ${filtered.length} probes`);
 
-      printCategorySummary(countBy(filtered, (p) => p.category));
+      // Category summary
+      const categories = new Map<string, number>();
+      for (const p of filtered) {
+        categories.set(p.category, (categories.get(p.category) ?? 0) + 1);
+      }
+      if (categories.size > 1) {
+        console.log(chalk.bold('\n  Categories:'));
+        for (const [cat, count] of [...categories.entries()].sort()) {
+          console.log(`    ${cat}: ${count}`);
+        }
+      }
     });
 
   program
@@ -72,7 +81,7 @@ export function registerOpsCommands(program: Command): void {
     .requiredOption('--input <path>', 'Path to scan result JSON file')
     .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
     .option('--output <path>', 'Output file path')
-    .action(async (opts: { input: string; format: string; output?: string }) => {
+    .action(async (opts) => {
       let resultData: string;
       try {
         resultData = await readFile(opts.input, 'utf-8');
@@ -81,30 +90,20 @@ export function registerOpsCommands(program: Command): void {
         process.exit(1);
       }
 
-      let parsed: unknown;
+      let result: ScanResult;
       try {
-        parsed = JSON.parse(resultData);
+        result = JSON.parse(resultData) as ScanResult;
       } catch {
         console.error(chalk.red('Error: invalid JSON in input file'));
         process.exit(1);
       }
-
-      const validation = scanResultSchema.safeParse(parsed);
-      if (!validation.success) {
-        console.error(chalk.red('Error: invalid scan result structure'));
-        for (const issue of validation.error.issues) {
-          console.error(chalk.dim(`  ${issue.path.join('.')}: ${issue.message}`));
-        }
-        process.exit(1);
-      }
-
-      const result = validation.data as ScanResult;
 
       printScanSummary(result);
 
       if (opts.output) {
         await writeReport(result, opts.format, opts.output);
       } else {
+        // Write to stdout as JSON if no output specified
         console.log(JSON.stringify(result, null, 2));
       }
     });
@@ -113,7 +112,7 @@ export function registerOpsCommands(program: Command): void {
     .command('validate')
     .description('Validate probe YAML files')
     .option('--dir <directory>', 'Probes directory to validate')
-    .action(async (opts: { dir?: string }) => {
+    .action(async (opts) => {
       console.log(chalk.bold('\nValidating probe playbooks...'));
       console.log();
 
@@ -125,11 +124,13 @@ export function registerOpsCommands(program: Command): void {
       } catch (err) {
         console.error(chalk.red(`Error loading probes: ${err instanceof Error ? err.message : String(err)}`));
         process.exit(1);
-        return;
+        return; // unreachable but satisfies TS
       }
 
+      // Additional validation checks
       const ids = new Set<string>();
       for (const probe of probes) {
+        // Check for duplicate IDs
         if (ids.has(probe.id)) {
           errors.push({
             file: probe.sourcePath ?? probe.id,
@@ -138,6 +139,7 @@ export function registerOpsCommands(program: Command): void {
         }
         ids.add(probe.id);
 
+        // Check evaluation criteria completeness
         if (probe.evaluation.vulnerableIf.length === 0 || probe.evaluation.safeIf.length === 0) {
           errors.push({
             file: probe.sourcePath ?? probe.id,
@@ -145,6 +147,7 @@ export function registerOpsCommands(program: Command): void {
           });
         }
 
+        // Check for empty turns
         const emptyTurns = probe.turns.filter((t) => t.content.trim().length === 0);
         if (emptyTurns.length > 0) {
           errors.push({
@@ -165,7 +168,11 @@ export function registerOpsCommands(program: Command): void {
 
       console.log(chalk.green(`\u2713 All ${probes.length} probes are valid`));
 
-      const categories = countBy(probes, (p) => p.category);
+      // Show summary by category
+      const categories = new Map<string, number>();
+      for (const p of probes) {
+        categories.set(p.category, (categories.get(p.category) ?? 0) + 1);
+      }
       console.log();
       for (const [cat, count] of [...categories.entries()].sort()) {
         console.log(`  ${cat}: ${count} probes`);
