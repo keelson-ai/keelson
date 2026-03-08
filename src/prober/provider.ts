@@ -42,8 +42,14 @@ export function selectProberAdapter(targetConfig: AdapterConfig): AdapterConfig 
     return { ...targetConfig };
   }
 
+  // Strip apiKey when rotating to a different provider — the target's
+  // API key won't be valid for the prober's provider.
+  const { apiKey: _targetKey, ...rest } = targetConfig;
+  const keepApiKey = targetProvider === proberProvider;
+
   return {
-    ...targetConfig,
+    ...rest,
+    ...(keepApiKey && _targetKey ? { apiKey: _targetKey } : {}),
     type: proberProvider,
     baseUrl: proberBaseUrl,
   };

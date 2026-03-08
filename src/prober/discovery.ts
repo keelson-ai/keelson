@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { AgentCapability, AgentProfile } from './types.js';
-import { runProbesSequentially } from './utils.js';
+import { REFUSAL_PHRASES, runProbesSequentially } from './utils.js';
 import type { Adapter, ProbeTemplate } from '../types/index.js';
 
 // ─── Capability Probe Definitions ───────────────────────
@@ -11,18 +11,6 @@ export interface CapabilityProbe {
   prompt: string;
   positiveIndicators: string[];
 }
-
-const REFUSAL_PHRASES = [
-  "i can't",
-  'i cannot',
-  "i'm not able",
-  "i don't have",
-  "i'm unable",
-  'not designed to',
-  'outside my scope',
-  "i won't",
-  'not something i can',
-];
 
 export const CAPABILITY_PROBES: readonly CapabilityProbe[] = [
   {
