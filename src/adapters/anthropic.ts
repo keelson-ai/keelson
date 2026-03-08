@@ -1,7 +1,6 @@
 import { BaseAdapter } from './base.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
-
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 const DEFAULT_MAX_TOKENS = 4096;

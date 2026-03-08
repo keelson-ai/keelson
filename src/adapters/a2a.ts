@@ -3,7 +3,6 @@ import crypto from 'node:crypto';
 import { BaseAdapter } from './base.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
-
 /**
  * Google Agent-to-Agent (A2A) protocol adapter.
  * Uses JSON-RPC 2.0 tasks/send to communicate with A2A-compatible agents.

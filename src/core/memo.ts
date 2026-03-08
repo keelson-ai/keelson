@@ -1,24 +1,7 @@
 import type { Finding } from '../types/index.js';
-import { Verdict } from '../types/index.js';
+import { ResponseClass, Technique, Verdict } from '../types/index.js';
 
-export enum Technique {
-  Authority = 'authority',
-  Roleplay = 'roleplay',
-  TechnicalJargon = 'technical_jargon',
-  SocialEngineering = 'social_engineering',
-  MultiTurnEscalation = 'multi_turn_escalation',
-  EncodingObfuscation = 'encoding_obfuscation',
-  ContextOverflow = 'context_overflow',
-  InstructionInjection = 'instruction_injection',
-  DataExtraction = 'data_extraction',
-  ToolInvocation = 'tool_invocation',
-}
-
-export enum ResponseOutcome {
-  Complied = 'complied',
-  Partial = 'partial',
-  Refused = 'refused',
-}
+export { ResponseClass, Technique };
 
 const TECHNIQUE_PATTERNS: ReadonlyMap<Technique, RegExp> = new Map([
   [Technique.Authority, /\b(admin|supervisor|manager|system|authorized|override|elevated|root|maintenance)\b/i],
@@ -69,7 +52,7 @@ export interface ConversationMemo {
   probeId: string;
   category: string;
   techniques: Technique[];
-  outcome: ResponseOutcome;
+  outcome: ResponseClass;
   verdict: Verdict;
   leakedInfo: string[];
 }
@@ -90,7 +73,6 @@ export function inferTechniques(finding: Finding): Technique[] {
   const allPrompts = finding.evidence.map((e) => e.prompt).join(' ');
   const techniques = matchTechniques(allPrompts);
 
-  // Detect context overflow via prompt length + overflow indicators, not regex on long strings
   if (!techniques.includes(Technique.ContextOverflow) && allPrompts.length >= 500) {
     const hasOverflowSignals = CONTEXT_OVERFLOW_INDICATORS.some((pattern) => pattern.test(allPrompts));
     if (hasOverflowSignals) {
@@ -115,10 +97,10 @@ function matchTechniques(text: string): Technique[] {
   return result;
 }
 
-function classifyOutcome(finding: Finding): ResponseOutcome {
-  if (finding.verdict === Verdict.Vulnerable) return ResponseOutcome.Complied;
-  if (finding.verdict === Verdict.Inconclusive) return ResponseOutcome.Partial;
-  return ResponseOutcome.Refused;
+function classifyOutcome(finding: Finding): ResponseClass {
+  if (finding.verdict === Verdict.Vulnerable) return ResponseClass.Compliance;
+  if (finding.verdict === Verdict.Inconclusive) return ResponseClass.Partial;
+  return ResponseClass.Refusal;
 }
 
 function extractLeakedInfo(finding: Finding): string[] {
@@ -131,7 +113,6 @@ function extractLeakedInfo(finding: Finding): string[] {
     if (toolNames) {
       for (const name of toolNames.slice(0, 10)) {
         const cleaned = name.replace(/`/g, '');
-        // Skip common programming keywords that are not leaked tool/config names
         if (COMMON_FALSE_POSITIVES.has(cleaned)) continue;
         leaked.push(`tool:${cleaned}`);
       }
@@ -159,7 +140,6 @@ function extractLeakedInfo(finding: Finding): string[] {
     }
   }
 
-  // Deduplicate, preserve order
   return [...new Map(leaked.map((v) => [v, v])).values()];
 }
 

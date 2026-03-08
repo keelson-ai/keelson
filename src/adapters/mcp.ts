@@ -1,7 +1,6 @@
 import { BaseAdapter } from './base.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
-
 const MCP_JSONRPC_VERSION = '2.0';
 const MCP_PROTOCOL_VERSION = '2025-03-26';
 
