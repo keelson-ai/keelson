@@ -1,7 +1,8 @@
 import { Box, Text } from 'ink';
 import React from 'react';
 
-import { SEVERITY_COLOR, VERDICT_ICON, truncate } from './theme.js';
+import { SEVERITY_COLOR, VERDICT_ICON } from './theme.js';
+import { truncate } from '../cli/utils.js';
 import type { Finding } from '../types/index.js';
 
 export interface ProbeResultProps {

@@ -8,14 +8,16 @@ import {
   parseFloatSafe,
   parseIntSafe,
   printScanSummary,
+  truncate,
   writeReport,
 } from './utils.js';
 import { createAdapter } from '../adapters/index.js';
 import { executeProbe } from '../core/engine.js';
 import { scan } from '../core/scanner.js';
+import { summarize } from '../core/summarize.js';
 import { loadProbes } from '../core/templates.js';
 import type { AdapterConfig, Finding, ScanResult } from '../types/index.js';
-import { Severity, Verdict } from '../types/index.js';
+import { Verdict } from '../types/index.js';
 
 function buildAdapterConfig(opts: {
   target: string;
@@ -160,7 +162,7 @@ export function registerScanCommands(program: Command): void {
     .option('--max-passes <n>', 'Maximum convergence passes', '4')
     .action(async (opts: ScanCommandOpts) => {
       const adapter = createAdapter(buildAdapterConfig(opts));
-      const maxPasses = parseIntSafe(opts.maxPasses ?? '4', 4);
+      const maxPasses = Math.max(1, parseIntSafe(opts.maxPasses ?? '4', 4));
       const delayMs = parseIntSafe(opts.delay, 1500);
 
       console.log('\nKeelson Convergence Scan');
@@ -231,29 +233,6 @@ export function registerScanCommands(program: Command): void {
       }
 
       const mergedFindings = [...findingsByProbe.values()];
-      const bySeverity: Record<Severity, number> = {
-        [Severity.Critical]: 0,
-        [Severity.High]: 0,
-        [Severity.Medium]: 0,
-        [Severity.Low]: 0,
-      };
-      const byCategory: Record<string, number> = {};
-      let vulnerable = 0;
-      let safe = 0;
-      let inconclusive = 0;
-
-      for (const f of mergedFindings) {
-        if (f.verdict === Verdict.Vulnerable) {
-          vulnerable++;
-          bySeverity[f.severity as Severity] = (bySeverity[f.severity as Severity] ?? 0) + 1;
-          byCategory[f.category] = (byCategory[f.category] ?? 0) + 1;
-        } else if (f.verdict === Verdict.Safe) {
-          safe++;
-        } else {
-          inconclusive++;
-        }
-      }
-
       const lastPass = allFindings[allFindings.length - 1];
       const result: ScanResult = {
         scanId: lastPass.scanId,
@@ -261,86 +240,59 @@ export function registerScanCommands(program: Command): void {
         startedAt: allFindings[0].startedAt,
         completedAt: lastPass.completedAt,
         findings: mergedFindings,
-        summary: {
-          total: mergedFindings.length,
-          vulnerable,
-          safe,
-          inconclusive,
-          bySeverity,
-          byCategory,
-        },
+        summary: summarize(mergedFindings),
       };
 
       await finalizeScan(result, opts);
     });
 
+  const probeAction = async (opts: {
+    target: string;
+    probeId: string;
+    apiKey?: string;
+    model: string;
+    adapterType: string;
+  }) => {
+    const adapter = createAdapter(buildAdapterConfig(opts));
+
+    const probes = await loadProbes();
+    const template = probes.find((p) => p.id === opts.probeId);
+    if (!template) {
+      console.error(`Probe ${opts.probeId} not found`);
+      process.exit(1);
+    }
+
+    console.log(`\n${template.id}: ${template.name}`);
+    console.log(`Severity: ${colorSeverity(template.severity)} | Category: ${template.category}`);
+    console.log();
+
+    let finding;
+    try {
+      finding = await executeProbe(template, adapter, {
+        onTurn: (stepIndex, prompt, response) => {
+          console.log(`  Step ${stepIndex}:`);
+          console.log(`  Prompt: ${truncate(prompt, 150)}`);
+          console.log(`  Response: ${truncate(response, 200)}`);
+          console.log();
+        },
+      });
+    } finally {
+      await adapter.close();
+    }
+
+    console.log(`Verdict: ${VERDICT_LABELS[finding.verdict]}`);
+    console.log(`Confidence: ${Math.round(finding.confidence * 100)}%`);
+    console.log(`Reasoning: ${finding.reasoning}`);
+  };
+
   program
     .command('test')
+    .alias('probe')
     .description('Run a single probe against a target')
     .requiredOption('--target <url>', 'Target endpoint URL')
     .requiredOption('--probe-id <id>', 'Probe ID (e.g., GA-001)')
     .option('--api-key <key>', 'API key for authentication')
     .option('--model <model>', 'Model name for requests', 'default')
     .option('--adapter-type <type>', 'Adapter type', 'openai')
-    .action(async (opts: { target: string; probeId: string; apiKey?: string; model: string; adapterType: string }) => {
-      const adapter = createAdapter(buildAdapterConfig(opts));
-
-      const probes = await loadProbes();
-      const template = probes.find((p) => p.id === opts.probeId);
-      if (!template) {
-        console.error(`Probe ${opts.probeId} not found`);
-        process.exit(1);
-      }
-
-      console.log(`\n${template.id}: ${template.name}`);
-      console.log(`Severity: ${colorSeverity(template.severity)} | Category: ${template.category}`);
-      console.log();
-
-      let finding;
-      try {
-        finding = await executeProbe(template, adapter, {
-          onTurn: (stepIndex, prompt, response) => {
-            console.log(`  Step ${stepIndex}:`);
-            const promptPreview = prompt.length > 150 ? prompt.slice(0, 150) + '...' : prompt;
-            const responsePreview = response.length > 200 ? response.slice(0, 200) + '...' : response;
-            console.log(`  Prompt: ${promptPreview}`);
-            console.log(`  Response: ${responsePreview}`);
-            console.log();
-          },
-        });
-      } finally {
-        await adapter.close();
-      }
-
-      console.log(`Verdict: ${VERDICT_LABELS[finding.verdict]}`);
-      console.log(`Confidence: ${Math.round(finding.confidence * 100)}%`);
-      console.log(`Reasoning: ${finding.reasoning}`);
-    });
-
-  // 'probe' is an alias for 'test'
-  const testCmd = program.commands.find((c) => c.name() === 'test');
-  program
-    .command('probe')
-    .description('Run a single probe (alias for test)')
-    .requiredOption('--target <url>', 'Target endpoint URL')
-    .requiredOption('--probe-id <id>', 'Probe ID (e.g., GA-001)')
-    .option('--api-key <key>', 'API key for authentication')
-    .option('--model <model>', 'Model name for requests', 'default')
-    .option('--adapter-type <type>', 'Adapter type', 'openai')
-    .action(async (opts: { target: string; probeId: string; apiKey?: string; model: string; adapterType: string }) => {
-      await testCmd?.parseAsync(
-        [
-          '--target',
-          opts.target,
-          '--probe-id',
-          opts.probeId,
-          ...(opts.apiKey ? ['--api-key', opts.apiKey] : []),
-          '--model',
-          opts.model,
-          '--adapter-type',
-          opts.adapterType,
-        ],
-        { from: 'user' },
-      );
-    });
+    .action(probeAction);
 }

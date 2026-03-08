@@ -8,4 +8,4 @@ export { ScanProgress } from './ScanProgress.js';
 export type { ScanProgressProps } from './ScanProgress.js';
 export { SummaryTable } from './SummaryTable.js';
 export type { SummaryTableProps } from './SummaryTable.js';
-export { SEVERITY_COLOR, SEVERITY_ORDER, VERDICT_ICON, truncate } from './theme.js';
+export { SEVERITY_COLOR, SEVERITY_ORDER, VERDICT_ICON } from './theme.js';

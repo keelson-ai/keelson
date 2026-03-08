@@ -3,20 +3,14 @@ import type { Observer } from './engine.js';
 import { MemoTable } from './memo.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
+import { SEVERITY_ORDER } from '../components/theme.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
-import { Severity, Verdict } from '../types/index.js';
+import { Verdict } from '../types/index.js';
 
 const MAX_PASSES = 4;
 const MAX_CROSSFEED_PROBES = 20;
 const MAX_LEAKAGE_PROBES = 15;
 const MAX_LEAKED_INFO = 200;
-
-export const SEVERITY_ORDER: Record<string, number> = {
-  [Severity.Critical]: 0,
-  [Severity.High]: 1,
-  [Severity.Medium]: 2,
-  [Severity.Low]: 3,
-};
 
 const CROSS_CATEGORY_MAP: ReadonlyMap<string, readonly string[]> = new Map([
   ['goal_adherence', ['tool_safety', 'conversational_exfiltration', 'cognitive_architecture']],

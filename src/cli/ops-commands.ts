@@ -4,24 +4,16 @@ import chalk from 'chalk';
 import type { Command } from 'commander';
 
 import { SEVERITY_COLORS, countBy, printScanSummary, writeReport } from './utils.js';
+import { SEVERITY_ORDER } from '../components/theme.js';
 import { loadProbes } from '../core/templates.js';
 import { scanResultSchema } from '../schemas/scan-result.js';
 import type { ProbeTemplate, ScanResult } from '../types/index.js';
-import { Severity } from '../types/index.js';
-
-const SEVERITY_ORDER: Record<Severity, number> = {
-  [Severity.Critical]: 0,
-  [Severity.High]: 1,
-  [Severity.Medium]: 2,
-  [Severity.Low]: 3,
-};
 
 function formatProbeRow(probe: ProbeTemplate): string {
   const id = chalk.bold(probe.id.padEnd(8));
   const name = probe.name.padEnd(40).slice(0, 40);
-  const paddedSeverity = probe.severity.padEnd(20);
   const colorFn = SEVERITY_COLORS[probe.severity];
-  const sev = colorFn(paddedSeverity);
+  const sev = colorFn(probe.severity.padEnd(20));
   const cat = probe.category.padEnd(25).slice(0, 25);
   const steps = String(probe.turns.length).padStart(5);
   return `  ${id} ${name} ${sev} ${cat} ${steps}`;

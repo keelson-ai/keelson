@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { executeProbe } from '../core/engine.js';
 import type { ExecuteProbeOptions } from '../core/engine.js';
@@ -16,12 +16,15 @@ export interface UseEngineResult extends ProbeState {
   abort: () => void;
 }
 
+const DEFAULT_OPTIONS: Omit<ExecuteProbeOptions, 'onTurn'> = {};
+
 export function useEngine(
   template: ProbeTemplate,
   adapter: Adapter,
-  options: Omit<ExecuteProbeOptions, 'onTurn'> = {},
+  options: Omit<ExecuteProbeOptions, 'onTurn'> = DEFAULT_OPTIONS,
 ): UseEngineResult {
   const [state, setState] = useState<ProbeState>({ status: 'idle' });
+  const mountedRef = useRef(true);
   const abortedRef = useRef(false);
   const runningRef = useRef(false);
 
@@ -47,18 +50,25 @@ export function useEngine(
     executeProbe(template, adapter, probeOptions)
       .then((finding) => {
         runningRef.current = false;
-        if (abortedRef.current) return;
+        if (abortedRef.current || !mountedRef.current) return;
         setState({ status: 'complete', finding });
       })
       .catch((err: unknown) => {
         runningRef.current = false;
-        if (abortedRef.current) return;
+        if (abortedRef.current || !mountedRef.current) return;
         setState({
           status: 'error',
           error: err instanceof Error ? err.message : String(err),
         });
       });
   }, [template, adapter, options]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   return { ...state, run, abort };
 }

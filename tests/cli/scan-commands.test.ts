@@ -10,14 +10,13 @@ describe('registerScanCommands', () => {
     return program;
   }
 
-  it('registers scan, smart-scan, convergence-scan, test, and probe commands', () => {
+  it('registers scan, smart-scan, convergence-scan, and test commands', () => {
     const program = setup();
     const commandNames = program.commands.map((c) => c.name());
     expect(commandNames).toContain('scan');
     expect(commandNames).toContain('smart-scan');
     expect(commandNames).toContain('convergence-scan');
     expect(commandNames).toContain('test');
-    expect(commandNames).toContain('probe');
   });
 
   it('scan command has required --target option', () => {
@@ -85,15 +84,10 @@ describe('registerScanCommands', () => {
     expect(probeIdOpt!.required).toBe(true);
   });
 
-  it('probe command mirrors test command options', () => {
+  it('test command has probe as an alias', () => {
     const program = setup();
     const testCmd = program.commands.find((c) => c.name() === 'test');
-    const probeCmd = program.commands.find((c) => c.name() === 'probe');
     expect(testCmd).toBeDefined();
-    expect(probeCmd).toBeDefined();
-
-    const testOptLongs = testCmd!.options.map((o) => o.long).sort();
-    const probeOptLongs = probeCmd!.options.map((o) => o.long).sort();
-    expect(probeOptLongs).toEqual(testOptLongs);
+    expect(testCmd!.aliases()).toContain('probe');
   });
 });
