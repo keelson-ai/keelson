@@ -5,6 +5,8 @@ import type { ScanOptions } from '../core/scanner.js';
 import type { Adapter, Finding, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
+const EMPTY_OPTIONS: Omit<ScanOptions, 'onFinding'> = {} as const;
+
 export interface ScanState {
   status: 'idle' | 'running' | 'complete' | 'error';
   current: number;
@@ -23,7 +25,7 @@ export interface UseScanResult extends ScanState {
 export function useScan(
   target: string,
   adapter: Adapter,
-  options: Omit<ScanOptions, 'onFinding'> = {},
+  options: Omit<ScanOptions, 'onFinding'> = EMPTY_OPTIONS,
 ): UseScanResult {
   const [state, setState] = useState<ScanState>({
     status: 'idle',

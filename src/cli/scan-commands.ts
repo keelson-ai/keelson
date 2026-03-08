@@ -262,6 +262,10 @@ export function registerScanCommands(program: Command): void {
       }
 
       // Use the last pass result as the final result
+      if (allFindings.length === 0) {
+        console.log('No convergence passes were executed. Check --max-passes value.');
+        return;
+      }
       const result = allFindings[allFindings.length - 1];
       printScanSummary(result);
 
@@ -346,7 +350,6 @@ export function registerScanCommands(program: Command): void {
       // Delegate to the test command action
       await testCmd.parseAsync(
         [
-          'test',
           '--target',
           opts.target,
           '--probe-id',
