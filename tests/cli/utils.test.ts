@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { checkFailGates, countBy, formatFinding, parseFloatSafe, parseIntSafe } from '../../src/cli/utils.js';
+import { checkFailGates, countBy, formatFinding, parseFloatSafe, parseIntSafe, truncate } from '../../src/cli/utils.js';
 import { makeFinding } from '../helpers/fixtures.js';
 
 describe('checkFailGates', () => {
@@ -100,6 +100,24 @@ describe('formatFinding', () => {
     const finding = makeFinding({ evidence: [] });
     const output = formatFinding(finding, 0);
     expect(output).not.toContain('Prompt:');
+  });
+});
+
+describe('truncate', () => {
+  it('returns text unchanged if within limit', () => {
+    expect(truncate('hello', 10)).toBe('hello');
+  });
+
+  it('truncates and adds ellipsis when text exceeds limit', () => {
+    expect(truncate('hello world', 5)).toBe('hello...');
+  });
+
+  it('handles exact length', () => {
+    expect(truncate('hello', 5)).toBe('hello');
+  });
+
+  it('handles empty string', () => {
+    expect(truncate('', 10)).toBe('');
   });
 });
 

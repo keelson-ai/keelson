@@ -1,4 +1,4 @@
-import { SEVERITY_ORDER } from './convergence.js';
+import { SEVERITY_ORDER } from '../components/theme.js';
 import type { Finding, ProbeTemplate } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 

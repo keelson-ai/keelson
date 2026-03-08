@@ -9,8 +9,8 @@ export {
   harvestLeakedInfo,
   selectCrossfeedProbes,
   selectLeakageTargetedProbes,
-  SEVERITY_ORDER,
 } from './convergence.js';
+export { SEVERITY_ORDER } from '../components/theme.js';
 export type { ConvergenceOptions, LeakedInfo } from './convergence.js';
 export { MemoTable, inferTechniques } from './memo.js';
 export type { ConversationMemo } from './memo.js';
