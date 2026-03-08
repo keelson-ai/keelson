@@ -4,37 +4,7 @@ import { MemoTable } from './memo.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
-import { ScoringMethod, Severity, Verdict } from '../types/index.js';
-
-/** Sanitize error messages to avoid leaking sensitive info like API keys or URLs. */
-function sanitizeErrorMessage(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error);
-  // Strip potential API keys (sk-..., key-..., Bearer tokens, etc.)
-  let sanitized = raw.replace(/\b(sk-|key-|Bearer\s+)[^\s"']+/gi, '[REDACTED]');
-  // Strip URLs to avoid leaking target endpoints
-  sanitized = sanitized.replace(/https?:\/\/[^\s"'<>)\]]+/g, '[REDACTED_URL]');
-  // Truncate to prevent overly long error messages
-  return sanitized.length > 200 ? sanitized.slice(0, 200) + '...' : sanitized;
-}
-
-/** Create an Inconclusive finding when a probe execution fails. */
-function errorFinding(probe: ProbeTemplate, errorMessage: string): Finding {
-  return {
-    probeId: probe.id,
-    probeName: probe.name,
-    severity: probe.severity,
-    category: probe.category,
-    owaspId: probe.owaspId,
-    verdict: Verdict.Inconclusive,
-    confidence: 0,
-    reasoning: `Probe execution failed: ${errorMessage}`,
-    scoringMethod: ScoringMethod.Pattern,
-    conversation: [],
-    evidence: [],
-    leakageSignals: [],
-    timestamp: new Date().toISOString(),
-  };
-}
+import { Severity, Verdict } from '../types/index.js';
 
 const REORDER_INTERVAL = 10;
 
@@ -88,16 +58,11 @@ async function executeSequential(
   while (remaining.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
     const probe = remaining.shift()!;
-    let finding: Finding;
-    try {
-      finding = await executeProbe(probe, adapter, {
-        delayMs: options.delayMs,
-        judge: options.judge,
-        observer: options.observer,
-      });
-    } catch (err: unknown) {
-      finding = errorFinding(probe, sanitizeErrorMessage(err));
-    }
+    const finding = await executeProbe(probe, adapter, {
+      delayMs: options.delayMs,
+      judge: options.judge,
+      observer: options.observer,
+    });
     findings.push(finding);
     memo.record(finding);
 
@@ -132,29 +97,20 @@ async function executeConcurrent(
   async function worker(): Promise<void> {
     while (nextIdx < probes.length) {
       const idx = nextIdx++;
-      let finding: Finding;
-      try {
-        finding = await executeProbe(probes[idx], adapter, {
-          delayMs: options.delayMs,
-          judge: options.judge,
-          observer: options.observer,
-        });
-      } catch (err: unknown) {
-        finding = errorFinding(probes[idx], sanitizeErrorMessage(err));
-      }
+      const finding = await executeProbe(probes[idx], adapter, {
+        delayMs: options.delayMs,
+        judge: options.judge,
+        observer: options.observer,
+      });
       findings[idx] = finding;
       memo.record(finding);
-      // Note: `completed++` is safe here despite concurrent workers because
-      // JavaScript is single-threaded. Each `await` yields to the event loop,
-      // but the increment itself is atomic. The ORDER of onFinding callbacks
-      // may be non-deterministic across workers, but the counter is accurate.
       completed++;
       options.onFinding?.(finding, completed, probes.length);
     }
   }
 
   const workers = Array.from({ length: Math.min(concurrency, probes.length) }, () => worker());
-  await Promise.allSettled(workers);
+  await Promise.all(workers);
 
   return findings;
 }
@@ -184,6 +140,5 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
     completedAt: new Date().toISOString(),
     findings,
     summary: summarize(findings),
-    memo: memo.entries,
   };
 }
