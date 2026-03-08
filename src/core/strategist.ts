@@ -1,6 +1,6 @@
 import type { Finding, ProbeTemplate } from '../types/index.js';
 import { Verdict } from '../types/index.js';
-import { compareBySeverity } from '../utils.js';
+import { compareBySeverity, groupBy } from '../utils.js';
 
 export enum AgentType {
   ToolRich = 'tool_rich',
@@ -179,13 +179,8 @@ const PRIORITY_RANK: Record<Priority, number> = {
   [Priority.Skip]: 3,
 };
 
-function groupBySeverity(templates: ProbeTemplate[]): Map<string, ProbeTemplate[]> {
-  const byCategory = new Map<string, ProbeTemplate[]>();
-  for (const t of templates) {
-    const list = byCategory.get(t.category) ?? [];
-    list.push(t);
-    byCategory.set(t.category, list);
-  }
+function groupByCategorySortedBySeverity(templates: ProbeTemplate[]): Map<string, ProbeTemplate[]> {
+  const byCategory = groupBy(templates, (t) => t.category);
   for (const list of byCategory.values()) {
     list.sort(compareBySeverity);
   }
@@ -231,7 +226,7 @@ export function selectProbes(profile: TargetProfile, templates: ProbeTemplate[],
     categoryPriorities.set('session_isolation', Priority.Skip);
   }
 
-  const templatesByCategory = groupBySeverity(templates);
+  const templatesByCategory = groupByCategorySortedBySeverity(templates);
 
   // Build category plans with limits
   const categories: CategoryPlan[] = [];
