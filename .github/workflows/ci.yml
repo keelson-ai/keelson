@@ -42,7 +42,7 @@ jobs:
         run: pip install pyyaml
 
       - name: Validate probe playbooks
-        run: python scripts/validate_attacks.py
+        run: python scripts/validate_probes.py
 
   test:
     runs-on: ubuntu-latest
