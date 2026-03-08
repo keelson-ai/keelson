@@ -12,11 +12,11 @@ import {
   writeReport,
 } from './utils.js';
 import { createAdapter } from '../adapters/index.js';
+import { runConvergenceScan } from '../core/convergence.js';
 import { executeProbe } from '../core/engine.js';
 import { scan } from '../core/scanner.js';
-import { summarize } from '../core/summarize.js';
 import { loadProbes } from '../core/templates.js';
-import type { AdapterConfig, Finding, ScanResult } from '../types/index.js';
+import type { AdapterConfig, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
 function buildAdapterConfig(opts: {
@@ -174,74 +174,22 @@ export function registerScanCommands(program: Command): void {
       }
       console.log();
 
-      const allFindings: ScanResult[] = [];
-      const seenVulnerableProbeIds = new Set<string>();
+      let result: ScanResult;
       try {
-        for (let pass = 1; pass <= maxPasses; pass++) {
-          console.log(`  PASS ${pass}  Running probes...`);
-
-          const categories = opts.category ? [opts.category] : undefined;
-          const passResult = await scan(opts.target, adapter, {
-            categories,
-            delayMs,
-            reorder: true,
-            onFinding: (finding, current, total) => {
-              console.log(`    [${current}/${total}] ${finding.probeId}: ${finding.verdict}`);
-            },
-          });
-
-          allFindings.push(passResult);
-
-          let newVulns = 0;
-          for (const finding of passResult.findings) {
-            if (finding.verdict === Verdict.Vulnerable && !seenVulnerableProbeIds.has(finding.probeId)) {
-              newVulns++;
-              seenVulnerableProbeIds.add(finding.probeId);
-            }
-          }
-
-          console.log(`  PASS ${pass}  Complete: ${newVulns} new vulnerabilities found`);
-
-          if (newVulns === 0) {
-            console.log('  Converged: no new vulnerabilities in this pass.');
-            break;
-          }
-        }
+        result = await runConvergenceScan(opts.target, adapter, {
+          category: opts.category,
+          maxPasses,
+          delayMs,
+          onFinding: (finding, current, total) => {
+            console.log(`    [${current}/${total}] ${finding.probeId}: ${finding.verdict}`);
+          },
+          onPass: (passNumber, description) => {
+            console.log(`  PASS ${passNumber}  ${description}`);
+          },
+        });
       } finally {
         await adapter.close();
       }
-
-      if (allFindings.length === 0) {
-        console.log('No convergence passes were executed. Check --max-passes value.');
-        return;
-      }
-
-      const verdictRank: Record<string, number> = {
-        [Verdict.Vulnerable]: 2,
-        [Verdict.Inconclusive]: 1,
-        [Verdict.Safe]: 0,
-      };
-
-      const findingsByProbe = new Map<string, Finding>();
-      for (const passResult of allFindings) {
-        for (const finding of passResult.findings) {
-          const existing = findingsByProbe.get(finding.probeId);
-          if (!existing || (verdictRank[finding.verdict] ?? 0) > (verdictRank[existing.verdict] ?? 0)) {
-            findingsByProbe.set(finding.probeId, finding);
-          }
-        }
-      }
-
-      const mergedFindings = [...findingsByProbe.values()];
-      const lastPass = allFindings[allFindings.length - 1];
-      const result: ScanResult = {
-        scanId: lastPass.scanId,
-        target: lastPass.target,
-        startedAt: allFindings[0].startedAt,
-        completedAt: lastPass.completedAt,
-        findings: mergedFindings,
-        summary: summarize(mergedFindings),
-      };
 
       await finalizeScan(result, opts);
     });
