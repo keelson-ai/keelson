@@ -1,7 +1,6 @@
 import { BaseAdapter } from './base.js';
 import type { AdapterResponse, Turn } from '../types/index.js';
 
-
 /**
  * CrewAI adapter stub for Node.js.
  *
