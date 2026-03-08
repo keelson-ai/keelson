@@ -9,6 +9,7 @@ import type {
   ProbeTemplate,
   Turn,
 } from '../types/index.js';
+import { delay } from '../types/index.js';
 
 const MIN_REMAINING_FOR_EARLY_TERM = 2;
 const DEFAULT_DELAY_MS = 1000;
@@ -22,10 +23,6 @@ export interface ExecuteProbeOptions {
 
 export interface Observer {
   observe(evidence: EvidenceItem[]): LeakageSignal[];
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function countRemainingUserTurns(turns: Turn[], fromIndex: number): number {
@@ -60,13 +57,11 @@ export async function executeProbe(
     if (template.newSession && stepIdx > 0) {
       messages.length = 0;
       userTurnCount = 0;
-      // Segment evidence across sessions: save prior session evidence to allEvidence,
-      // then reset for the new session. Detection evaluates per-session evidence only.
       allEvidence.push(...evidence);
       evidence.length = 0;
+      adapter.resetSession();
     }
 
-    // Non-user turns injected into context without sending
     if (step.role !== 'user') {
       messages.push({ role: step.role, content: step.content });
       continue;
@@ -97,19 +92,18 @@ export async function executeProbe(
     }
 
     if (remaining > 0) {
-      await sleep(delayMs);
+      await delay(delayMs);
     }
   }
 
-  // Collect final session's evidence
   allEvidence.push(...evidence);
 
-  const leakageSignals = observer?.observe(evidence) ?? [];
-  const patternResult = patternDetect(template, evidence, leakageSignals);
+  const leakageSignals = observer?.observe(allEvidence) ?? [];
+  const patternResult = patternDetect(template, allEvidence, leakageSignals);
 
   let detection: DetectionResult;
   if (judge) {
-    const judgeResult = await judgeResponse(template, evidence, judge);
+    const judgeResult = await judgeResponse(template, allEvidence, judge);
     detection = combinedDetect(patternResult, judgeResult);
   } else {
     detection = patternResult;
