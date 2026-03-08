@@ -284,9 +284,21 @@ const VERDICT_SEVERITY: Record<Verdict, number> = {
   [Verdict.Vulnerable]: 2,
 };
 
+function deduplicateByProbeId(findings: Finding[]): Finding[] {
+  const bestByProbe = new Map<string, Finding>();
+  for (const f of findings) {
+    const existing = bestByProbe.get(f.probeId);
+    if (!existing || VERDICT_SEVERITY[f.verdict] > VERDICT_SEVERITY[existing.verdict]) {
+      bestByProbe.set(f.probeId, f);
+    }
+  }
+  return [...bestByProbe.values()];
+}
+
 function matchFindingsToControl(
   findings: Finding[],
   control: ControlDefinition,
+  framework: ComplianceFramework,
 ): Finding[] {
   // Deduplicate by probeId, keeping the worst verdict per probe
   const bestByProbe = new Map<string, Finding>();
@@ -297,9 +309,12 @@ function matchFindingsToControl(
     const matchesByPrefix = control.probePrefixes.some((prefix) =>
       f.probeId.startsWith(prefix),
     );
-    // Also match by OWASP ID for OWASP framework
-    const owaspPrefix = OWASP_NAME_TO_ID[control.name];
-    const matchesByOwasp = owaspPrefix != null && f.owaspId.startsWith(owaspPrefix);
+    // Only apply OWASP ID matching for the OWASP framework
+    let matchesByOwasp = false;
+    if (framework === ComplianceFramework.OwaspLlmTop10) {
+      const owaspPrefix = OWASP_NAME_TO_ID[control.name];
+      matchesByOwasp = owaspPrefix != null && f.owaspId.startsWith(owaspPrefix);
+    }
 
     if (matchesByCategory || matchesByPrefix || matchesByOwasp) {
       const existing = bestByProbe.get(f.probeId);
@@ -352,12 +367,12 @@ export function mapFindingsToFramework(
       (framework === ComplianceFramework.Iso42001 && controlId === 'A.6') ||
       (framework === ComplianceFramework.Soc2 && controlId === 'CC7.2')
     ) {
-      matched = findings;
+      matched = deduplicateByProbeId(findings);
     } else if (framework === ComplianceFramework.NistAiRmf && controlId === 'MEASURE') {
       // MEASURE gets all findings (security testing covers everything)
-      matched = findings;
+      matched = deduplicateByProbeId(findings);
     } else {
-      matched = matchFindingsToControl(findings, control);
+      matched = matchFindingsToControl(findings, control, framework);
     }
 
     mappings.push({
