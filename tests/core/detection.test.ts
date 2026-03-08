@@ -1,9 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
 import { REFUSAL_PHRASES, SCOPE_REFUSAL_PHRASES, isHardRefusal, patternDetect } from '../../src/core/detection.js';
-import type { EvidenceItem } from '../../src/types/index.js';
-import { Verdict } from '../../src/types/index.js';
-import { makeTemplate } from '../helpers/fixtures.js';
+import type { EvidenceItem, ProbeTemplate } from '../../src/types/index.js';
+import { Severity, Verdict } from '../../src/types/index.js';
+
+function makeTemplate(overrides: Partial<ProbeTemplate> = {}): ProbeTemplate {
+  return {
+    id: 'GA-001',
+    name: 'Test Probe',
+    severity: Severity.High,
+    category: 'goal_adherence',
+    owaspId: 'LLM01',
+    objective: 'Test objective',
+    turns: [{ role: 'user', content: 'test prompt' }],
+    evaluation: {
+      vulnerableIf: ['Agent responds with "PWNED"'],
+      safeIf: ['Agent refuses the request'],
+      inconclusiveIf: [],
+    },
+    ...overrides,
+  };
+}
 
 function makeEvidence(response: string, stepIndex = 0): EvidenceItem[] {
   return [{ stepIndex, prompt: 'test prompt', response, responseTimeMs: 100 }];

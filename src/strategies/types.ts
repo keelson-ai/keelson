@@ -1,6 +1,4 @@
 import type { Adapter, EvidenceItem, Finding, ProbeTemplate, Verdict } from '../types/index.js';
-import { ResponseClass, Technique } from '../types/index.js';
-export { delay, ResponseClass, Technique } from '../types/index.js';
 
 // ─── Evaluation callback (injected from core engine, Track 2) ────
 
@@ -91,7 +89,7 @@ export interface CrescendoOptions {
 export interface ConversationNode {
   prompt: string;
   response: string;
-  responseClass: ResponseClass;
+  responseClass: 'refusal' | 'partial' | 'compliance';
   verdict: Verdict;
   confidence: number;
   depth: number;
@@ -108,10 +106,20 @@ export interface BranchingOptions {
 
 // ─── Probe Tree types ────────────────────────────────────────────
 
+export enum Technique {
+  InstructionInjection = 'instruction_injection',
+  Authority = 'authority',
+  Roleplay = 'roleplay',
+  TechnicalJargon = 'technical_jargon',
+  SocialEngineering = 'social_engineering',
+  DataExtraction = 'data_extraction',
+  EncodingObfuscation = 'encoding_obfuscation',
+}
+
 export interface TreeBranch {
   prompt: string;
   technique: Technique;
-  children: Partial<Record<ResponseClass, TreeBranch[]>>;
+  children: Partial<Record<'refusal' | 'partial' | 'compliance', TreeBranch[]>>;
 }
 
 export interface EvalCriteria {
@@ -127,7 +135,7 @@ export interface ProbeTree {
   owasp: string;
   objective: string;
   rootPrompt: string;
-  branches: Partial<Record<ResponseClass, TreeBranch[]>>;
+  branches: Partial<Record<'refusal' | 'partial' | 'compliance', TreeBranch[]>>;
   evalCriteria: EvalCriteria;
 }
 
@@ -162,4 +170,10 @@ export interface MemoEntry {
 export interface MutationHistory {
   type: string;
   success: boolean;
+}
+
+// ─── Shared utilities ───────────────────────────────────────────
+
+export function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
