@@ -1,7 +1,6 @@
 import { BaseAdapter } from './base.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
-
 export class OpenAIAdapter extends BaseAdapter {
   constructor(config: AdapterConfig) {
     const baseUrl = config.baseUrl.replace(/\/+$/, '');

@@ -59,20 +59,17 @@ export enum ResponseClass {
   Compliance = 'compliance',
 }
 
-export enum ScanMode {
-  Sequential = 'sequential',
-  Pipeline = 'pipeline',
-  Smart = 'smart',
-  Convergence = 'convergence',
-}
-
-export enum ComplianceFramework {
-  OwaspLlmTop10 = 'owasp-llm-top10',
-  NistAiRmf = 'nist-ai-rmf',
-  EuAiAct = 'eu-ai-act',
-  Iso42001 = 'iso-42001',
-  Soc2 = 'soc2',
-  PciDssV4 = 'pci-dss-v4',
+export enum Technique {
+  Authority = 'authority',
+  Roleplay = 'roleplay',
+  TechnicalJargon = 'technical_jargon',
+  SocialEngineering = 'social_engineering',
+  MultiTurnEscalation = 'multi_turn_escalation',
+  EncodingObfuscation = 'encoding_obfuscation',
+  ContextOverflow = 'context_overflow',
+  InstructionInjection = 'instruction_injection',
+  DataExtraction = 'data_extraction',
+  ToolInvocation = 'tool_invocation',
 }
 
 // ─── Core Data Interfaces ────────────────────────────────
@@ -148,6 +145,15 @@ export interface ScanSummary {
   byCategory: Record<string, number>;
 }
 
+export interface ConversationMemoEntry {
+  probeId: string;
+  category: string;
+  techniques: string[];
+  outcome: string;
+  verdict: Verdict;
+  leakedInfo: string[];
+}
+
 export interface ScanResult {
   scanId: string;
   target: string;
@@ -155,6 +161,7 @@ export interface ScanResult {
   completedAt: string;
   findings: Finding[];
   summary: ScanSummary;
+  memo?: ConversationMemoEntry[];
 }
 
 // ─── Adapter Interfaces ──────────────────────────────────
@@ -201,12 +208,6 @@ export interface MutatedProbe {
   mutationDescription: string;
 }
 
-export interface StrategyResult {
-  findings: Finding[];
-  probesExecuted: number;
-  mutationsApplied: number;
-}
-
 // ─── Detection / Judging ─────────────────────────────────
 
 export interface DetectionResult {
@@ -216,20 +217,8 @@ export interface DetectionResult {
   method: ScoringMethod;
 }
 
-// ─── Scan Configuration ──────────────────────────────────
+// ─── Shared Utilities ────────────────────────────────────
 
-export interface JudgeConfig {
-  provider: string;
-  model: string;
-  apiKey: string;
-}
-
-export interface ScanConfig {
-  target: AdapterConfig;
-  categories?: string[];
-  severities?: Severity[];
-  mode: ScanMode;
-  concurrency?: number;
-  delayMs?: number;
-  judge?: JudgeConfig;
+export function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }

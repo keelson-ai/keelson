@@ -1,7 +1,6 @@
 import { BaseAdapter } from './base.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
-
 /**
  * LangChain adapter stub for Node.js.
  *
