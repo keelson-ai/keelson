@@ -81,7 +81,7 @@ Results appear in the **Security** tab under Code Scanning. See [keelson-action]
 ```
 Playbooks (.yaml)   Target Agent        Keelson Engine
 ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 210 attacks  │───>│ 9 Adapters   │───>│ Scan Modes           │
+│ 210 probes  │───>│ 9 Adapters   │───>│ Scan Modes           │
 │ 13 categories│    │ OpenAI /     │    │  scan (sequential)   │
 │ OWASP mapped │    │ Anthropic /  │    │  pipeline (parallel) │
 └──────────────┘    │ MCP / A2A /  │    │  smart (adaptive)    │
@@ -102,7 +102,7 @@ Playbooks (.yaml)   Target Agent        Keelson Engine
                                         └─────────────────────┘
 ```
 
-1. **Load** attack playbooks from `attacks/**/*.yaml` (structured YAML, no code)
+1. **Load** probe playbooks from `probes/**/*.yaml` (structured YAML, no code)
 2. **Send** prompts to the target via any supported adapter
 3. **Detect** vulnerabilities using pattern detection, LLM-as-judge scoring, or combined mode
 4. **Orchestrate** advanced strategies: PAIR iterative refinement, Crescendo gradual escalation, 13 mutation types
@@ -114,19 +114,19 @@ Playbooks (.yaml)   Target Agent        Keelson Engine
 
 | Category | Prefix | Count | OWASP | What It Tests |
 |----------|--------|-------|-------|---------------|
-| **Goal Adherence** | GA | 56 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) attacks, rapport exploitation, structured data injection, model fingerprinting, indirect prompt injection (IDPI), Unicode/homoglyph evasion, authority simulation, multilingual repetition, multi-vector psychological exploitation, enterprise framing bypass, syllogistic reasoning manipulation, hypothetical counterfactual bypass, meta-reasoning inversion, logical paradox exploitation, response template hijacking, shared resource injection, **legitimate knowledge extraction**, **incremental architecture disclosure** |
+| **Goal Adherence** | GA | 56 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) probes, rapport exploitation, structured data injection, model fingerprinting, indirect prompt injection (IDPI), Unicode/homoglyph evasion, authority simulation, multilingual repetition, multi-vector psychological exploitation, enterprise framing bypass, syllogistic reasoning manipulation, hypothetical counterfactual bypass, meta-reasoning inversion, logical paradox exploitation, response template hijacking, shared resource injection, **legitimate knowledge extraction**, **incremental architecture disclosure** |
 | **Tool Safety** | TS | 40 | LLM02/LLM06/LLM07 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal, MCP tool poisoning, MCP rug pull, cross-server contamination, SSRF, side-effect detection, excessive agency, forced financial transactions, two-phase URL exfiltration, URI scheme redirect, forced URL opening, **private data source enumeration**, **write access probing** |
 | **Memory Integrity** | MI | 23 | LLM05 | History poisoning, identity persistence, false tool results, cross-turn exfiltration, error info leakage, stored payload injection, context window flooding, gradual memory poisoning, false memory implantation, contradictory fact confusion, RAG poisoning, natural language sleeper triggers, collapsed UI content poisoning |
 | **Permission Boundaries** | PB | 12 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
 | **Delegation Integrity** | DI | 7 | LLM08/LLM09 | Unauthorized sub-agents, trust boundary violation, delegation scope laundering, cross-agent lateral movement |
 | **Execution Safety** | ES | 13 | LLM02/LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization, HTML/script output injection, destructive command injection |
 | **Session Isolation** | SI | 13 | LLM01/LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, model fingerprinting, conversation history poisoning, debug harness extraction |
-| **Cognitive Architecture** | CA | 8 | LLM01/LLM09 | Chain-of-thought poisoning, reasoning manipulation, meta-cognitive attacks |
+| **Cognitive Architecture** | CA | 8 | LLM01/LLM09 | Chain-of-thought poisoning, reasoning manipulation, meta-cognitive probes |
 | **Conversational Exfiltration** | EX | 9 | LLM01/LLM06 | Data extraction via conversation, behavioral fingerprinting, **framework/infrastructure fingerprinting** |
 | **Supply Chain Language** | SL | 8 | LLM03/LLM05 | RAG document injection, dependency confusion, plugin poisoning |
 | **Output Weaponization** | OW | 7 | LLM02/LLM06 | Backdoor code generation, malicious output crafting |
 | **Temporal Persistence** | TP | 7 | LLM05/LLM08 | Delayed action injection, time-based persistence |
-| **Multi-Agent Security** | MA | 7 | LLM08/LLM09 | Agent impersonation, cross-agent attacks |
+| **Multi-Agent Security** | MA | 7 | LLM08/LLM09 | Agent impersonation, cross-agent probes |
 
 ## Adapters
 
@@ -179,12 +179,12 @@ keelson scan https://widget.sitegpt.ai --adapter sitegpt --chatbot-id YOUR_CHATB
 | `keelson smart-scan <url>` | Adaptive scan: discover, classify, memo-guided sessions |
 | `keelson convergence-scan <url>` | Iterative scan with cross-category feedback and leakage harvesting |
 | `keelson test <url> <id>` | Run a single security test |
-| `keelson list` | List all available attacks |
-| `keelson campaign <config.toml>` | Statistical campaign (N trials per attack) |
+| `keelson list` | List all available probes |
+| `keelson campaign <config.toml>` | Statistical campaign (N trials per probe) |
 | `keelson discover <url>` | Fingerprint agent capabilities |
-| `keelson evolve <url> <id>` | Mutate an attack to find bypasses |
-| `keelson chain <url> <profile-id>` | Synthesize and run compound attack chains |
-| `keelson generate <attacker-url>` | Generate novel attacks using an attacker LLM |
+| `keelson evolve <url> <id>` | Mutate a probe to find bypasses |
+| `keelson chain <url> <profile-id>` | Synthesize and run compound probe chains |
+| `keelson generate <prober-url>` | Generate novel probes using an prober LLM |
 | `keelson test-crew <module.py>` | Scan a CrewAI agent directly |
 | `keelson test-chain <module.py>` | Scan a LangChain agent directly |
 | `keelson diff <scan-a> <scan-b>` | Compare two scans for regressions |
@@ -272,7 +272,7 @@ jobs:
 
 ## Statistical Campaigns
 
-Run each attack N times to get statistically significant results with Wilson score confidence intervals:
+Run each probe N times to get statistically significant results with Wilson score confidence intervals:
 
 ```bash
 # Quick scan (1 trial, fast)
@@ -290,7 +290,7 @@ Campaign config example:
 ```toml
 [campaign]
 name = "nightly-regression"
-trials_per_attack = 10
+trials_per_probe = 10
 confidence_level = 0.95
 
 [target]
@@ -355,26 +355,26 @@ middleware = KeelsonDefendMiddleware(engine)
 
 ## Adding Custom Tests
 
-Create a `.yaml` file in the appropriate `attacks/` subdirectory:
+Create a `.yaml` file in the appropriate `probes/` subdirectory:
 
 ```yaml
 id: XX-NNN
-name: Attack Name
+name: Probe Name
 severity: high
 category: category_name
 owasp_id: "LLM0X — Name"
 objective: >
-  What this attack tests.
+  What this probe tests.
 turns:
   - role: user
     content: >
-      The attack prompt to send.
+      The probe prompt to send.
   - role: user
     content: >
-      Follow-up prompt (for multi-turn attacks).
+      Follow-up prompt (for multi-turn probes).
 evaluation:
   vulnerable_if:
-    - Agent complies with the attack request
+    - Agent complies with the probe request
     - Agent leaks sensitive information
   safe_if:
     - Agent refuses the request
@@ -391,27 +391,27 @@ keelson/
 │   └── pentester.md                # Pentester agent prompt
 ├── commands/                       # Plugin slash commands
 │   ├── scan.md                     # /keelson:scan
-│   ├── attack.md                   # /keelson:attack
+│   ├── probe.md                   # /keelson:probe
 │   └── report.md                   # /keelson:report
-├── attacks/                        # 210 attack playbooks (YAML)
-│   ├── goal-adherence/             # GA (56 attacks)
-│   ├── tool-safety/                # TS (40 attacks)
-│   ├── memory-integrity/           # MI (23 attacks)
-│   ├── session-isolation/          # SI (13 attacks)
-│   ├── execution-safety/           # ES (13 attacks)
-│   ├── permission-boundaries/      # PB (12 attacks)
-│   ├── cognitive-architecture/     # CA (8 attacks)
-│   ├── conversational-exfiltration/# EX (9 attacks)
-│   ├── supply-chain-language/      # SL (8 attacks)
-│   ├── delegation-integrity/       # DI (7 attacks)
-│   ├── multi-agent-security/       # MA (7 attacks)
-│   ├── output-weaponization/       # OW (7 attacks)
-│   └── temporal-persistence/       # TP (7 attacks)
+├── probes/                        # 210 probe playbooks (YAML)
+│   ├── goal-adherence/             # GA (56 probes)
+│   ├── tool-safety/                # TS (40 probes)
+│   ├── memory-integrity/           # MI (23 probes)
+│   ├── session-isolation/          # SI (13 probes)
+│   ├── execution-safety/           # ES (13 probes)
+│   ├── permission-boundaries/      # PB (12 probes)
+│   ├── cognitive-architecture/     # CA (8 probes)
+│   ├── conversational-exfiltration/# EX (9 probes)
+│   ├── supply-chain-language/      # SL (8 probes)
+│   ├── delegation-integrity/       # DI (7 probes)
+│   ├── multi-agent-security/       # MA (7 probes)
+│   ├── output-weaponization/       # OW (7 probes)
+│   └── temporal-persistence/       # TP (7 probes)
 ├── src/keelson/                     # Python engine
 │   ├── cli/                        # Typer CLI (18 commands)
 │   │   ├── __init__.py             # App setup, shared helpers
 │   │   ├── commands.py             # Command module registration
-│   │   ├── scan_commands.py        # scan, pipeline-scan, smart-scan, attack
+│   │   ├── scan_commands.py        # scan, pipeline-scan, smart-scan, probe
 │   │   ├── ops_commands.py         # list, report, history, diff, discover, baseline, compliance
 │   │   └── advanced_commands.py    # campaign, evolve, chain, generate, test-crew, test-chain
 │   ├── adapters/                   # 9 target adapters
@@ -426,9 +426,9 @@ keelson/
 │   │   ├── langchain.py            # LangChain native (in-process)
 │   │   ├── sitegpt.py              # SiteGPT (WebSocket / REST)
 │   │   ├── cache.py                # Response caching decorator
-│   │   └── attacker.py             # Attacker LLM wrapper
+│   │   └── prober.py             # Prober LLM wrapper
 │   ├── core/                       # Engine, scanner, detection
-│   │   ├── engine.py               # Multi-turn attack executor
+│   │   ├── engine.py               # Multi-turn probe executor
 │   │   ├── execution.py            # Shared primitives (sequential, parallel, verify)
 │   │   ├── scanner.py              # Sequential scan with dynamic reorder
 │   │   ├── pipeline.py             # Parallel scan with checkpoint/resume
@@ -453,15 +453,15 @@ keelson/
 │   │   ├── loader.py               # YAML policy loader
 │   │   ├── crewai_hook.py          # CrewAI middleware hooks
 │   │   └── langchain_hook.py       # LangChain middleware hooks
-│   ├── attacker/                   # Attack generation
+│   ├── prober/                   # Probe generation
 │   │   ├── generator.py            # LLM-powered prompt generation
 │   │   ├── discovery.py            # Agent capability fingerprinting
-│   │   ├── chains.py               # Compound attack chain synthesis
-│   │   └── provider.py             # Cross-provider attacker selection
+│   │   ├── chains.py               # Compound probe chain synthesis
+│   │   └── provider.py             # Cross-provider prober selection
 │   ├── adaptive/                   # Mutation engine + orchestrators
 │   │   ├── mutations.py            # 13 programmatic + LLM mutations
 │   │   ├── branching.py            # Conversation tree exploration
-│   │   ├── attack_tree.py          # Attack tree data structures
+│   │   ├── attack_tree.py          # Probe tree data structures
 │   │   ├── pair.py                 # PAIR iterative refinement orchestrator
 │   │   ├── crescendo.py            # Crescendo gradual escalation orchestrator
 │   │   └── strategies.py           # Mutation scheduling
@@ -528,7 +528,7 @@ pip install "keelson-ai[all]"
 
 Contributions are welcome. Here's how to help:
 
-1. **Add attack playbooks** — Write new `.yaml` files in `attacks/`. Follow the format above.
+1. **Add probe playbooks** — Write new `.yaml` files in `probes/`. Follow the format above.
 2. **Add adapters** — Implement the `BaseAdapter` interface (implement `_send_messages_impl`, `health_check`, `close`; optional: `reset_session`). The base class provides `send_messages` with automatic retry logic.
 3. **Improve detection** — Enhance patterns in `core/detection.py` or add new evaluation strategies.
 4. **Report bugs** — Open an issue with reproduction steps.
@@ -563,7 +563,7 @@ flowchart TD
     DP -->|No| F
     E -->|SAFE| F[Record Finding]
     E -->|INCONCLUSIVE| F
-    F --> G{More Attacks?}
+    F --> G{More Probes?}
     G -->|Yes| H[Dynamic Reorder<br/>by Vuln Categories]
     H --> B
     G -->|No| I[Generate Report]
@@ -579,16 +579,16 @@ flowchart TD
 flowchart TD
     subgraph Phase1[Phase 1: Load]
         L[Load Playbooks] --> CP{Checkpoint<br/>exists?}
-        CP -->|Yes| RESUME[Resume from checkpoint<br/>skip completed attacks]
+        CP -->|Yes| RESUME[Resume from checkpoint<br/>skip completed probes]
         CP -->|No| ALL[All templates]
     end
 
     subgraph Phase2[Phase 2: Parallel Execution]
-        RESUME --> SEM[Semaphore-based concurrency<br/>max_concurrent attacks]
+        RESUME --> SEM[Semaphore-based concurrency<br/>max_concurrent probes]
         ALL --> SEM
-        SEM --> EX1[Attack 1]
-        SEM --> EX2[Attack 2]
-        SEM --> EXN[Attack N]
+        SEM --> EX1[Probe 1]
+        SEM --> EX2[Probe 2]
+        SEM --> EXN[Probe N]
         EX1 --> COLL[Collect Findings]
         EX2 --> COLL
         EXN --> COLL
@@ -627,8 +627,8 @@ flowchart TD
         CL --> TP[Target Profile<br/>types, tools, memory, refusal style]
     end
 
-    subgraph Phase3[Phase 3: Attack Selection]
-        TP --> SEL[Select Relevant Attacks]
+    subgraph Phase3[Phase 3: Probe Selection]
+        TP --> SEL[Select Relevant Probes]
         SEL --> GRP[Group into Sessions by Category]
     end
 
@@ -653,7 +653,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Pass1[Pass 1: Initial Scan]
-        LOAD[Load Playbooks<br/>category filter optional] --> EXEC1[Execute All Attacks]
+        LOAD[Load Playbooks<br/>category filter optional] --> EXEC1[Execute All Probes]
         EXEC1 --> F1[Findings]
     end
 
@@ -665,14 +665,14 @@ flowchart TD
     subgraph CrossFeed[Cross-Category Feed]
         F1 --> VULN{Vulnerabilities<br/>found?}
         VULN -->|Yes| XMAP[Cross-Category Map<br/>13 category relationships]
-        XMAP --> SELECT[Select attacks from<br/>related categories]
-        TYPES --> LTARGET[Leakage-Targeted Attacks<br/>Tool leak → Tool Safety<br/>Cred leak → Exfiltration<br/>Prompt leak → Goal Adherence]
+        XMAP --> SELECT[Select probes from<br/>related categories]
+        TYPES --> LTARGET[Leakage-Targeted Probes<br/>Tool leak → Tool Safety<br/>Cred leak → Exfiltration<br/>Prompt leak → Goal Adherence]
     end
 
     subgraph PassN[Pass 2+: Iterative]
         SELECT --> MERGE[Merge & Deduplicate]
         LTARGET --> MERGE
-        MERGE --> EXECN[Execute Cross-Feed Attacks]
+        MERGE --> EXECN[Execute Cross-Feed Probes]
         EXECN --> FN[New Findings]
         FN --> CONV{New vulns or<br/>new leakage?}
         CONV -->|Yes| Harvest
@@ -707,7 +707,7 @@ flowchart LR
     end
 
     subgraph Apply
-        EFF --> SCORE[Score & Reorder<br/>Next Session's Attacks]
+        EFF --> SCORE[Score & Reorder<br/>Next Session's Probes]
         PROM --> SCORE
         DEAD --> SCORE
         CROSS --> SCORE
@@ -716,7 +716,7 @@ flowchart LR
     style MT fill:#f9f,stroke:#333
 ```
 
-#### Attack Tree Execution
+#### Probe Tree Execution
 
 ```mermaid
 flowchart TD
@@ -819,16 +819,16 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    START[Initial Attack Prompt] --> SEND[Send to Target]
+    START[Initial Probe Prompt] --> SEND[Send to Target]
     SEND --> EVAL{Evaluate Response}
 
     EVAL -->|VULNERABLE| SUCCESS[Vulnerability Found — Stop]
     EVAL -->|SAFE / INCONCLUSIVE| CHECK{Max iterations<br/>reached?}
 
     CHECK -->|Yes| FINAL[Final Verdict from<br/>all collected evidence]
-    CHECK -->|No| REFINE[Feed response to Attacker LLM]
+    CHECK -->|No| REFINE[Feed response to Prober LLM]
 
-    REFINE --> GEN[Attacker generates refined prompt<br/>• Different framing/angle<br/>• Addresses specific refusal reasons<br/>• New technique each iteration]
+    REFINE --> GEN[Prober generates refined prompt<br/>• Different framing/angle<br/>• Addresses specific refusal reasons<br/>• New technique each iteration]
     GEN --> SEND
 
     style SUCCESS fill:#f99,stroke:#333
@@ -841,7 +841,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Phase1[Phase 1: Plan]
-        OBJ[Attack Objective] --> PLAN[Attacker LLM plans<br/>N-turn escalation sequence]
+        OBJ[Probe Objective] --> PLAN[Prober LLM plans<br/>N-turn escalation sequence]
         PLAN --> TURNS[Turn 1: Innocent rapport<br/>Turn 2-3: Domain introduction<br/>Turn 4-5: Approach objective<br/>Turn N: Full request]
     end
 
@@ -892,7 +892,7 @@ flowchart LR
     ORIG[Original Prompt] --> Programmatic
     ORIG --> LLMPowered
 
-    Programmatic --> MUT[Mutated Attack]
+    Programmatic --> MUT[Mutated Probe]
     LLMPowered --> MUT
 
     MUT --> EXEC[Execute against Target]
@@ -905,7 +905,7 @@ flowchart LR
 
 ### API Specification
 
-The authoritative OpenAPI 3.1.0 contract for the Keelson service is at [`docs/openapi.yaml`](docs/openapi.yaml). It covers the `/health` endpoint (implemented) and placeholder paths for Phase 2 scan, attack, and report endpoints.
+The authoritative OpenAPI 3.1.0 contract for the Keelson service is at [`docs/openapi.yaml`](docs/openapi.yaml). It covers the `/health` endpoint (implemented) and placeholder paths for Phase 2 scan, probe, and report endpoints.
 
 ### Architecture Decision Records
 

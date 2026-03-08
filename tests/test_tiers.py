@@ -12,19 +12,19 @@ class TestTierPresets:
 
     def test_fast_tier_config(self):
         config = get_tier_config(ScanTier.FAST)
-        assert config.trials_per_attack == 1
+        assert config.trials_per_probe == 1
         assert config.concurrency.max_concurrent_trials == 10
         assert config.name == "fast"
 
     def test_deep_tier_config(self):
         config = get_tier_config(ScanTier.DEEP)
-        assert config.trials_per_attack == 10
+        assert config.trials_per_probe == 10
         assert config.confidence_level == 0.99
         assert config.concurrency.max_concurrent_trials == 1  # Sequential
 
     def test_continuous_tier_config(self):
         config = get_tier_config(ScanTier.CONTINUOUS)
-        assert config.trials_per_attack == 3
+        assert config.trials_per_probe == 3
         assert config.concurrency.max_concurrent_trials == 3
         assert config.concurrency.early_termination_threshold == 3
 
@@ -32,11 +32,11 @@ class TestTierPresets:
         config = get_tier_config(
             ScanTier.FAST,
             overrides={
-                "trials_per_attack": 5,
+                "trials_per_probe": 5,
                 "category": "goal-adherence",
             },
         )
-        assert config.trials_per_attack == 5
+        assert config.trials_per_probe == 5
         assert config.category == "goal-adherence"
         assert config.name == "fast"  # Preserved from preset
 
@@ -49,7 +49,7 @@ class TestTierPresets:
         )
         assert config.concurrency.max_concurrent_trials == 5
         # Other fields preserved
-        assert config.trials_per_attack == 10
+        assert config.trials_per_probe == 10
 
     def test_unknown_override_ignored(self):
         config = get_tier_config(
@@ -58,4 +58,4 @@ class TestTierPresets:
                 "nonexistent_field": 42,
             },
         )
-        assert config.trials_per_attack == 1  # Preset value preserved
+        assert config.trials_per_probe == 1  # Preset value preserved

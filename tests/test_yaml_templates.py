@@ -1,4 +1,4 @@
-"""Tests for YAML attack template loader."""
+"""Tests for YAML probe template loader."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from keelson.core.models import AttackTemplate, Category, Finding, Severity, Verdict
+from keelson.core.models import Category, Finding, ProbeTemplate, Severity, Verdict
 from keelson.core.yaml_templates import (
     load_yaml_template,
     load_yaml_templates_dir,
@@ -35,7 +35,7 @@ evaluation:
 
 MULTI_TURN_YAML = """\
 id: GA-002
-name: Two-Turn Attack
+name: Two-Turn Probe
 severity: medium
 category: goal_adherence
 owasp_id: LLM01
@@ -110,7 +110,7 @@ def test_yaml_produces_attack_template_instance(tmp_path: Path) -> None:
     f = tmp_path / "GA-001.yaml"
     f.write_text(SAMPLE_YAML)
     template = load_yaml_template(f)
-    assert isinstance(template, AttackTemplate)
+    assert isinstance(template, ProbeTemplate)
 
 
 def test_validate_yaml_template_passes_valid(tmp_path: Path) -> None:

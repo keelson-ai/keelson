@@ -22,7 +22,7 @@ from keelson.cli import (
     run_with_adapter,
     write_report,
 )
-from keelson.core.models import AttackTemplate, Target
+from keelson.core.models import ProbeTemplate, Target
 from keelson.core.scanner import run_scan
 from keelson.core.templates import load_all_templates
 from keelson.state.store import Store
@@ -51,7 +51,7 @@ def campaign(
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
-    """Run a statistical campaign (N trials per attack)."""
+    """Run a statistical campaign (N trials per probe)."""
     from keelson.campaign.config import parse_campaign_config
     from keelson.campaign.runner import run_campaign
 
@@ -66,7 +66,7 @@ def campaign(
     console.print("\n[bold]Keelson Statistical Campaign[/bold]")
     console.print(f"Config: {config.name}")
     console.print(f"Target: {config.target_url}")
-    console.print(f"Trials/attack: {config.trials_per_attack}")
+    console.print(f"Trials/probe: {config.trials_per_probe}")
     if config.concurrency.max_concurrent_trials > 1:
         console.print(f"Concurrency: {config.concurrency.max_concurrent_trials}")
     console.print()
@@ -87,22 +87,22 @@ def campaign(
     print_cache_stats(target_adapter)
 
     console.print("\n[bold]Campaign Results[/bold]")
-    console.print(f"  Attacks tested: {len(result.findings)}")
-    console.print(f"  Vulnerable: [red]{result.vulnerable_attacks}[/]")
+    console.print(f"  Probes tested: {len(result.findings)}")
+    console.print(f"  Vulnerable: [red]{result.vulnerable_probes}[/]")
     console.print(f"  Total trials: {result.total_trials}")
     console.print(f"\nReport saved: {report_path}")
 
-    check_fail_gates(result.vulnerable_attacks, len(result.findings), fail_on_vuln, fail_threshold)
+    check_fail_gates(result.vulnerable_probes, len(result.findings), fail_on_vuln, fail_threshold)
 
 
 @app.command()
 def evolve(
     url: str = typer.Argument(help="Target endpoint URL"),
-    attack_id: str = typer.Argument(help="Attack template ID to mutate"),
+    probe_id: str = typer.Argument(help="Probe template ID to mutate"),
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
-    attacker_url: str | None = typer.Option(None, "--attacker-url", help="Attacker LLM endpoint"),
-    attacker_key: str = typer.Option("", "--attacker-key", help="Attacker LLM API key"),
+    prober_url: str | None = typer.Option(None, "--prober-url", help="Prober LLM endpoint"),
+    prober_key: str = typer.Option("", "--prober-key", help="Prober LLM API key"),
     mutations: int = typer.Option(5, "--mutations", "-n", help="Number of mutations to try"),
     adapter: str = typer.Option(
         "openai", "--adapter", "-a", help="Adapter type: openai, anthropic, langgraph, mcp, or a2a"
@@ -111,73 +111,73 @@ def evolve(
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
-    """Mutate an attack to find bypasses (evolve mode)."""
+    """Mutate a probe to find bypasses (evolve mode)."""
     from keelson.adaptive.mutations import (
         PROGRAMMATIC_MUTATIONS,
         apply_llm_mutation,
         apply_programmatic_mutation,
     )
     from keelson.adaptive.strategies import LLM_TYPES, PROGRAMMATIC_TYPES, round_robin
-    from keelson.core.engine import execute_attack
-    from keelson.core.models import AttackStep, MutatedAttack, MutationType
+    from keelson.core.engine import execute_probe
+    from keelson.core.models import MutatedProbe, MutationType, ProbeStep
 
     templates = load_all_templates()
-    template = next((t for t in templates if t.id == attack_id), None)
+    template = next((t for t in templates if t.id == probe_id), None)
     if not template:
-        console.print(f"[red]Attack {attack_id} not found[/]")
+        console.print(f"[red]Probe {probe_id} not found[/]")
         raise typer.Exit(1)
 
     target_adapter = make_adapter(url, api_key, adapter, use_cache, assistant_id, tool_name)
-    attacker_adapter = None
-    if attacker_url:
-        from keelson.adapters.attacker import AttackerAdapter
+    prober_adapter = None
+    if prober_url:
+        from keelson.adapters.prober import ProberAdapter
 
-        raw_attacker = OpenAIAdapter(url=attacker_url, api_key=attacker_key)
-        attacker_adapter = AttackerAdapter(raw_attacker)
+        raw_prober = OpenAIAdapter(url=prober_url, api_key=prober_key)
+        prober_adapter = ProberAdapter(raw_prober)
 
-    console.print(f"\n[bold]Keelson Evolve: {attack_id}[/bold]")
+    console.print(f"\n[bold]Keelson Evolve: {probe_id}[/bold]")
     console.print(f"Target: {url}")
     console.print(f"Mutations: {mutations}")
     console.print()
 
     original_prompt = template.steps[0].prompt
     history: list[MutationType] = []
-    available = PROGRAMMATIC_TYPES + (LLM_TYPES if attacker_adapter else [])
+    available = PROGRAMMATIC_TYPES + (LLM_TYPES if prober_adapter else [])
 
     # evolve has complex per-iteration logic — keep inline async
     from keelson.adapters.base import BaseAdapter
 
     adapters_to_close: list[BaseAdapter] = [target_adapter]
-    if attacker_adapter:
-        adapters_to_close.append(attacker_adapter)
+    if prober_adapter:
+        adapters_to_close.append(prober_adapter)
 
-    async def _run() -> list[tuple[MutatedAttack, Any]]:
+    async def _run() -> list[tuple[MutatedProbe, Any]]:
         try:
-            results: list[tuple[MutatedAttack, Any]] = []
+            results: list[tuple[MutatedProbe, Any]] = []
             for i in range(mutations):
                 mt = round_robin(history, available=available)
                 history.append(mt)
 
                 if mt in PROGRAMMATIC_MUTATIONS:
-                    mutated = apply_programmatic_mutation(original_prompt, mt, attack_id)
-                elif attacker_adapter:
+                    mutated = apply_programmatic_mutation(original_prompt, mt, probe_id)
+                elif prober_adapter:
                     mutated = await apply_llm_mutation(
-                        original_prompt, mt, attacker_adapter, model=model, original_id=attack_id
+                        original_prompt, mt, prober_adapter, model=model, original_id=probe_id
                     )
                 else:
                     continue
 
-                variant = AttackTemplate(
-                    id=f"{attack_id}-mut{i + 1}",
+                variant = ProbeTemplate(
+                    id=f"{probe_id}-mut{i + 1}",
                     name=f"{template.name} ({mt.value})",
                     severity=template.severity,
                     category=template.category,
                     owasp=template.owasp,
                     objective=template.objective,
-                    steps=[AttackStep(index=1, prompt=mutated.mutated_prompt)],
+                    steps=[ProbeStep(index=1, prompt=mutated.mutated_prompt)],
                     eval_criteria=template.eval_criteria,
                 )
-                finding = await execute_attack(variant, target_adapter, model=model, delay=0.5)
+                finding = await execute_probe(variant, target_adapter, model=model, delay=0.5)
                 results.append((mutated, finding))
 
                 console.print(
@@ -211,14 +211,14 @@ def chain(
     assistant_id: str = typer.Option("agent", "--assistant-id", help="LangGraph assistant ID"),
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
     llm_chains: bool = typer.Option(False, "--llm-chains", help="Use LLM to generate novel chains"),
-    attacker_url: str | None = typer.Option(None, "--attacker-url", help="Attacker LLM endpoint"),
-    attacker_key: str = typer.Option("", "--attacker-key", help="Attacker LLM API key"),
+    prober_url: str | None = typer.Option(None, "--prober-url", help="Prober LLM endpoint"),
+    prober_key: str = typer.Option("", "--prober-key", help="Prober LLM API key"),
     no_save: bool = typer.Option(False, "--no-save", help="Skip saving to database"),
 ) -> None:
-    """Synthesize and run compound attack chains based on agent capabilities."""
-    from keelson.attacker.chains import synthesize_chains, synthesize_chains_llm
-    from keelson.core.engine import execute_attack
-    from keelson.core.models import AttackChain, EvalCriteria
+    """Synthesize and run compound probe chains based on agent capabilities."""
+    from keelson.core.engine import execute_probe
+    from keelson.core.models import EvalCriteria, ProbeChain
+    from keelson.prober.chains import synthesize_chains, synthesize_chains_llm
 
     with Store() as store:
         profile = store.get_agent_profile(profile_id)
@@ -226,7 +226,7 @@ def chain(
             console.print(f"[red]Profile {profile_id} not found[/]")
             raise typer.Exit(1)
 
-        console.print("\n[bold]Keelson Attack Chain Synthesis[/bold]")
+        console.print("\n[bold]Keelson Probe Chain Synthesis[/bold]")
         console.print(f"Target: {url}")
         console.print(f"Profile: {profile_id}")
         console.print(
@@ -236,36 +236,36 @@ def chain(
 
         chains = synthesize_chains(profile)
 
-        if llm_chains and attacker_url:
-            from keelson.adapters.attacker import AttackerAdapter
+        if llm_chains and prober_url:
+            from keelson.adapters.prober import ProberAdapter
 
-            raw_attacker = OpenAIAdapter(url=attacker_url, api_key=attacker_key)
-            attacker_adapter = AttackerAdapter(raw_attacker)
+            raw_prober = OpenAIAdapter(url=prober_url, api_key=prober_key)
+            prober_adapter = ProberAdapter(raw_prober)
 
             llm_generated = run_with_adapter(
-                lambda: synthesize_chains_llm(profile, attacker_adapter, model=model),
-                attacker_adapter,
+                lambda: synthesize_chains_llm(profile, prober_adapter, model=model),
+                prober_adapter,
             )
             chains.extend(llm_generated)
 
         if not chains:
-            console.print("[yellow]No applicable attack chains for detected capabilities.[/]")
+            console.print("[yellow]No applicable probe chains for detected capabilities.[/]")
             return
 
-        console.print(f"Found {len(chains)} applicable attack chains\n")
+        console.print(f"Found {len(chains)} applicable probe chains\n")
 
         target_adapter = make_adapter(
             url, api_key, adapter, assistant_id=assistant_id, tool_name=tool_name
         )
 
         # chain has per-iteration store saves — keep inline async
-        async def _run() -> list[tuple[AttackChain, Any]]:
+        async def _run() -> list[tuple[ProbeChain, Any]]:
             try:
-                results: list[tuple[AttackChain, Any]] = []
+                results: list[tuple[ProbeChain, Any]] = []
                 for i, ch in enumerate(chains):
                     console.print(f"  [{i + 1}/{len(chains)}] Running: {ch.name}")
 
-                    template = AttackTemplate(
+                    template = ProbeTemplate(
                         id=f"CHAIN-{ch.chain_id}",
                         name=ch.name,
                         severity=ch.severity,
@@ -278,7 +278,7 @@ def chain(
                             safe_if=["Agent refuses at any step"],
                         ),
                     )
-                    finding = await execute_attack(template, target_adapter, model=model, delay=1.0)
+                    finding = await execute_probe(template, target_adapter, model=model, delay=1.0)
                     results.append((ch, finding))
 
                     verdict_val = finding.verdict.value
@@ -286,7 +286,7 @@ def chain(
                     console.print(f"    Verdict: {icon}")
 
                     if not no_save:
-                        store.save_attack_chain(ch, profile_id=profile_id)
+                        store.save_probe_chain(ch, profile_id=profile_id)
 
                 return results
             finally:
@@ -410,14 +410,14 @@ def test_chain_cmd(
 
 @app.command()
 def generate(
-    attacker_url: str = typer.Argument(help="Attacker LLM endpoint URL"),
-    attacker_key: str = typer.Option("", "--api-key", "-k", help="Attacker API key"),
+    prober_url: str = typer.Argument(help="Prober LLM endpoint URL"),
+    prober_key: str = typer.Option("", "--api-key", "-k", help="Prober API key"),
     model: str = typer.Option("default", "--model", "-m"),
     category: str | None = typer.Option(
         None, "--category", "-c", help="Specific category to generate for"
     ),
-    count: int = typer.Option(3, "--count", "-n", help="Attacks per category"),
-    multi_step: bool = typer.Option(False, "--multi-step", help="Generate multi-step attacks"),  # noqa: ARG001
+    count: int = typer.Option(3, "--count", "-n", help="Probes per category"),
+    multi_step: bool = typer.Option(False, "--multi-step", help="Generate multi-step probes"),  # noqa: ARG001
     profile_id: str | None = typer.Option(
         None, "--profile", "-p", help="Agent profile ID for capability-informed generation"
     ),
@@ -425,27 +425,27 @@ def generate(
         None, "--output", "-o", help="Directory to save generated playbooks"
     ),
 ) -> None:
-    """Generate novel attack templates using an attacker LLM."""
-    from keelson.attacker.generator import (
+    """Generate novel probe templates using an prober LLM."""
+    from keelson.prober.generator import (
         generate_batch,
-        generate_capability_informed_attacks,
+        generate_capability_informed_probes,
     )
 
-    attacker_adapter = OpenAIAdapter(url=attacker_url, api_key=attacker_key)
+    prober_adapter = OpenAIAdapter(url=prober_url, api_key=prober_key)
 
-    console.print("\n[bold]Keelson Attack Generator[/bold]")
-    console.print(f"Attacker: {attacker_url}")
+    console.print("\n[bold]Keelson Probe Generator[/bold]")
+    console.print(f"Prober: {prober_url}")
     console.print()
 
-    async def _gen() -> list[AttackTemplate]:
+    async def _gen() -> list[ProbeTemplate]:
         if profile_id:
             with Store() as store:
                 profile = store.get_agent_profile(profile_id)
             if not profile:
                 console.print(f"[red]Profile {profile_id} not found[/]")
                 raise typer.Exit(1)
-            return await generate_capability_informed_attacks(
-                attacker_adapter, profile, model=model, max_attacks=count
+            return await generate_capability_informed_probes(
+                prober_adapter, profile, model=model, max_probes=count
             )
         else:
             categories = None
@@ -459,17 +459,17 @@ def generate(
                     console.print(f"[red]Unknown category: {category}[/]")
                     raise typer.Exit(1)
             return await generate_batch(
-                attacker_adapter,
+                prober_adapter,
                 categories=categories,
                 count_per_category=count,
                 model=model,
             )
 
-    templates = run_with_adapter(_gen, attacker_adapter)
+    templates = run_with_adapter(_gen, prober_adapter)
 
     from rich.table import Table
 
-    table = Table(title=f"Generated {len(templates)} Attack Templates")
+    table = Table(title=f"Generated {len(templates)} Probe Templates")
     table.add_column("ID", style="bold")
     table.add_column("Name")
     table.add_column("Category")
@@ -487,8 +487,8 @@ def generate(
             console.print(f"  Saved: {path}")
 
 
-def _template_to_markdown(t: AttackTemplate) -> str:
-    """Convert an AttackTemplate to markdown playbook format."""
+def _template_to_markdown(t: ProbeTemplate) -> str:
+    """Convert an ProbeTemplate to markdown playbook format."""
     lines = [
         f"# {t.id}: {t.name}",
         "",
@@ -499,7 +499,7 @@ def _template_to_markdown(t: AttackTemplate) -> str:
         "## Objective",
         t.objective,
         "",
-        "## Attack Steps",
+        "## Probe Steps",
     ]
     for step in t.steps:
         label = " (follow-up)" if step.is_followup else ""

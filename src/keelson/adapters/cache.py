@@ -33,7 +33,7 @@ class CacheStats:
 class CachingAdapter(BaseAdapter):
     """Wraps a BaseAdapter to cache responses by message+model hash.
 
-    Composable: CachingAdapter(AttackerAdapter(AnthropicAdapter(...)))
+    Composable: CachingAdapter(ProberAdapter(AnthropicAdapter(...)))
     """
 
     def __init__(

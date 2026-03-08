@@ -11,12 +11,12 @@ class TestCampaignConfig:
         config_file.write_text("""\
 [campaign]
 name = "nightly-scan"
-trials_per_attack = 10
+trials_per_probe = 10
 confidence_level = 0.99
 delay_between_trials = 0.5
-delay_between_attacks = 1.0
+delay_between_probes = 1.0
 category = "goal-adherence"
-attack_ids = ["GA-001", "GA-002"]
+probe_ids = ["GA-001", "GA-002"]
 
 [target]
 url = "https://api.example.com/v1/chat/completions"
@@ -25,12 +25,12 @@ model = "gpt-4"
 """)
         cfg = parse_campaign_config(config_file)
         assert cfg.name == "nightly-scan"
-        assert cfg.trials_per_attack == 10
+        assert cfg.trials_per_probe == 10
         assert cfg.confidence_level == 0.99
         assert cfg.delay_between_trials == 0.5
-        assert cfg.delay_between_attacks == 1.0
+        assert cfg.delay_between_probes == 1.0
         assert cfg.category == "goal-adherence"
-        assert cfg.attack_ids == ["GA-001", "GA-002"]
+        assert cfg.probe_ids == ["GA-001", "GA-002"]
         assert cfg.target_url == "https://api.example.com/v1/chat/completions"
         assert cfg.api_key == "sk-test-key"
         assert cfg.model == "gpt-4"
@@ -43,7 +43,7 @@ url = "https://api.example.com/v1/chat/completions"
 """)
         cfg = parse_campaign_config(config_file)
         assert cfg.name == "minimal"
-        assert cfg.trials_per_attack == 5
+        assert cfg.trials_per_probe == 5
         assert cfg.confidence_level == 0.95
         assert cfg.target_url == "https://api.example.com/v1/chat/completions"
         assert cfg.model == "default"
@@ -57,7 +57,7 @@ url = "https://api.example.com/v1/chat/completions"
 url = "https://test.com"
 """)
         cfg = parse_campaign_config(config_file)
-        assert cfg.trials_per_attack == 5
+        assert cfg.trials_per_probe == 5
         assert cfg.target_url == "https://test.com"
-        assert cfg.attack_ids == []
+        assert cfg.probe_ids == []
         assert cfg.category is None

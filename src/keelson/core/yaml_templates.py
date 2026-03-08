@@ -1,4 +1,4 @@
-"""YAML attack template loader — parallel format to the existing Markdown parser."""
+"""YAML probe template loader — parallel format to the existing Markdown parser."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ from typing import Any, cast
 import yaml
 
 from keelson.core.models import (
-    AttackStep,
-    AttackTemplate,
     Category,
     EvalCriteria,
     Finding,
+    ProbeStep,
+    ProbeTemplate,
     Severity,
     Verdict,
 )
@@ -51,8 +51,8 @@ def validate_yaml_template(data: dict[str, Any]) -> None:
         raise ValueError(f"Unknown category: {data['category']!r}")
 
 
-def load_yaml_template(path: Path) -> AttackTemplate:
-    """Parse a YAML attack template file into an AttackTemplate."""
+def load_yaml_template(path: Path) -> ProbeTemplate:
+    """Parse a YAML probe template file into an ProbeTemplate."""
     text = path.read_text(encoding="utf-8")
     raw: object = yaml.safe_load(text)
     if not isinstance(raw, dict):
@@ -68,12 +68,12 @@ def load_yaml_template(path: Path) -> AttackTemplate:
         raise ValueError(f"'turns' must be a list in {path}, got {type(turns_raw).__name__}")
     turns = cast(list[dict[str, Any]], turns_raw)
 
-    steps: list[AttackStep] = []
+    steps: list[ProbeStep] = []
     for i, turn in enumerate(turns):
         new_session = bool(turn.get("new_session", False))
         role = str(turn.get("role", "user"))
         steps.append(
-            AttackStep(
+            ProbeStep(
                 index=i + 1,
                 prompt=str(turn["content"]),
                 is_followup=i > 0,
@@ -97,7 +97,7 @@ def load_yaml_template(path: Path) -> AttackTemplate:
         success_rate = float(eff.get("success_rate", 0.0))
         times_tested = int(eff.get("times_tested", 0))
 
-    return AttackTemplate(
+    return ProbeTemplate(
         id=str(data["id"]),
         name=str(data["name"]),
         severity=SEVERITY_MAP[data["severity"].lower()],
@@ -112,9 +112,9 @@ def load_yaml_template(path: Path) -> AttackTemplate:
     )
 
 
-def load_yaml_templates_dir(directory: Path) -> list[AttackTemplate]:
+def load_yaml_templates_dir(directory: Path) -> list[ProbeTemplate]:
     """Load all *.yaml templates from a directory tree."""
-    templates: list[AttackTemplate] = []
+    templates: list[ProbeTemplate] = []
     for path in sorted(directory.rglob("*.yaml")):
         templates.append(load_yaml_template(path))
     return templates
@@ -142,9 +142,9 @@ def _update_yaml_effectiveness(path: Path, new_rate: float, new_tested: int) -> 
 
 def update_effectiveness_scores(
     findings: list[Finding],
-    templates: list[AttackTemplate],
+    templates: list[ProbeTemplate],
 ) -> int:
-    """Update YAML attack files with new effectiveness scores from scan findings.
+    """Update YAML probe files with new effectiveness scores from scan findings.
 
     Computes an incremental weighted average: new results are merged with the
     existing success_rate and times_tested already stored in each template.
@@ -191,34 +191,34 @@ def update_effectiveness_scores(
                 _update_yaml_effectiveness(mirror, merged_rate, total_tested)
 
     if updated:
-        logger.info("Updated effectiveness scores for %d attacks", updated)
+        logger.info("Updated effectiveness scores for %d probes", updated)
     return updated
 
 
 def _find_mirror(source: Path) -> Path | None:
-    """Find the mirror copy of a YAML file (src/keelson/attacks ↔ attacks)."""
+    """Find the mirror copy of a YAML file (src/keelson/probes ↔ probes)."""
     parts = source.parts
-    # Find the 'attacks' directory in the path
+    # Find the 'probes' directory in the path
     try:
-        idx = parts.index("attacks")
+        idx = parts.index("probes")
     except ValueError:
         return None
 
-    relative = Path(*parts[idx:])  # attacks/category/XX-NNN.yaml
+    relative = Path(*parts[idx:])  # probes/category/XX-NNN.yaml
 
     # Determine which root this file belongs to and find the other
     src_marker = "keelson"
     if src_marker in parts:
-        # source is in src/keelson/attacks/ → mirror is at repo-root attacks/
+        # source is in src/keelson/probes/ → mirror is at repo-root probes/
         repo_root = source
         for _ in range(len(parts) - idx):
             repo_root = repo_root.parent
         # Go up past src/keelson to repo root
-        while repo_root.name in ("attacks", "keelson", "src"):
+        while repo_root.name in ("probes", "keelson", "src"):
             repo_root = repo_root.parent
         return repo_root / relative
     else:
-        # source is at repo-root attacks/ → mirror is in src/keelson/attacks/
+        # source is at repo-root probes/ → mirror is in src/keelson/probes/
         repo_root = source
         for _ in range(len(parts) - idx):
             repo_root = repo_root.parent

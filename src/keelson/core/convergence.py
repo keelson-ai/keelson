@@ -1,9 +1,9 @@
 """Convergence scan — cross-category feedback, leakage harvesting, iterative loop.
 
 Iterative multi-pass scanning with cross-feed intelligence:
-  Pass 1: Run initial scan (behavioral attack testing)
+  Pass 1: Run initial scan (behavioral probe testing)
   Pass 2: Harvest leaked info from all responses (structural analysis)
-         → select cross-feed attacks from related categories → run those
+         → select cross-feed probes from related categories → run those
   Pass 3+: Repeat until no new findings or max passes reached
 """
 
@@ -17,10 +17,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from keelson.adapters.base import BaseAdapter
-from keelson.core.engine import execute_attack
+from keelson.core.engine import execute_probe
 from keelson.core.models import (
-    AttackTemplate,
     Finding,
+    ProbeTemplate,
     ScanResult,
     Target,
     Verdict,
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 # Maximum convergence passes (including initial scan)
 MAX_PASSES = 4
 
-# Cross-category relationships: when a vuln is found in key, queue attacks from values
+# Cross-category relationships: when a vuln is found in key, queue probes from values
 CROSS_CATEGORY_MAP: dict[str, list[str]] = {
     "goal-adherence": ["tool-safety", "conversational-exfiltration", "cognitive-architecture"],
     "tool-safety": ["permission-boundaries", "execution-safety", "output-weaponization"],
@@ -107,7 +107,7 @@ class ConvergencePassResult:
 def harvest_leaked_info(
     findings: list[Finding],
 ) -> list[LeakedInfo]:
-    """Scan all evidence responses for leaked information regardless of attack intent.
+    """Scan all evidence responses for leaked information regardless of probe intent.
 
     This is the structural analysis pass — a second lens that finds information
     leakage patterns that the behavioral (verdict-based) detection may miss.
@@ -145,14 +145,14 @@ def harvest_leaked_info(
     return leaked
 
 
-def select_crossfeed_attacks(
+def select_crossfeed_probes(
     vuln_findings: list[Finding],
-    all_templates: list[AttackTemplate],
+    all_templates: list[ProbeTemplate],
     already_executed: set[str],
-) -> list[AttackTemplate]:
-    """Select attacks from related categories based on discovered vulnerabilities.
+) -> list[ProbeTemplate]:
+    """Select probes from related categories based on discovered vulnerabilities.
 
-    When a vulnerability is found in category X, queue high-priority attacks
+    When a vulnerability is found in category X, queue high-priority probes
     from related categories that haven't been run yet.
     """
     vuln_categories: set[str] = set()
@@ -175,7 +175,7 @@ def select_crossfeed_attacks(
 
     # Select templates from related categories, prioritizing high severity
     # and high effectiveness, up to a reasonable limit
-    candidates: list[AttackTemplate] = []
+    candidates: list[ProbeTemplate] = []
     for template in all_templates:
         if template.id in already_executed:
             continue
@@ -187,20 +187,20 @@ def select_crossfeed_attacks(
     severity_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
     candidates.sort(key=lambda t: (severity_order.get(t.severity.value, 4), -t.success_rate))
 
-    # Cap at 20 cross-feed attacks per pass to keep scans bounded
+    # Cap at 20 cross-feed probes per pass to keep scans bounded
     return candidates[:20]
 
 
-def select_leakage_targeted_attacks(
+def select_leakage_targeted_probes(
     leaked_info: list[LeakedInfo],
-    all_templates: list[AttackTemplate],
+    all_templates: list[ProbeTemplate],
     already_executed: set[str],
-) -> list[AttackTemplate]:
-    """Select attacks that exploit specific leaked information.
+) -> list[ProbeTemplate]:
+    """Select probes that exploit specific leaked information.
 
-    Leaked tool names → tool-safety attacks
-    Leaked system prompts → goal-adherence attacks
-    Leaked credentials/URLs → conversational-exfiltration attacks
+    Leaked tool names → tool-safety probes
+    Leaked system prompts → goal-adherence probes
+    Leaked credentials/URLs → conversational-exfiltration probes
     """
     target_categories: set[str] = set()
 
@@ -220,7 +220,7 @@ def select_leakage_targeted_attacks(
     if not target_categories:
         return []
 
-    candidates: list[AttackTemplate] = []
+    candidates: list[ProbeTemplate] = []
     for template in all_templates:
         if template.id in already_executed:
             continue
@@ -246,15 +246,15 @@ async def run_convergence_scan(
 ) -> ScanResult:
     """Run an iterative convergence scan with cross-category feedback and convergence.
 
-    Pass 1: Execute all attacks in the selected category (or all categories).
-    Pass 2+: Harvest leaked info, select cross-feed attacks, execute, repeat
+    Pass 1: Execute all probes in the selected category (or all categories).
+    Pass 2+: Harvest leaked info, select cross-feed probes, execute, repeat
              until no new VULNERABLE findings emerge or max passes reached.
 
     Args:
         target: The target to scan.
         adapter: Adapter for communicating with the target.
         category: Filter to a specific category for the initial pass.
-        delay: Seconds to wait between attacks.
+        delay: Seconds to wait between probes.
         on_finding: Optional callback(finding, current_index, total) for progress.
         on_pass: Optional callback(pass_number, description) for pass transitions.
         max_passes: Maximum number of convergence passes.
@@ -269,12 +269,12 @@ async def run_convergence_scan(
     # --- Pass 1: Initial scan ---
     initial_templates = load_all_templates(category=category)
     if on_pass:
-        on_pass(1, f"Initial scan: {len(initial_templates)} attacks")
+        on_pass(1, f"Initial scan: {len(initial_templates)} probes")
 
     pass1_findings: list[Finding] = []
     total = len(initial_templates)
     for i, template in enumerate(initial_templates):
-        finding = await execute_attack(
+        finding = await execute_probe(
             template,
             adapter,
             model=target.model,
@@ -319,14 +319,14 @@ async def run_convergence_scan(
                 on_pass(pass_num, "Converged: no vulnerabilities or leakage to follow up")
             break
 
-        # Select cross-feed attacks from related categories
-        crossfeed = select_crossfeed_attacks(vuln_findings, all_templates, executed_ids)
+        # Select cross-feed probes from related categories
+        crossfeed = select_crossfeed_probes(vuln_findings, all_templates, executed_ids)
 
-        # Select attacks targeting leaked information
-        leakage_targeted = select_leakage_targeted_attacks(leaked_info, all_templates, executed_ids)
+        # Select probes targeting leaked information
+        leakage_targeted = select_leakage_targeted_probes(leaked_info, all_templates, executed_ids)
 
         # Merge and deduplicate
-        next_templates_map: dict[str, AttackTemplate] = {}
+        next_templates_map: dict[str, ProbeTemplate] = {}
         for t in crossfeed:
             next_templates_map[t.id] = t
         for t in leakage_targeted:
@@ -336,7 +336,7 @@ async def run_convergence_scan(
 
         if not next_templates:
             if on_pass:
-                on_pass(pass_num, "Converged: no new attacks to run")
+                on_pass(pass_num, "Converged: no new probes to run")
             break
 
         if on_pass:
@@ -344,7 +344,7 @@ async def run_convergence_scan(
                 pass_num,
                 f"Cross-feed pass: {len(crossfeed)} category-related + "
                 f"{len(leakage_targeted)} leakage-targeted = "
-                f"{len(next_templates)} attacks",
+                f"{len(next_templates)} probes",
             )
 
         # Build a set of crossfeed template IDs for accurate source attribution
@@ -361,11 +361,11 @@ async def run_convergence_scan(
                     sources.append(vf.template_id)
             crossfeed_sources[t.id] = sources[:3]
 
-        # Execute cross-feed attacks
+        # Execute cross-feed probes
         pass_findings: list[Finding] = []
         total_pass = len(next_templates)
         for i, template in enumerate(next_templates):
-            finding = await execute_attack(
+            finding = await execute_probe(
                 template,
                 adapter,
                 model=target.model,

@@ -17,12 +17,12 @@ from keelson.core.models import (
 OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
     "LLM01": {
         "name": "Prompt Injection",
-        "description": "Direct and indirect prompt injection attacks that manipulate LLM behavior.",
+        "description": "Direct and indirect prompt injection probes that manipulate LLM behavior.",
         "remediation": (
             "Implement input validation, privilege control, "
             "and human-in-the-loop for critical actions."
         ),
-        "attack_prefixes": ["GA-"],
+        "probe_prefixes": ["GA-"],
     },
     "LLM02": {
         "name": "Insecure Output Handling",
@@ -32,7 +32,7 @@ OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
         "remediation": (
             "Apply output encoding, input validation on downstream systems, and least privilege."
         ),
-        "attack_prefixes": ["TS-", "PB-"],
+        "probe_prefixes": ["TS-", "PB-"],
     },
     "LLM03": {
         "name": "Training Data Poisoning",
@@ -40,19 +40,19 @@ OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
         "remediation": (
             "Vet training data sources, use data sanitization, and implement anomaly detection."
         ),
-        "attack_prefixes": [],
+        "probe_prefixes": [],
     },
     "LLM04": {
         "name": "Model Denial of Service",
         "description": "Resource-intensive inputs causing degraded service or high costs.",
         "remediation": "Implement input length limits, rate limiting, and resource monitoring.",
-        "attack_prefixes": [],
+        "probe_prefixes": [],
     },
     "LLM05": {
         "name": "Supply Chain Vulnerabilities",
         "description": "Vulnerabilities in third-party components, plugins, or pre-trained models.",
         "remediation": "Vet third-party components, maintain SBOM, and monitor for CVEs.",
-        "attack_prefixes": ["MI-", "SI-"],
+        "probe_prefixes": ["MI-", "SI-"],
     },
     "LLM06": {
         "name": "Sensitive Information Disclosure",
@@ -60,7 +60,7 @@ OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
         "remediation": (
             "Apply data sanitization, PII filtering, and access controls on training data."
         ),
-        "attack_prefixes": ["CS-", "ES-"],
+        "probe_prefixes": ["CS-", "ES-"],
     },
     "LLM07": {
         "name": "Insecure Plugin Design",
@@ -68,7 +68,7 @@ OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
         "remediation": (
             "Apply least privilege to plugins, validate inputs, and require user confirmation."
         ),
-        "attack_prefixes": ["TS-"],
+        "probe_prefixes": ["TS-"],
     },
     "LLM08": {
         "name": "Excessive Agency",
@@ -76,19 +76,19 @@ OWASP_LLM_CONTROLS: dict[str, dict[str, Any]] = {
         "remediation": (
             "Limit LLM permissions, implement function-level authorization, require human approval."
         ),
-        "attack_prefixes": ["AS-", "DI-"],
+        "probe_prefixes": ["AS-", "DI-"],
     },
     "LLM09": {
         "name": "Overreliance",
         "description": "Excessive dependence on LLM output without verification.",
         "remediation": "Implement human oversight, output verification, and confidence scoring.",
-        "attack_prefixes": ["AS-", "DI-"],
+        "probe_prefixes": ["AS-", "DI-"],
     },
     "LLM10": {
         "name": "Model Theft",
         "description": "Unauthorized access to or replication of the LLM.",
         "remediation": "Implement access controls, rate limiting, and watermarking.",
-        "attack_prefixes": [],
+        "probe_prefixes": [],
     },
 }
 
@@ -201,9 +201,7 @@ EU_AI_ACT_ARTICLES: dict[str, dict[str, Any]] = {
         "description": (
             "High-risk AI systems shall be designed for accuracy, robustness and cybersecurity."
         ),
-        "relevance": (
-            "Attack testing directly assesses robustness and cybersecurity requirements."
-        ),
+        "relevance": ("Probe testing directly assesses robustness and cybersecurity requirements."),
         "categories": [
             "Goal Adherence",
             "Tool Safety",
@@ -225,7 +223,7 @@ PCI_DSS_V4_CONTROLS: dict[str, dict[str, Any]] = {
         "remediation": (
             "Apply secure development practices to AI agent integrations and prompt handling."
         ),
-        "attack_prefixes": ["GA-", "DI-", "ES-"],
+        "probe_prefixes": ["GA-", "DI-", "ES-"],
         "categories": [
             "Goal Adherence",
             "Delegation Integrity",
@@ -236,13 +234,13 @@ PCI_DSS_V4_CONTROLS: dict[str, dict[str, Any]] = {
         "name": "Security Testing",
         "description": (
             "Security vulnerabilities are identified and "
-            "addressed, including AI-specific attack vectors."
+            "addressed, including AI-specific probe vectors."
         ),
         "remediation": (
             "Perform regular security testing of AI agent "
             "capabilities including prompt injection and tool misuse."
         ),
-        "attack_prefixes": ["GA-", "TS-", "MI-", "PB-", "DI-", "ES-", "SI-", "CS-", "AS-"],
+        "probe_prefixes": ["GA-", "TS-", "MI-", "PB-", "DI-", "ES-", "SI-", "CS-", "AS-"],
         "categories": [
             "Goal Adherence",
             "Tool Safety",
@@ -257,12 +255,12 @@ PCI_DSS_V4_CONTROLS: dict[str, dict[str, Any]] = {
     },
     "6.4": {
         "name": "Public-Facing Application Protection",
-        "description": "Public-facing AI applications are protected against known attacks.",
+        "description": "Public-facing AI applications are protected against known probes.",
         "remediation": (
             "Implement input validation, output filtering, "
             "and rate limiting on public-facing AI endpoints."
         ),
-        "attack_prefixes": ["GA-", "CS-", "PB-"],
+        "probe_prefixes": ["GA-", "CS-", "PB-"],
         "categories": [
             "Goal Adherence",
             "Content Safety",
@@ -278,7 +276,7 @@ PCI_DSS_V4_CONTROLS: dict[str, dict[str, Any]] = {
             "Conduct AI-specific penetration testing covering "
             "prompt injection, tool abuse, and privilege escalation."
         ),
-        "attack_prefixes": ["TS-", "PB-", "AS-", "ES-"],
+        "probe_prefixes": ["TS-", "PB-", "AS-", "ES-"],
         "categories": [
             "Tool Safety",
             "Permission Boundaries",
@@ -313,9 +311,9 @@ COMPLIANCE_REPORT_TEMPLATE = Template("""\
 {{ control.description }}
 
 **Status**: {{ control.status }}
-**Findings**: {{ control.findings | length }} attacks tested
+**Findings**: {{ control.findings | length }} probes tested
 {% if control.findings %}
-| Attack | Verdict | Severity |
+| Probe | Verdict | Severity |
 |--------|---------|----------|
 {% for f in control.findings %}\
 | {{ f.template_id }}: {{ f.template_name[:40] }} | {{ f.verdict.value }} | {{ f.severity.value }} |
@@ -347,7 +345,7 @@ def _map_findings_to_owasp(
         else:
             # Try prefix matching
             for ctrl_id, ctrl in OWASP_LLM_CONTROLS.items():
-                for prefix in ctrl["attack_prefixes"]:
+                for prefix in ctrl["probe_prefixes"]:
                     if f.template_id.startswith(prefix):
                         mapping[ctrl_id].append(f)
                         break
@@ -515,7 +513,7 @@ def _generate_iso_42001_report(scan: ScanResult) -> str:
     controls: dict[str, Any] = {
         "A.6": {
             "name": "AI System Security",
-            "description": "Controls for securing AI systems against adversarial attacks.",
+            "description": "Controls for securing AI systems against adversarial probes.",
             "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
             "findings": scan.findings,
             "remediation": "Implement security controls for identified AI vulnerabilities."
@@ -556,7 +554,7 @@ def _generate_soc2_report(scan: ScanResult) -> str:
             "description": "The entity monitors system components for anomalies.",
             "status": "PASS" if scan.vulnerable_count == 0 else "FAIL",
             "findings": scan.findings,
-            "remediation": "Implement monitoring for AI-specific attack patterns."
+            "remediation": "Implement monitoring for AI-specific probe patterns."
             if scan.vulnerable_count > 0
             else "",
         },
@@ -576,7 +574,7 @@ def _generate_pci_dss_report(scan: ScanResult) -> str:
                 f.template_id: f
                 for f in scan.findings
                 if f.category.value in req_data["categories"]
-                or any(f.template_id.startswith(p) for p in req_data["attack_prefixes"])
+                or any(f.template_id.startswith(p) for p in req_data["probe_prefixes"])
             }.values()
         )
         status = _control_status(req_findings)

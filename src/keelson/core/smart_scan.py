@@ -9,15 +9,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from keelson.adapters.base import BaseAdapter
-from keelson.attacker.discovery import CAPABILITY_PROBES, score_capability
 from keelson.core.execution import apply_verified_findings, execute_sequential, verify_findings
-from keelson.core.memo import MemoTable, infer_techniques_from_template, score_attack_by_memo
+from keelson.core.memo import MemoTable, infer_techniques_from_template, score_probe_by_memo
 from keelson.core.models import (
     AgentCapability,
     AgentProfile,
-    AttackTemplate,
     Category,
     Finding,
+    ProbeTemplate,
     ScanResult,
     Target,
     Verdict,
@@ -26,14 +25,15 @@ from keelson.core.strategist import (
     ReconResponse,
     adapt_plan,
     classify_target,
-    select_attacks,
+    select_probes,
 )
 from keelson.core.templates import load_all_templates
 from keelson.core.yaml_templates import update_effectiveness_scores
+from keelson.prober.discovery import CAPABILITY_PROBES, score_capability
 
 logger = logging.getLogger(__name__)
 
-# Maximum attacks per conversational session before resetting thread
+# Maximum probes per conversational session before resetting thread
 _SESSION_MAX_TURNS = 6
 
 
@@ -76,27 +76,27 @@ async def _run_discovery(
 
 
 def _group_into_sessions(
-    attack_ids: list[str],
-    templates_by_id: dict[str, AttackTemplate],
+    probe_ids: list[str],
+    templates_by_id: dict[str, ProbeTemplate],
     memo: MemoTable | None = None,
-) -> list[list[AttackTemplate]]:
-    """Group attacks into conversational sessions.
+) -> list[list[ProbeTemplate]]:
+    """Group probes into conversational sessions.
 
-    Groups attacks by category, with up to _SESSION_MAX_TURNS per session.
-    This creates natural conversation flow where related attacks build on each other.
+    Groups probes by category, with up to _SESSION_MAX_TURNS per session.
+    This creates natural conversation flow where related probes build on each other.
 
-    When a memo table is provided, attacks within each category are reordered
-    so that attacks using historically effective techniques run first,
-    and attacks using dead-end techniques are pushed to the back.
+    When a memo table is provided, probes within each category are reordered
+    so that probes using historically effective techniques run first,
+    and probes using dead-end techniques are pushed to the back.
     """
     # Group by category
-    by_category: dict[Category, list[AttackTemplate]] = {}
-    for aid in attack_ids:
+    by_category: dict[Category, list[ProbeTemplate]] = {}
+    for aid in probe_ids:
         t = templates_by_id.get(aid)
         if t:
             by_category.setdefault(t.category, []).append(t)
 
-    sessions: list[list[AttackTemplate]] = []
+    sessions: list[list[ProbeTemplate]] = []
     for category, templates in by_category.items():
         if memo and memo.entries:
             templates = _reorder_by_memo(templates, memo, category)
@@ -111,11 +111,11 @@ def _group_into_sessions(
     return sessions
 
 
-def _effectiveness_score(t: AttackTemplate) -> float:
-    """Score an attack by its field-tested success rate, weighted by confidence.
+def _effectiveness_score(t: ProbeTemplate) -> float:
+    """Score a probe by its field-tested success rate, weighted by confidence.
 
-    Untested attacks (times_tested=0) score 0.0 (neutral).
-    Tested attacks scale from -1.0 (proven failure) to +1.0 (always works):
+    Untested probes (times_tested=0) score 0.0 (neutral).
+    Tested probes scale from -1.0 (proven failure) to +1.0 (always works):
       - 0% rate after 10+ tests → -1.0 (strong deprioritization)
       - 0% rate after 1 test → -0.1 (mild penalty, could still work)
       - 50% rate after 10 tests → +0.5
@@ -129,25 +129,25 @@ def _effectiveness_score(t: AttackTemplate) -> float:
 
 
 def _reorder_by_memo(
-    templates: list[AttackTemplate],
+    templates: list[ProbeTemplate],
     memo: MemoTable,
     category: Category,
-) -> list[AttackTemplate]:
+) -> list[ProbeTemplate]:
     """Reorder templates so effective techniques come first, dead ends last.
 
     Combines field-tested success rates with memo-informed scoring.
     """
 
-    def _score(t: AttackTemplate) -> float:
+    def _score(t: ProbeTemplate) -> float:
         techniques = infer_techniques_from_template(t)
-        memo_score = score_attack_by_memo(techniques, memo, category)
+        memo_score = score_probe_by_memo(techniques, memo, category)
         return memo_score + _effectiveness_score(t)
 
     return sorted(templates, key=_score, reverse=True)
 
 
 async def _execute_session(
-    session: list[AttackTemplate],
+    session: list[ProbeTemplate],
     adapter: BaseAdapter,
     model: str,
     delay: float,
@@ -157,7 +157,7 @@ async def _execute_session(
     memo: MemoTable | None = None,
     max_response_tokens: int | None = 512,
 ) -> list[Finding]:
-    """Execute a group of attacks within a single conversational session.
+    """Execute a group of probes within a single conversational session.
 
     Uses a shared message history within the session so social manipulation
     builds naturally. Resets the session at the start.
@@ -194,18 +194,18 @@ async def run_smart_scan(
 ) -> ScanResult:
     """Run an adaptive smart scan: discover -> classify -> select -> execute.
 
-    Unlike run_scan which blindly runs all attacks, smart_scan:
+    Unlike run_scan which blindly runs all probes, smart_scan:
     1. Discovers target capabilities (8 probes)
     2. Classifies target type (codebase agent, RAG, customer service, etc.)
-    3. Selects only relevant attacks based on profile
-    4. Groups attacks into conversational sessions for natural social manipulation
+    3. Selects only relevant probes based on profile
+    4. Groups probes into conversational sessions for natural social manipulation
     5. Adapts the plan based on findings (escalate/de-escalate)
     6. Optionally verifies VULNERABLE findings with confirmation probes
 
     Args:
         target: The target to scan.
         adapter: Adapter for communicating with the target.
-        attacks_dir: Override directory for attack playbooks.
+        attacks_dir: Override directory for probe playbooks.
         delay: Seconds to wait between requests.
         on_finding: Optional callback(finding, current_index, total) for progress.
         on_phase: Optional callback(phase_name, detail) for phase transitions.
@@ -242,43 +242,43 @@ async def run_smart_scan(
             f"Memory: {target_profile.has_memory} | Refusal: {target_profile.refusal_style}",
         )
 
-    # --- Phase 3: Attack Selection ---
+    # --- Phase 3: Probe Selection ---
     all_templates = load_all_templates(attacks_dir=attacks_dir)
-    plan = select_attacks(target_profile, all_templates)
+    plan = select_probes(target_profile, all_templates)
 
     if on_phase:
         on_phase(
             "plan",
-            f"Selected {plan.total_attacks} attacks (from {len(all_templates)} available)",
+            f"Selected {plan.total_probes} probes (from {len(all_templates)} available)",
         )
         for cp in plan.categories:
-            if cp.attack_ids:
+            if cp.probe_ids:
                 on_phase(
                     "category",
-                    f"  {cp.category.value}: {len(cp.attack_ids)} attacks "
+                    f"  {cp.category.value}: {len(cp.probe_ids)} probes "
                     f"({cp.priority.value}) — {cp.rationale}",
                 )
 
     # Build lookup
     templates_by_id = {t.id: t for t in all_templates}
 
-    # Collect all attack IDs from the plan
-    all_attack_ids = [aid for cp in plan.categories for aid in cp.attack_ids]
+    # Collect all probe IDs from the plan
+    all_probe_ids = [aid for cp in plan.categories for aid in cp.probe_ids]
 
-    if not all_attack_ids:
+    if not all_probe_ids:
         if on_phase:
-            on_phase("done", "No attacks selected for this target profile")
+            on_phase("done", "No probes selected for this target profile")
         result.finished_at = datetime.now(UTC)
         return result
 
     # --- Phase 4: Grouped Execution with Memoization ---
     memo = MemoTable()
-    sessions = _group_into_sessions(all_attack_ids, templates_by_id, memo=memo)
+    sessions = _group_into_sessions(all_probe_ids, templates_by_id, memo=memo)
 
     if on_phase:
-        on_phase("execute", f"Running {len(all_attack_ids)} attacks in {len(sessions)} sessions")
+        on_phase("execute", f"Running {len(all_probe_ids)} probes in {len(sessions)} sessions")
 
-    total = len(all_attack_ids)
+    total = len(all_probe_ids)
     current_offset = 0
     all_findings: list[Finding] = []
 
@@ -331,9 +331,9 @@ async def run_smart_scan(
 
         # Re-group remaining sessions with updated memo knowledge.
         # Recompute from adapted plan so de-escalated categories are excluded.
-        adapted_attack_ids = [aid for cp in plan.categories for aid in cp.attack_ids]
+        adapted_probe_ids = [aid for cp in plan.categories for aid in cp.probe_ids]
         executed_ids = {f.template_id for f in all_findings}
-        remaining_ids = [aid for aid in adapted_attack_ids if aid not in executed_ids]
+        remaining_ids = [aid for aid in adapted_probe_ids if aid not in executed_ids]
         if remaining_ids:
             remaining_sessions = _group_into_sessions(remaining_ids, templates_by_id, memo=memo)
             sessions[session_idx + 1 :] = remaining_sessions

@@ -125,8 +125,8 @@ class TestScanToSarif:
             assert result["level"] == expected_level, f"Expected {expected_level} for {sev}"
 
     def test_multiple_findings(self) -> None:
-        f1 = _make_finding(template_id="GA-001", name="Attack 1")
-        f2 = _make_finding(template_id="TS-001", name="Attack 2", category=Category.TOOL_SAFETY)
+        f1 = _make_finding(template_id="GA-001", name="Probe 1")
+        f2 = _make_finding(template_id="TS-001", name="Probe 2", category=Category.TOOL_SAFETY)
         sarif: dict[str, Any] = scan_to_sarif(_make_scan(f1, f2))
 
         assert len(sarif["runs"][0]["tool"]["driver"]["rules"]) == 2
@@ -175,7 +175,7 @@ class TestCampaignToSarif:
     def test_basic_structure(self) -> None:
         campaign = CampaignResult(
             campaign_id="camp123",
-            config=CampaignConfig(trials_per_attack=5),
+            config=CampaignConfig(trials_per_probe=5),
             target=Target(url="https://example.com/v1/chat/completions", model="gpt-4"),
             findings=[
                 StatisticalFinding(

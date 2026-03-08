@@ -71,7 +71,7 @@ class TestA2AAdapter:
 
         adapter = A2AAdapter(url="http://localhost:8000")
         response, ms = await adapter.send_messages(
-            [{"role": "user", "content": "test attack prompt"}]
+            [{"role": "user", "content": "test probe prompt"}]
         )
 
         assert response == "I cannot assist with that request."

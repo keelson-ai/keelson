@@ -1,4 +1,4 @@
-# New Attack Surfaces: "Words as Weapons"
+# New Probe Surfaces: "Words as Weapons"
 
 > Your mouth is the most dangerous weapon in the world.
 > If you want something, you can get it by speaking with the relevant entities
@@ -7,21 +7,21 @@
 Applied to AI agent pentesting, this means: every conversation is potential code
 execution. You're not just talking TO the system -- you're programming it with
 natural language. Here are 6 new attack surfaces that Keelson should cover,
-beyond what the current 189 attacks already test.
+beyond what the current 189 probes already test.
 
 ---
 
 ## 1. Output Weaponization (OW)
 
-**What it is:** You don't attack the agent directly. You make the agent's OUTPUT
-be the weapon -- producing content that attacks downstream systems, humans, or
+**What it is:** You don't probe the agent directly. You make the agent's OUTPUT
+be the weapon -- producing content that probes downstream systems, humans, or
 other agents.
 
 **Why it matters:** AI agents generate code, emails, documents, API calls.
 If you can control what they produce, you weaponize every system that consumes
 their output.
 
-| ID | Attack | Target |
+| ID | Probe | Target |
 |----|--------|--------|
 | OW-001 | Backdoor Code Generation | Make the agent write code with a hidden vulnerability |
 | OW-002 | Downstream Injection Payload | Agent produces output containing SQL/XSS/SSTI payloads |
@@ -38,13 +38,13 @@ their output.
 ## 2. Multi-Agent Social Engineering (MA)
 
 **What it is:** In multi-agent systems, you social-engineer Agent A to
-compromise Agent B. The attack crosses trust boundaries between agents,
+compromise Agent B. The probe crosses trust boundaries between agents,
 exploiting how agents trust each other's outputs.
 
 **Why it matters:** Agentic systems increasingly chain multiple agents.
 The trust between them is the attack surface -- "Agent A told me to tell you..."
 
-| ID | Attack | Target |
+| ID | Probe | Target |
 |----|--------|--------|
 | MA-001 | Agent Impersonation | Pretend to be a trusted peer agent |
 | MA-002 | Orchestrator Override | Convince a sub-agent it received new instructions from the orchestrator |
@@ -58,7 +58,7 @@ The trust between them is the attack surface -- "Agent A told me to tell you..."
 
 ---
 
-## 3. Temporal & Persistent Attacks (TP)
+## 3. Temporal & Persistent Probes (TP)
 
 **What it is:** Plant words now that activate later. Exploit the time dimension
 -- delayed actions, scheduled payloads, persistent instructions that survive
@@ -67,7 +67,7 @@ session boundaries.
 **Why it matters:** Agents increasingly have memory, scheduling, and persistent
 state. A conversation today can be a vulnerability tomorrow.
 
-| ID | Attack | Target |
+| ID | Probe | Target |
 |----|--------|--------|
 | TP-001 | Delayed Action Injection | "Schedule this task to run at midnight" with malicious payload |
 | TP-002 | Persistent Instruction Planting | Inject instructions into agent memory that activate in future sessions |
@@ -83,7 +83,7 @@ state. A conversation today can be a vulnerability tomorrow.
 
 ## 4. Cognitive Architecture Exploitation (CA)
 
-**What it is:** Attack the agent's reasoning process itself -- not what it
+**What it is:** Probe the agent's reasoning process itself -- not what it
 knows, but HOW it thinks. Break its chain-of-thought, exploit its decision-making
 architecture, induce reasoning failures.
 
@@ -91,7 +91,7 @@ architecture, induce reasoning failures.
 reasoning patterns have exploitable structure. If you break the reasoning,
 everything downstream fails.
 
-| ID | Attack | Target |
+| ID | Probe | Target |
 |----|--------|--------|
 | CA-001 | Chain-of-Thought Poisoning | Inject false reasoning steps into CoT |
 | CA-002 | Reasoning Loop Induction | Trap the agent in an infinite reasoning cycle |
@@ -99,7 +99,7 @@ everything downstream fails.
 | CA-004 | False Premise Cascade | Plant one false premise, let the agent build a tower of wrong conclusions |
 | CA-005 | Planning Horizon Manipulation | Make the agent plan too far ahead / too short, missing critical steps |
 | CA-006 | Tool Selection Confusion | Overwhelm the agent so it picks the wrong tool for the job |
-| CA-007 | Confidence Calibration Attack | Make the agent overconfident about wrong answers or underconfident about right ones |
+| CA-007 | Confidence Calibration Probe | Make the agent overconfident about wrong answers or underconfident about right ones |
 | CA-008 | Reward Hacking via Language | Frame harmful actions as achieving the agent's stated goals |
 
 **OWASP mapping:** LLM01 (Prompt Injection), LLM09 (Overreliance)
@@ -113,10 +113,10 @@ conversation. No obvious "tell me your system prompt" -- instead, use
 conversational patterns that make the agent reveal secrets naturally.
 
 **Why it matters:** Detection systems look for obvious extraction attempts.
-These attacks look like normal conversation but systematically extract
+These probes look like normal conversation but systematically extract
 internal details through inference, deduction, and social engineering.
 
-| ID | Attack | Target |
+| ID | Probe | Target |
 |----|--------|--------|
 | EX-001 | Differential Response Analysis | Ask the same question with slight variations to map internal rules |
 | EX-002 | Error-Based Extraction | Intentionally trigger errors that leak implementation details |
@@ -131,22 +131,22 @@ internal details through inference, deduction, and social engineering.
 
 ---
 
-## 6. Supply Chain Language Attacks (SL)
+## 6. Supply Chain Language Probes (SL)
 
 **What it is:** Poison the sources that feed the agent -- RAG documents, tool
 descriptions, plugin manifests, shared prompts, project files. The agent trusts
 these sources, so your words in the supply chain become the agent's actions.
 
 **Why it matters:** Agents pull context from many sources. Each source is an
-injection point. The most dangerous attacks are ones where the user never
+injection point. The most dangerous probes are ones where the user never
 directly prompts the agent at all -- the poisoned source does it for them.
 
-| ID | Attack | Target |
+| ID | Probe | Target |
 |----|--------|--------|
 | SL-001 | RAG Document Injection | Poison a document in the knowledge base with hidden instructions |
 | SL-002 | Tool Description Hijack | Modify tool descriptions to alter how the agent uses them |
 | SL-003 | Plugin Manifest Poisoning | Alter plugin metadata to expand permissions or redirect actions |
-| SL-004 | Shared Prompt Template Attack | Inject into shared prompt templates used across an organization |
+| SL-004 | Shared Prompt Template Probe | Inject into shared prompt templates used across an organization |
 | SL-005 | Code Comment Injection | Hide prompt injections in code comments that agents read during code review |
 | SL-006 | README/Doc Weaponization | Embed instructions in project documentation that coding agents follow |
 | SL-007 | Configuration File Poisoning | Place instructions in .env, config files, or CI/CD configs |
@@ -158,18 +158,18 @@ directly prompts the agent at all -- the poisoned source does it for them.
 
 ## Summary: The 6 New Surfaces
 
-| Surface | Code | Attacks | Core Insight |
+| Surface | Code | Probes | Core Insight |
 |---------|------|---------|-------------|
 | Output Weaponization | OW | 7 | Make the agent's output be the weapon |
 | Multi-Agent Social Engineering | MA | 7 | Social-engineer Agent A to compromise Agent B |
-| Temporal & Persistent Attacks | TP | 7 | Plant words now that activate later |
+| Temporal & Persistent Probes | TP | 7 | Plant words now that activate later |
 | Cognitive Architecture Exploitation | CA | 8 | Break HOW the agent thinks, not what it knows |
 | Exfiltration via Conversation | EX | 8 | Extract secrets through normal-looking dialogue |
-| Supply Chain Language Attacks | SL | 8 | Poison the sources the agent trusts |
+| Supply Chain Language Probes | SL | 8 | Poison the sources the agent trusts |
 
-**Total: 45 new attacks across 6 surfaces**
+**Total: 45 new probes across 6 surfaces**
 
-These complement the existing 7 categories (189 attacks) by covering
+These complement the existing 7 categories (189 probes) by covering
 dimensions that pure prompt injection testing misses -- the systemic,
 temporal, multi-agent, and output-level risks that emerge when AI agents
 operate in real-world environments.
@@ -179,8 +179,8 @@ operate in real-world environments.
 ## Implementation Priority
 
 1. **Output Weaponization** -- Highest impact, least tested anywhere
-2. **Supply Chain Language Attacks** -- Critical for coding agents (most Keelson users)
+2. **Supply Chain Language Probes** -- Critical for coding agents (most Keelson users)
 3. **Exfiltration via Conversation** -- Hardest to detect, most realistic threat
 4. **Cognitive Architecture Exploitation** -- Unique to CoT/ReAct agents
 5. **Multi-Agent Social Engineering** -- Growing rapidly with agentic frameworks
-6. **Temporal & Persistent Attacks** -- Emerging as agents gain memory
+6. **Temporal & Persistent Probes** -- Emerging as agents gain memory

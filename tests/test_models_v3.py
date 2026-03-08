@@ -1,13 +1,13 @@
 """Tests for Phase 3 model additions."""
 
 from keelson.core.models import (
-    AttackChain,
-    AttackStep,
     CampaignConfig,
     Category,
     ComplianceFramework,
     ConcurrencyConfig,
     LeakageSignal,
+    ProbeChain,
+    ProbeStep,
     RegressionAlert,
     ScanTier,
     Severity,
@@ -93,21 +93,21 @@ class TestRegressionAlert:
             description="SAFE → VULNERABLE",
             old_verdict=Verdict.SAFE,
             new_verdict=Verdict.VULNERABLE,
-            attack_severity=Severity.HIGH,
+            probe_severity=Severity.HIGH,
         )
         assert alert.alert_severity == "critical"
         assert alert.old_verdict == Verdict.SAFE
         assert alert.new_verdict == Verdict.VULNERABLE
 
 
-class TestAttackChain:
+class TestProbeChain:
     def test_creation(self):
-        chain = AttackChain(
+        chain = ProbeChain(
             name="Test Chain",
             capabilities=["file_access", "web_access"],
             steps=[
-                AttackStep(index=1, prompt="Step 1"),
-                AttackStep(index=2, prompt="Step 2"),
+                ProbeStep(index=1, prompt="Step 1"),
+                ProbeStep(index=2, prompt="Step 2"),
             ],
             severity=Severity.CRITICAL,
             category=Category.AGENTIC_SECURITY,

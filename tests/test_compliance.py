@@ -26,7 +26,7 @@ def _make_finding(
 ) -> Finding:
     return Finding(
         template_id=template_id,
-        template_name=f"Attack {template_id}",
+        template_name=f"Probe {template_id}",
         verdict=verdict,
         severity=severity,
         category=category,

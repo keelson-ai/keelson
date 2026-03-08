@@ -1,4 +1,4 @@
-"""Attack execution engine — loads template, sends steps, produces findings."""
+"""Probe execution engine — loads template, sends steps, produces findings."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import asyncio
 from keelson.adapters.base import BaseAdapter
 from keelson.core.detection import REFUSAL_PHRASES, detect
 from keelson.core.llm_judge import combined_detect
-from keelson.core.models import AttackTemplate, EvidenceItem, Finding, ScoringMethod, Verdict
+from keelson.core.models import EvidenceItem, Finding, ProbeTemplate, ScoringMethod, Verdict
 from keelson.core.observer import StreamingObserver
 
 # Minimum refusal phrase matches to trigger early termination.
@@ -34,8 +34,8 @@ def _is_hard_refusal(response: str) -> bool:
     - Response is short (< max length), indicating a terse rejection
       with no useful content to build on
 
-    This avoids terminating multi-turn attacks where step 1 is a polite
-    refusal that erosion attacks are designed to overcome.
+    This avoids terminating multi-turn probes where step 1 is a polite
+    refusal that erosion probes are designed to overcome.
     """
     if len(response) > _EARLY_TERM_MAX_RESPONSE_LEN:
         return False
@@ -44,8 +44,8 @@ def _is_hard_refusal(response: str) -> bool:
     return matches >= _EARLY_TERM_REFUSAL_THRESHOLD
 
 
-async def execute_attack(
-    template: AttackTemplate,
+async def execute_probe(
+    template: ProbeTemplate,
     adapter: BaseAdapter,
     model: str = "default",
     delay: float = 1.0,
@@ -54,7 +54,7 @@ async def execute_attack(
     judge: BaseAdapter | None = None,
     judge_model: str = "default",
 ) -> Finding:
-    """Execute an attack template against a target via the adapter.
+    """Execute an probe template against a target via the adapter.
 
     Sends each step, accumulates messages for multi-turn, runs detection.
     Optionally runs a StreamingObserver for per-step leakage analysis.
@@ -62,9 +62,9 @@ async def execute_attack(
 
     Steps with role "assistant" are injected into the conversation history
     without sending to the adapter, enabling conversation history poisoning
-    attacks (e.g., SI-014).
+    probes (e.g., SI-014).
 
-    Early termination: for multi-turn attacks, if the first user turn gets a
+    Early termination: for multi-turn probes, if the first user turn gets a
     hard refusal (3+ refusal phrases), remaining turns are skipped to save tokens.
     """
     messages: list[dict[str, str]] = []
@@ -97,8 +97,8 @@ async def execute_attack(
         user_turn_count += 1
 
         # Early termination: if the first user turn gets a hard refusal with 2+
-        # remaining user turns, skip them to save tokens. Attacks with only 1
-        # remaining turn are cheap enough to run fully, and short erosion attacks
+        # remaining user turns, skip them to save tokens. Probes with only 1
+        # remaining turn are cheap enough to run fully, and short erosion probes
         # often overcome initial refusals.
         remaining_user_steps = sum(1 for s in template.steps[step_idx + 1 :] if s.role == "user")
         if (

@@ -33,7 +33,7 @@ def store(tmp_path: Path) -> Generator[Store, None, None]:
 
 def _make_campaign() -> CampaignResult:
     target = Target(url="https://example.com/v1/chat/completions", model="gpt-4")
-    config = CampaignConfig(name="test-run", trials_per_attack=3)
+    config = CampaignConfig(name="test-run", trials_per_probe=3)
     trials = [
         TrialResult(
             trial_index=i,
@@ -73,7 +73,7 @@ class TestCampaignStore:
         assert loaded.campaign_id == campaign.campaign_id
         assert loaded.target.url == campaign.target.url
         assert loaded.config.name == "test-run"
-        assert loaded.config.trials_per_attack == 3
+        assert loaded.config.trials_per_probe == 3
         assert len(loaded.findings) == 1
 
     def test_campaign_findings_loaded(self, store: Store) -> None:

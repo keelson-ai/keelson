@@ -21,7 +21,7 @@ class TestCLI:
         result = runner.invoke(app, ["list", "--category", "tool-safety"])
         assert result.exit_code == 0
         assert "TS-001" in result.output
-        # Should not contain GA or MI attacks
+        # Should not contain GA or MI probes
         assert "GA-001" not in result.output
 
     def test_history_empty(self, tmp_path: Path) -> None:

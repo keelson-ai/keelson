@@ -159,9 +159,9 @@ class TestScanToJunit:
 
     def test_mixed_verdicts(self) -> None:
         scan = _make_scan(
-            _make_finding(template_id="GA-001", name="Attack 1", verdict=Verdict.VULNERABLE),
-            _make_finding(template_id="GA-002", name="Attack 2", verdict=Verdict.SAFE),
-            _make_finding(template_id="GA-003", name="Attack 3", verdict=Verdict.INCONCLUSIVE),
+            _make_finding(template_id="GA-001", name="Probe 1", verdict=Verdict.VULNERABLE),
+            _make_finding(template_id="GA-002", name="Probe 2", verdict=Verdict.SAFE),
+            _make_finding(template_id="GA-003", name="Probe 3", verdict=Verdict.INCONCLUSIVE),
         )
         xml_str = scan_to_junit(scan)
         root = ET.fromstring(xml_str)
@@ -231,7 +231,7 @@ class TestCampaignToJunit:
     def test_valid_xml(self) -> None:
         campaign = CampaignResult(
             campaign_id="camp123",
-            config=CampaignConfig(trials_per_attack=5),
+            config=CampaignConfig(trials_per_probe=5),
             target=Target(url="https://example.com/v1/chat/completions", model="gpt-4"),
             findings=[_make_stat_finding()],
             started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
@@ -243,13 +243,13 @@ class TestCampaignToJunit:
     def test_campaign_attributes(self) -> None:
         campaign = CampaignResult(
             campaign_id="camp123",
-            config=CampaignConfig(trials_per_attack=5),
+            config=CampaignConfig(trials_per_probe=5),
             target=Target(url="https://example.com/v1/chat/completions", model="gpt-4"),
             findings=[
                 _make_stat_finding(verdict=Verdict.VULNERABLE),
                 _make_stat_finding(
                     template_id="GA-002",
-                    name="Attack 2",
+                    name="Probe 2",
                     verdict=Verdict.SAFE,
                 ),
             ],
@@ -271,7 +271,7 @@ class TestCampaignToJunit:
         )
         campaign = CampaignResult(
             campaign_id="camp123",
-            config=CampaignConfig(trials_per_attack=5),
+            config=CampaignConfig(trials_per_probe=5),
             target=Target(url="https://example.com"),
             findings=[sf],
             started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
@@ -297,7 +297,7 @@ class TestCampaignToJunit:
         )
         campaign = CampaignResult(
             campaign_id="camp123",
-            config=CampaignConfig(trials_per_attack=5),
+            config=CampaignConfig(trials_per_probe=5),
             target=Target(url="https://example.com"),
             findings=[sf],
             started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
@@ -316,7 +316,7 @@ class TestCampaignToJunit:
     def test_campaign_properties(self) -> None:
         campaign = CampaignResult(
             campaign_id="camp123",
-            config=CampaignConfig(trials_per_attack=5),
+            config=CampaignConfig(trials_per_probe=5),
             target=Target(url="https://example.com/v1/chat/completions", model="gpt-4"),
             findings=[_make_stat_finding()],
             started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
@@ -334,7 +334,7 @@ class TestCampaignToJunit:
         sf = _make_stat_finding(num_trials=3, response_time_ms=200)
         campaign = CampaignResult(
             campaign_id="camp123",
-            config=CampaignConfig(trials_per_attack=3),
+            config=CampaignConfig(trials_per_probe=3),
             target=Target(url="https://example.com"),
             findings=[sf],
             started_at=datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC),
@@ -369,8 +369,8 @@ class TestToJunitXml:
     def test_output_is_parseable_xml(self) -> None:
         scan = _make_scan(
             _make_finding(verdict=Verdict.VULNERABLE),
-            _make_finding(template_id="GA-002", name="Attack 2", verdict=Verdict.SAFE),
-            _make_finding(template_id="GA-003", name="Attack 3", verdict=Verdict.INCONCLUSIVE),
+            _make_finding(template_id="GA-002", name="Probe 2", verdict=Verdict.SAFE),
+            _make_finding(template_id="GA-003", name="Probe 3", verdict=Verdict.INCONCLUSIVE),
         )
         xml_str = to_junit_xml(scan)
         # Must parse without raising

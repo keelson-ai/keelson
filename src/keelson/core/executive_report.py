@@ -122,7 +122,7 @@ EXECUTIVE_REPORT_TEMPLATE = Template(
 | **Scan ID** | {{ scan_id }} |
 | **Date** | {{ scan_date }} |
 | **Duration** | {{ duration }} |
-| **Attacks Executed** | {{ total_attacks }} |
+| **Probes Executed** | {{ total_probes }} |
 
 {{ risk_assessment }}
 
@@ -226,7 +226,7 @@ No inconclusive findings.
 ---
 {% endif %}
 
-## Attack Coverage
+## Probe Coverage
 
 | Category | Tested | Vulnerable | Safe | Inconclusive |
 |----------|------:|----------:|-----:|-:|
@@ -234,7 +234,7 @@ No inconclusive findings.
 | {{ row.category }} | {{ row.tested }} | {{ row.vuln_count }} \
 | {{ row.safe }} | {{ row.inconclusive }} |
 {% endfor %}\
-| **Total** | **{{ total_attacks }}** | **{{ total_vulnerable }}** \
+| **Total** | **{{ total_probes }}** | **{{ total_vulnerable }}** \
 | **{{ total_safe }}** | **{{ total_inconclusive }}** |
 
 ---
@@ -302,7 +302,7 @@ def _compute_risk_matrix(findings: list[Finding]) -> list[CategoryRow]:
 
 
 def _compute_coverage_rows(findings: list[Finding]) -> list[CategoryRow]:
-    """Build the attack coverage table -- one row per category with any findings."""
+    """Build the probe coverage table -- one row per category with any findings."""
     by_cat: dict[Category, list[Finding]] = {}
     for f in findings:
         by_cat.setdefault(f.category, []).append(f)
@@ -330,13 +330,13 @@ def _generate_risk_assessment(scan: ScanResult) -> str:
     """Produce a 2-3 sentence executive risk assessment."""
     total = len(scan.findings)
     if total == 0:
-        return "No attack templates were executed during this assessment."
+        return "No probe templates were executed during this assessment."
 
     vuln = scan.vulnerable_count
     if vuln == 0:
         return (
             "The target agent demonstrated robust security controls across all "
-            f"{total} attack scenarios tested. No vulnerabilities were confirmed. "
+            f"{total} probe scenarios tested. No vulnerabilities were confirmed. "
             "Continued periodic assessment is recommended to maintain this posture."
         )
 
@@ -367,20 +367,20 @@ def _generate_risk_assessment(scan: ScanResult) -> str:
     elif vuln_pct > 30:
         risk_level = "ELEVATED"
         urgency = (
-            "A substantial proportion of attack scenarios succeeded. "
+            "A substantial proportion of probe scenarios succeeded. "
             "Systematic hardening of the agent's defensive controls is recommended "
             "before production exposure."
         )
     else:
         risk_level = "MODERATE"
         urgency = (
-            "A limited number of attack scenarios succeeded. Targeted remediation "
+            "A limited number of probe scenarios succeeded. Targeted remediation "
             "of the identified weaknesses is recommended."
         )
 
     return (
         f"**Overall Risk Level: {risk_level}** -- "
-        f"Out of {total} attack scenarios executed, {vuln} "
+        f"Out of {total} probe scenarios executed, {vuln} "
         f"({vuln_pct:.0f}%) resulted in confirmed vulnerabilities. "
         f"{urgency}"
     )
@@ -458,7 +458,7 @@ def _build_recommendations(findings: list[Finding]) -> list[RecommendationItem]:
                 text=(
                     "Address all critical-severity findings before any production "
                     "deployment. These represent fundamental control failures that "
-                    "can be exploited with minimal attacker sophistication."
+                    "can be exploited with minimal prober sophistication."
                 ),
             )
         )
@@ -498,7 +498,7 @@ def generate_executive_report(
     - Executive summary with severity breakdown
     - Risk matrix by category
     - Full PoC reproduction sections (exact prompts and responses)
-    - Attack coverage matrix
+    - Probe coverage matrix
     - Prioritized remediation recommendations
 
     Args:
@@ -528,7 +528,7 @@ def generate_executive_report(
         scan_id=scan.scan_id,
         scan_date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
         duration=_format_duration(scan),
-        total_attacks=len(scan.findings),
+        total_probes=len(scan.findings),
         risk_assessment=_generate_risk_assessment(scan),
         # Severity breakdown
         severity_rows=_compute_severity_rows(scan.findings),

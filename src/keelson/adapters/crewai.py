@@ -9,7 +9,7 @@ from keelson.adapters.base import BaseAdapter
 
 
 class CrewAIAdapter(BaseAdapter):
-    """Adapter that sends attack prompts to a CrewAI crew/agent directly.
+    """Adapter that sends probe prompts to a CrewAI crew/agent directly.
 
     Requires `crewai` to be installed: `pip install keelson[crewai]`
 

@@ -10,11 +10,11 @@ from pathlib import Path
 
 from keelson.adapters.base import BaseAdapter
 from keelson.adaptive.branching import execute_branching_attack, find_vulnerable_paths
-from keelson.core.engine import execute_attack
+from keelson.core.engine import execute_probe
 from keelson.core.models import (
-    AttackTemplate,
     EvidenceItem,
     Finding,
+    ProbeTemplate,
     ScanResult,
     Target,
     Verdict,
@@ -22,7 +22,7 @@ from keelson.core.models import (
 from keelson.core.templates import load_all_templates
 from keelson.core.yaml_templates import update_effectiveness_scores
 
-# Reorder remaining attacks every N findings
+# Reorder remaining probes every N findings
 _REORDER_INTERVAL = 10
 
 # Maximum branching depth for deep probes
@@ -30,14 +30,14 @@ _PROBE_MAX_DEPTH = 2
 
 
 def _prioritize_templates(
-    remaining: list[AttackTemplate],
+    remaining: list[ProbeTemplate],
     vuln_categories: Counter[str],
-) -> list[AttackTemplate]:
+) -> list[ProbeTemplate]:
     """Sort remaining templates: categories with known vulnerabilities first."""
     if not vuln_categories:
         return remaining
 
-    def sort_key(t: AttackTemplate) -> tuple[int, str]:
+    def sort_key(t: ProbeTemplate) -> tuple[int, str]:
         # Higher vuln count → lower sort value (run first)
         count = vuln_categories.get(t.category, 0)
         return (-count, t.id)
@@ -46,14 +46,14 @@ def _prioritize_templates(
 
 
 async def _deep_probe(
-    template: AttackTemplate,
+    template: ProbeTemplate,
     adapter: BaseAdapter,
     model: str,
     delay: float,
 ) -> list[Finding]:
     """Probe a confirmed vulnerability deeper using conversation branching.
 
-    When an attack succeeds, we explore follow-up conversation paths to discover
+    When a probe succeeds, we explore follow-up conversation paths to discover
     additional vulnerable behaviors stemming from the same weakness.
     """
     root = await execute_branching_attack(
@@ -116,16 +116,16 @@ async def run_scan(
     deep_probe: bool = False,
     max_response_tokens: int | None = 512,
 ) -> ScanResult:
-    """Run a full scan: load templates, execute attacks, collect findings.
+    """Run a full scan: load templates, execute probes, collect findings.
 
     Args:
         target: The target to scan.
         adapter: Adapter for communicating with the target.
-        attacks_dir: Override directory for attack playbooks.
+        attacks_dir: Override directory for probe playbooks.
         category: Filter to a specific category subdirectory.
-        delay: Seconds to wait between attacks.
+        delay: Seconds to wait between probes.
         on_finding: Optional callback(finding, current_index, total) for progress.
-        reorder: Dynamically reorder remaining attacks based on findings.
+        reorder: Dynamically reorder remaining probes based on findings.
         deep_probe: When a vulnerability is found, probe deeper with branching.
         max_response_tokens: Limit target response length to save tokens (default 512).
             Set to None to allow unlimited responses.
@@ -140,7 +140,7 @@ async def run_scan(
 
     while remaining:
         template = remaining.pop(0)
-        finding = await execute_attack(
+        finding = await execute_probe(
             template,
             adapter,
             model=target.model,
@@ -162,11 +162,11 @@ async def run_scan(
         if on_finding:
             on_finding(finding, executed, total)
 
-        # Reorder remaining attacks periodically
+        # Reorder remaining probes periodically
         if reorder and remaining and executed % _REORDER_INTERVAL == 0:
             remaining = _prioritize_templates(remaining, vuln_categories)
 
-        # Rate-limit between attacks
+        # Rate-limit between probes
         if remaining:
             await asyncio.sleep(delay)
 

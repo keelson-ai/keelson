@@ -54,7 +54,7 @@ inputs:
     description: 'Adapter type: openai, anthropic, langgraph, mcp'
     default: 'openai'
   category:
-    description: 'Filter attacks by category'
+    description: 'Filter probes by category'
     required: false
   tier:
     description: 'Scan tier: fast or deep'

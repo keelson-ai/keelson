@@ -1,4 +1,4 @@
-"""Shared attack execution primitives used by all scan types."""
+"""Shared probe execution primitives used by all scan types."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import logging
 from collections.abc import Callable
 
 from keelson.adapters.base import BaseAdapter
-from keelson.core.engine import execute_attack
-from keelson.core.models import AttackTemplate, EvidenceItem, Finding, Verdict
+from keelson.core.engine import execute_probe
+from keelson.core.models import EvidenceItem, Finding, ProbeTemplate, Verdict
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ VERIFICATION_REFUSAL_SIGNALS = [
 
 
 async def execute_sequential(
-    templates: list[AttackTemplate],
+    templates: list[ProbeTemplate],
     adapter: BaseAdapter,
     model: str = "default",
     delay: float = 1.5,
@@ -44,13 +44,13 @@ async def execute_sequential(
     total: int | None = None,
     max_response_tokens: int | None = 512,
 ) -> list[Finding]:
-    """Execute attacks sequentially, returning collected findings.
+    """Execute probes sequentially, returning collected findings.
 
     Args:
-        templates: Attack templates to execute in order.
+        templates: Probe templates to execute in order.
         adapter: Target adapter.
         model: Model name for the adapter.
-        delay: Seconds to wait between attacks.
+        delay: Seconds to wait between probes.
         on_finding: Progress callback(finding, current_index, total_count).
         on_each: Called after each finding, before the progress callback.
             Useful for recording findings into external state (e.g. memo tables).
@@ -63,7 +63,7 @@ async def execute_sequential(
 
     findings: list[Finding] = []
     for i, template in enumerate(templates):
-        finding = await execute_attack(
+        finding = await execute_probe(
             template,
             adapter,
             model=model,
@@ -85,7 +85,7 @@ async def execute_sequential(
 
 
 async def execute_parallel(
-    templates: list[AttackTemplate],
+    templates: list[ProbeTemplate],
     adapter: BaseAdapter,
     model: str = "default",
     delay: float = 1.5,
@@ -95,14 +95,14 @@ async def execute_parallel(
     total: int | None = None,
     max_response_tokens: int | None = 512,
 ) -> list[Finding]:
-    """Execute attacks in parallel with semaphore-based concurrency control.
+    """Execute probes in parallel with semaphore-based concurrency control.
 
     Args:
-        templates: Attack templates to execute.
+        templates: Probe templates to execute.
         adapter: Target adapter.
         model: Model name for the adapter.
-        delay: Seconds to wait between attacks within each task.
-        max_concurrent: Maximum number of concurrent attack executions.
+        delay: Seconds to wait between probes within each task.
+        max_concurrent: Maximum number of concurrent probe executions.
         on_finding: Progress callback(finding, current_index, total_count).
         offset: Starting index for progress reporting.
         total: Total count for progress reporting. Defaults to len(templates).
@@ -118,11 +118,11 @@ async def execute_parallel(
     lock = asyncio.Lock()
     completed = offset
 
-    async def _run_one(template: AttackTemplate) -> None:
+    async def _run_one(template: ProbeTemplate) -> None:
         nonlocal completed
         async with semaphore:
             try:
-                finding = await execute_attack(
+                finding = await execute_probe(
                     template,
                     adapter,
                     model=model,
@@ -130,7 +130,7 @@ async def execute_parallel(
                     max_response_tokens=max_response_tokens,
                 )
             except Exception as exc:
-                logger.exception("Attack %s failed: %s", template.id, exc)
+                logger.exception("Probe %s failed: %s", template.id, exc)
                 finding = Finding(
                     template_id=template.id,
                     template_name=template.name,
@@ -187,7 +187,7 @@ async def verify_findings(
 ) -> list[Finding]:
     """Re-probe VULNERABLE findings to confirm or downgrade them.
 
-    Sends the original attack's last prompt context plus a follow-up asking
+    Sends the original probe's last prompt context plus a follow-up asking
     the agent to confirm it can perform the action. If the agent refuses,
     the verdict is downgraded to INCONCLUSIVE.
 

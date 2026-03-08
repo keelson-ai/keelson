@@ -28,14 +28,12 @@ def parse_campaign_config(toml_path: str | Path) -> CampaignConfig:
 
     # Apply explicit overrides from TOML
     config.name = campaign.get("name", config.name if tier_name else path.stem)
-    config.trials_per_attack = campaign.get("trials_per_attack", config.trials_per_attack)
+    config.trials_per_probe = campaign.get("trials_per_probe", config.trials_per_probe)
     config.confidence_level = campaign.get("confidence_level", config.confidence_level)
     config.delay_between_trials = campaign.get("delay_between_trials", config.delay_between_trials)
-    config.delay_between_attacks = campaign.get(
-        "delay_between_attacks", config.delay_between_attacks
-    )
+    config.delay_between_probes = campaign.get("delay_between_probes", config.delay_between_probes)
     config.category = campaign.get("category", config.category)
-    config.attack_ids = campaign.get("attack_ids", config.attack_ids)
+    config.probe_ids = campaign.get("probe_ids", config.probe_ids)
     config.target_url = target.get("url", "")
     config.api_key = target.get("api_key", "")
     config.model = target.get("model", "default")

@@ -13,16 +13,16 @@ from keelson.core.convergence import (
     LeakedInfo,
     harvest_leaked_info,
     run_convergence_scan,
-    select_crossfeed_attacks,
-    select_leakage_targeted_attacks,
+    select_crossfeed_probes,
+    select_leakage_targeted_probes,
 )
 from keelson.core.models import (
-    AttackStep,
-    AttackTemplate,
     Category,
     EvalCriteria,
     EvidenceItem,
     Finding,
+    ProbeStep,
+    ProbeTemplate,
     Severity,
     Target,
     Verdict,
@@ -54,15 +54,15 @@ def _make_template(
     category: Category,
     severity: Severity = Severity.HIGH,
     success_rate: float = 0.0,
-) -> AttackTemplate:
-    return AttackTemplate(
+) -> ProbeTemplate:
+    return ProbeTemplate(
         id=template_id,
         name=f"Test {template_id}",
         severity=severity,
         category=category,
         owasp="LLM01",
         objective="Test objective",
-        steps=[AttackStep(index=0, prompt="test prompt")],
+        steps=[ProbeStep(index=0, prompt="test prompt")],
         eval_criteria=EvalCriteria(
             vulnerable_if=["pwned"],
             safe_if=["I can't"],
@@ -183,7 +183,7 @@ class TestSelectCrossfeedAttacks:
             _make_template("TS-001", Category.TOOL_SAFETY),
             _make_template("MI-001", Category.MEMORY_INTEGRITY),
         ]
-        result = select_crossfeed_attacks([vuln], templates, set())
+        result = select_crossfeed_probes([vuln], templates, set())
         # goal-adherence maps to tool-safety, so TS-001 should be selected
         assert any(t.id == "TS-001" for t in result)
 
@@ -193,7 +193,7 @@ class TestSelectCrossfeedAttacks:
             _make_template("TS-001", Category.TOOL_SAFETY),
             _make_template("TS-002", Category.TOOL_SAFETY),
         ]
-        result = select_crossfeed_attacks([vuln], templates, {"TS-001"})
+        result = select_crossfeed_probes([vuln], templates, {"TS-001"})
         ids = [t.id for t in result]
         assert "TS-001" not in ids
         assert "TS-002" in ids
@@ -207,19 +207,19 @@ class TestSelectCrossfeedAttacks:
         ]
         # Both GA and TS are already vulnerable, so TS-002 should NOT be selected
         # (we already know TS is vulnerable), but EX should be (related to GA)
-        result = select_crossfeed_attacks([vuln_ga, vuln_ts], templates, {"GA-001", "TS-001"})
+        result = select_crossfeed_probes([vuln_ga, vuln_ts], templates, {"GA-001", "TS-001"})
         ids = [t.id for t in result]
         assert "TS-002" not in ids
         assert "EX-001" in ids
 
     def test_returns_empty_when_no_vulns(self) -> None:
-        result = select_crossfeed_attacks([], [], set())
+        result = select_crossfeed_probes([], [], set())
         assert result == []
 
     def test_caps_at_20(self) -> None:
         vuln = _make_finding("GA-001", Category.GOAL_ADHERENCE, Verdict.VULNERABLE)
         templates = [_make_template(f"TS-{i:03d}", Category.TOOL_SAFETY) for i in range(30)]
-        result = select_crossfeed_attacks([vuln], templates, set())
+        result = select_crossfeed_probes([vuln], templates, set())
         assert len(result) <= 20
 
     def test_prioritizes_high_severity(self) -> None:
@@ -229,7 +229,7 @@ class TestSelectCrossfeedAttacks:
             _make_template("TS-002", Category.TOOL_SAFETY, Severity.CRITICAL),
             _make_template("TS-003", Category.TOOL_SAFETY, Severity.HIGH),
         ]
-        result = select_crossfeed_attacks([vuln], templates, set())
+        result = select_crossfeed_probes([vuln], templates, set())
         assert result[0].id == "TS-002"
         assert result[1].id == "TS-003"
         assert result[2].id == "TS-001"
@@ -249,7 +249,7 @@ class TestSelectLeakageTargetedAttacks:
             _make_template("TS-001", Category.TOOL_SAFETY),
             _make_template("MI-001", Category.MEMORY_INTEGRITY),
         ]
-        result = select_leakage_targeted_attacks(leaked, templates, set())
+        result = select_leakage_targeted_probes(leaked, templates, set())
         ids = [t.id for t in result]
         assert "TS-001" in ids
         assert "MI-001" not in ids
@@ -267,7 +267,7 @@ class TestSelectLeakageTargetedAttacks:
             _make_template("GA-001", Category.GOAL_ADHERENCE),
             _make_template("TS-001", Category.TOOL_SAFETY),
         ]
-        result = select_leakage_targeted_attacks(leaked, templates, set())
+        result = select_leakage_targeted_probes(leaked, templates, set())
         ids = [t.id for t in result]
         assert "GA-001" in ids
 
@@ -283,12 +283,12 @@ class TestSelectLeakageTargetedAttacks:
         templates = [
             _make_template("EX-001", Category.CONVERSATIONAL_EXFILTRATION),
         ]
-        result = select_leakage_targeted_attacks(leaked, templates, set())
+        result = select_leakage_targeted_probes(leaked, templates, set())
         assert len(result) == 1
         assert result[0].id == "EX-001"
 
     def test_returns_empty_when_no_leakage(self) -> None:
-        result = select_leakage_targeted_attacks([], [], set())
+        result = select_leakage_targeted_probes([], [], set())
         assert result == []
 
 

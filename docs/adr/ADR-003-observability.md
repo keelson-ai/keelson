@@ -55,7 +55,7 @@ Key factors for deferring OTel:
 
 **Neutral:**
 - The `LOG_LEVEL` environment variable controls verbosity at startup; default is `INFO`.
-- Audit logs (which attacks ran, which target, what verdict) will be emitted at `INFO` level with structured fields for compliance purposes.
+- Audit logs (which probes ran, which target, what verdict) will be emitted at `INFO` level with structured fields for compliance purposes.
 - A future `KEELSON_OTEL_ENDPOINT` environment variable is reserved for the OTel OTLP exporter URL.
 
 ## Future Work

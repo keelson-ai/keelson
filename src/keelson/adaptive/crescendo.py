@@ -1,11 +1,11 @@
-"""Crescendo — multi-turn gradual escalation attack strategy.
+"""Crescendo — multi-turn gradual escalation probe strategy.
 
 Unlike PAIR which refines a single prompt, Crescendo builds rapport over
 many turns, gradually steering the conversation
-toward the attack objective.
+toward the probe objective.
 
 Flow:
-1. Start with an innocent topic related to the attack domain
+1. Start with an innocent topic related to the probe domain
 2. Gradually introduce elements that approach the objective
 3. Each turn builds on the target's previous cooperation
 4. By the final turns, the target has been primed to comply
@@ -24,9 +24,9 @@ from dataclasses import dataclass, field
 from keelson.adapters.base import BaseAdapter
 from keelson.core.detection import detect
 from keelson.core.models import (
-    AttackTemplate,
     EvidenceItem,
     Finding,
+    ProbeTemplate,
     Verdict,
 )
 from keelson.core.observer import StreamingObserver
@@ -57,7 +57,7 @@ class CrescendoStep:
     turn: int
     prompt: str
     response: str
-    escalation_level: float  # 0.0 (innocent) to 1.0 (full attack)
+    escalation_level: float  # 0.0 (innocent) to 1.0 (full probe)
 
 
 @dataclass
@@ -73,22 +73,22 @@ class CrescendoResult:
 
 
 async def run_crescendo(
-    template: AttackTemplate,
+    template: ProbeTemplate,
     target: BaseAdapter,
-    attacker: BaseAdapter,
+    prober: BaseAdapter,
     target_model: str = "default",
-    attacker_model: str = "default",
+    prober_model: str = "default",
     max_turns: int = 7,
     delay: float = 2.0,
 ) -> CrescendoResult:
-    """Run a Crescendo gradual escalation attack.
+    """Run a Crescendo gradual escalation probe.
 
     Args:
-        template: Attack template (provides objective and eval criteria).
-        target: The target adapter to attack.
-        attacker: The attacker LLM for planning escalation steps.
+        template: Probe template (provides objective and eval criteria).
+        target: The target adapter to probe.
+        prober: The prober LLM for planning escalation steps.
         target_model: Model for target requests.
-        attacker_model: Model for attacker planning.
+        prober_model: Model for prober planning.
         max_turns: Maximum conversation turns.
         delay: Delay between requests.
 
@@ -101,7 +101,7 @@ async def run_crescendo(
     escalation_path: list[CrescendoStep] = []
 
     # Plan the initial escalation sequence
-    plan = await _plan_escalation(attacker, attacker_model, objective, max_turns)
+    plan = await _plan_escalation(prober, prober_model, objective, max_turns)
 
     for turn_idx, planned_prompt in enumerate(plan):
         turn = turn_idx + 1
@@ -118,8 +118,8 @@ async def run_crescendo(
         # For turns after the first, adapt based on target's previous response
         if turn > 1 and all_evidence:
             current_prompt = await _adapt_next_turn(
-                attacker,
-                attacker_model,
+                prober,
+                prober_model,
                 objective,
                 planned_prompt,
                 all_evidence[-1].response,
@@ -224,12 +224,12 @@ async def run_crescendo(
 
 
 async def _plan_escalation(
-    attacker: BaseAdapter,
+    prober: BaseAdapter,
     model: str,
     objective: str,
     num_turns: int,
 ) -> list[str]:
-    """Ask the attacker LLM to plan a crescendo escalation sequence."""
+    """Ask the prober LLM to plan a crescendo escalation sequence."""
     messages = [
         {"role": "system", "content": _CRESCENDO_PLANNER_SYSTEM},
         {
@@ -245,7 +245,7 @@ async def _plan_escalation(
     ]
 
     try:
-        response, _ = await attacker.send_messages(messages, model=model)
+        response, _ = await prober.send_messages(messages, model=model)
         return _parse_turn_plan(response, num_turns)
     except Exception:
         logger.exception("Crescendo planning failed")
@@ -254,7 +254,7 @@ async def _plan_escalation(
 
 
 async def _adapt_next_turn(
-    attacker: BaseAdapter,
+    prober: BaseAdapter,
     model: str,
     objective: str,
     planned_prompt: str,
@@ -279,7 +279,7 @@ async def _adapt_next_turn(
     ]
 
     try:
-        response, _ = await attacker.send_messages(messages, model=model)
+        response, _ = await prober.send_messages(messages, model=model)
         return response.strip()
     except Exception:
         return planned_prompt  # Fall back to planned prompt

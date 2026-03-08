@@ -1,20 +1,20 @@
-"""Tests for attack chain synthesis."""
+"""Tests for probe chain synthesis."""
 
 import pytest
 import respx
 
-from keelson.adapters.attacker import AttackerAdapter
 from keelson.adapters.openai import OpenAIAdapter
-from keelson.attacker.chains import (
-    CHAIN_TEMPLATES,
-    _parse_llm_chains,  # type: ignore[reportPrivateUsage]
-    synthesize_chains,
-    synthesize_chains_llm,
-)
+from keelson.adapters.prober import ProberAdapter
 from keelson.core.models import (
     AgentCapability,
     AgentProfile,
     Severity,
+)
+from keelson.prober.chains import (
+    CHAIN_TEMPLATES,
+    _parse_llm_chains,  # type: ignore[reportPrivateUsage]
+    synthesize_chains,
+    synthesize_chains_llm,
 )
 
 
@@ -135,7 +135,7 @@ STEP 3: Third step
 class TestSynthesizeChainsLlm:
     @respx.mock
     async def test_llm_chain_generation(self):
-        respx.post("https://attacker.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
+        respx.post("https://prober.example.com/v1/chat").respond(  # type: ignore[reportUnknownMemberType]
             json={
                 "choices": [
                     {
@@ -152,19 +152,19 @@ STEP 2: Follow up with extraction
                 ]
             }
         )
-        raw = OpenAIAdapter("https://attacker.example.com/v1/chat")
-        attacker = AttackerAdapter(raw)
+        raw = OpenAIAdapter("https://prober.example.com/v1/chat")
+        prober = ProberAdapter(raw)
         profile = _make_profile(["file_access", "web_access"])
-        chains = await synthesize_chains_llm(profile, attacker)
-        await attacker.close()
+        chains = await synthesize_chains_llm(profile, prober)
+        await prober.close()
         assert len(chains) >= 1
         assert chains[0].name == "LLM Generated Chain"
 
     @respx.mock
     async def test_no_capabilities_returns_empty(self):
         profile = _make_profile([])
-        raw = OpenAIAdapter("https://attacker.example.com/v1/chat")
-        attacker = AttackerAdapter(raw)
-        chains = await synthesize_chains_llm(profile, attacker)
-        await attacker.close()
+        raw = OpenAIAdapter("https://prober.example.com/v1/chat")
+        prober = ProberAdapter(raw)
+        chains = await synthesize_chains_llm(profile, prober)
+        await prober.close()
         assert chains == []

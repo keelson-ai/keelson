@@ -1,4 +1,4 @@
-"""Attack strategist — recon, classify, select, adapt."""
+"""Probe strategist — recon, classify, select, adapt."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 from keelson.core.models import (
-    AttackTemplate,
     Category,
     Finding,
+    ProbeTemplate,
     Severity,
     Verdict,
 )
@@ -55,25 +55,25 @@ class TargetProfile:
 
 @dataclass
 class CategoryPlan:
-    """Plan for a single attack category."""
+    """Plan for a single probe category."""
 
     category: Category
     priority: Priority
-    attack_ids: list[str] = field(default_factory=lambda: [])
+    probe_ids: list[str] = field(default_factory=lambda: [])
     rationale: str = ""
 
 
 @dataclass
-class AttackPlan:
-    """Full attack plan produced by the strategist."""
+class ProbePlan:
+    """Full probe plan produced by the strategist."""
 
     profile: TargetProfile
     categories: list[CategoryPlan] = field(default_factory=lambda: [])
     recon_findings: list[Finding] = field(default_factory=lambda: [])
 
     @property
-    def total_attacks(self) -> int:
-        return sum(len(c.attack_ids) for c in self.categories)
+    def total_probes(self) -> int:
+        return sum(len(c.probe_ids) for c in self.categories)
 
     def get_category_plan(self, category: Category) -> CategoryPlan | None:
         for cp in self.categories:
@@ -228,7 +228,7 @@ _PROFILE_PRIORITIES: dict[AgentType, dict[Category, Priority]] = {
     },
 }
 
-# Maximum attacks per category at each priority level
+# Maximum probes per category at each priority level
 _PRIORITY_LIMITS: dict[Priority, int | None] = {
     Priority.HIGH: None,  # run all
     Priority.MEDIUM: 5,
@@ -237,12 +237,12 @@ _PRIORITY_LIMITS: dict[Priority, int | None] = {
 }
 
 
-def select_attacks(
+def select_probes(
     profile: TargetProfile,
-    templates: list[AttackTemplate],
+    templates: list[ProbeTemplate],
     recon_findings: list[Finding] | None = None,
-) -> AttackPlan:
-    """Build an attack plan based on the target profile and available templates."""
+) -> ProbePlan:
+    """Build an probe plan based on the target profile and available templates."""
     recon_findings = recon_findings or []
 
     # Step 1: Compute base priority for each category from profile mapping
@@ -273,8 +273,8 @@ def select_attacks(
     if not profile.has_memory and si_priority != Priority.HIGH:
         category_priorities[Category.SESSION_ISOLATION] = Priority.SKIP
 
-    # Step 6: Build per-category attack lists
-    templates_by_category: dict[Category, list[AttackTemplate]] = {}
+    # Step 6: Build per-category probe lists
+    templates_by_category: dict[Category, list[ProbeTemplate]] = {}
     for t in templates:
         templates_by_category.setdefault(t.category, []).append(t)
 
@@ -293,12 +293,12 @@ def select_attacks(
             CategoryPlan(
                 category=cat,
                 priority=pri,
-                attack_ids=[t.id for t in selected],
+                probe_ids=[t.id for t in selected],
                 rationale=_build_rationale(cat, pri, profile, vuln_categories),
             )
         )
 
-    return AttackPlan(
+    return ProbePlan(
         profile=profile,
         categories=plan_categories,
         recon_findings=recon_findings,
@@ -336,10 +336,10 @@ _DEESCALATION_THRESHOLD = 3
 
 
 def adapt_plan(
-    plan: AttackPlan,
+    plan: ProbePlan,
     completed_findings: list[Finding],
-) -> AttackPlan:
-    """Adjust the attack plan based on findings so far.
+) -> ProbePlan:
+    """Adjust the probe plan based on findings so far.
 
     - Escalate: 3+ vulns in a category → promote to HIGH (run all)
     - De-escalate: 5+ consecutive SAFEs in a category → demote to SKIP
@@ -369,7 +369,7 @@ def adapt_plan(
         new_cp = CategoryPlan(
             category=cp.category,
             priority=cp.priority,
-            attack_ids=list(cp.attack_ids),
+            probe_ids=list(cp.probe_ids),
             rationale=cp.rationale,
         )
 
@@ -387,13 +387,13 @@ def adapt_plan(
             Priority.SKIP,
         ):
             new_cp.priority = Priority.SKIP
-            new_cp.attack_ids = []
+            new_cp.probe_ids = []
             safe_count = consecutive_safes[cp.category]
             new_cp.rationale = f"De-escalated: {safe_count} consecutive safe results"
 
         new_categories.append(new_cp)
 
-    return AttackPlan(
+    return ProbePlan(
         profile=plan.profile,
         categories=new_categories,
         recon_findings=plan.recon_findings,
