@@ -143,6 +143,20 @@ class LeakageSignal:
 
 
 @dataclass
+class InfraFinding:
+    """Infrastructure-level finding from recon phase."""
+
+    finding_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    title: str = ""
+    severity: Severity = Severity.MEDIUM
+    category: str = "infrastructure"  # keep as string, not Category enum
+    description: str = ""
+    evidence: str = ""  # raw response or API output
+    remediation: str = ""
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass
 class Finding:
     template_id: str
     template_name: str
@@ -178,6 +192,7 @@ class ScanResult:
     scan_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     target: Target = field(default_factory=lambda: Target(url=""))
     findings: list[Finding] = field(default_factory=lambda: [])
+    infra_findings: list[InfraFinding] = field(default_factory=lambda: [])
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
 
