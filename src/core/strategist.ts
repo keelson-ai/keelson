@@ -53,7 +53,7 @@ const CODING_RE = /\b(write.*file|edit.*file|create.*file|commit|push|generate.*
 const MULTI_AGENT_RE = /\b(delegat\w*|sub.?agent|orchestrat\w*|hand.?off|route.*to)\b/i;
 const MEMORY_RE = /\b(remember|previous conversation|history|persist|session|long.?term memory)\b/i;
 const WRITE_RE =
-  /\b(write access|create\w*[^.]{0,20}commit\w*|push\w*[^.]{0,20}branch\w*|modify\w*[^.]{0,20}repo\w*|delete\w*[^.]{0,20}file\w*|commit\w*[^.]{0,20}push\w*)\b/i;
+  /\b(write access|create\w*[\w\s]{0,20}commit\w*|push\w*[\w\s]{0,20}branch\w*|modify\w*[\w\s]{0,20}repo\w*|delete\w*[\w\s]{0,20}file\w*|commit\w*[\w\s]{0,20}push\w*)\b/i;
 const REFUSAL_RIGID_RE = /\b(cannot|i'm not able|not allowed|forbidden|policy)\b/i;
 const REFUSAL_POLITE_RE = /\b(i'd rather|i can't help with|i'm not comfortable|let me redirect)\b/i;
 const MEMORY_NEGATION_RE = /\b(don't|do not|no|cannot)\b.*\b(remember|history|previous)\b/i;
