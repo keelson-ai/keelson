@@ -113,7 +113,7 @@ function buildEvidences(evidence: EvidenceItem[]): OcsfEvidence[] {
       prompt: item.prompt,
       response: item.response,
     };
-    if (item.responseTimeMs) {
+    if (item.responseTimeMs != null) {
       data.response_time_ms = item.responseTimeMs;
     }
     return { data };

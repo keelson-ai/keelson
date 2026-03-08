@@ -261,6 +261,13 @@ const OWASP_NAME_TO_ID: Record<string, string> = Object.fromEntries(
 
 // ─── Helpers ────────────────────────────────────────────
 
+/** Higher = worse verdict. Used to keep the worst finding per probe. */
+function verdictPriority(verdict: Verdict): number {
+  if (verdict === Verdict.Vulnerable) return 2;
+  if (verdict === Verdict.Inconclusive) return 1;
+  return 0;
+}
+
 function controlStatus(findings: Finding[]): 'pass' | 'fail' | 'partial' {
   if (findings.length === 0) return 'pass';
   if (findings.some((f) => f.verdict === Verdict.Vulnerable)) return 'fail';
@@ -272,13 +279,10 @@ function matchFindingsToControl(
   findings: Finding[],
   control: ControlDefinition,
 ): Finding[] {
-  // Deduplicate by probeId
-  const seen = new Set<string>();
-  const matched: Finding[] = [];
+  // Deduplicate by probeId, keeping the worst verdict per probe
+  const bestByProbe = new Map<string, Finding>();
 
   for (const f of findings) {
-    if (seen.has(f.probeId)) continue;
-
     const matchesByCategory = control.categories.length > 0 &&
       control.categories.includes(f.category);
     const matchesByPrefix = control.probePrefixes.some((prefix) =>
@@ -289,16 +293,17 @@ function matchFindingsToControl(
     const matchesByOwasp = owaspPrefix != null && f.owaspId.startsWith(owaspPrefix);
 
     if (matchesByCategory || matchesByPrefix || matchesByOwasp) {
-      seen.add(f.probeId);
-      matched.push(f);
+      const existing = bestByProbe.get(f.probeId);
+      if (!existing || verdictPriority(f.verdict) > verdictPriority(existing.verdict)) {
+        bestByProbe.set(f.probeId, f);
+      }
     }
   }
 
-  return matched;
+  return [...bestByProbe.values()];
 }
 
 function complianceRecommendations(
-  controls: Record<string, ControlDefinition>,
   mappings: FrameworkMapping[],
 ): string[] {
   const recs: string[] = [];
@@ -364,7 +369,7 @@ export function generateComplianceReport(
 ): string {
   const controls = FRAMEWORK_CONTROLS[framework];
   const mappings = mapFindingsToFramework(result.findings, framework);
-  const recs = complianceRecommendations(controls, mappings);
+  const recs = complianceRecommendations(mappings);
 
   const totalControls = mappings.length;
   const tested = mappings.filter((m) => m.findings.length > 0).length;
