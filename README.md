@@ -102,13 +102,46 @@ Playbooks (.yaml)   Target Agent        Keelson Engine
                                         └─────────────────────┘
 ```
 
-1. **Load** probe playbooks from `probes/**/*.yaml` (structured YAML, no code)
-2. **Send** prompts to the target via any supported adapter
-3. **Detect** vulnerabilities using pattern detection, LLM-as-judge scoring, or combined mode
-4. **Orchestrate** advanced strategies: PAIR iterative refinement, Crescendo gradual escalation, 13 mutation types
-5. **Converge** iteratively: harvest leaked info from responses, feed cross-category intelligence into subsequent passes
-6. **Evaluate** each response as **VULNERABLE** / **SAFE** / **INCONCLUSIVE**
-7. **Report** findings with OWASP mapping, evidence, and remediation recommendations
+```
+                        ┌─────────────────────────────────────┐
+                        │          LIVING RED TEAM             │
+                        └──────────────┬──────────────────────┘
+                                       │
+                    ┌──────────────────▼──────────────────┐
+                    │  1. DISCOVER                         │
+                    │  Fingerprint target: tools, memory,  │
+                    │  refusal style, capabilities         │
+                    └──────────────────┬──────────────────┘
+                                       │
+                    ┌──────────────────▼──────────────────┐
+                    │  2. PROBE                            │
+                    │  210 playbooks × adaptive strategies │
+                    │  PAIR · Crescendo · 13 mutations     │
+                    └──────────────────┬──────────────────┘
+                                       │
+                    ┌──────────────────▼──────────────────┐
+                    │  3. LEARN                            │
+                    │  Harvest leakage from every response │
+                    │  Track what works → memo table       │
+                    │  Cross-category intelligence feed    │
+                    └──────────────────┬──────────────────┘
+                                       │
+                              ┌────────▼────────┐
+                              │  New signals?    │
+                              └───┬─────────┬───┘
+                            Yes  │         │  No
+                    ┌────────────▼──┐  ┌───▼────────────┐
+                    │  4. ADAPT      │  │  5. REPORT      │
+                    │  Reorder probes│  │  SARIF / JUnit  │
+                    │  Escalate what │  │  Compliance     │
+                    │  works, drop   │  │  Remediation    │
+                    │  what doesn't  │  └────────────────┘
+                    └───────┬───────┘
+                            │
+                            └──────► back to 2
+```
+
+Keelson doesn't just run a checklist — it learns from each response, adapts its strategy, and iterates until it converges. Every probe informs the next.
 
 ## Test Categories
 
