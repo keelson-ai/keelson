@@ -32,7 +32,7 @@ function filterProbes(probes: ProbeTemplate[], categories?: string[], severities
   return filtered;
 }
 
-function summarize(findings: Finding[]): ScanSummary {
+export function summarize(findings: Finding[]): ScanSummary {
   const bySeverity: Record<Severity, number> = {
     [Severity.Critical]: 0,
     [Severity.High]: 0,
