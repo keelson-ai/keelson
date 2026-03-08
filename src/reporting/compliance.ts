@@ -268,17 +268,21 @@ function controlStatus(findings: Finding[]): 'pass' | 'fail' | 'partial' {
   return 'partial';
 }
 
+/** Verdict severity ranking: higher is worse. */
+const VERDICT_SEVERITY: Record<Verdict, number> = {
+  [Verdict.Safe]: 0,
+  [Verdict.Inconclusive]: 1,
+  [Verdict.Vulnerable]: 2,
+};
+
 function matchFindingsToControl(
   findings: Finding[],
   control: ControlDefinition,
 ): Finding[] {
-  // Deduplicate by probeId
-  const seen = new Set<string>();
-  const matched: Finding[] = [];
+  // Deduplicate by probeId, keeping the worst verdict per probe
+  const bestByProbe = new Map<string, Finding>();
 
   for (const f of findings) {
-    if (seen.has(f.probeId)) continue;
-
     const matchesByCategory = control.categories.length > 0 &&
       control.categories.includes(f.category);
     const matchesByPrefix = control.probePrefixes.some((prefix) =>
@@ -289,16 +293,17 @@ function matchFindingsToControl(
     const matchesByOwasp = owaspPrefix != null && f.owaspId.startsWith(owaspPrefix);
 
     if (matchesByCategory || matchesByPrefix || matchesByOwasp) {
-      seen.add(f.probeId);
-      matched.push(f);
+      const existing = bestByProbe.get(f.probeId);
+      if (!existing || VERDICT_SEVERITY[f.verdict] > VERDICT_SEVERITY[existing.verdict]) {
+        bestByProbe.set(f.probeId, f);
+      }
     }
   }
 
-  return matched;
+  return [...bestByProbe.values()];
 }
 
 function complianceRecommendations(
-  controls: Record<string, ControlDefinition>,
   mappings: FrameworkMapping[],
 ): string[] {
   const recs: string[] = [];
@@ -364,7 +369,7 @@ export function generateComplianceReport(
 ): string {
   const controls = FRAMEWORK_CONTROLS[framework];
   const mappings = mapFindingsToFramework(result.findings, framework);
-  const recs = complianceRecommendations(controls, mappings);
+  const recs = complianceRecommendations(mappings);
 
   const totalControls = mappings.length;
   const tested = mappings.filter((m) => m.findings.length > 0).length;
