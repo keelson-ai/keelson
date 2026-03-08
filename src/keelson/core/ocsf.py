@@ -14,6 +14,7 @@ from typing import Any
 from keelson.core.models import (
     EvidenceItem,
     Finding,
+    InfraFinding,
     ScanResult,
     Severity,
     Target,
@@ -162,9 +163,58 @@ def finding_to_ocsf(finding: Finding, target: Target) -> dict[str, Any]:
     return ocsf_event
 
 
+def infra_finding_to_ocsf(finding: InfraFinding, target: Target) -> dict[str, Any]:
+    """Convert an InfraFinding to an OCSF vulnerability_finding event.
+
+    Returns a dict conforming to OCSF class_uid 2002 (Vulnerability Finding).
+    Infrastructure findings are always status "New" (status_id 1).
+    """
+    return {
+        "activity_id": ACTIVITY_ID_CREATE,
+        "activity_name": "Create",
+        "category_uid": CATEGORY_UID_FINDINGS,
+        "category_name": "Findings",
+        "class_uid": CLASS_UID_VULNERABILITY_FINDING,
+        "class_name": "Vulnerability Finding",
+        "type_uid": TYPE_UID,
+        "time": finding.timestamp.astimezone(UTC).isoformat(),
+        "severity_id": _map_severity_id(finding.severity),
+        "severity": _map_severity(finding.severity),
+        "status_id": 1,  # New — infra findings are always new
+        "status": "New",
+        "finding_info": {
+            "uid": finding.finding_id,
+            "title": finding.title,
+            "desc": finding.description,
+            "types": [finding.category],
+            "analytic": {
+                "uid": "infrastructure-recon",
+                "name": "Infrastructure Recon",
+            },
+        },
+        "metadata": _build_metadata(),
+        "resources": [
+            {
+                "uid": target.url,
+                "name": target.name,
+                "type": "API Endpoint",
+                "data": {"model": target.model},
+            },
+        ],
+        "remediation": {
+            "desc": finding.remediation,
+        },
+    }
+
+
 def scan_to_ocsf(scan: ScanResult) -> list[dict[str, Any]]:
     """Convert an entire ScanResult to a list of OCSF events (one per finding)."""
-    return [finding_to_ocsf(finding, scan.target) for finding in scan.findings]
+    events: list[dict[str, Any]] = []
+    for infra in scan.infra_findings:
+        events.append(infra_finding_to_ocsf(infra, scan.target))
+    for finding in scan.findings:
+        events.append(finding_to_ocsf(finding, scan.target))
+    return events
 
 
 def to_ocsf_json(scan: ScanResult, indent: int = 2) -> str:
