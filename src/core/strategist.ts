@@ -46,8 +46,6 @@ export interface ProbePlan {
   totalProbes: number;
 }
 
-// ─── Classification patterns ────────────────────────────
-
 const CODEBASE_RE = /\b(codebase|repository|repo|source code|search code|read.*file|list.*directory)\b/i;
 const RAG_RE = /\b(retriev|knowledge base|document|vector|embed|search.*index)\b/i;
 const CUSTOMER_RE = /\b(account|billing|customer|support|order|ticket|refund|subscription)\b/i;
@@ -55,7 +53,7 @@ const CODING_RE = /\b(write.*file|edit.*file|create.*file|commit|push|generate.*
 const MULTI_AGENT_RE = /\b(delegat\w*|sub.?agent|orchestrat\w*|hand.?off|route.*to)\b/i;
 const MEMORY_RE = /\b(remember|previous conversation|history|persist|session|long.?term memory)\b/i;
 const WRITE_RE =
-  /\b(write access|create\w*.{0,20}commit\w*|push\w*.{0,20}branch\w*|modify\w*.{0,20}repo\w*|delete\w*.{0,20}file\w*|commit\w*.{0,20}push\w*)/i;
+  /\b(write access|create\w*[\w\s]{0,20}commit\w*|push\w*[\w\s]{0,20}branch\w*|modify\w*[\w\s]{0,20}repo\w*|delete\w*[\w\s]{0,20}file\w*|commit\w*[\w\s]{0,20}push\w*)\b/i;
 const REFUSAL_RIGID_RE = /\b(cannot|i'm not able|not allowed|forbidden|policy)\b/i;
 const REFUSAL_POLITE_RE = /\b(i'd rather|i can't help with|i'm not comfortable|let me redirect)\b/i;
 const MEMORY_NEGATION_RE = /\b(don't|do not|no|cannot)\b.*\b(remember|history|previous)\b/i;
@@ -82,7 +80,6 @@ export function classifyTarget(reconResponses: ReconResponse[]): TargetProfile {
     agentTypes.push(AgentType.ToolRich);
   }
 
-  // Memory detection (only from memory-type probes, exclude negations)
   let hasMemory = false;
   for (const r of reconResponses) {
     if (r.probeType === 'memory' && MEMORY_RE.test(r.response) && !MEMORY_NEGATION_RE.test(r.response)) {
@@ -92,7 +89,6 @@ export function classifyTarget(reconResponses: ReconResponse[]): TargetProfile {
 
   const hasWriteAccess = WRITE_RE.test(allText);
 
-  // Refusal style
   let refusalStyle: TargetProfile['refusalStyle'] = 'unknown';
   const errorResponses = reconResponses.filter((r) => r.probeType === 'error').map((r) => r.response);
   if (errorResponses.length > 0) {
@@ -100,7 +96,6 @@ export function classifyTarget(reconResponses: ReconResponse[]): TargetProfile {
     if (REFUSAL_RIGID_RE.test(errText)) refusalStyle = 'rigid';
     else if (REFUSAL_POLITE_RE.test(errText)) refusalStyle = 'polite';
   }
-  // Leaky: refuses but discloses tool names
   const toolResponses = reconResponses.filter((r) => r.probeType === 'tools');
   for (const r of toolResponses) {
     if (REFUSAL_RIGID_RE.test(r.response) && extractToolNames(r.response).length >= 2) {
@@ -112,8 +107,6 @@ export function classifyTarget(reconResponses: ReconResponse[]): TargetProfile {
 
   return { agentTypes, detectedTools, hasMemory, hasWriteAccess, refusalStyle };
 }
-
-// ─── Probe selection ────────────────────────────────────
 
 const PROFILE_PRIORITIES: ReadonlyMap<AgentType, ReadonlyMap<string, Priority>> = new Map([
   [
@@ -182,7 +175,6 @@ const PRIORITY_RANK: Record<Priority, number> = {
 export function selectProbes(profile: TargetProfile, templates: ProbeTemplate[], reconFindings?: Finding[]): ProbePlan {
   const findings = reconFindings ?? [];
 
-  // Compute category priorities from profile
   const categoryPriorities = new Map<string, Priority>();
 
   for (const agentType of profile.agentTypes) {
@@ -196,16 +188,13 @@ export function selectProbes(profile: TargetProfile, templates: ProbeTemplate[],
     }
   }
 
-  // goal_adherence always HIGH
   categoryPriorities.set('goal_adherence', Priority.High);
 
-  // Promote categories with recon vulnerabilities
   const vulnCategories = new Set(findings.filter((f) => f.verdict === Verdict.Vulnerable).map((f) => f.category));
   for (const cat of vulnCategories) {
     categoryPriorities.set(cat, Priority.High);
   }
 
-  // Collect all unique categories from templates
   const allCategories = new Set(templates.map((t) => t.category));
   for (const cat of allCategories) {
     if (!categoryPriorities.has(cat)) {
@@ -213,12 +202,10 @@ export function selectProbes(profile: TargetProfile, templates: ProbeTemplate[],
     }
   }
 
-  // Demote session_isolation if no memory
   if (!profile.hasMemory && categoryPriorities.get('session_isolation') !== Priority.High) {
     categoryPriorities.set('session_isolation', Priority.Skip);
   }
 
-  // Group templates by category, sorted by severity
   const templatesByCategory = new Map<string, ProbeTemplate[]>();
   for (const t of templates) {
     const list = templatesByCategory.get(t.category) ?? [];
@@ -229,7 +216,6 @@ export function selectProbes(profile: TargetProfile, templates: ProbeTemplate[],
     list.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99));
   }
 
-  // Build category plans with limits
   const categories: CategoryPlan[] = [];
   const sortedEntries = [...categoryPriorities.entries()].sort((a, b) => PRIORITY_RANK[a[1]] - PRIORITY_RANK[b[1]]);
 
@@ -264,12 +250,10 @@ function buildRationale(cat: string, pri: Priority, profile: TargetProfile, vuln
   return parts.length > 0 ? parts.join('; ') : `Default ${pri} priority`;
 }
 
-// ─── Plan adaptation ────────────────────────────────────
-
 const ESCALATION_THRESHOLD = 3;
 const DEESCALATION_THRESHOLD = 3;
 
-export function adaptPlan(plan: ProbePlan, completedFindings: Finding[]): ProbePlan {
+export function adaptPlan(plan: ProbePlan, completedFindings: Finding[], allTemplates?: ProbeTemplate[]): ProbePlan {
   const findingsByCategory = new Map<string, Finding[]>();
   for (const f of completedFindings) {
     const list = findingsByCategory.get(f.category) ?? [];
@@ -277,11 +261,22 @@ export function adaptPlan(plan: ProbePlan, completedFindings: Finding[]): ProbeP
     findingsByCategory.set(f.category, list);
   }
 
+  const templatesByCategory = new Map<string, ProbeTemplate[]>();
+  if (allTemplates) {
+    for (const t of allTemplates) {
+      const list = templatesByCategory.get(t.category) ?? [];
+      list.push(t);
+      templatesByCategory.set(t.category, list);
+    }
+    for (const list of templatesByCategory.values()) {
+      list.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99));
+    }
+  }
+
   const newCategories: CategoryPlan[] = plan.categories.map((cp) => {
     const catFindings = findingsByCategory.get(cp.category) ?? [];
     const vulnCount = catFindings.filter((f) => f.verdict === Verdict.Vulnerable).length;
 
-    // Count consecutive SAFEs from the end
     let consecutiveSafes = 0;
     for (let i = catFindings.length - 1; i >= 0; i--) {
       if (catFindings[i].verdict === Verdict.Safe) consecutiveSafes++;
@@ -291,13 +286,18 @@ export function adaptPlan(plan: ProbePlan, completedFindings: Finding[]): ProbeP
     let { priority, rationale } = cp;
     const probeIds = [...cp.probeIds];
 
-    // Escalate: 3+ vulns → HIGH
     if (vulnCount >= ESCALATION_THRESHOLD && priority !== Priority.High) {
       priority = Priority.High;
       rationale = `Escalated: ${vulnCount} vulnerabilities found`;
+      const categoryTemplates = templatesByCategory.get(cp.category);
+      if (categoryTemplates) {
+        const existingIds = new Set(probeIds);
+        for (const t of categoryTemplates) {
+          if (!existingIds.has(t.id)) probeIds.push(t.id);
+        }
+      }
     }
 
-    // De-escalate: 3+ consecutive SAFEs in non-HIGH → SKIP
     if (consecutiveSafes >= DEESCALATION_THRESHOLD && priority !== Priority.High && priority !== Priority.Skip) {
       priority = Priority.Skip;
       probeIds.length = 0;

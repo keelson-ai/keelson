@@ -25,7 +25,7 @@ export async function loadProbe(filePath: string): Promise<ProbeTemplate> {
 
   try {
     return parseProbe(raw, filePath);
-  } catch (error) {
+  } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Invalid probe at ${filePath}: ${message}`, { cause: error });
   }
