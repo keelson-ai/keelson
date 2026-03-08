@@ -896,7 +896,6 @@ See [docs/plans/](docs/plans/) for the full roadmap.
 - Wiz WIN integration (AI Security category)
 - Splunk HEC + Cortex XSIAM connectors
 - Drift detection and continuous monitoring
-- REST API and web dashboard
 - GitHub Action (`keelson-ai/keelson-action`)
 
 ## License
