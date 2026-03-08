@@ -182,6 +182,46 @@ describe('executeProbe', () => {
     expect(finding.evidence[2].prompt).toBe('Turn 1 in session C');
   });
 
+  it('calls adapter.resetSession() on newSession boundaries', async () => {
+    const template = makeTemplate({
+      newSession: true,
+      turns: [
+        { role: 'user', content: 'Turn 1 in session A' },
+        { role: 'user', content: 'Turn 1 in session B' },
+        { role: 'user', content: 'Turn 1 in session C' },
+      ],
+    });
+    const adapter = mockAdapter(['Response A', 'Response B', 'Response C']);
+    await executeProbe(template, adapter, { delayMs: 0 });
+
+    // resetSession should be called before steps 1 and 2 (not before step 0)
+    expect(adapter.resetSession).toHaveBeenCalledTimes(2);
+  });
+
+  it('passes all evidence across sessions to observer and detection', async () => {
+    const template = makeTemplate({
+      newSession: true,
+      turns: [
+        { role: 'user', content: 'Session A prompt' },
+        { role: 'user', content: 'Session B prompt' },
+      ],
+    });
+    const adapter = mockAdapter(['Response A', 'PWNED']);
+    const observer = {
+      observe: vi.fn().mockReturnValue([]),
+    };
+    const finding = await executeProbe(template, adapter, { delayMs: 0, observer });
+
+    // Observer should receive evidence from ALL sessions
+    const observedEvidence = observer.observe.mock.calls[0][0];
+    expect(observedEvidence).toHaveLength(2);
+    expect(observedEvidence[0].prompt).toBe('Session A prompt');
+    expect(observedEvidence[1].prompt).toBe('Session B prompt');
+
+    // Finding evidence should include all sessions
+    expect(finding.evidence).toHaveLength(2);
+  });
+
   it('early-terminates newSession probe on hard refusal (exits entire probe)', async () => {
     const template = makeTemplate({
       newSession: true,

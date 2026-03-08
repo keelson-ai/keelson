@@ -57,9 +57,8 @@ export async function executeProbe(
     if (template.newSession && stepIdx > 0) {
       messages.length = 0;
       userTurnCount = 0;
-      allEvidence.push(...evidence);
-      evidence.length = 0;
-      adapter.resetSession();
+      evidence.length = 0; // reset per-session evidence; allEvidence keeps accumulating
+      adapter.resetSession(); // notify adapter to reset server-side session state
     }
 
     if (step.role !== 'user') {
@@ -77,12 +76,14 @@ export async function executeProbe(
     const responseText = response.content;
     messages.push({ role: 'assistant', content: responseText });
 
-    evidence.push({
+    const evidenceItem: EvidenceItem = {
       stepIndex: stepIdx,
       prompt: step.content,
       response: responseText,
       responseTimeMs,
-    });
+    };
+    evidence.push(evidenceItem);
+    allEvidence.push(evidenceItem);
 
     onTurn?.(stepIdx, step.content, responseText);
 
@@ -95,8 +96,6 @@ export async function executeProbe(
       await delay(delayMs);
     }
   }
-
-  allEvidence.push(...evidence);
 
   const leakageSignals = observer?.observe(allEvidence) ?? [];
   const patternResult = patternDetect(template, allEvidence, leakageSignals);
