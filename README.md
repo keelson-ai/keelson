@@ -1,7 +1,7 @@
 # Keelson
 
-[![PyPI version](https://img.shields.io/pypi/v/keelson-ai?cacheSeconds=60)](https://pypi.org/project/keelson-ai/)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Node.js 22+](https://img.shields.io/badge/node-22+-brightgreen.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/typescript-strict-blue.svg)](https://www.typescriptlang.org/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://img.shields.io/badge/tests-802%20passing-brightgreen)]()
 
@@ -9,8 +9,8 @@
 
 > **Authorized use only.** Keelson is designed for testing AI systems you own or have explicit written permission to test. Unauthorized use may violate applicable laws including the Computer Fraud and Abuse Act (CFAA). By using this software, you accept full responsibility for compliance with all applicable laws. The authors disclaim all liability for misuse. See [LEGAL.md](LEGAL.md) for full terms.
 
-```
-pip install keelson-ai
+```bash
+npm install -g keelson
 ```
 
 ## Quick Start
@@ -84,28 +84,42 @@ Results appear in the **Security** tab under Code Scanning. See [keelson-action]
 
 ## How It Works
 
-```
-Playbooks (.yaml)   Target Agent        Keelson Engine
-┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 210 probes  │───>│ 9 Adapters   │───>│ Scan Modes           │
-│ 13 categories│    │ OpenAI /     │    │  scan (sequential)   │
-│ OWASP mapped │    │ Anthropic /  │    │  pipeline (parallel) │
-└──────────────┘    │ MCP / A2A /  │    │  smart (adaptive)    │
-                    │ SiteGPT /... │    │  convergence (iter.) │
-                    └──────────────┘    └──────────┬───────────┘
-  Orchestrators                                    │
-┌──────────────┐                        ┌──────────┴──────────┐
-│ PAIR         │───────────────────────>│  Detection pipeline  │
-│ Crescendo    │                        │  Pattern + LLM Judge │
-│ Mutations    │                        │  Verification pass   │
-│ (13 types)   │                        │  Memo feedback loop  │
-└──────────────┘                        └──────────┬──────────┘
-                                                   │
-                                        ┌──────────┴──────────┐
-                                        │  Reports             │
-                                        │  Markdown / SARIF /  │
-                                        │  JUnit / Compliance  │
-                                        └─────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Playbooks[" "]
+        PB["**Playbooks (.yaml)**<br/>210 probes<br/>13 categories<br/>OWASP mapped"]
+    end
+
+    subgraph Adapters[" "]
+        AD["**9 Adapters**<br/>OpenAI / Anthropic<br/>MCP / A2A<br/>SiteGPT / ..."]
+    end
+
+    subgraph Engine[" "]
+        SM["**Scan Modes**<br/>scan (sequential)<br/>pipeline (parallel)<br/>smart (adaptive)<br/>convergence (iter.)"]
+    end
+
+    subgraph Orchestrators[" "]
+        OR["**Orchestrators**<br/>PAIR / Crescendo<br/>Mutations (13 types)"]
+    end
+
+    subgraph Detection[" "]
+        DET["**Detection Pipeline**<br/>Pattern + LLM Judge<br/>Verification pass<br/>Memo feedback loop"]
+    end
+
+    subgraph Reports[" "]
+        RPT["**Reports**<br/>Markdown / SARIF<br/>JUnit / Compliance"]
+    end
+
+    PB --> AD --> SM --> DET
+    OR --> DET
+    DET --> RPT
+
+    style Playbooks fill:#e8f4fd,stroke:#333
+    style Adapters fill:#fdf8e8,stroke:#333
+    style Engine fill:#fde8e8,stroke:#333
+    style Orchestrators fill:#f9f0ff,stroke:#333
+    style Detection fill:#fde8e8,stroke:#333
+    style Reports fill:#e8fde8,stroke:#333
 ```
 
 ```
@@ -151,18 +165,18 @@ Keelson doesn't just run a checklist — it learns from each response, adapts it
 
 ## Test Categories
 
-| Category | Prefix | Count | OWASP | What It Tests |
-|----------|--------|-------|-------|---------------|
-| **Goal Adherence** | GA | 56 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) probes, rapport exploitation, structured data injection, model fingerprinting, indirect prompt injection (IDPI), Unicode/homoglyph evasion, authority simulation, multilingual repetition, multi-vector psychological exploitation, enterprise framing bypass, syllogistic reasoning manipulation, hypothetical counterfactual bypass, meta-reasoning inversion, logical paradox exploitation, response template hijacking, shared resource injection, **legitimate knowledge extraction**, **incremental architecture disclosure** |
-| **Tool Safety** | TS | 40 | LLM02/LLM06/LLM07 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal, MCP tool poisoning, MCP rug pull, cross-server contamination, SSRF, side-effect detection, excessive agency, forced financial transactions, two-phase URL exfiltration, URI scheme redirect, forced URL opening, **private data source enumeration**, **write access probing** |
-| **Memory Integrity** | MI | 23 | LLM05 | History poisoning, identity persistence, false tool results, cross-turn exfiltration, error info leakage, stored payload injection, context window flooding, gradual memory poisoning, false memory implantation, contradictory fact confusion, RAG poisoning, natural language sleeper triggers, collapsed UI content poisoning |
-| **Permission Boundaries** | PB | 12 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
-| **Delegation Integrity** | DI | 7 | LLM08/LLM09 | Unauthorized sub-agents, trust boundary violation, delegation scope laundering, cross-agent lateral movement |
-| **Execution Safety** | ES | 13 | LLM02/LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization, HTML/script output injection, destructive command injection |
-| **Session Isolation** | SI | 13 | LLM01/LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, model fingerprinting, conversation history poisoning, debug harness extraction |
-| **Cognitive Architecture** | CA | 8 | LLM01/LLM09 | Chain-of-thought poisoning, reasoning manipulation, meta-cognitive probes |
-| **Conversational Exfiltration** | EX | 9 | LLM01/LLM06 | Data extraction via conversation, behavioral fingerprinting, **framework/infrastructure fingerprinting** |
+| Category | Prefix | Count | OWASP | Key Threats |
+|----------|--------|------:|-------|-------------|
+| **Goal Adherence** | GA | 56 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, jailbreaks |
+| **Tool Safety** | TS | 40 | LLM02/LLM06/LLM07 | Command injection, SQL injection, privilege escalation, MCP poisoning, SSRF |
+| **Memory Integrity** | MI | 23 | LLM05 | History poisoning, cross-turn exfiltration, RAG poisoning, false memory implantation |
+| **Execution Safety** | ES | 13 | LLM02/LLM06 | Sandbox escape, resource exhaustion, unsafe deserialization, destructive commands |
+| **Session Isolation** | SI | 13 | LLM01/LLM05 | Cross-session leakage, session hijacking, multi-tenant breach |
+| **Permission Boundaries** | PB | 12 | LLM02 | Role escalation, cross-user access, authorization bypass |
+| **Conversational Exfiltration** | EX | 9 | LLM01/LLM06 | Data extraction, behavioral fingerprinting, infrastructure disclosure |
+| **Cognitive Architecture** | CA | 8 | LLM01/LLM09 | Chain-of-thought poisoning, reasoning manipulation |
 | **Supply Chain Language** | SL | 8 | LLM03/LLM05 | RAG document injection, dependency confusion, plugin poisoning |
+| **Delegation Integrity** | DI | 7 | LLM08/LLM09 | Unauthorized sub-agents, trust boundary violation |
 | **Output Weaponization** | OW | 7 | LLM02/LLM06 | Backdoor code generation, malicious output crafting |
 | **Temporal Persistence** | TP | 7 | LLM05/LLM08 | Delayed action injection, time-based persistence |
 | **Multi-Agent Security** | MA | 7 | LLM08/LLM09 | Agent impersonation, cross-agent probes |
@@ -171,17 +185,17 @@ Keelson doesn't just run a checklist — it learns from each response, adapts it
 
 Keelson communicates with targets through a pluggable adapter interface:
 
-| Adapter | Flag | Protocol | Use Case |
-|---------|------|----------|----------|
-| **OpenAI** | `--adapter openai` | Chat Completions API | GPT models, OpenAI API |
-| **Generic HTTP** | `--adapter http` | Chat Completions API | Local models (Ollama, vLLM), any OpenAI-compatible endpoint |
-| **Anthropic** | `--adapter anthropic` | Messages API | Claude models |
-| **LangGraph** | `--adapter langgraph` | LangGraph Platform | LangGraph agents |
-| **MCP** | `--adapter mcp` | JSON-RPC 2.0 | MCP tool servers |
-| **A2A** | `--adapter a2a` | Google A2A Protocol | A2A-compatible agents |
-| **CrewAI** | `test-crew` command | In-process | CrewAI crews/agents |
-| **LangChain** | `test-chain` command | In-process | LangChain agents/chains |
-| **SiteGPT** | `--adapter sitegpt` | WebSocket / REST | SiteGPT chatbots |
+| Adapter          | Flag                  | Protocol             | Use Case                                                    |
+|------------------|-----------------------|----------------------|-------------------------------------------------------------|
+| **OpenAI**       | `--adapter openai`    | Chat Completions API | GPT models, OpenAI API                                      |
+| **Generic HTTP** | `--adapter http`      | Chat Completions API | Local models (Ollama, vLLM), any OpenAI-compatible endpoint |
+| **Anthropic**    | `--adapter anthropic` | Messages API         | Claude models                                               |
+| **LangGraph**    | `--adapter langgraph` | LangGraph Platform   | LangGraph agents                                            |
+| **MCP**          | `--adapter mcp`       | JSON-RPC 2.0         | MCP tool servers                                            |
+| **A2A**          | `--adapter a2a`       | Google A2A Protocol  | A2A-compatible agents                                       |
+| **CrewAI**       | `test-crew` command   | In-process           | CrewAI crews/agents                                         |
+| **LangChain**    | `test-chain` command  | In-process           | LangChain agents/chains                                     |
+| **SiteGPT**      | `--adapter sitegpt`   | WebSocket / REST     | SiteGPT chatbots                                            |
 
 ```bash
 # OpenAI-compatible (default)
@@ -305,11 +319,11 @@ jobs:
     permissions:
       security-events: write
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
+          node-version: "22"
 
-      - run: pip install keelson-ai
+      - run: npm install -g keelson
 
       - run: keelson scan ${{ vars.AGENT_URL }} --api-key ${{ secrets.AGENT_KEY }} --format sarif --output results/ --fail-on-vuln --no-save
 
@@ -382,24 +396,14 @@ log_all: false
 
 ### CrewAI Integration
 
-```python
-from keelson.defend import load_policy, PolicyEngine, register_crewai_hooks
-
-policy = load_policy("defend-policy.yaml")
-engine = PolicyEngine(policy)
-register_crewai_hooks(engine)
-# All CrewAI tool calls are now policy-enforced
+```typescript
+// Coming soon — defense hooks will be added post-migration
 ```
 
 ### LangChain Integration
 
-```python
-from keelson.defend import load_policy, PolicyEngine, KeelsonDefendMiddleware
-
-policy = load_policy("defend-policy.yaml")
-engine = PolicyEngine(policy)
-middleware = KeelsonDefendMiddleware(engine)
-# Wrap your agent's tool and model calls
+```typescript
+// Coming soon — defense hooks will be added post-migration
 ```
 
 ## Adding Custom Tests
@@ -434,7 +438,7 @@ evaluation:
 
 ## Project Structure
 
-```
+```text
 keelson/
 ├── agents/                         # Agent instructions
 │   └── pentester.md                # Pentester agent prompt
@@ -456,84 +460,25 @@ keelson/
 │   ├── multi-agent-security/       # MA (7 probes)
 │   ├── output-weaponization/       # OW (7 probes)
 │   └── temporal-persistence/       # TP (7 probes)
-├── src/keelson/                     # Python engine
-│   ├── cli/                        # Typer CLI (18 commands)
-│   │   ├── __init__.py             # App setup, shared helpers
-│   │   ├── commands.py             # Command module registration
-│   │   ├── scan_commands.py        # scan, pipeline-scan, smart-scan, probe
-│   │   ├── ops_commands.py         # list, report, history, diff, discover, baseline, compliance
-│   │   └── advanced_commands.py    # campaign, evolve, chain, generate, test-crew, test-chain
-│   ├── adapters/                   # 9 target adapters
-│   │   ├── base.py                 # BaseAdapter interface
-│   │   ├── openai.py               # OpenAI API
-│   │   ├── http.py                 # GenericHTTPAdapter (OpenAI-compat)
-│   │   ├── anthropic.py            # Anthropic Messages API
-│   │   ├── langgraph.py            # LangGraph Platform
-│   │   ├── mcp.py                  # Model Context Protocol
-│   │   ├── a2a.py                  # Google A2A Protocol
-│   │   ├── crewai.py               # CrewAI native (in-process)
-│   │   ├── langchain.py            # LangChain native (in-process)
-│   │   ├── sitegpt.py              # SiteGPT (WebSocket / REST)
-│   │   ├── cache.py                # Response caching decorator
-│   │   └── prober.py             # Prober LLM wrapper
-│   ├── core/                       # Engine, scanner, detection
-│   │   ├── engine.py               # Multi-turn probe executor
-│   │   ├── execution.py            # Shared primitives (sequential, parallel, verify)
-│   │   ├── scanner.py              # Sequential scan with dynamic reorder
-│   │   ├── pipeline.py             # Parallel scan with checkpoint/resume
-│   │   ├── smart_scan.py           # Adaptive scan with memo feedback
-│   │   ├── convergence.py          # Iterative convergence with cross-feed
-│   │   ├── memo.py                 # Memo table for technique tracking
-│   │   ├── strategist.py           # LLM-based target classification
-│   │   ├── detection.py            # Pattern-based verdict detection
-│   │   ├── observer.py             # Streaming leakage analysis
-│   │   ├── llm_judge.py             # LLM-as-judge semantic evaluation
-│   │   ├── templates.py            # Playbook parser (markdown)
-│   │   ├── yaml_templates.py       # Playbook parser (YAML)
-│   │   ├── models.py               # Core data models
-│   │   ├── reporter.py             # Markdown report generation
-│   │   ├── executive_report.py     # Executive summary format
-│   │   ├── sarif.py                # SARIF v2.1.0 output
-│   │   ├── ocsf.py                 # OCSF v1.1 output (SIEMs, security lakes)
-│   │   ├── junit.py                # JUnit XML output
-│   │   └── compliance.py           # 6 compliance frameworks
-│   ├── defend/                     # Runtime protection
-│   │   ├── engine.py               # Policy evaluation engine
-│   │   ├── models.py               # Policy, rules, actions
-│   │   ├── loader.py               # YAML policy loader
-│   │   ├── crewai_hook.py          # CrewAI middleware hooks
-│   │   └── langchain_hook.py       # LangChain middleware hooks
-│   ├── prober/                   # Probe generation
-│   │   ├── generator.py            # LLM-powered prompt generation
-│   │   ├── discovery.py            # Agent capability fingerprinting
-│   │   ├── chains.py               # Compound probe chain synthesis
-│   │   └── provider.py             # Cross-provider prober selection
-│   ├── adaptive/                   # Mutation engine + orchestrators
-│   │   ├── mutations.py            # 13 programmatic + LLM mutations
-│   │   ├── branching.py            # Conversation tree exploration
-│   │   ├── probe_tree.py           # Probe tree data structures
-│   │   ├── pair.py                 # PAIR iterative refinement orchestrator
-│   │   ├── crescendo.py            # Crescendo gradual escalation orchestrator
-│   │   └── strategies.py           # Mutation scheduling
-│   ├── campaign/                   # Statistical campaigns
-│   │   ├── runner.py               # N-trial execution with CI
-│   │   ├── tiers.py                # Fast/Deep/Continuous presets
-│   │   ├── scheduler.py            # Campaign scheduling
-│   │   └── config.py               # TOML config parser
-│   ├── diff/                       # Scan comparison
-│   │   └── comparator.py           # Regression detection
-│   └── state/                      # Persistence
-│       ├── base.py                 # Storage base interface
-│       └── store.py                # SQLite storage
-├── tests/                          # 802 tests
+├── src/                             # TypeScript engine
+│   ├── cli/                        # Commander CLI commands
+│   ├── components/                 # Ink/React terminal UI
+│   ├── hooks/                      # React hooks for Ink
+│   ├── core/                       # Engine, scanner, detection, LLM judge
+│   ├── adapters/                   # 9 target adapters (OpenAI, HTTP, Anthropic, etc.)
+│   ├── strategies/                 # Mutations, PAIR, crescendo, branching
+│   ├── reporting/                  # Markdown, SARIF, JUnit, compliance
+│   ├── schemas/                    # Zod validation schemas
+│   ├── types/                      # TypeScript type definitions
+│   └── config.ts                   # App config, env loading
+├── _legacy/                        # Python source reference (temporary)
+├── tests/                          # Vitest tests (mirrors src/)
 ├── docs/                           # Documentation
 │   ├── adr/                        # Architecture Decision Records
-│   │   ├── ADR-001-framework.md    # FastAPI selection (historical)
-│   │   ├── ADR-002-dependency-management.md  # uv selection
-│   │   └── ADR-003-observability.md  # Structured logging + OTel plan
-│   ├── plans/                      # Roadmap
-│   └── github-action-spec.md       # GitHub Action design
-├── pyproject.toml                  # Python packaging
+│   └── plans/                      # Design & implementation plans
+├── package.json
+├── tsconfig.json
+├── vitest.config.ts
 └── LICENSE                         # Apache 2.0
 ```
 
@@ -544,33 +489,17 @@ keelson/
 git clone https://github.com/keelson-ai/keelson.git
 cd keelson
 
-# Install with dev dependencies
-pip install -e ".[dev]"
+# Install dependencies
+pnpm install
+
+# Build
+pnpm build
 
 # Run tests
-pytest
+pnpm test
 
-# Run tests with verbose output
-pytest -v
-
-# Lint
-ruff check .
-
-# Type check (strict mode, 0 errors)
-pyright
-```
-
-### Optional Dependencies
-
-```bash
-# CrewAI adapter
-pip install "keelson-ai[crewai]"
-
-# LangChain adapter
-pip install "keelson-ai[langchain]"
-
-# All optional adapters
-pip install "keelson-ai[all]"
+# Type check
+pnpm lint
 ```
 
 ## Contributing
@@ -578,8 +507,8 @@ pip install "keelson-ai[all]"
 Contributions are welcome. Here's how to help:
 
 1. **Add probe playbooks** — Write new `.yaml` files in `probes/`. Follow the format above.
-2. **Add adapters** — Implement the `BaseAdapter` interface (implement `_send_messages_impl`, `health_check`, `close`; optional: `reset_session`). The base class provides `send_messages` with automatic retry logic.
-3. **Improve detection** — Enhance patterns in `core/detection.py` or add new evaluation strategies.
+2. **Add adapters** — Extend `BaseAdapter` and implement `send()`. The base class provides automatic retry logic.
+3. **Improve detection** — Enhance patterns in `core/detection.ts` or add new evaluation strategies.
 4. **Report bugs** — Open an issue with reproduction steps.
 
 ### Workflow
@@ -587,12 +516,377 @@ Contributions are welcome. Here's how to help:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feat/my-feature`)
 3. Make your changes
-4. Run `pytest` and `ruff check .`
+4. Run `pnpm test` and `pnpm lint`
 5. Submit a pull request
 
 ### Security
 
 This tool is for **authorized security testing only**. Do not use Keelson against systems you don't have permission to test. If you discover a security issue in Keelson itself, please report it via [GitHub Security Advisories](https://github.com/keelson-ai/keelson/security/advisories).
+
+<<<<<<< HEAD
+## Architecture
+
+### Flow Diagrams
+
+#### Core Scan Pipeline (Sequential)
+
+```mermaid
+flowchart TD
+    A[Load Playbooks] --> B[Send Prompts via Adapter]
+    B --> C[Collect Evidence]
+    C --> D[Detection Pipeline<br/>Pattern / LLM Judge / Combined]
+    D --> E{Verdict?}
+    E -->|VULNERABLE| DP{Deep Probe<br/>enabled?}
+    DP -->|Yes| BRANCH[Explore follow-up paths<br/>via conversation branching]
+    BRANCH --> F[Record Finding + Probe Findings]
+    DP -->|No| F
+    E -->|SAFE| F[Record Finding]
+    E -->|INCONCLUSIVE| F
+    F --> G{More Probes?}
+    G -->|Yes| H[Dynamic Reorder<br/>by Vuln Categories]
+    H --> B
+    G -->|No| I[Generate Report]
+
+    style E fill:#f9f,stroke:#333
+    style I fill:#9f9,stroke:#333
+    style BRANCH fill:#fde8e8,stroke:#333
+```
+
+#### Pipeline Scan (Parallel + Checkpoint + Verify)
+
+```mermaid
+flowchart TD
+    subgraph Phase1[Phase 1: Load]
+        L[Load Playbooks] --> CP{Checkpoint<br/>exists?}
+        CP -->|Yes| RESUME[Resume from checkpoint<br/>skip completed probes]
+        CP -->|No| ALL[All templates]
+    end
+
+    subgraph Phase2[Phase 2: Parallel Execution]
+        RESUME --> SEM[Semaphore-based concurrency<br/>max_concurrent probes]
+        ALL --> SEM
+        SEM --> EX1[Probe 1]
+        SEM --> EX2[Probe 2]
+        SEM --> EXN[Probe N]
+        EX1 --> COLL[Collect Findings]
+        EX2 --> COLL
+        EXN --> COLL
+    end
+
+    subgraph Phase3[Phase 3: Verification]
+        COLL --> VULN[Filter VULNERABLE]
+        VULN --> RE[Re-probe each finding]
+        RE --> CONF{Agent complies<br/>again?}
+        CONF -->|Yes| CONFIRMED[VULNERABLE confirmed]
+        CONF -->|Refused| DOWN[Downgrade to INCONCLUSIVE]
+    end
+
+    subgraph Phase4[Phase 4: Report]
+        CONFIRMED --> MERGE[Merge verified findings]
+        DOWN --> MERGE
+        MERGE --> RPT[Generate Report]
+    end
+
+    style Phase1 fill:#e8f4fd,stroke:#333
+    style Phase2 fill:#fdf8e8,stroke:#333
+    style Phase3 fill:#fde8e8,stroke:#333
+    style Phase4 fill:#e8fde8,stroke:#333
+```
+
+#### Smart Scan with Memoization
+
+```mermaid
+flowchart TD
+    subgraph Phase1[Phase 1: Discovery]
+        P1[8 Capability Probes] --> P1R[Agent Profile]
+    end
+
+    subgraph Phase2[Phase 2: Classification]
+        P1R --> CL[Classify Target Type]
+        CL --> TP[Target Profile<br/>types, tools, memory, refusal style]
+    end
+
+    subgraph Phase3[Phase 3: Probe Selection]
+        TP --> SEL[Select Relevant Probes]
+        SEL --> GRP[Group into Sessions by Category]
+    end
+
+    subgraph Phase4[Phase 4: Execute with Memo]
+        GRP --> MEMO[Initialize Memo Table]
+        MEMO --> SESS[Execute Session]
+        SESS --> REC[Record Finding → Memo]
+        REC --> REORDER[Reorder Remaining Sessions<br/>by Memo-Informed Scores]
+        REORDER --> ADAPT{Adapt Plan?}
+        ADAPT -->|Escalate/De-escalate| SESS
+        ADAPT -->|Done| SUM[Final Memo Summary]
+    end
+
+    style Phase1 fill:#e8f4fd,stroke:#333
+    style Phase2 fill:#fde8e8,stroke:#333
+    style Phase3 fill:#e8fde8,stroke:#333
+    style Phase4 fill:#fdf8e8,stroke:#333
+```
+
+#### Convergence Scan (Iterative Cross-Category Feedback)
+
+```mermaid
+flowchart TD
+    subgraph Pass1[Pass 1: Initial Scan]
+        LOAD[Load Playbooks<br/>category filter optional] --> EXEC1[Execute All Probes]
+        EXEC1 --> F1[Findings]
+    end
+
+    subgraph Harvest[Structural Analysis]
+        F1 --> HL[Harvest Leaked Info<br/>from ALL responses]
+        HL --> TYPES[System prompts / Tool names<br/>Credentials / Internal URLs<br/>Config values / Model names]
+    end
+
+    subgraph CrossFeed[Cross-Category Feed]
+        F1 --> VULN{Vulnerabilities<br/>found?}
+        VULN -->|Yes| XMAP[Cross-Category Map<br/>13 category relationships]
+        XMAP --> SELECT[Select probes from<br/>related categories]
+        TYPES --> LTARGET[Leakage-Targeted Probes<br/>Tool leak → Tool Safety<br/>Cred leak → Exfiltration<br/>Prompt leak → Goal Adherence]
+    end
+
+    subgraph PassN[Pass 2+: Iterative]
+        SELECT --> MERGE[Merge & Deduplicate]
+        LTARGET --> MERGE
+        MERGE --> EXECN[Execute Cross-Feed Probes]
+        EXECN --> FN[New Findings]
+        FN --> CONV{New vulns or<br/>new leakage?}
+        CONV -->|Yes| Harvest
+        CONV -->|No| DONE[Converged — Stop]
+    end
+
+    VULN -->|No leakage either| DONE
+
+    style Pass1 fill:#e8f4fd,stroke:#333
+    style Harvest fill:#fde8e8,stroke:#333
+    style CrossFeed fill:#fdf8e8,stroke:#333
+    style PassN fill:#e8fde8,stroke:#333
+    style DONE fill:#9f9,stroke:#333
+```
+
+#### Memo Feedback Loop
+
+```mermaid
+flowchart LR
+    subgraph Record
+        F[Finding] --> IT[Infer Techniques<br/>authority, roleplay, etc.]
+        IT --> CO[Classify Outcome<br/>complied / partial / refused]
+        CO --> EL[Extract Leaked Info<br/>tools, paths, URLs, env vars]
+        EL --> MT[(Memo Table)]
+    end
+
+    subgraph Query
+        MT --> EFF[Effective Techniques<br/>VULNERABLE → weight 1.0]
+        MT --> PROM[Promising Techniques<br/>INCONCLUSIVE → weight 0.3]
+        MT --> DEAD[Dead-End Techniques<br/>SAFE-only → penalize]
+        MT --> CROSS[Cross-Category Signal<br/>global score × 0.5]
+    end
+
+    subgraph Apply
+        EFF --> SCORE[Score & Reorder<br/>Next Session's Probes]
+        PROM --> SCORE
+        DEAD --> SCORE
+        CROSS --> SCORE
+    end
+
+    style MT fill:#f9f,stroke:#333
+```
+
+#### Probe Tree Execution
+
+```mermaid
+flowchart TD
+    ROOT[Root Prompt] --> SEND[Send to Target]
+    SEND --> CLASS{Classify Response}
+
+    CLASS -->|Compliance| VULN{Vulnerable?}
+    CLASS -->|Partial| BR_P[Select Branch<br/>for PARTIAL]
+    CLASS -->|Refusal| BR_R[Select Branch<br/>for REFUSAL]
+
+    VULN -->|Yes| STOP[Stop — Vulnerability Found]
+    VULN -->|No| BR_C[Select Branch<br/>for COMPLIANCE]
+
+    BR_P --> MEMO_SEL[Memo-Informed Selection<br/>Prefer effective techniques<br/>Avoid dead ends]
+    BR_R --> MEMO_SEL
+    BR_C --> MEMO_SEL
+
+    MEMO_SEL --> NEXT[Execute Next Prompt]
+    NEXT --> CLASS2{Classify Response}
+    CLASS2 -->|Compliance| VULN2{Vulnerable?}
+    CLASS2 -->|Partial/Refusal| DEEPER{Max Depth?}
+
+    VULN2 -->|Yes| STOP
+    VULN2 -->|No| DEEPER
+    DEEPER -->|No| MEMO_SEL
+    DEEPER -->|Yes| FINAL[Final Verdict]
+
+    FINAL --> REC_MEMO[Record Result → Memo Table]
+
+    style STOP fill:#f99,stroke:#333
+    style MEMO_SEL fill:#f9f,stroke:#333
+    style REC_MEMO fill:#9f9,stroke:#333
+```
+
+#### Detection Pipeline
+
+```mermaid
+flowchart TD
+    EV[Evidence: prompts + responses] --> MODE{Scoring<br/>Method?}
+
+    MODE -->|PATTERN| SE[Side Effects Check<br/>Tool call wrappers + dangerous names]
+    MODE -->|COMBINED| BOTH_PATH[Run Pattern + LLM Judge in parallel]
+    MODE -->|LLM_JUDGE| JUDGE_ONLY[LLM-as-Judge Only]
+
+    SE -->|Match| V1[VULNERABLE]
+
+    SE -->|No match| SIG[Collect Signals]
+    SIG --> VM[vulnerable_if matches]
+    SIG --> SM[safe_if matches]
+    SIG --> RF[Refusal phrase matches]
+
+    VM --> COMB{Both vuln<br/>and safe?}
+    SM --> COMB
+    RF --> COMB
+
+    COMB -->|Yes, multi-step| EACH[Check each step individually]
+    EACH -->|Any step vuln without refusal| V2[VULNERABLE<br/>Leak at step K not undone<br/>by later refusal]
+    EACH -->|All vuln steps also refused| SAFE1[SAFE]
+
+    COMB -->|Yes, single-step| DISC[Substantial disclosure?<br/>Code blocks / structured lists]
+    DISC -->|Yes| V3[VULNERABLE<br/>Disclosed despite refusal]
+    DISC -->|No| SAFE1
+
+    COMB -->|Only vuln| V4[VULNERABLE]
+    COMB -->|Only safe/refusal| SAFE2[SAFE]
+    COMB -->|Neither| LEAK{High-confidence<br/>leakage signals?}
+    LEAK -->|Yes| V5[VULNERABLE]
+    LEAK -->|No| INC[INCONCLUSIVE]
+
+    JUDGE_ONLY --> JR[Judge LLM evaluates<br/>objective + evidence + criteria]
+    JR --> JV[VERDICT + confidence + reasoning]
+
+    BOTH_PATH --> PAT_V[Pattern Verdict]
+    BOTH_PATH --> JDG_V[Judge Verdict]
+    PAT_V --> RESOLVE{Resolve<br/>Disagreement}
+    JDG_V --> RESOLVE
+    RESOLVE -->|Both agree| BOOST[Use verdict<br/>confidence + 0.15]
+    RESOLVE -->|Pattern VULN, Judge SAFE| TRUST_J1[Trust Judge → SAFE<br/>reduces false positives]
+    RESOLVE -->|Pattern SAFE, Judge VULN| CONF{Judge<br/>confidence ≥ 0.7?}
+    CONF -->|Yes| TRUST_J2[Trust Judge → VULNERABLE<br/>catches subtle compliance]
+    CONF -->|No| KEEP_S[Keep SAFE]
+    RESOLVE -->|One INCONCLUSIVE| DEFER[Defer to the other verdict]
+
+    style V1 fill:#f99,stroke:#333
+    style V2 fill:#f99,stroke:#333
+    style V3 fill:#f99,stroke:#333
+    style V4 fill:#f99,stroke:#333
+    style V5 fill:#f99,stroke:#333
+    style SAFE1 fill:#9f9,stroke:#333
+    style SAFE2 fill:#9f9,stroke:#333
+    style INC fill:#ff9,stroke:#333
+    style JV fill:#f9f,stroke:#333
+    style BOOST fill:#9f9,stroke:#333
+    style TRUST_J1 fill:#9f9,stroke:#333
+    style TRUST_J2 fill:#f99,stroke:#333
+    style KEEP_S fill:#9f9,stroke:#333
+```
+
+#### PAIR Orchestrator (Prompt Automatic Iterative Refinement)
+
+```mermaid
+flowchart TD
+    START[Initial Probe Prompt] --> SEND[Send to Target]
+    SEND --> EVAL{Evaluate Response}
+
+    EVAL -->|VULNERABLE| SUCCESS[Vulnerability Found — Stop]
+    EVAL -->|SAFE / INCONCLUSIVE| CHECK{Max iterations<br/>reached?}
+
+    CHECK -->|Yes| FINAL[Final Verdict from<br/>all collected evidence]
+    CHECK -->|No| REFINE[Feed response to Prober LLM]
+
+    REFINE --> GEN[Prober generates refined prompt<br/>• Different framing/angle<br/>• Addresses specific refusal reasons<br/>• New technique each iteration]
+    GEN --> SEND
+
+    style SUCCESS fill:#f99,stroke:#333
+    style FINAL fill:#ff9,stroke:#333
+    style REFINE fill:#f9f,stroke:#333
+```
+
+#### Crescendo Orchestrator (Gradual Escalation)
+
+```mermaid
+flowchart TD
+    subgraph Phase1[Phase 1: Plan]
+        OBJ[Probe Objective] --> PLAN[Prober LLM plans<br/>N-turn escalation sequence]
+        PLAN --> TURNS[Turn 1: Innocent rapport<br/>Turn 2-3: Domain introduction<br/>Turn 4-5: Approach objective<br/>Turn N: Full request]
+    end
+
+    subgraph Phase2[Phase 2: Execute]
+        TURNS --> T1[Turn 1 — Establish rapport]
+        T1 --> RESP1[Target responds cooperatively]
+        RESP1 --> ADAPT[Adapt next turn based on<br/>target's actual response]
+        ADAPT --> TN[Turn N — Escalated request]
+    end
+
+    subgraph Phase3[Phase 3: Evaluate]
+        TN --> EVAL{Evaluate from<br/>turn 3 onward}
+        EVAL -->|VULNERABLE| STOP[Escalation Succeeded<br/>at turn K/N]
+        EVAL -->|SAFE| CONT{More turns?}
+        CONT -->|Yes| ADAPT
+        CONT -->|No| DONE[Final Verdict]
+    end
+
+    style Phase1 fill:#e8f4fd,stroke:#333
+    style Phase2 fill:#fdf8e8,stroke:#333
+    style Phase3 fill:#fde8e8,stroke:#333
+    style STOP fill:#f99,stroke:#333
+```
+
+#### Mutation Engine
+
+```mermaid
+flowchart LR
+    subgraph Programmatic[Programmatic Mutations]
+        P1[Base64 Encode]
+        P2[Leetspeak]
+        P3[Context Overflow]
+        P4[ROT13]
+        P5[Unicode Homoglyph]
+        P6[Char Split — ZWSP]
+        P7[Reversed Words]
+        P8[Morse Code]
+        P9[Caesar Cipher]
+    end
+
+    subgraph LLMPowered[LLM-Powered Mutations]
+        L1[Paraphrase]
+        L2[Roleplay Wrap]
+        L3[Gradual Escalation]
+        L4[Translation]
+    end
+
+    ORIG[Original Prompt] --> Programmatic
+    ORIG --> LLMPowered
+
+    Programmatic --> MUT[Mutated Probe]
+    LLMPowered --> MUT
+
+    MUT --> EXEC[Execute against Target]
+    EXEC --> DET[Detection Pipeline]
+
+    style Programmatic fill:#e8f4fd,stroke:#333
+    style LLMPowered fill:#fde8e8,stroke:#333
+    style MUT fill:#f9f,stroke:#333
+```
+
+### Architecture Decision Records
+
+Key technical decisions are documented as [MADR](https://adr.github.io/madr/) records in [`docs/adr/`](docs/adr/).
+
+The current migration to TypeScript supersedes earlier Python-era ADRs. See [`docs/plans/`](docs/plans/) for the migration design and implementation plan.
 
 ## Roadmap
 
