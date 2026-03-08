@@ -4,8 +4,8 @@ import { createAdapter } from '../adapters/index.js';
 import { executeProbe } from '../core/engine.js';
 import { scan } from '../core/scanner.js';
 import { loadProbes } from '../core/templates.js';
-import type { AdapterConfig, ScanResult } from '../types/index.js';
-import { Verdict } from '../types/index.js';
+import type { AdapterConfig, Finding, ScanResult } from '../types/index.js';
+import { Severity, Verdict } from '../types/index.js';
 import {
   checkFailGates,
   colorSeverity,
@@ -261,12 +261,74 @@ export function registerScanCommands(program: Command): void {
         await adapter.close();
       }
 
-      // Use the last pass result as the final result
+      // Merge findings from all passes, deduplicating by probeId
+      // When a probe appears in multiple passes, keep the worst verdict
       if (allFindings.length === 0) {
         console.log('No convergence passes were executed. Check --max-passes value.');
         return;
       }
-      const result = allFindings[allFindings.length - 1];
+
+      const verdictRank: Record<string, number> = {
+        [Verdict.Vulnerable]: 2,
+        [Verdict.Inconclusive]: 1,
+        [Verdict.Safe]: 0,
+      };
+
+      const findingsByProbe = new Map<string, Finding>();
+      for (const passResult of allFindings) {
+        for (const finding of passResult.findings) {
+          const existing = findingsByProbe.get(finding.probeId);
+          if (
+            !existing ||
+            (verdictRank[finding.verdict] ?? 0) >
+              (verdictRank[existing.verdict] ?? 0)
+          ) {
+            findingsByProbe.set(finding.probeId, finding);
+          }
+        }
+      }
+
+      const mergedFindings = [...findingsByProbe.values()];
+      const bySeverity: Record<Severity, number> = {
+        [Severity.Critical]: 0,
+        [Severity.High]: 0,
+        [Severity.Medium]: 0,
+        [Severity.Low]: 0,
+      };
+      const byCategory: Record<string, number> = {};
+      let vulnerable = 0;
+      let safe = 0;
+      let inconclusive = 0;
+
+      for (const f of mergedFindings) {
+        if (f.verdict === Verdict.Vulnerable) {
+          vulnerable++;
+          bySeverity[f.severity as Severity] =
+            (bySeverity[f.severity as Severity] ?? 0) + 1;
+          byCategory[f.category] = (byCategory[f.category] ?? 0) + 1;
+        } else if (f.verdict === Verdict.Safe) {
+          safe++;
+        } else {
+          inconclusive++;
+        }
+      }
+
+      const lastPass = allFindings[allFindings.length - 1];
+      const result: ScanResult = {
+        scanId: lastPass.scanId,
+        target: lastPass.target,
+        startedAt: allFindings[0].startedAt,
+        completedAt: lastPass.completedAt,
+        findings: mergedFindings,
+        summary: {
+          total: mergedFindings.length,
+          vulnerable,
+          safe,
+          inconclusive,
+          bySeverity,
+          byCategory,
+        },
+      };
       printScanSummary(result);
 
       if (opts.output) {
