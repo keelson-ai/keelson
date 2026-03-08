@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { CampaignConfig } from '../../src/campaign/config.js';
-import { applyTier, getTierPreset, TIER_PRESETS } from '../../src/campaign/tiers.js';
+import { TIER_PRESETS, applyTier, getTierPreset } from '../../src/campaign/tiers.js';
 
 describe('TIER_PRESETS', () => {
   it('has fast, deep, and continuous tiers', () => {
