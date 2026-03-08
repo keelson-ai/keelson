@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { type DeepPartial, type AppConfig, loadConfig, loadConfigFromEnv, mergeConfigs } from '../src/config.js';
+import { type AppConfig, type DeepPartial, loadConfig, loadConfigFromEnv, mergeConfigs } from '../src/config.js';
 
 describe('loadConfigFromEnv', () => {
   const originalEnv = process.env;
@@ -61,7 +61,7 @@ describe('loadConfigFromEnv', () => {
   it('returns empty config when no env vars set', () => {
     // Clear all KEELSON_ env vars
     for (const key of Object.keys(process.env)) {
-      if (key.startsWith('KEELSON_')) delete process.env[key];
+      if (key.startsWith('KEELSON_')) process.env[key] = undefined;
     }
 
     const config = loadConfigFromEnv();
@@ -176,7 +176,7 @@ describe('loadConfig', () => {
     process.env = { ...originalEnv };
     // Clear any KEELSON env vars
     for (const key of Object.keys(process.env)) {
-      if (key.startsWith('KEELSON_')) delete process.env[key];
+      if (key.startsWith('KEELSON_')) process.env[key] = undefined;
     }
   });
 
