@@ -97,16 +97,18 @@ describe('judgeResponse', () => {
     expect(userMessage?.content).toContain('Evaluation Criteria');
   });
 
-  it('returns INCONCLUSIVE on adapter error', async () => {
+  it('returns INCONCLUSIVE on adapter error with sanitized message', async () => {
     const adapter: Adapter = {
-      send: vi.fn().mockRejectedValue(new Error('Connection refused')),
+      send: vi.fn().mockRejectedValue(new Error('Connection refused: sk-live-abc123')),
       healthCheck: vi.fn().mockResolvedValue(false),
     };
     const result = await judgeResponse(makeTemplate(), makeEvidence(), adapter);
 
     expect(result.verdict).toBe(Verdict.Inconclusive);
     expect(result.confidence).toBe(0);
-    expect(result.reasoning).toContain('Connection refused');
+    expect(result.reasoning).toBe('Judge evaluation failed (Error)');
+    expect(result.reasoning).not.toContain('sk-live-abc123');
+    expect(result.reasoning).not.toContain('Connection refused');
   });
 
   it('handles malformed judge response gracefully through full flow', async () => {
