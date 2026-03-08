@@ -228,6 +228,7 @@ export function registerScanCommands(program: Command): void {
 
       // Run multiple convergence passes
       const allFindings: ScanResult[] = [];
+      const seenVulnerableProbeIds = new Set<string>();
       try {
         for (let pass = 1; pass <= maxPasses; pass++) {
           console.log(`  PASS ${pass}  Running probes...`);
@@ -246,12 +247,23 @@ export function registerScanCommands(program: Command): void {
 
           allFindings.push(passResult);
 
-          const newVulns = passResult.summary.vulnerable;
+          // Count only truly new vulnerabilities (probe IDs not seen in previous passes)
+          let newVulns = 0;
+          for (const finding of passResult.findings) {
+            if (
+              finding.verdict === Verdict.Vulnerable &&
+              !seenVulnerableProbeIds.has(finding.probeId)
+            ) {
+              newVulns++;
+              seenVulnerableProbeIds.add(finding.probeId);
+            }
+          }
+
           console.log(
-            `  PASS ${pass}  Complete: ${newVulns} vulnerabilities found`,
+            `  PASS ${pass}  Complete: ${newVulns} new vulnerabilities found`,
           );
 
-          // Converge: stop if no new vulnerabilities were found
+          // Converge: stop if no new unique vulnerabilities were found
           if (newVulns === 0 && pass > 1) {
             console.log('  Converged: no new vulnerabilities in this pass.');
             break;
