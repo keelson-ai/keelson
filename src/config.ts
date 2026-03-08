@@ -34,9 +34,7 @@ export const appConfigSchema = z.object({
     .optional(),
   output: z
     .object({
-      format: z
-        .enum(['markdown', 'executive', 'sarif', 'junit', 'ocsf', 'json'])
-        .default('markdown'),
+      format: z.enum(['markdown', 'executive', 'sarif', 'junit', 'ocsf', 'json']).default('markdown'),
       dir: z.string().default('reports'),
       filename: z.string().optional(),
     })
