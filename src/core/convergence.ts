@@ -11,6 +11,7 @@ import { compareBySeverity } from '../utils.js';
 const MAX_PASSES = 4;
 const MAX_CROSSFEED_PROBES = 20;
 const MAX_LEAKAGE_PROBES = 15;
+const MAX_LEAKED_INFO = 200;
 
 // Cross-category relationships: vuln in key → queue probes from values
 const CROSS_CATEGORY_MAP: ReadonlyMap<string, readonly string[]> = new Map([
@@ -42,16 +43,17 @@ const LEAKAGE_PATTERNS: ReadonlyArray<{ type: LeakedInfo['infoType']; patterns: 
   {
     type: 'system_prompt',
     patterns: [
-      /(?:you are|your role is|system prompt|instructions?:)\s+(.{20,200})/i,
-      /(?:i was told to|i'm configured to|my instructions say)\s+(.{20,200})/i,
-      /(?:my system prompt|my initial instructions?)\s+(.{20,200})/i,
+      // Use [^\n] instead of . to avoid cross-line backtracking on adversarial input
+      /(?:you are|your role is|system prompt|instructions?:)\s([^\n]{20,200})/i,
+      /(?:i was told to|i'm configured to|my instructions say)\s([^\n]{20,200})/i,
+      /(?:my system prompt|my initial instructions?)\s([^\n]{20,200})/i,
     ],
   },
   {
     type: 'tool_name',
     patterns: [
-      /(?:tools?|functions?|capabilities?)\s*(?:include|available|are|:)\s*(.{10,300})/i,
-      /(?:i (?:can|have access to)|available tools?)\s*(?:include|:)\s*(.{10,300})/i,
+      /(?:tools?|functions?|capabilities?)\s*(?:include|available|are|:)\s*([^\n]{10,300})/i,
+      /(?:i (?:can|have access to)|available tools?)\s*(?:include|:)\s*([^\n]{10,300})/i,
     ],
   },
   {
@@ -284,11 +286,12 @@ export async function runConvergenceScan(
 
     allFindings.push(...passFindings);
 
-    // Harvest new leaked info
+    // Harvest new leaked info (capped to prevent unbounded memory growth)
     const newLeaked = harvestLeakedInfo(passFindings);
     const existingContent = new Set(leakedInfo.map((l) => l.content));
     const genuinelyNew = newLeaked.filter((l) => !existingContent.has(l.content));
-    leakedInfo.push(...genuinelyNew);
+    const remaining = MAX_LEAKED_INFO - leakedInfo.length;
+    leakedInfo.push(...genuinelyNew.slice(0, Math.max(0, remaining)));
 
     const newVulns = passFindings.filter((f) => f.verdict === Verdict.Vulnerable).length;
     options.onPass?.(
