@@ -86,12 +86,14 @@ function applyTierWithOverrides(
 
   const baseConcurrency = tiered.concurrency ?? { maxWorkers: 1, batchSize: 10 };
   const concurrency = {
-    maxWorkers: rawConcurrency.maxWorkers !== undefined
-      ? (config.concurrency?.maxWorkers ?? baseConcurrency.maxWorkers)
-      : baseConcurrency.maxWorkers,
-    batchSize: rawConcurrency.batchSize !== undefined
-      ? (config.concurrency?.batchSize ?? baseConcurrency.batchSize)
-      : baseConcurrency.batchSize,
+    maxWorkers:
+      rawConcurrency.maxWorkers !== undefined
+        ? (config.concurrency?.maxWorkers ?? baseConcurrency.maxWorkers)
+        : baseConcurrency.maxWorkers,
+    batchSize:
+      rawConcurrency.batchSize !== undefined
+        ? (config.concurrency?.batchSize ?? baseConcurrency.batchSize)
+        : baseConcurrency.batchSize,
   };
 
   return {
