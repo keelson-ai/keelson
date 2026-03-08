@@ -59,6 +59,7 @@ export async function executeProbe(
       userTurnCount = 0;
       allEvidence.push(...evidence);
       evidence.length = 0;
+      adapter.resetSession();
     }
 
     if (step.role !== 'user') {
@@ -97,12 +98,12 @@ export async function executeProbe(
 
   allEvidence.push(...evidence);
 
-  const leakageSignals = observer?.observe(evidence) ?? [];
-  const patternResult = patternDetect(template, evidence, leakageSignals);
+  const leakageSignals = observer?.observe(allEvidence) ?? [];
+  const patternResult = patternDetect(template, allEvidence, leakageSignals);
 
   let detection: DetectionResult;
   if (judge) {
-    const judgeResult = await judgeResponse(template, evidence, judge);
+    const judgeResult = await judgeResponse(template, allEvidence, judge);
     detection = combinedDetect(patternResult, judgeResult);
   } else {
     detection = patternResult;
