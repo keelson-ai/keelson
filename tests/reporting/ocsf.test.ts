@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { makeFinding, makeResult, makeSummary } from './helpers.js';
 import { findingToOcsf, generateOcsf } from '../../src/reporting/ocsf.js';
 import { Severity, Verdict } from '../../src/types/index.js';
-import { makeFinding, makeResult, makeSummary } from './helpers.js';
 
 describe('findingToOcsf', () => {
   it('produces correct OCSF class and category identifiers', () => {

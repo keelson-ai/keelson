@@ -2,8 +2,8 @@
  * Shared test helpers for reporting tests.
  */
 
-import type { Finding, ScanResult, ScanSummary, EvidenceItem, LeakageSignal } from '../../src/types/index.js';
-import { Severity, ScoringMethod, Verdict } from '../../src/types/index.js';
+import type { EvidenceItem, Finding, LeakageSignal, ScanResult, ScanSummary } from '../../src/types/index.js';
+import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
 
 export function makeEvidence(overrides: Partial<EvidenceItem> = {}): EvidenceItem {
   return {

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { makeFinding, makeResult, makeSummary } from './helpers.js';
 import {
+  FRAMEWORK_CONTROLS,
   generateComplianceReport,
   mapFindingsToFramework,
-  FRAMEWORK_CONTROLS,
 } from '../../src/reporting/compliance.js';
-import { ComplianceFramework, Severity, Verdict } from '../../src/types/index.js';
-import { makeFinding, makeResult, makeSummary } from './helpers.js';
+import { ComplianceFramework, Verdict } from '../../src/types/index.js';
 
 describe('mapFindingsToFramework', () => {
   it('maps GA findings to LLM01 for OWASP', () => {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { makeFinding, makeResult, makeSummary } from './helpers.js';
 import { generateJunit } from '../../src/reporting/junit.js';
 import { Verdict } from '../../src/types/index.js';
-import { makeFinding, makeResult, makeSummary } from './helpers.js';
 
 describe('generateJunit', () => {
   it('produces valid XML declaration', () => {

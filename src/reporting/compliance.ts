@@ -254,6 +254,11 @@ export const FRAMEWORK_CONTROLS: Record<ComplianceFramework, Record<string, Cont
   [ComplianceFramework.PciDssV4]: PCI_DSS_V4_CONTROLS,
 };
 
+// Build reverse mapping: control name → OWASP ID prefix (e.g. "Prompt Injection" → "LLM01")
+const OWASP_NAME_TO_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(OWASP_LLM_CONTROLS).map(([id, ctrl]) => [ctrl.name, id]),
+);
+
 // ─── Helpers ────────────────────────────────────────────
 
 function controlStatus(findings: Finding[]): 'pass' | 'fail' | 'partial' {
@@ -280,9 +285,8 @@ function matchFindingsToControl(
       f.probeId.startsWith(prefix),
     );
     // Also match by OWASP ID for OWASP framework
-    const matchesByOwasp = f.owaspId.startsWith(
-      control.name === 'Prompt Injection' ? 'LLM01' : '__none__',
-    );
+    const owaspPrefix = OWASP_NAME_TO_ID[control.name];
+    const matchesByOwasp = owaspPrefix != null && f.owaspId.startsWith(owaspPrefix);
 
     if (matchesByCategory || matchesByPrefix || matchesByOwasp) {
       seen.add(f.probeId);
@@ -364,7 +368,7 @@ export function generateComplianceReport(
 
   const totalControls = mappings.length;
   const tested = mappings.filter((m) => m.findings.length > 0).length;
-  const passed = mappings.filter((m) => m.status === 'pass').length;
+  const passed = mappings.filter((m) => m.findings.length > 0 && m.status === 'pass').length;
   const coveragePct = totalControls > 0 ? Math.round((tested / totalControls) * 100) : 0;
   const passPct = tested > 0 ? Math.round((passed / tested) * 100) : 0;
 
