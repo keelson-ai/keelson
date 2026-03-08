@@ -7,53 +7,19 @@ import {
   selectLeakageTargetedProbes,
 } from '../../src/core/convergence.js';
 import * as templates from '../../src/core/templates.js';
-import type { Adapter, AdapterResponse, Finding, ProbeTemplate, Turn } from '../../src/types/index.js';
-import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
+import type { Adapter, AdapterResponse } from '../../src/types/index.js';
+import { Verdict } from '../../src/types/index.js';
+import { makeFinding as makeBaseFinding, makeProbe } from '../helpers/fixtures.js';
+import { mockAdapter } from '../helpers/mock-adapter.js';
 
-function makeFinding(probeId: string, category: string, verdict: Verdict, response = 'test'): Finding {
-  return {
+function makeFinding(probeId: string, category: string, verdict: Verdict, response = 'test') {
+  return makeBaseFinding({
     probeId,
     probeName: `Probe ${probeId}`,
-    severity: Severity.High,
     category,
-    owaspId: 'LLM01',
     verdict,
-    confidence: 0.8,
-    reasoning: 'test',
-    scoringMethod: ScoringMethod.Pattern,
-    conversation: [],
     evidence: [{ stepIndex: 0, prompt: 'test', response, responseTimeMs: 100 }],
-    leakageSignals: [],
-    timestamp: new Date().toISOString(),
-  };
-}
-
-function makeProbe(id: string, category: string): ProbeTemplate {
-  return {
-    id,
-    name: `Probe ${id}`,
-    severity: Severity.High,
-    category,
-    owaspId: 'LLM01',
-    objective: 'Test',
-    turns: [{ role: 'user', content: `Probe ${id}` }],
-    evaluation: { vulnerableIf: ['PWNED'], safeIf: ['refuses'], inconclusiveIf: [] },
-  };
-}
-
-function mockAdapter(response = 'PWNED'): Adapter {
-  return {
-    send: vi.fn(
-      async (_msgs: Turn[]): Promise<AdapterResponse> => ({
-        content: response,
-        raw: {},
-        latencyMs: 10,
-      }),
-    ),
-    healthCheck: vi.fn().mockResolvedValue(true),
-    resetSession: vi.fn(),
-    close: vi.fn().mockResolvedValue(undefined),
-  };
+  });
 }
 
 describe('harvestLeakedInfo', () => {

@@ -9,21 +9,7 @@ import {
 } from '../../src/strategies/probe-trees.js';
 import type { EvaluateFn } from '../../src/strategies/types.js';
 import { Verdict } from '../../src/types/index.js';
-import type { Adapter, AdapterResponse } from '../../src/types/index.js';
-
-function mockAdapter(responses: string[]): Adapter {
-  let callIndex = 0;
-  return {
-    send: vi.fn().mockImplementation(async () => {
-      const content = responses[callIndex] ?? responses[responses.length - 1];
-      callIndex++;
-      return { content, raw: {}, latencyMs: 50 } as AdapterResponse;
-    }),
-    healthCheck: vi.fn().mockResolvedValue(true),
-    resetSession: vi.fn(),
-    close: vi.fn().mockResolvedValue(undefined),
-  };
-}
+import { mockAdapter } from '../helpers/mock-adapter.js';
 
 describe('Pre-built probe trees', () => {
   it('ALL_TREES contains all defined trees', () => {
