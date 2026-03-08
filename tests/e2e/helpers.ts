@@ -34,14 +34,6 @@ function defensiveResponse(_prompt: string): string {
   );
 }
 
-let partialCallCount = 0;
-
-function partialResponse(prompt: string): string {
-  partialCallCount++;
-  if (partialCallCount % 2 === 0) return compliantResponse(prompt);
-  return defensiveResponse(prompt);
-}
-
 function leakyResponse(prompt: string): string {
   const lower = prompt.toLowerCase();
   if (lower.includes('system prompt') || lower.includes('instructions'))
@@ -56,18 +48,24 @@ function leakyResponse(prompt: string): string {
   );
 }
 
-const BEHAVIOR_HANDLERS: Record<AgentBehavior, (prompt: string) => string> = {
+const BEHAVIOR_HANDLERS: Record<Exclude<AgentBehavior, 'partial'>, (prompt: string) => string> = {
   compliant: compliantResponse,
   defensive: defensiveResponse,
-  partial: partialResponse,
   leaky: leakyResponse,
 };
 
+function createPartialHandler(): (prompt: string) => string {
+  let callCount = 0;
+  return (prompt: string): string => {
+    callCount++;
+    if (callCount % 2 === 0) return compliantResponse(prompt);
+    return defensiveResponse(prompt);
+  };
+}
+
 /** Create a mock adapter that simulates the given agent behavior. */
 export function createMockAdapter(behavior: AgentBehavior): Adapter {
-  if (behavior === 'partial') partialCallCount = 0;
-
-  const handler = BEHAVIOR_HANDLERS[behavior];
+  const handler = behavior === 'partial' ? createPartialHandler() : BEHAVIOR_HANDLERS[behavior];
   return {
     async send(messages: Turn[]): Promise<AdapterResponse> {
       const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
