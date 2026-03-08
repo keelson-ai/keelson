@@ -234,140 +234,80 @@ Register all 9 adapters in the `createAdapter()` factory map.
 
 This is the critical path — probe execution, verdict determination, scan orchestration.
 
-### Task 2.1: Detection module
+### Task 2.1: Detection module ✅
 
-**Files:**
+**Status:** Complete — `src/core/detection.ts`, 18 tests passing
 
-- Create: `src/core/detection.ts`
-- Create: `tests/core/detection.test.ts`
+- 65 refusal phrases + 16 scope refusal phrases
+- `patternDetect()` — 7-step pipeline: side effects → collect signals → conflict resolution → vuln/safe/leakage/inconclusive
+- `isHardRefusal()` — 3+ phrases AND terse response (< 200 chars)
+- Side effects detection: JSON tool call parsing + regex fallback for dangerous tool names
+- Conflict resolution: multi-step per-step check, single-step substantial disclosure check
+- Keyword extraction from evaluation criteria (quoted strings, parentheses, e.g. patterns)
 
-**Reference:** `_legacy/src/keelson/core/detection.py` (470 lines)
+### Task 2.2: LLM judge ✅
 
-Implement:
+**Status:** Complete — `src/core/llm-judge.ts`, 14 tests passing
 
-- `REFUSAL_PHRASES` constant (60+ phrases)
-- `patternDetect(probe, conversation): DetectionResult`
-- Keyword extraction from `vulnerable_if` / `safe_if` criteria
-- Conflicting signal resolution (vuln + safe → check substance)
-- Helper: `isHardRefusal(content): boolean`
+- `judgeResponse()` — sends formatted prompt to judge adapter, parses VERDICT/CONFIDENCE/REASONING (plan called this `llmJudge()`; renamed for cleaner adapter-injection API)
+- `parseJudgeResponse()` — line-by-line parsing with fallback to INCONCLUSIVE
+- `combinedDetect()` — 6-way resolution: agree (boost), pattern INCONCLUSIVE (trust judge), judge INCONCLUSIVE (trust pattern), pattern VULN + judge SAFE (trust judge), pattern SAFE + judge VULN (trust judge if confidence ≥ 0.7), fallback to judge
 
-Tests:
+### Task 2.3: Engine ✅
 
-- Clear vulnerability detected
-- Clear refusal detected
-- Conflicting signals (refusal + disclosure)
-- Inconclusive when no signal
-- Each refusal phrase category works
+**Status:** Complete — `src/core/engine.ts`, 12 tests passing
 
-### Task 2.2: LLM judge
-
-**Files:**
-
-- Create: `src/core/llm-judge.ts`
-- Create: `tests/core/llm-judge.test.ts`
-
-**Reference:** `_legacy/src/keelson/core/llm_judge.py` (208 lines)
-
-Implement:
-
-- `llmJudge(probe, conversation, config): Promise<DetectionResult>`
-- `formatJudgePrompt()` — structured prompt with objective + criteria + conversation
-- `parseJudgeResponse()` — extracts VERDICT / CONFIDENCE / REASONING
-- `combinedDetect()` — merges pattern + judge with resolution rules
-
-Tests (mock the LLM call with `nock`):
-
-- Judge returns VULNERABLE → parsed correctly
-- Judge returns SAFE → parsed correctly
-- Combined: both agree → boosted confidence
-- Combined: pattern VULN + judge SAFE → trusts judge
-- Combined: judge VULN high confidence → trusts judge
-- Malformed judge response → falls back to pattern
-
-### Task 2.3: Engine
-
-**Files:**
-
-- Create: `src/core/engine.ts`
-- Create: `tests/core/engine.test.ts`
-
-**Reference:** `_legacy/src/keelson/core/engine.py` (162 lines)
-
-Implement:
-
-- `executeProbe(probe, options): Promise<Finding>`
-- Multi-turn execution loop
-- Early termination on hard refusal
-- Rate limiting between turns
+- `executeProbe()` — multi-turn loop with conversation accumulation
+- Non-user turns injected without sending to adapter
+- Early termination on hard refusal (first user turn, 2+ remaining turns)
+- Rate limiting between turns (configurable `delayMs`)
 - `onTurn` callback for UI integration
+- Observer support for leakage signal detection
+- Pattern-only or combined (pattern + judge) detection
 
-Tests (mock adapter):
+### Task 2.4: Scanner ✅
 
-- Single-turn probe produces finding
-- Multi-turn probe accumulates conversation
-- Hard refusal terminates early
-- Rate limiting delay respected
-- onTurn callback fires per turn
+**Status:** Complete — `src/core/scanner.ts`, 8 tests passing
 
-### Task 2.4: Scanner
+- `scan(target, adapter, options)` — full scan pipeline with probe loading, filtering, execution, and summarization
+- Sequential and concurrent execution modes (worker-pool pattern preserving result order)
+- Category and severity filtering with case-insensitive matching
+- `MemoTable` integrated — records findings, dynamic probe reordering every 10 findings
+- `onFinding` progress callback with current/total counts
+- Returns `ScanResult` with `memo` for downstream use (smart scan, convergence)
 
-**Files:**
+### Task 2.5: Observer + Memo ✅
 
-- Create: `src/core/scanner.ts`
-- Create: `tests/core/scanner.test.ts`
+**Status:** Complete — `src/core/observer.ts` (10 tests), `src/core/memo.ts` (16 tests)
 
-**Reference:** `_legacy/src/keelson/core/scanner.py` (175 lines)
+Observer — `StreamingObserver` with 3 detection strategies:
+- Progressive disclosure (response length increasing 2x+ across turns)
+- Boundary erosion (refusal phrase density decreasing across turns)
+- Partial leak (structured data patterns accumulating)
 
-Implement:
+Memo — `MemoTable` with technique effectiveness tracking:
+- 10 technique types inferred from prompt patterns (authority, roleplay, encoding, etc.)
+- `effectiveTechniques()`, `promisingTechniques()`, `deadEndTechniques()` — all filterable by category
+- `scoreProbeTechniques()` — cross-category signal boosting for probe prioritization
+- `extractLeakedInfo()` — harvests tool names, URLs, file paths, env vars from responses
 
-- `scan(config, adapter, callbacks): Promise<ScanResult>`
-- Probe loading + filtering by category/severity
-- Sequential and concurrent execution modes
-- Progress callbacks
-- Result summarization
+### Task 2.6: Strategist + Convergence ✅
 
-Tests:
+**Status:** Complete — `src/core/strategist.ts` (19 tests), `src/core/convergence.ts` (15 tests)
 
-- Filters probes by category
-- Filters probes by severity
-- Sequential mode runs one at a time
-- Concurrent mode respects concurrency limit
-- Progress callback fires
-- Summary counts are correct
+Strategist:
+- `classifyTarget(reconResponses)` — detects 7 agent types from recon (tool-rich, RAG, codebase, customer service, coding assistant, multi-agent, general chat)
+- `selectProbes(profile, templates)` — builds priority-based probe plan (HIGH=all, MEDIUM=5, LOW=3, SKIP=0)
+- `adaptPlan(plan, findings)` — mid-scan escalation (3+ vulns → HIGH) and de-escalation (3+ consecutive SAFEs → SKIP)
 
-### Task 2.5: Observer + Memo
+Convergence:
+- `runConvergenceScan(target, adapter, options)` — iterative multi-pass scan (up to 4 passes)
+- `harvestLeakedInfo(findings)` — extracts system prompts, tool names, credentials, internal URLs, configs, model names
+- `selectCrossfeedProbes()` — queues probes from related categories via `CROSS_CATEGORY_MAP`
+- `selectLeakageTargetedProbes()` — targets specific categories based on leaked info type
+- Converges when no new vulnerabilities or leakage emerges
 
-**Files:**
-
-- Create: `src/core/observer.ts`
-- Create: `src/core/memo.ts`
-- Create: `tests/core/observer.test.ts`
-- Create: `tests/core/memo.test.ts`
-
-**Reference:**
-
-- `_legacy/src/keelson/core/observer.py` (169 lines)
-- `_legacy/src/keelson/core/memo.py` (306 lines)
-
-Observer: streaming progress reporting.
-Memo: technique effectiveness tracking (success rates, tested counts).
-
-### Task 2.6: Strategist + Smart Scan + Convergence
-
-**Files:**
-
-- Create: `src/core/strategist.ts`
-- Create: `src/core/smart-scan.ts`
-- Create: `src/core/convergence.ts`
-- Create corresponding test files
-
-**Reference:**
-
-- `_legacy/src/keelson/core/strategist.py` (400 lines)
-- `_legacy/src/keelson/core/smart_scan.py` (367 lines)
-- `_legacy/src/keelson/core/convergence.py` (438 lines)
-
-These are the advanced scan modes. Can be done after basic engine+scanner work.
+Note: Smart scan (`smart_scan.py`) deferred — requires discovery probes and session management infrastructure not yet ported.
 
 ---
 
