@@ -6,7 +6,7 @@
 
 **Architecture:** Clean-room rewrite. Python source copied to `_legacy/` as reference. Skeleton scaffolded first (types, schemas, base classes, project config), then 6 parallel tracks for the team. Each track is independent — no cross-track dependencies after the skeleton.
 
-**Tech Stack:** TypeScript 5.x (strict, ESM), Commander + Ink/React, axios, Zod, Vitest, pnpm, yaml v2
+**Tech Stack:** TypeScript 5.x (strict, ESM), Commander + Ink/React, axios, Zod, Vitest, pnpm, yaml v2, ESLint 9 + Prettier
 
 **Reference repos:**
 
@@ -17,375 +17,111 @@
 
 ## Phase 0: Skeleton (MUST complete before parallel tracks)
 
+**Status: COMPLETE** — All 8 tasks done. 21 tests passing. Lint + format clean.
+
 **Owner:** One developer. All parallel tracks branch from the skeleton commit.
 
-### Task 0.1: Project scaffold
+### Task 0.1: Project scaffold ✅
 
-**Files:**
+**Status:** Complete
 
-- Create: `package.json`
-- Create: `tsconfig.json`
-- Create: `vitest.config.ts`
-- Create: `.gitignore`
-- Create: `.npmrc`
+**What was done:**
 
-**Steps:**
+- Python source copied to `_legacy/`, Python project files removed
+- `package.json` created — ESM, pinned dependencies (no carets), `engines: ">=22"`
+- `tsconfig.json` — base config for IDE + ESLint (includes `src/` and `tests/`)
+- `tsconfig.build.json` — extends base, adds `rootDir: "src"` for `tsc` output
+- `vitest.config.ts` — globals, 30s timeout
+- `.nvmrc` — pinned to `22` for `nvm use` auto-switch
+- `.prettierrc` + `.prettierignore` — single quotes, 120 width, trailing commas
+- `eslint.config.js` — ESLint 9 flat config with `typescript-eslint` strict, `eslint-plugin-import-x` (import ordering), naming conventions, `eslint-config-prettier`
+- `.github/dependabot.yml` — weekly npm + GitHub Actions updates, grouped minor/patch PRs
 
-1. Copy Python source to `_legacy/`:
-
-```bash
-mkdir -p _legacy
-cp -r src/keelson _legacy/src/
-cp -r tests _legacy/tests/
-```
-
-1. Remove Python project files from root (keep `probes/`, `agents/`, `commands/`, `docs/`, `reports/`, `.claude/`, `.github/`):
-
-```bash
-rm -rf src/ tests/ scripts/
-rm -f pyproject.toml pyrightconfig.json Makefile .pre-commit-config.yaml
-rm -f Dockerfile Dockerfile.dev docker-compose.yml
-```
-
-1. Initialize Node project:
-
-```bash
-pnpm init
-```
-
-1. Write `package.json`:
+**Scripts:**
 
 ```json
 {
-  "name": "keelson",
-  "version": "0.5.0",
-  "type": "module",
-  "description": "AI agent security scanner",
-  "bin": {
-    "keelson": "dist/cli/index.js"
-  },
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "tsc --noEmit",
-    "clean": "rm -rf dist"
-  },
-  "engines": {
-    "node": ">=20"
-  }
+  "build": "tsc -p tsconfig.build.json",
+  "dev": "tsc -p tsconfig.build.json --watch",
+  "test": "vitest run",
+  "test:watch": "vitest",
+  "lint": "tsc --noEmit && eslint src/ tests/",
+  "lint:fix": "eslint src/ tests/ --fix",
+  "format": "prettier --write src/ tests/",
+  "format:check": "prettier --check src/ tests/",
+  "clean": "rm -rf dist"
 }
 ```
 
-1. Install dependencies:
+---
 
-```bash
-pnpm add commander ink react yaml zod axios chalk
-pnpm add -D typescript @types/node @types/react vitest nock @ink/testing-library
-```
+### Task 0.2: Types barrel ✅
 
-1. Write `tsconfig.json`:
+**Status:** Complete — `src/types/index.ts`
 
-```json
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "strict": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "declaration": true,
-    "sourceMap": true,
-    "outDir": "dist",
-    "rootDir": "src",
-    "resolveJsonModule": true,
-    "jsx": "react-jsx"
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist", "_legacy"]
-}
-```
+Enums: `Severity`, `Verdict`, `Category`, `MutationType`, `ScoringMethod`, `ResponseClass`, `ScanMode`, `ComplianceFramework`
 
-1. Write `vitest.config.ts`:
-
-```typescript
-import { defineConfig } from "vitest/config";
-
-export default defineConfig({
-  test: {
-    globals: true,
-    include: ["tests/**/*.test.ts"],
-    testTimeout: 30_000,
-  },
-});
-```
-
-1. Verify: `pnpm build` succeeds (empty build), `pnpm test` runs (no tests yet).
-
-2. Commit:
-
-```bash
-git add -A
-git commit -m "chore: scaffold TypeScript project for node migration"
-```
+Interfaces: `Turn`, `Evaluation`, `Effectiveness`, `ProbeTemplate`, `EvidenceItem`, `LeakageSignal`, `Finding`, `ScanSummary`, `ScanResult`, `AdapterConfig`, `AdapterResponse`, `Adapter`, `MutatedProbe`, `StrategyResult`, `DetectionResult`, `JudgeConfig`, `ScanConfig`
 
 ---
 
-### Task 0.2: Types barrel
+### Task 0.3: Zod schemas ✅
 
-**Files:**
+**Status:** Complete — `src/schemas/{probe,config,finding,index}.ts`, 10 tests passing
 
-- Create: `src/types/index.ts`
-
-**Reference:** `_legacy/src/keelson/core/models.py` (383 lines)
-
-**Steps:**
-
-1. Create `src/types/index.ts` with all enums and interfaces. This is the single source of truth for all type definitions in the project.
-
-Must include at minimum:
-
-- Enums: `Severity`, `Verdict`, `Category`, `MutationType`, `ScanMode`
-- Interfaces: `Turn`, `Evaluation`, `Effectiveness`, `ProbeTemplate`, `Finding`, `ScanResult`, `ScanSummary`
-- Interfaces: `AdapterConfig`, `AdapterResponse`, `Adapter`
-- Interfaces: `MutatedProbe`, `StrategyResult`, `DetectionResult`, `ScanConfig`
-
-Conventions:
-
-- Use `camelCase` for all properties (external snake_case converted at boundary)
-- Use enums for fixed value sets (not union types)
-- Use interfaces for data shapes (not classes)
-- Reference `_legacy/src/keelson/core/models.py` for field completeness but adapt to TS idioms
-- Reference Jarvis `src/types/index.ts` for barrel file patterns
-
-1. Verify: `pnpm build` passes
-
-2. Commit:
-
-```bash
-git add src/types/
-git commit -m "feat: add core type definitions"
-```
+- `probeSchema` — validates YAML probes, `parseProbe()` converts snake_case → camelCase
+- `adapterConfigSchema`, `scanConfigSchema` — target/scan config validation (Zod v4 API)
+- `findingSchema` — finding output validation
+- Tests cover: valid parse, missing fields, invalid ID format, snake→camel conversion
 
 ---
 
-### Task 0.3: Zod schemas
+### Task 0.4: Adapter base class ✅
 
-**Files:**
+**Status:** Complete — `src/adapters/{base,index}.ts`, 8 tests passing
 
-- Create: `src/schemas/probe.ts`
-- Create: `src/schemas/config.ts`
-- Create: `src/schemas/finding.ts`
-- Create: `src/schemas/index.ts`
-
-**Reference:** `_legacy/src/keelson/core/yaml_templates.py` (225 lines), `_legacy/src/keelson/core/models.py`
-
-**Steps:**
-
-1. Create Zod schemas that validate external data (YAML probes, config files, API responses).
-
-`schemas/probe.ts` — validates YAML probe playbook files:
-
-- `id`: regex `^[A-Z]{2}-\d{3}$`
-- `turns`: array of `{role, content}`, min 1
-- `evaluation`: `{vulnerable_if, safe_if, inconclusive_if}`
-- All field names in `snake_case` (matching YAML)
-- Export `RawProbe` type via `z.infer`
-- Export `parseProbe(raw: unknown): ProbeTemplate` that validates + converts to camelCase
-
-`schemas/config.ts` — validates target/scan config.
-
-`schemas/finding.ts` — validates finding output shape.
-
-`schemas/index.ts` — barrel re-export.
-
-1. Write tests: `tests/schemas/probe.test.ts`
-
-- Valid probe parses correctly
-- Missing required field fails
-- Invalid ID format fails
-- Snake_case converts to camelCase
-
-1. Run: `pnpm test` — passes
-
-2. Commit:
-
-```bash
-git add src/schemas/ tests/schemas/
-git commit -m "feat: add Zod validation schemas for probes and config"
-```
+- `BaseAdapter` abstract class with axios retry interceptor (429 + Retry-After, 502/503/504 + exponential backoff)
+- `createAdapter()` factory + `registerAdapter()` (adapter map empty, filled by Track 1)
+- Tests cover: 429 retry, 503 backoff, no retry on 400/401/404, max retries, healthCheck
 
 ---
 
-### Task 0.4: Adapter base class
+### Task 0.5: Probe loader utility ✅
 
-**Files:**
+**Status:** Complete — `src/core/templates.ts`, 3 tests passing
 
-- Create: `src/adapters/base.ts`
-- Create: `src/adapters/index.ts`
-
-**Reference:** `_legacy/src/keelson/adapters/base.py` (113 lines)
-
-**Steps:**
-
-1. Create `BaseAdapter` abstract class:
-
-- Constructor takes `AdapterConfig`, creates axios instance
-- Retry interceptor: 429 (respect `Retry-After`), 502/503/504 (exponential backoff)
-- Abstract `send(messages: Turn[]): Promise<AdapterResponse>`
-- Default `healthCheck()` implementation
-
-1. Create `src/adapters/index.ts` with `createAdapter()` factory function (initially only maps to placeholder, real adapters added in Track 2).
-
-2. Write tests: `tests/adapters/base.test.ts`
-
-- Retry on 429 with Retry-After
-- Retry on 503 with backoff
-- No retry on 400/401/404
-- Max retries exhausted throws
-
-Use `nock` to mock HTTP responses.
-
-1. Run: `pnpm test` — passes
-
-2. Commit:
-
-```bash
-git add src/adapters/ tests/adapters/
-git commit -m "feat: add adapter base class with retry logic"
-```
+- `loadProbes(dir?)` — recursive YAML loader, validates with Zod, converts to `ProbeTemplate[]`
+- `loadProbe(filePath)` — single file loader with descriptive error on validation failure
+- Tests: loads GA-001, throws on nonexistent file, loads all 210 probes
 
 ---
 
-### Task 0.5: Probe loader utility
+### Task 0.6: CLI shell ✅
 
-**Files:**
+**Status:** Complete — `src/cli/index.ts`
 
-- Create: `src/core/templates.ts`
-
-**Reference:** `_legacy/src/keelson/core/yaml_templates.py` (225 lines)
-
-**Steps:**
-
-1. Create `loadProbes(dir?: string): Promise<ProbeTemplate[]>`:
-
-- Defaults to `probes/` relative to project root
-- Recursively reads all `.yaml` files
-- Parses with `yaml` package
-- Validates each with `probeSchema`
-- Converts snake_case → camelCase
-- Returns typed `ProbeTemplate[]`
-
-1. Create `loadProbe(filePath: string): Promise<ProbeTemplate>` for single file.
-
-2. Write tests: `tests/core/templates.test.ts`
-
-- Loads a real probe from `probes/goal-adherence/GA-001.yaml`
-- Returns correct typed structure
-- Invalid YAML throws with descriptive error
-
-1. Commit:
-
-```bash
-git add src/core/templates.ts tests/core/
-git commit -m "feat: add probe YAML loader with Zod validation"
-```
+Commander program with 5 stubbed commands: scan, probe, report, list, validate.
 
 ---
 
-### Task 0.6: CLI shell
+### Task 0.7: CI workflow ✅
 
-**Files:**
+**Status:** Complete — `.github/workflows/ci.yml`
 
-- Create: `src/cli/index.ts`
-
-**Steps:**
-
-1. Create minimal Commander program with subcommands stubbed:
-
-```typescript
-#!/usr/bin/env node
-import { Command } from "commander";
-
-const program = new Command()
-  .name("keelson")
-  .description("AI agent security scanner")
-  .version("0.5.0");
-
-program.command("scan").description("Run security scan").action(() => {
-  console.log("scan: not yet implemented");
-});
-
-program.command("probe").description("Run single probe").action(() => {
-  console.log("probe: not yet implemented");
-});
-
-program.command("report").description("Generate report").action(() => {
-  console.log("report: not yet implemented");
-});
-
-program.command("list").description("List available probes").action(() => {
-  console.log("list: not yet implemented");
-});
-
-program.parse();
-```
-
-1. Verify: `pnpm build && node dist/cli/index.js --help` works
-
-2. Commit:
-
-```bash
-git add src/cli/
-git commit -m "feat: add CLI shell with stubbed commands"
-```
+- Lint job on Node 22, test matrix on `["22", "24"]`
+- pnpm 10, `--frozen-lockfile`
+- Dependabot configured (`.github/dependabot.yml`) — weekly npm + GitHub Actions updates
 
 ---
 
-### Task 0.7: CI workflow
+### Task 0.8: Update project docs ✅
 
-**Files:**
+**Status:** Complete
 
-- Create/overwrite: `.github/workflows/ci.yml`
-
-**Steps:**
-
-1. Write CI workflow:
-
-- Trigger on push/PR
-- Node 20 + pnpm
-- `pnpm install`, `pnpm lint`, `pnpm test`
-
-1. Commit:
-
-```bash
-git add .github/workflows/ci.yml
-git commit -m "chore: add Node.js CI workflow"
-```
-
----
-
-### Task 0.8: Update project docs
-
-**Files:**
-
-- Modify: `CLAUDE.md` — update structure section, remove Python references
-- Modify: `.claude/rules/python-standards.md` → rename/replace with `typescript-standards.md`
-- Modify: `.claude/rules/git-workflow.md` — replace ruff/uv commands with pnpm equivalents
-
-**Steps:**
-
-1. Update all project docs to reflect TypeScript stack.
-
-2. Commit:
-
-```bash
-git add CLAUDE.md .claude/rules/
-git commit -m "docs: update project docs for TypeScript migration"
-```
+- `CLAUDE.md` — updated for TypeScript structure
+- `.claude/rules/typescript-standards.md` — replaced Python standards
+- `.claude/rules/git-workflow.md` — updated for pnpm
+- `README.md` — updated badges, install instructions, project structure, dev section
 
 ---
 
@@ -939,8 +675,13 @@ All tracks depend only on Phase 0 (types, schemas, base adapter). No cross-track
 
 ## Conventions for All Tracks
 
-- **Imports:** use `.js` extensions (`import { Foo } from "./bar.js"`)
-- **Naming:** `camelCase` for properties/variables, `PascalCase` for types/classes
+- **Node:** `>=22` (`.nvmrc` pins to `22`, CI tests on `["22", "24"]`)
+- **Dependencies:** pinned exact versions (no carets), Dependabot handles updates
+- **Imports:** use `.js` extensions (`import { Foo } from './bar.js'`), ordered by group (builtin → external → local) with newlines between groups — enforced by ESLint
+- **Naming:** `camelCase` for properties/variables, `PascalCase` for types/classes, `UPPER_CASE` for constants — enforced by ESLint
+- **Formatting:** Prettier (single quotes, 120 width, trailing commas) — run `pnpm format` before committing
+- **Linting:** `pnpm lint` = type check + ESLint, `pnpm lint:fix` for auto-fixes
+- **Build:** `pnpm build` uses `tsconfig.build.json` (rootDir: src), `tsconfig.json` is for IDE + ESLint (includes tests)
 - **Testing:** write tests alongside implementation (TDD encouraged, not mandated)
 - **Commits:** frequent, small commits with conventional prefixes (`feat:`, `fix:`, `test:`, `refactor:`)
 - **PRs:** one PR per track (or per task group), target `feat/node-migration` branch

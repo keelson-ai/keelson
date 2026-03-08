@@ -1,51 +1,55 @@
-# Keelson — Claude Code Plugin
+# Keelson — AI Agent Security Scanner
 
-AI agent security scanner implemented as a pure Claude Code plugin. Claude Code becomes the pentester: reads probe playbooks, sends prompts via curl, semantically evaluates responses, and generates reports.
-
-## Installation
-
-```bash
-# Load as a Claude Code plugin
-claude --plugin-dir /path/to/Keelson
-```
+TypeScript-based security scanner for AI agents. Loads probe playbooks from YAML, executes them against targets via pluggable adapters, evaluates responses with pattern detection + LLM-as-judge, and generates reports.
 
 ## Usage
 
 ```bash
-/keelson:scan <url> [--api-key KEY] [--model MODEL] [--category CATEGORY]
-/keelson:probe <url> <probe-id> [--api-key KEY] [--model MODEL]
-/keelson:report [report-file]
+keelson scan --target <url> --api-key <KEY> --category goal_adherence
+keelson probe --target <url> --probe-id GA-001
+keelson report --input scan-result.json --format markdown
+keelson list
 ```
 
 ## Structure
 
 ```text
-Keelson/
-├── agents/
-│   ├── pentester.md             # Main pentester agent instructions
-│   └── strategist.md            # Recon & adaptive probe selection
-├── commands/
-│   ├── scan.md                  # /keelson:scan — full security scan
-│   ├── probe.md                # /keelson:probe — single probe
-│   └── report.md                # /keelson:report — generate report
-├── probes/                     # 105 probe playbooks (.yaml)
-│   ├── goal-adherence/          # GA-001..035 (OWASP LLM01)
-│   ├── tool-safety/             # TS-001..035 (OWASP LLM02/LLM06)
-│   └── memory-integrity/        # MI-001..035 (OWASP LLM05)
-├── reports/                     # Generated scan reports
-├── .claude/
-│   ├── rules/
-│   │   ├── git-workflow.md      # Git workflow rules
-│   │   └── security-review.md   # Security review checklist
-│   └── settings.json
-├── CLAUDE.md                    # This file
-├── README.md                    # Public readme
-└── LICENSE
+keelson/
+├── src/
+│   ├── cli/              # Commander command definitions
+│   ├── components/       # Ink/React terminal UI
+│   ├── hooks/            # React hooks for Ink
+│   ├── core/             # Engine, scanner, detection, LLM judge
+│   ├── adapters/         # Target communication (9 adapters)
+│   ├── strategies/       # Mutations, PAIR, crescendo, branching
+│   ├── reporting/        # Markdown, SARIF, JUnit, compliance
+│   ├── schemas/          # Zod validation schemas
+│   ├── types/            # TypeScript type definitions
+│   └── config.ts         # App config, env loading
+├── probes/               # 210 YAML probe playbooks
+├── agents/               # Agent instruction MDs
+├── commands/             # Command spec MDs
+├── tests/                # Vitest tests (mirrors src/)
+├── _legacy/              # Python source reference (temporary)
+├── docs/plans/           # Design & implementation plans
+├── package.json
+├── tsconfig.json
+└── vitest.config.ts
 ```
+
+## Tech Stack
+
+- **Language:** TypeScript 5.x (strict, ESM-only, NodeNext)
+- **CLI:** Commander + Ink/React
+- **HTTP:** axios with retry interceptors
+- **Validation:** Zod (runtime schemas for probes + config)
+- **Testing:** Vitest + nock
+- **Build:** tsc (plain compilation)
+- **Package manager:** pnpm
 
 ## Probe Playbook Format
 
-Each probe is a `.yaml` file with this structure:
+Each probe is a `.yaml` file:
 
 ```yaml
 id: GA-001
@@ -70,16 +74,17 @@ evaluation:
 
 ## Adding New Probes
 
-1. Choose category: `goal-adherence/`, `tool-safety/`, or `memory-integrity/`
-2. Use next ID in sequence (e.g., GA-036, TS-036, MI-036)
+1. Choose category directory under `probes/`
+2. Use next ID in sequence (e.g., GA-057, TS-041)
 3. Follow the YAML playbook format above
 4. Include OWASP LLM Top 10 mapping
 5. Write clear evaluation criteria
 
 ## Key Design Decisions
 
-- **No code** — YAML playbooks + Claude Code plugin. Claude Code is the pentester.
-- **curl for targets** — OpenAI-compatible chat completions API via `curl -s -X POST`
-- **Semantic evaluation** — Claude judges responses (no regex/heuristics)
-- **Multi-turn support** — accumulate messages array in curl payloads
-- **Rate limiting** — sleep 1-2s between requests
+- **TypeScript + strict types** — Zod schemas validate all external data at boundaries
+- **Adapter pattern** — Pluggable target communication (OpenAI, Anthropic, HTTP, MCP, etc.)
+- **Three-layer detection** — Pattern matching (fast/free) + LLM judge (accurate) + combined resolution
+- **Multi-turn support** — Probes can have multiple turns with conversation accumulation
+- **Rate limiting** — Configurable delay between requests
+- **ESM-only** — All imports use `.js` extensions (NodeNext resolution)

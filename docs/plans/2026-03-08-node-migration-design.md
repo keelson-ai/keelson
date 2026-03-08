@@ -9,15 +9,17 @@ Migrate Keelson from Python to TypeScript. Clean-room rewrite with `_legacy/` fo
 | Layer           | Choice                                             |
 |-----------------|----------------------------------------------------|
 | Language        | TypeScript 5.x (strict, ESM-only, NodeNext)        |
-| Node            | >= 20                                              |
+| Node            | >= 22 (LTS), tested on 22 + 24                     |
 | CLI parsing     | Commander                                          |
 | Terminal UI     | Ink + React (live scan output, progress, findings) |
 | HTTP client     | axios (retry interceptors for 429/5xx)             |
 | YAML parser     | `yaml` v2 (YAML 1.2)                               |
 | Validation      | Zod (runtime schemas for probes + config)          |
 | Testing         | Vitest + nock (HTTP mocking)                       |
+| Linting         | ESLint 9 + typescript-eslint (strict) + import-x   |
+| Formatting      | Prettier (single quotes, 120 width)                |
 | Build           | `tsc` (plain compilation to `dist/`, no bundler)   |
-| Package manager | pnpm                                               |
+| Package manager | pnpm (pinned exact deps, Dependabot for updates)   |
 
 ## Architecture Reference
 
@@ -46,7 +48,7 @@ All Python source in `src/keelson/` and `tests/` → TypeScript in `src/` and `t
 
 ## Project Structure
 
-```mermaid
+```text
 keelson/
 ├── src/
 │   ├── cli/                    # Commander command definitions
@@ -183,7 +185,7 @@ Three layers (matches Python + Jarvis):
 
 ## Migration Strategy
 
-1. **Phase 0 — Skeleton**: scaffold project, install deps, configure tsconfig/vitest, create `_legacy/`, define all types + schemas + interfaces + base classes
+1. **Phase 0 — Skeleton** ✅: scaffold project, install deps, configure tsconfig/vitest/eslint/prettier, create `_legacy/`, define all types + schemas + interfaces + base classes. 21 tests passing.
 2. **Phase 1 — Parallel tracks**: each developer takes a module group, implements against the skeleton's interfaces
 3. **Phase 2 — Integration**: wire modules together, end-to-end scan works
 4. **Phase 3 — Cleanup**: delete `_legacy/`, update CI/CD, update README/docs
