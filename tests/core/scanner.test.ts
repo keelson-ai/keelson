@@ -32,6 +32,8 @@ function mockAdapter(response = 'PWNED'): Adapter {
       }),
     ),
     healthCheck: vi.fn().mockResolvedValue(true),
+    resetSession: vi.fn(),
+    close: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -107,6 +109,8 @@ describe('scan', () => {
         return { content: 'PWNED', raw: {}, latencyMs: 10 };
       }),
       healthCheck: vi.fn().mockResolvedValue(true),
+      resetSession: vi.fn(),
+      close: vi.fn().mockResolvedValue(undefined),
     };
 
     await scan('http://target', adapter, { concurrency: 1, delayMs: 0 });
@@ -133,6 +137,8 @@ describe('scan', () => {
         return { content: 'PWNED', raw: {}, latencyMs: 10 };
       }),
       healthCheck: vi.fn().mockResolvedValue(true),
+      resetSession: vi.fn(),
+      close: vi.fn().mockResolvedValue(undefined),
     };
 
     const result = await scan('http://target', adapter, { concurrency: 2, delayMs: 0 });
@@ -188,6 +194,8 @@ describe('scan', () => {
         }),
       ),
       healthCheck: vi.fn().mockResolvedValue(true),
+      resetSession: vi.fn(),
+      close: vi.fn().mockResolvedValue(undefined),
     };
 
     const result = await scan('http://target', adapter, { delayMs: 0 });
