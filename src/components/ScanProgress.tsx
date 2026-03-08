@@ -1,7 +1,5 @@
-import React, { useEffect, useState } from 'react';
 import { Box, Text } from 'ink';
-
-import { Verdict } from '../types/index.js';
+import React, { useEffect, useRef, useState } from 'react';
 
 export interface ScanProgressProps {
   current: number;
@@ -32,22 +30,22 @@ function ProgressBar({ current, total }: { current: number; total: number }): Re
 
   return (
     <Text>
-      [{filledStr}{emptyStr}] {current}/{total} ({percentage}%)
+      [{filledStr}
+      {emptyStr}] {current}/{total} ({percentage}%)
     </Text>
   );
 }
 
-export function ScanProgress({
-  current,
-  total,
-  currentProbe,
-  findings,
-}: ScanProgressProps): React.ReactElement {
+export function ScanProgress({ current, total, currentProbe, findings }: ScanProgressProps): React.ReactElement {
+  const startTimeRef = useRef(Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
+    startTimeRef.current = Date.now();
+    setElapsedSeconds(0);
+
     const interval = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
+      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -78,9 +76,7 @@ export function ScanProgress({
         <Text color="green">
           {'\u2713'} Safe: {findings.safe}
         </Text>
-        <Text color="yellow">
-          ? Inconclusive: {findings.inconclusive}
-        </Text>
+        <Text color="yellow">? Inconclusive: {findings.inconclusive}</Text>
       </Box>
     </Box>
   );

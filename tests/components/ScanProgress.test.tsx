@@ -1,30 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
+import React from 'react';
+import { describe, expect, it } from 'vitest';
 
 import { ScanProgress } from '../../src/components/ScanProgress.js';
 
-// ink-testing-library may not be installed; these tests verify component logic
-// by testing the render output if available, or fall back to structural tests
-
 describe('ScanProgress', () => {
-  let renderFn: typeof render | undefined;
-
-  try {
-    // If ink-testing-library is available, use it
-    renderFn = render;
-  } catch {
-    renderFn = undefined;
-  }
-
   it('renders without crashing', () => {
-    if (!renderFn) {
-      // Structural test: verify the component is a valid function
-      expect(typeof ScanProgress).toBe('function');
-      return;
-    }
-
-    const { lastFrame } = renderFn(
+    const { lastFrame } = render(
       <ScanProgress
         current={5}
         total={10}
@@ -38,17 +20,8 @@ describe('ScanProgress', () => {
   });
 
   it('shows progress numbers', () => {
-    if (!renderFn) {
-      expect(typeof ScanProgress).toBe('function');
-      return;
-    }
-
-    const { lastFrame } = renderFn(
-      <ScanProgress
-        current={45}
-        total={100}
-        findings={{ vulnerable: 10, safe: 30, inconclusive: 5 }}
-      />,
+    const { lastFrame } = render(
+      <ScanProgress current={45} total={100} findings={{ vulnerable: 10, safe: 30, inconclusive: 5 }} />,
     );
 
     const output = lastFrame() ?? '';
@@ -57,17 +30,8 @@ describe('ScanProgress', () => {
   });
 
   it('shows verdict counts', () => {
-    if (!renderFn) {
-      expect(typeof ScanProgress).toBe('function');
-      return;
-    }
-
-    const { lastFrame } = renderFn(
-      <ScanProgress
-        current={10}
-        total={20}
-        findings={{ vulnerable: 3, safe: 5, inconclusive: 2 }}
-      />,
+    const { lastFrame } = render(
+      <ScanProgress current={10} total={20} findings={{ vulnerable: 3, safe: 5, inconclusive: 2 }} />,
     );
 
     const output = lastFrame() ?? '';
@@ -77,12 +41,7 @@ describe('ScanProgress', () => {
   });
 
   it('shows current probe when provided', () => {
-    if (!renderFn) {
-      expect(typeof ScanProgress).toBe('function');
-      return;
-    }
-
-    const { lastFrame } = renderFn(
+    const { lastFrame } = render(
       <ScanProgress
         current={1}
         total={10}
@@ -93,5 +52,24 @@ describe('ScanProgress', () => {
 
     const output = lastFrame() ?? '';
     expect(output).toContain('TS-005');
+  });
+
+  it('renders without currentProbe', () => {
+    const { lastFrame } = render(
+      <ScanProgress current={0} total={10} findings={{ vulnerable: 0, safe: 0, inconclusive: 0 }} />,
+    );
+
+    const output = lastFrame() ?? '';
+    expect(output).toContain('Keelson Security Scan');
+    expect(output).not.toContain('Current:');
+  });
+
+  it('shows percentage', () => {
+    const { lastFrame } = render(
+      <ScanProgress current={50} total={100} findings={{ vulnerable: 0, safe: 0, inconclusive: 0 }} />,
+    );
+
+    const output = lastFrame() ?? '';
+    expect(output).toContain('50%');
   });
 });

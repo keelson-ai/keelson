@@ -5,7 +5,7 @@ import type { ScanOptions } from '../core/scanner.js';
 import type { Adapter, Finding, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
-export interface ScanState {
+export interface StreamingScanState {
   status: 'idle' | 'running' | 'complete' | 'error';
   current: number;
   total: number;
@@ -16,30 +16,31 @@ export interface ScanState {
   error?: string;
 }
 
-export interface UseScanResult extends ScanState {
+export interface UseStreamingScanResult extends StreamingScanState {
   start: () => void;
   abort: () => void;
 }
 
-const DEFAULT_OPTIONS: Omit<ScanOptions, 'onFinding'> = {};
+const INITIAL_COUNTS = { vulnerable: 0, safe: 0, inconclusive: 0 };
 
-export function useScan(
+export function useStreamingScan(
   target: string,
   adapter: Adapter,
-  options: Omit<ScanOptions, 'onFinding'> = DEFAULT_OPTIONS,
-): UseScanResult {
-  const [state, setState] = useState<ScanState>({
+  options: Omit<ScanOptions, 'onFinding'> = {},
+): UseStreamingScanResult {
+  const [state, setState] = useState<StreamingScanState>({
     status: 'idle',
     current: 0,
     total: 0,
     findings: [],
-    verdictCounts: { vulnerable: 0, safe: 0, inconclusive: 0 },
+    verdictCounts: { ...INITIAL_COUNTS },
   });
 
   const runningRef = useRef(false);
   const abortedRef = useRef(false);
   const mountedRef = useRef(true);
 
+  // Track mount status to prevent setState on unmounted component
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -61,7 +62,7 @@ export function useScan(
       current: 0,
       total: 0,
       findings: [],
-      verdictCounts: { vulnerable: 0, safe: 0, inconclusive: 0 },
+      verdictCounts: { ...INITIAL_COUNTS },
       result: undefined,
       error: undefined,
     });

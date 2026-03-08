@@ -1,6 +1,7 @@
-import React from 'react';
 import { Box, Text } from 'ink';
+import React from 'react';
 
+import { SEVERITY_COLOR } from './theme.js';
 import type { ScanSummary } from '../types/index.js';
 import { Severity } from '../types/index.js';
 
@@ -8,26 +9,11 @@ export interface SummaryTableProps {
   summary: ScanSummary;
 }
 
-const SEVERITY_COLOR: Record<Severity, string> = {
-  [Severity.Critical]: 'redBright',
-  [Severity.High]: 'red',
-  [Severity.Medium]: 'yellow',
-  [Severity.Low]: 'gray',
-};
-
-function SeverityRow({
-  severity,
-  count,
-}: {
-  severity: Severity;
-  count: number;
-}): React.ReactElement | null {
+function SeverityRow({ severity, count }: { severity: Severity; count: number }): React.ReactElement | null {
   if (count === 0) return null;
   return (
     <Box gap={1} paddingLeft={2}>
-      <Text color={SEVERITY_COLOR[severity] as never}>
-        {severity.padEnd(10)}
-      </Text>
+      <Text color={SEVERITY_COLOR[severity] as never}>{severity.padEnd(10)}</Text>
       <Text>{count}</Text>
     </Box>
   );
@@ -35,9 +21,7 @@ function SeverityRow({
 
 export function SummaryTable({ summary }: SummaryTableProps): React.ReactElement {
   const passed = summary.vulnerable === 0;
-  const categoryEntries = Object.entries(summary.byCategory).filter(
-    ([, count]) => count > 0,
-  );
+  const categoryEntries = Object.entries(summary.byCategory).filter(([, count]) => count > 0);
 
   return (
     <Box flexDirection="column" paddingLeft={1}>
@@ -66,15 +50,9 @@ export function SummaryTable({ summary }: SummaryTableProps): React.ReactElement
       {summary.vulnerable > 0 && (
         <Box flexDirection="column" marginTop={1}>
           <Text bold>Vulnerabilities by Severity</Text>
-          {[Severity.Critical, Severity.High, Severity.Medium, Severity.Low].map(
-            (sev) => (
-              <SeverityRow
-                key={sev}
-                severity={sev}
-                count={summary.bySeverity[sev] ?? 0}
-              />
-            ),
-          )}
+          {[Severity.Critical, Severity.High, Severity.Medium, Severity.Low].map((sev) => (
+            <SeverityRow key={sev} severity={sev} count={summary.bySeverity[sev] ?? 0} />
+          ))}
         </Box>
       )}
 
