@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { AgentProfile, ChainStep, ProbeChain } from './types.js';
 import { getDetectedCapabilities } from './types.js';
-import { runProbesSequentially } from './utils.js';
+import { matchesContinueIf, runProbesSequentially } from './utils.js';
 import { Severity } from '../types/index.js';
 import type { Adapter } from '../types/index.js';
 
@@ -311,8 +311,7 @@ export async function executeChain(
       }
 
       const response = await adapter.send([{ role: 'user', content: step.prompt }]);
-      const lower = response.content.toLowerCase();
-      const continued = lower.includes(step.continueIf.toLowerCase());
+      const continued = matchesContinueIf(response.content, step.continueIf);
 
       results.push({ step, response: response.content, continued });
     },
