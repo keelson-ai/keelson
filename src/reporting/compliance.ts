@@ -254,6 +254,15 @@ export const FRAMEWORK_CONTROLS: Record<ComplianceFramework, Record<string, Cont
   [ComplianceFramework.PciDssV4]: PCI_DSS_V4_CONTROLS,
 };
 
+const frameworkNames: Record<ComplianceFramework, string> = {
+  [ComplianceFramework.OwaspLlmTop10]: 'OWASP LLM Top 10',
+  [ComplianceFramework.NistAiRmf]: 'NIST AI RMF',
+  [ComplianceFramework.EuAiAct]: 'EU AI Act',
+  [ComplianceFramework.Iso42001]: 'ISO 42001',
+  [ComplianceFramework.Soc2]: 'SOC2',
+  [ComplianceFramework.PciDssV4]: 'PCI DSS 4.0',
+};
+
 // Build reverse mapping: control name → OWASP ID prefix (e.g. "Prompt Injection" → "LLM01")
 const OWASP_NAME_TO_ID: Record<string, string> = Object.fromEntries(
   Object.entries(OWASP_LLM_CONTROLS).map(([id, ctrl]) => [ctrl.name, id]),
@@ -376,15 +385,6 @@ export function generateComplianceReport(
   const passed = mappings.filter((m) => m.findings.length > 0 && m.status === 'pass').length;
   const coveragePct = totalControls > 0 ? Math.round((tested / totalControls) * 100) : 0;
   const passPct = tested > 0 ? Math.round((passed / tested) * 100) : 0;
-
-  const frameworkNames: Record<ComplianceFramework, string> = {
-    [ComplianceFramework.OwaspLlmTop10]: 'OWASP LLM Top 10',
-    [ComplianceFramework.NistAiRmf]: 'NIST AI RMF',
-    [ComplianceFramework.EuAiAct]: 'EU AI Act',
-    [ComplianceFramework.Iso42001]: 'ISO 42001',
-    [ComplianceFramework.Soc2]: 'SOC2',
-    [ComplianceFramework.PciDssV4]: 'PCI DSS 4.0',
-  };
 
   const lines: string[] = [];
 

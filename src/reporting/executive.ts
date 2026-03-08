@@ -198,37 +198,62 @@ function buildRecommendations(findings: Finding[]): RecommendationItem[] {
     }
   }
 
+  const recs: RecommendationItem[] = [];
+
   if (vulnByCategory.size === 0) {
-    return [
-      {
-        category: 'General',
-        severity: Severity.Low,
-        recommendation:
-          'No vulnerabilities were confirmed. Continue regular security assessments to maintain this posture.',
-      },
-    ];
+    recs.push({
+      category: 'General',
+      severity: Severity.Low,
+      recommendation:
+        'No vulnerabilities were confirmed. Continue regular security assessments to maintain this posture.',
+    });
+  } else {
+    // Sort categories by worst severity
+    const sorted = [...vulnByCategory.entries()].sort((a, b) => {
+      const worstA = Math.min(...a[1].map((f) => severitySortKey(f)));
+      const worstB = Math.min(...b[1].map((f) => severitySortKey(f)));
+      if (worstA !== worstB) return worstA - worstB;
+      return b[1].length - a[1].length;
+    });
+
+    for (const [category, catFindings] of sorted) {
+      const worstFinding = catFindings.reduce((a, b) =>
+        severitySortKey(a) <= severitySortKey(b) ? a : b,
+      );
+      const recommendation =
+        CATEGORY_RECOMMENDATIONS[category] ?? `Review ${category} controls.`;
+      const probeIds = [...new Set(catFindings.map((f) => f.probeId))].sort().join(', ');
+      recs.push({
+        category,
+        severity: worstFinding.severity,
+        recommendation: `${recommendation} (Affected: ${probeIds})`,
+      });
+    }
   }
 
-  // Sort categories by worst severity
-  const sorted = [...vulnByCategory.entries()].sort((a, b) => {
-    const worstA = Math.min(...a[1].map((f) => severitySortKey(f)));
-    const worstB = Math.min(...b[1].map((f) => severitySortKey(f)));
-    if (worstA !== worstB) return worstA - worstB;
-    return b[1].length - a[1].length;
-  });
-
-  const recs: RecommendationItem[] = [];
-  for (const [category, catFindings] of sorted) {
-    const worstFinding = catFindings.reduce((a, b) =>
-      severitySortKey(a) <= severitySortKey(b) ? a : b,
-    );
-    const recommendation =
-      CATEGORY_RECOMMENDATIONS[category] ?? `Review ${category} controls.`;
-    const probeIds = [...new Set(catFindings.map((f) => f.probeId))].sort().join(', ');
+  // Meta-recommendation: critical-severity vulnerable findings
+  const hasCriticalVulnerable = findings.some(
+    (f) => f.verdict === Verdict.Vulnerable && f.severity === Severity.Critical,
+  );
+  if (hasCriticalVulnerable) {
     recs.push({
-      category,
-      severity: worstFinding.severity,
-      recommendation: `${recommendation} (Affected: ${probeIds})`,
+      category: 'Critical Findings',
+      severity: Severity.Critical,
+      recommendation:
+        'Address all critical-severity findings before any production deployment. Critical findings indicate fundamental security control bypasses.',
+    });
+  }
+
+  // Meta-recommendation: inconclusive findings
+  const hasInconclusive = findings.some(
+    (f) => f.verdict === Verdict.Inconclusive,
+  );
+  if (hasInconclusive) {
+    recs.push({
+      category: 'Manual Review',
+      severity: Severity.Medium,
+      recommendation:
+        'Manually review all inconclusive findings. Inconclusive results may mask true vulnerabilities requiring deeper investigation.',
     });
   }
 
@@ -297,6 +322,29 @@ export function generateExecutiveReport(result: ScanResult): string {
     lines.push(
       `| ${row.category} | ${row.vulnCount} | ${row.totalCount} | ${row.rate.toFixed(0)}% |`,
     );
+  }
+  lines.push('');
+
+  // Probe Coverage
+  lines.push('---');
+  lines.push('');
+  lines.push('## Probe Coverage');
+  lines.push('');
+  lines.push('| Category | Tested | Vulnerable | Safe | Inconclusive |');
+  lines.push('|----------|-------:|----------:|-----:|-------------:|');
+
+  const coverageByCategory = new Map<string, Finding[]>();
+  for (const f of result.findings) {
+    const existing = coverageByCategory.get(f.category) ?? [];
+    existing.push(f);
+    coverageByCategory.set(f.category, existing);
+  }
+  for (const [category, catFindings] of coverageByCategory) {
+    const tested = catFindings.length;
+    const vulnCount = catFindings.filter((f) => f.verdict === Verdict.Vulnerable).length;
+    const safeCount = catFindings.filter((f) => f.verdict === Verdict.Safe).length;
+    const inconclusiveCount = catFindings.filter((f) => f.verdict === Verdict.Inconclusive).length;
+    lines.push(`| ${category} | ${tested} | ${vulnCount} | ${safeCount} | ${inconclusiveCount} |`);
   }
   lines.push('');
 
