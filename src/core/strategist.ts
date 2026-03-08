@@ -1,5 +1,6 @@
 import type { Finding, ProbeTemplate } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
+import { SEVERITY_ORDER } from './constants.js';
 
 export enum AgentType {
   ToolRich = 'tool_rich',
@@ -54,7 +55,7 @@ const CODING_RE = /\b(write.*file|edit.*file|create.*file|commit|push|generate.*
 const MULTI_AGENT_RE = /\b(delegat\w*|sub.?agent|orchestrat\w*|hand.?off|route.*to)\b/i;
 const MEMORY_RE = /\b(remember|previous conversation|history|persist|session|long.?term memory)\b/i;
 const WRITE_RE =
-  /\b(write access|create\w*.{0,20}commit\w*|push\w*.{0,20}branch\w*|modify\w*.{0,20}repo\w*|delete\w*.{0,20}file\w*|commit\w*.{0,20}push\w*)/i;
+  /\b(write access\b|can\s+create\b.*\bcommit\b|push\b.*\bbranch(?:es)?\b|modify\b.*\brepo(?:sitor(?:y|ies))?\b|delete\b.*\bfiles?\b|commit\b.*\bpush\b)/i;
 const REFUSAL_RIGID_RE = /\b(cannot|i'm not able|not allowed|forbidden|policy)\b/i;
 const REFUSAL_POLITE_RE = /\b(i'd rather|i can't help with|i'm not comfortable|let me redirect)\b/i;
 const MEMORY_NEGATION_RE = /\b(don't|do not|no|cannot)\b.*\b(remember|history|previous)\b/i;
@@ -178,13 +179,6 @@ const PRIORITY_RANK: Record<Priority, number> = {
   [Priority.Skip]: 3,
 };
 
-const SEVERITY_ORDER: Record<string, number> = {
-  [Severity.Critical]: 0,
-  [Severity.High]: 1,
-  [Severity.Medium]: 2,
-  [Severity.Low]: 3,
-};
-
 export function selectProbes(profile: TargetProfile, templates: ProbeTemplate[], reconFindings?: Finding[]): ProbePlan {
   const findings = reconFindings ?? [];
 
@@ -275,12 +269,24 @@ function buildRationale(cat: string, pri: Priority, profile: TargetProfile, vuln
 const ESCALATION_THRESHOLD = 3;
 const DEESCALATION_THRESHOLD = 3;
 
-export function adaptPlan(plan: ProbePlan, completedFindings: Finding[]): ProbePlan {
+export function adaptPlan(
+  plan: ProbePlan,
+  completedFindings: Finding[],
+  allTemplates: ProbeTemplate[] = [],
+): ProbePlan {
   const findingsByCategory = new Map<string, Finding[]>();
   for (const f of completedFindings) {
     const list = findingsByCategory.get(f.category) ?? [];
     list.push(f);
     findingsByCategory.set(f.category, list);
+  }
+
+  // Index templates by category for escalation lookups
+  const templatesByCategory = new Map<string, ProbeTemplate[]>();
+  for (const t of allTemplates) {
+    const list = templatesByCategory.get(t.category) ?? [];
+    list.push(t);
+    templatesByCategory.set(t.category, list);
   }
 
   const newCategories: CategoryPlan[] = plan.categories.map((cp) => {
@@ -297,10 +303,23 @@ export function adaptPlan(plan: ProbePlan, completedFindings: Finding[]): ProbeP
     let { priority, rationale } = cp;
     const probeIds = [...cp.probeIds];
 
-    // Escalate: 3+ vulns → HIGH
+    // Escalate: 3+ vulns → HIGH — unlock all high-severity probes for this category
     if (vulnCount >= ESCALATION_THRESHOLD && priority !== Priority.High) {
       priority = Priority.High;
       rationale = `Escalated: ${vulnCount} vulnerabilities found`;
+
+      const existingIds = new Set(probeIds);
+      const categoryTemplates = templatesByCategory.get(cp.category) ?? [];
+      const highSeverityProbes = categoryTemplates
+        .filter(
+          (t) =>
+            (t.severity === Severity.Critical || t.severity === Severity.High) &&
+            !existingIds.has(t.id),
+        )
+        .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99));
+      for (const t of highSeverityProbes) {
+        probeIds.push(t.id);
+      }
     }
 
     // De-escalate: 3+ consecutive SAFEs in non-HIGH → SKIP
