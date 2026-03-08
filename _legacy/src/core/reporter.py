@@ -6,7 +6,14 @@ from pathlib import Path
 
 from jinja2 import Template
 
-from keelson.core.models import CampaignResult, Category, Finding, ScanDiff, ScanResult, Verdict
+from keelson.core.models import (
+    CampaignResult,
+    Category,
+    Finding,
+    ScanDiff,
+    ScanResult,
+    Verdict,
+)
 
 REPORT_TEMPLATE = Template("""\
 # Keelson Security Scan Report
@@ -31,6 +38,20 @@ REPORT_TEMPLATE = Template("""\
 {% endfor %}
 {% endif %}
 
+{% if infra_findings %}
+## Infrastructure Findings
+
+{% for inf in infra_findings %}
+### {{ inf.title }} — {{ inf.severity.value }}
+
+{{ inf.description }}
+
+**Evidence**: {{ inf.evidence[:300] }}{% if inf.evidence | length > 300 %}…{% endif %}
+
+**Remediation**: {{ inf.remediation }}
+
+{% endfor %}
+{% endif %}
 ## Detailed Results
 
 ### Goal Adherence (GA)
@@ -200,35 +221,55 @@ def _by_category(findings: list[Finding], cat: Category, *, debug: bool = False)
 
 def _generate_summary(scan: ScanResult) -> str:
     total = len(scan.findings)
+    infra_count = len(scan.infra_findings)
+    infra_note = ""
+    if infra_count > 0:
+        infra_note = (
+            f" Additionally, {infra_count} infrastructure-level"
+            f" {'issue was' if infra_count == 1 else 'issues were'}"
+            f" detected during recon."
+        )
     if total == 0:
+        if infra_count > 0:
+            return f"No probes were executed.{infra_note}"
         return "No probes were executed."
     vuln_pct = (scan.vulnerable_count / total) * 100
     if vuln_pct == 0:
-        return "Target passed all security tests. No vulnerabilities detected."
+        return f"Target passed all security tests. No vulnerabilities detected.{infra_note}"
     elif vuln_pct < 15:
         return (
             f"Target shows minor security concerns with "
             f"{scan.vulnerable_count} vulnerabilities found "
-            f"across {total} tests ({vuln_pct:.0f}%)."
+            f"across {total} tests ({vuln_pct:.0f}%).{infra_note}"
         )
     elif vuln_pct < 40:
         return (
             f"Target has moderate security issues with "
             f"{scan.vulnerable_count} vulnerabilities found "
             f"across {total} tests ({vuln_pct:.0f}%). "
-            f"Remediation recommended."
+            f"Remediation recommended.{infra_note}"
         )
     else:
         return (
             f"Target has significant security weaknesses with "
             f"{scan.vulnerable_count} vulnerabilities found "
             f"across {total} tests ({vuln_pct:.0f}%). "
-            f"Immediate remediation required."
+            f"Immediate remediation required.{infra_note}"
         )
 
 
 def _generate_recommendations(scan: ScanResult) -> list[str]:
     recs: list[str] = []
+
+    # Infrastructure-level recommendations
+    if scan.infra_findings:
+        infra_titles = [inf.title for inf in scan.infra_findings]
+        recs.append(
+            "Address infrastructure-level findings from recon phase: "
+            + ", ".join(infra_titles)
+            + "."
+        )
+
     categories_hit = {f.category for f in scan.findings if f.verdict == Verdict.VULNERABLE}
     if Category.GOAL_ADHERENCE in categories_hit:
         recs.append("Strengthen system prompt boundaries and instruction-following safeguards.")
@@ -276,6 +317,7 @@ def generate_report(scan: ScanResult, *, debug: bool = False) -> str:
         date=scan.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
         summary=_generate_summary(scan),
         critical_findings=critical,
+        infra_findings=scan.infra_findings,
         ga_findings=_by_category(scan.findings, Category.GOAL_ADHERENCE, debug=debug),
         ts_findings=_by_category(scan.findings, Category.TOOL_SAFETY, debug=debug),
         mi_findings=_by_category(scan.findings, Category.MEMORY_INTEGRITY, debug=debug),

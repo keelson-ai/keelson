@@ -16,6 +16,7 @@ from keelson.core.models import (
     AgentProfile,
     Category,
     Finding,
+    InfraFinding,
     ProbeTemplate,
     ScanResult,
     Target,
@@ -30,6 +31,7 @@ from keelson.core.strategist import (
 from keelson.core.templates import load_all_templates
 from keelson.core.yaml_templates import update_effectiveness_scores
 from keelson.prober.discovery import CAPABILITY_PROBES, score_capability
+from keelson.prober.infrastructure import INFRA_PROBES, run_infrastructure_recon
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +148,28 @@ def _reorder_by_memo(
     return sorted(templates, key=_score, reverse=True)
 
 
+async def _run_infra_recon(
+    adapter: BaseAdapter,
+    model: str,
+    delay: float,
+    on_phase: Callable[[str, str], None] | None,
+) -> list[InfraFinding]:
+    """Phase 0: Run infrastructure recon probes and report findings."""
+    if on_phase:
+        on_phase("recon", f"Infrastructure recon ({len(INFRA_PROBES)} probes)")
+
+    infra_findings = await run_infrastructure_recon(adapter, model, delay)
+
+    if infra_findings:
+        for inf in infra_findings:
+            if on_phase:
+                on_phase("recon", f"  \u26a0 {inf.severity.value}: {inf.title}")
+    elif on_phase:
+        on_phase("recon", "No infrastructure issues detected")
+
+    return infra_findings
+
+
 async def _execute_session(
     session: list[ProbeTemplate],
     adapter: BaseAdapter,
@@ -213,6 +237,10 @@ async def run_smart_scan(
         max_response_tokens: Limit target response length to save tokens.
     """
     result = ScanResult(target=target)
+
+    # --- Phase 0: Infrastructure Recon ---
+    result.infra_findings = await _run_infra_recon(adapter, target.model, delay, on_phase)
+    adapter.reset_session()
 
     # --- Phase 1: Discovery ---
     if on_phase:
