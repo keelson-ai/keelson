@@ -75,15 +75,6 @@ export enum ScanMode {
   Convergence = 'convergence',
 }
 
-export enum ComplianceFramework {
-  OwaspLlmTop10 = 'owasp-llm-top10',
-  NistAiRmf = 'nist-ai-rmf',
-  EuAiAct = 'eu-ai-act',
-  Iso42001 = 'iso-42001',
-  Soc2 = 'soc2',
-  PciDssV4 = 'pci-dss-v4',
-}
-
 // ─── Core Data Interfaces ────────────────────────────────
 
 export interface Turn {
