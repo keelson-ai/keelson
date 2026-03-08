@@ -179,6 +179,19 @@ const PRIORITY_RANK: Record<Priority, number> = {
   [Priority.Skip]: 3,
 };
 
+function groupBySeverity(templates: ProbeTemplate[]): Map<string, ProbeTemplate[]> {
+  const byCategory = new Map<string, ProbeTemplate[]>();
+  for (const t of templates) {
+    const list = byCategory.get(t.category) ?? [];
+    list.push(t);
+    byCategory.set(t.category, list);
+  }
+  for (const list of byCategory.values()) {
+    list.sort(compareBySeverity);
+  }
+  return byCategory;
+}
+
 export function selectProbes(profile: TargetProfile, templates: ProbeTemplate[], reconFindings?: Finding[]): ProbePlan {
   const findings = reconFindings ?? [];
 
@@ -218,16 +231,7 @@ export function selectProbes(profile: TargetProfile, templates: ProbeTemplate[],
     categoryPriorities.set('session_isolation', Priority.Skip);
   }
 
-  // Group templates by category, sorted by severity
-  const templatesByCategory = new Map<string, ProbeTemplate[]>();
-  for (const t of templates) {
-    const list = templatesByCategory.get(t.category) ?? [];
-    list.push(t);
-    templatesByCategory.set(t.category, list);
-  }
-  for (const list of templatesByCategory.values()) {
-    list.sort(compareBySeverity);
-  }
+  const templatesByCategory = groupBySeverity(templates);
 
   // Build category plans with limits
   const categories: CategoryPlan[] = [];
