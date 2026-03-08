@@ -45,7 +45,7 @@ export async function parseCampaignConfig(filePath: string): Promise<CampaignCon
   const raw = await readFile(filePath, 'utf-8');
   const data = YAML.parse(raw) as unknown;
 
-  if (typeof data !== 'object' || data === null) {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
     throw new Error(`Campaign config at ${filePath} is not a valid YAML object`);
   }
 
