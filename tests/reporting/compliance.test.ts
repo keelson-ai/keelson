@@ -145,6 +145,26 @@ describe('mapFindingsToFramework', () => {
     expect(a6?.findings).toHaveLength(2);
   });
 
+  it('keeps worst verdict when same probeId appears with different verdicts', () => {
+    const findings = [
+      makeFinding({
+        probeId: 'GA-001',
+        category: 'Goal Adherence',
+        verdict: Verdict.Safe,
+      }),
+      makeFinding({
+        probeId: 'GA-001',
+        category: 'Goal Adherence',
+        verdict: Verdict.Vulnerable,
+      }),
+    ];
+    const mappings = mapFindingsToFramework(findings, ComplianceFramework.OwaspLlmTop10);
+
+    const llm01 = mappings.find((m) => m.controlId === 'LLM01');
+    expect(llm01?.findings).toHaveLength(1);
+    expect(llm01?.findings[0].verdict).toBe(Verdict.Vulnerable);
+  });
+
   it('SOC2 CC7.2 gets all findings', () => {
     const findings = [
       makeFinding({ probeId: 'GA-001' }),

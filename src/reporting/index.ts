@@ -10,8 +10,10 @@ import { FRAMEWORK_CONTROLS, generateComplianceReport, mapFindingsToFramework } 
 import { generateExecutiveReport } from './executive.js';
 import { generateJunit } from './junit.js';
 import { formatEvidence, generateMarkdownReport } from './markdown.js';
-import { generateOcsf } from './ocsf.js';
+import { findingToOcsf, generateOcsf } from './ocsf.js';
+import type { OcsfEvent } from './ocsf.js';
 import { generateSarif } from './sarif.js';
+import type { SarifLog } from './sarif.js';
 import { ComplianceFramework } from '../types/index.js';
 import type { ScanResult } from '../types/index.js';
 
@@ -34,9 +36,24 @@ export interface ReportOptions {
  */
 export function generateReport(
   result: ScanResult,
+  format: 'sarif',
+  options?: ReportOptions,
+): SarifLog;
+export function generateReport(
+  result: ScanResult,
+  format: 'ocsf',
+  options?: ReportOptions,
+): OcsfEvent[];
+export function generateReport(
+  result: ScanResult,
+  format: 'markdown' | 'executive' | 'compliance' | 'junit',
+  options?: ReportOptions,
+): string;
+export function generateReport(
+  result: ScanResult,
   format: ReportFormat,
   options?: ReportOptions,
-): string | object {
+): string | SarifLog | OcsfEvent[] {
   switch (format) {
     case 'markdown':
       return generateMarkdownReport(result);
@@ -68,6 +85,7 @@ export {
   generateSarif,
   generateJunit,
   generateOcsf,
+  findingToOcsf,
 };
 
 export type { SeverityRow, CategoryRow, RecommendationItem } from './executive.js';

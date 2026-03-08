@@ -7,6 +7,7 @@
 
 import type { EvidenceItem, Finding, ScanResult } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
+import { VERSION } from '../version.js';
 
 // ─── Interfaces ─────────────────────────────────────────
 
@@ -71,7 +72,7 @@ export interface OcsfEvent {
 
 const PRODUCT_NAME = 'Keelson';
 const PRODUCT_VENDOR = 'Keelson';
-const PRODUCT_VERSION = '0.5.0';
+const PRODUCT_VERSION = VERSION;
 
 const ACTIVITY_ID_CREATE = 1;
 const CATEGORY_UID_FINDINGS = 2;

@@ -67,6 +67,30 @@ describe('generateExecutiveReport', () => {
     expect(report).toContain('MODERATE');
   });
 
+  it('generates ELEVATED risk assessment when >30% vulnerable with no critical/high', () => {
+    const findings = [
+      makeFinding({
+        probeId: 'GA-001',
+        severity: Severity.Medium,
+        verdict: Verdict.Vulnerable,
+      }),
+      makeFinding({
+        probeId: 'GA-002',
+        severity: Severity.Medium,
+        verdict: Verdict.Vulnerable,
+      }),
+      makeFinding({
+        probeId: 'GA-003',
+        severity: Severity.Low,
+        verdict: Verdict.Safe,
+      }),
+    ];
+    const result = makeResult({ findings, summary: makeSummary(findings) });
+    const report = generateExecutiveReport(result);
+
+    expect(report).toContain('ELEVATED');
+  });
+
   it('includes severity breakdown table', () => {
     const result = makeResult();
     const report = generateExecutiveReport(result);

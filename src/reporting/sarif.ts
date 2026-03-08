@@ -7,6 +7,7 @@
 
 import type { Finding, ScanResult } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
+import { VERSION } from '../version.js';
 
 // ─── Interfaces ─────────────────────────────────────────
 
@@ -80,7 +81,7 @@ const SARIF_VERSION = '2.1.0';
 const SARIF_SCHEMA =
   'https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json';
 const TOOL_NAME = 'keelson';
-const TOOL_VERSION = '0.5.0';
+const TOOL_VERSION = VERSION;
 const TOOL_INFO_URI = 'https://github.com/keelson-ai/keelson';
 
 // ─── Mapping helpers ────────────────────────────────────

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { makeEvidence, makeFinding, makeResult, makeSummary } from './helpers.js';
+import { makeEvidence, makeFinding, makeLeakageSignal, makeResult, makeSummary } from './helpers.js';
 import { formatEvidence, generateMarkdownReport } from '../../src/reporting/markdown.js';
 import { Verdict } from '../../src/types/index.js';
 
@@ -95,6 +95,22 @@ describe('generateMarkdownReport', () => {
     const report = generateMarkdownReport(result);
 
     expect(report).toContain('Immediate remediation required');
+  });
+
+  it('escapes pipe characters in leakage signal descriptions', () => {
+    const findings = [
+      makeFinding({
+        probeId: 'GA-001',
+        verdict: Verdict.Vulnerable,
+        leakageSignals: [
+          makeLeakageSignal({ description: 'pipe | in | description' }),
+        ],
+      }),
+    ];
+    const result = makeResult({ findings, summary: makeSummary(findings) });
+    const report = generateMarkdownReport(result);
+
+    expect(report).toContain('pipe \\| in \\| description');
   });
 
   it('severity breakdown is present', () => {
