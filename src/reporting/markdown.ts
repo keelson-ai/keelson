@@ -7,6 +7,7 @@
 
 import type { EvidenceItem, Finding, ScanResult } from '../types/index.js';
 import { SEVERITY_ORDER, Severity, Verdict } from '../types/index.js';
+import { groupBy } from '../utils.js';
 
 // ─── Constants ──────────────────────────────────────────
 
@@ -87,13 +88,7 @@ function sortBySeverity(findings: Finding[]): Finding[] {
 }
 
 function groupByCategory(findings: Finding[]): Map<string, Finding[]> {
-  const groups = new Map<string, Finding[]>();
-  for (const f of findings) {
-    const existing = groups.get(f.category) ?? [];
-    existing.push(f);
-    groups.set(f.category, existing);
-  }
-  return groups;
+  return groupBy(findings, (f) => f.category);
 }
 
 // ─── Public API ─────────────────────────────────────────
