@@ -54,8 +54,8 @@ export class AnthropicAdapter extends BaseAdapter {
 
   private extractContent(blocks: Array<{ type: string; text?: string }>): string {
     return blocks
-      .filter((b) => b.type === 'text' && b.text)
-      .map((b) => b.text!)
+      .filter((b): b is { type: string; text: string } => b.type === 'text' && !!b.text)
+      .map((b) => b.text)
       .join('');
   }
 }

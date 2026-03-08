@@ -1,30 +1,12 @@
-import React from 'react';
 import { Box, Text } from 'ink';
+import React from 'react';
 
+import { SEVERITY_COLOR, VERDICT_ICON, truncate } from './theme.js';
 import type { Finding } from '../types/index.js';
-import { Severity, Verdict } from '../types/index.js';
 
 export interface FindingCardProps {
   finding: Finding;
   index: number;
-}
-
-const VERDICT_ICON: Record<Verdict, { symbol: string; color: string }> = {
-  [Verdict.Vulnerable]: { symbol: '\u2717', color: 'red' },
-  [Verdict.Safe]: { symbol: '\u2713', color: 'green' },
-  [Verdict.Inconclusive]: { symbol: '?', color: 'yellow' },
-};
-
-const SEVERITY_COLOR: Record<Severity, string> = {
-  [Severity.Critical]: 'redBright',
-  [Severity.High]: 'red',
-  [Severity.Medium]: 'yellow',
-  [Severity.Low]: 'gray',
-};
-
-function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen) + '...';
 }
 
 export function FindingCard({ finding, index }: FindingCardProps): React.ReactElement {

@@ -26,7 +26,7 @@ export class A2AAdapter extends BaseAdapter {
       const { data } = await this.client.get('/.well-known/agent.json');
       this.agentCard = data;
     }
-    return this.agentCard!;
+    return this.agentCard as Record<string, unknown>;
   }
 
   async send(messages: Turn[]): Promise<AdapterResponse> {
@@ -79,8 +79,8 @@ export class A2AAdapter extends BaseAdapter {
     const status = result.status as { message?: { parts?: Array<{ type: string; text?: string }> } } | undefined;
     if (status?.message?.parts) {
       return status.message.parts
-        .filter((p) => p.type === 'text' && p.text)
-        .map((p) => p.text!)
+        .filter((p): p is { type: string; text: string } => p.type === 'text' && !!p.text)
+        .map((p) => p.text)
         .join('');
     }
 

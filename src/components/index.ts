@@ -1,6 +1,11 @@
 export { FindingCard } from './FindingCard.js';
 export type { FindingCardProps } from './FindingCard.js';
+export { ProbeResult } from './ProbeResult.js';
+export type { ProbeResultProps } from './ProbeResult.js';
+export { ReportView } from './ReportView.js';
+export type { ReportViewProps } from './ReportView.js';
 export { ScanProgress } from './ScanProgress.js';
 export type { ScanProgressProps } from './ScanProgress.js';
 export { SummaryTable } from './SummaryTable.js';
 export type { SummaryTableProps } from './SummaryTable.js';
+export { SEVERITY_COLOR, SEVERITY_ORDER, VERDICT_ICON, truncate } from './theme.js';
