@@ -1,5 +1,6 @@
+import { SEVERITY_ORDER } from './convergence.js';
 import type { Finding, ProbeTemplate } from '../types/index.js';
-import { Severity, Verdict } from '../types/index.js';
+import { Verdict } from '../types/index.js';
 
 export enum AgentType {
   ToolRich = 'tool_rich',
@@ -176,13 +177,6 @@ const PRIORITY_RANK: Record<Priority, number> = {
   [Priority.Medium]: 1,
   [Priority.Low]: 2,
   [Priority.Skip]: 3,
-};
-
-const SEVERITY_ORDER: Record<string, number> = {
-  [Severity.Critical]: 0,
-  [Severity.High]: 1,
-  [Severity.Medium]: 2,
-  [Severity.Low]: 3,
 };
 
 export function selectProbes(profile: TargetProfile, templates: ProbeTemplate[], reconFindings?: Finding[]): ProbePlan {

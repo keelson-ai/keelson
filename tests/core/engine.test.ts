@@ -204,9 +204,11 @@ describe('executeProbe', () => {
       const call = vi.mocked(adapter.send).mock.calls[i][0];
       expect(call).toHaveLength(1);
     }
-    // With newSession, evidence resets before each session — only last session's evidence remains
-    expect(finding.evidence).toHaveLength(1);
-    expect(finding.evidence[0].prompt).toBe('Turn 1 in session C');
+    // With newSession, finding preserves evidence from ALL sessions
+    expect(finding.evidence).toHaveLength(3);
+    expect(finding.evidence[0].prompt).toBe('Turn 1 in session A');
+    expect(finding.evidence[1].prompt).toBe('Turn 1 in session B');
+    expect(finding.evidence[2].prompt).toBe('Turn 1 in session C');
   });
 
   it('early-terminates newSession probe on hard refusal (exits entire probe)', async () => {
