@@ -234,7 +234,7 @@ async def run_pipeline(
     target: Target,
     adapter: BaseAdapter,
     config: PipelineConfig | None = None,
-    attacks_dir: Path | None = None,
+    probes_dir: Path | None = None,
     category: str | None = None,
 ) -> ScanResult:
     """Run a parallel scan pipeline.
@@ -250,7 +250,7 @@ async def run_pipeline(
 
     # --- Phase 1: Discovery ---
     logger.info("Phase 1/4: Discovery — loading probe templates")
-    templates = load_all_templates(attacks_dir=attacks_dir, category=category)
+    templates = load_all_templates(probes_dir=probes_dir, category=category)
     if not templates:
         logger.warning("No probe templates found")
         return ScanResult(target=target, finished_at=datetime.now(UTC))

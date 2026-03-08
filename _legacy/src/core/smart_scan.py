@@ -185,7 +185,7 @@ async def _execute_session(
 async def run_smart_scan(
     target: Target,
     adapter: BaseAdapter,
-    attacks_dir: Path | None = None,
+    probes_dir: Path | None = None,
     delay: float = 2.0,
     on_finding: Callable[[Finding, int, int], None] | None = None,
     on_phase: Callable[[str, str], None] | None = None,
@@ -205,7 +205,7 @@ async def run_smart_scan(
     Args:
         target: The target to scan.
         adapter: Adapter for communicating with the target.
-        attacks_dir: Override directory for probe playbooks.
+        probes_dir: Override directory for probe playbooks.
         delay: Seconds to wait between requests.
         on_finding: Optional callback(finding, current_index, total) for progress.
         on_phase: Optional callback(phase_name, detail) for phase transitions.
@@ -243,7 +243,7 @@ async def run_smart_scan(
         )
 
     # --- Phase 3: Probe Selection ---
-    all_templates = load_all_templates(attacks_dir=attacks_dir)
+    all_templates = load_all_templates(probes_dir=probes_dir)
     plan = select_probes(target_profile, all_templates)
 
     if on_phase:
