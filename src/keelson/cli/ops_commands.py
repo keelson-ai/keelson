@@ -20,7 +20,7 @@ from keelson.state.store import Store
 
 
 @app.command(name="list")
-def list_attacks(
+def list_probes(
     category: str | None = typer.Option(None, "--category", "-c", help="Filter by category"),
 ) -> None:
     """List all available security tests."""

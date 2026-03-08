@@ -9,7 +9,7 @@ import respx
 from keelson.adapters.openai import OpenAIAdapter
 from keelson.adaptive.branching import (
     classify_response,
-    execute_branching_attack,
+    execute_branching_probe,
     find_vulnerable_paths,
 )
 from keelson.core.models import (
@@ -73,7 +73,7 @@ class TestExecuteBranchingAttack:
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")
         template = _make_template()
-        root = await execute_branching_attack(template, adapter, max_depth=3, delay=0)
+        root = await execute_branching_probe(template, adapter, max_depth=3, delay=0)
         await adapter.close()
         assert root.response_class == ResponseClass.COMPLIANCE
         assert root.verdict == Verdict.VULNERABLE
@@ -89,7 +89,7 @@ class TestExecuteBranchingAttack:
         ]
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")
         template = _make_template()
-        root = await execute_branching_attack(template, adapter, max_depth=3, delay=0)
+        root = await execute_branching_probe(template, adapter, max_depth=3, delay=0)
         await adapter.close()
         assert root.response_class == ResponseClass.REFUSAL
         assert root.verdict == Verdict.SAFE
@@ -104,7 +104,7 @@ class TestExecuteBranchingAttack:
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")
         template = _make_template()
-        root = await execute_branching_attack(template, adapter, max_depth=1, delay=0)
+        root = await execute_branching_probe(template, adapter, max_depth=1, delay=0)
         await adapter.close()
         # Root is depth 0, children are depth 1 (= max_depth), so grandchildren stop
         for child in root.children:
@@ -120,7 +120,7 @@ class TestExecuteBranchingAttack:
         ]
         adapter = OpenAIAdapter("https://target.example.com/v1/chat/completions")
         template = _make_template()
-        root = await execute_branching_attack(template, adapter, max_depth=1, delay=0)
+        root = await execute_branching_probe(template, adapter, max_depth=1, delay=0)
         await adapter.close()
         assert root.depth == 0
         if root.children:

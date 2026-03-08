@@ -188,8 +188,8 @@ def enhanced_diff_scans(
         if item.change_type == "new" and item.new_verdict != Verdict.VULNERABLE:
             continue
 
-        attack_sev = severity_map.get(item.template_id)
-        alert_sev = classify_alert_severity(item, attack_sev)
+        probe_sev = severity_map.get(item.template_id)
+        alert_sev = classify_alert_severity(item, probe_sev)
 
         alerts.append(
             RegressionAlert(
@@ -203,7 +203,7 @@ def enhanced_diff_scans(
                 ),
                 old_verdict=item.old_verdict,
                 new_verdict=item.new_verdict,
-                probe_severity=attack_sev,
+                probe_severity=probe_sev,
             )
         )
 

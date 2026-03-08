@@ -130,12 +130,12 @@ class TestFailGates:
 class TestExistingCommandsStillWork:
     """Verify Phase 1 commands are not broken."""
 
-    def test_list_attacks(self):
+    def test_list_probes(self):
         result = runner.invoke(app, ["list"])
         assert result.exit_code == 0
         assert "GA-001" in result.output
 
-    def test_list_attacks_filtered(self):
+    def test_list_probes_filtered(self):
         result = runner.invoke(app, ["list", "--category", "tool-safety"])
         assert result.exit_code == 0
         assert "TS-001" in result.output
