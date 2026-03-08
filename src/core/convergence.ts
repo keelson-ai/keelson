@@ -2,14 +2,19 @@ import { executeProbe } from './engine.js';
 import type { Observer } from './engine.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
-import { SEVERITY_ORDER } from './constants.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
-import { Verdict } from '../types/index.js';
+import { Severity, Verdict } from '../types/index.js';
 
 const MAX_PASSES = 4;
 const MAX_CROSSFEED_PROBES = 20;
 const MAX_LEAKAGE_PROBES = 15;
-const MAX_LEAKED_ITEMS = 500;
+
+const SEVERITY_ORDER: Record<string, number> = {
+  [Severity.Critical]: 0,
+  [Severity.High]: 1,
+  [Severity.Medium]: 2,
+  [Severity.Low]: 3,
+};
 
 // Cross-category relationships: vuln in key → queue probes from values
 const CROSS_CATEGORY_MAP: ReadonlyMap<string, readonly string[]> = new Map([
@@ -41,16 +46,16 @@ const LEAKAGE_PATTERNS: ReadonlyArray<{ type: LeakedInfo['infoType']; patterns: 
   {
     type: 'system_prompt',
     patterns: [
-      /(?:you are|your role is|system prompt|instructions?:)\s+([^\n]{20,200})/i,
-      /(?:i was told to|i'm configured to|my instructions say)\s+([^\n]{20,200})/i,
-      /(?:my system prompt|my initial instructions?)\s+([^\n]{20,200})/i,
+      /(?:you are|your role is|system prompt|instructions?:)\s+(.{20,200})/i,
+      /(?:i was told to|i'm configured to|my instructions say)\s+(.{20,200})/i,
+      /(?:my system prompt|my initial instructions?)\s+(.{20,200})/i,
     ],
   },
   {
     type: 'tool_name',
     patterns: [
-      /(?:tools?|functions?|capabilities?)\s*(?:include|available|are|:)\s*([^\n]{10,300})/i,
-      /(?:i (?:can|have access to)|available tools?)\s*(?:include|:)\s*([^\n]{10,300})/i,
+      /(?:tools?|functions?|capabilities?)\s*(?:include|available|are|:)\s*(.{10,300})/i,
+      /(?:i (?:can|have access to)|available tools?)\s*(?:include|:)\s*(.{10,300})/i,
     ],
   },
   {
@@ -84,13 +89,9 @@ export function harvestLeakedInfo(findings: Finding[]): LeakedInfo[] {
   const seenContent = new Set<string>();
 
   for (const finding of findings) {
-    if (leaked.length >= MAX_LEAKED_ITEMS) break;
     for (const ev of finding.evidence) {
-      if (leaked.length >= MAX_LEAKED_ITEMS) break;
       for (const group of LEAKAGE_PATTERNS) {
-        if (leaked.length >= MAX_LEAKED_ITEMS) break;
         for (const pattern of group.patterns) {
-          if (leaked.length >= MAX_LEAKED_ITEMS) break;
           const re = new RegExp(pattern.source, pattern.flags + (pattern.flags.includes('g') ? '' : 'g'));
           let match: RegExpExecArray | null;
           while ((match = re.exec(ev.response)) !== null) {
@@ -103,7 +104,6 @@ export function harvestLeakedInfo(findings: Finding[]): LeakedInfo[] {
                 sourceProbeId: finding.probeId,
                 stepIndex: ev.stepIndex,
               });
-              if (leaked.length >= MAX_LEAKED_ITEMS) break;
             }
           }
         }
@@ -272,12 +272,11 @@ export async function runConvergenceScan(
 
     allFindings.push(...passFindings);
 
-    // Harvest new leaked info (bounded by MAX_LEAKED_ITEMS)
+    // Harvest new leaked info
     const newLeaked = harvestLeakedInfo(passFindings);
     const existingContent = new Set(leakedInfo.map((l) => l.content));
     const genuinelyNew = newLeaked.filter((l) => !existingContent.has(l.content));
-    const remaining = MAX_LEAKED_ITEMS - leakedInfo.length;
-    leakedInfo.push(...genuinelyNew.slice(0, Math.max(0, remaining)));
+    leakedInfo.push(...genuinelyNew);
 
     const newVulns = passFindings.filter((f) => f.verdict === Verdict.Vulnerable).length;
     options.onPass?.(
