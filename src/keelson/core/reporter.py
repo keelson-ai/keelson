@@ -15,7 +15,7 @@ REPORT_TEMPLATE = Template("""\
 **Model**: {{ target.model }}
 **Date**: {{ date }}
 **Scan ID**: {{ scan.scan_id }}
-**Attacks Run**: {{ scan.findings | length }} | \
+**Probes Run**: {{ scan.findings | length }} | \
 **Vulnerable**: {{ scan.vulnerable_count }} | \
 **Safe**: {{ scan.safe_count }} | \
 **Inconclusive**: {{ scan.inconclusive_count }}
@@ -201,7 +201,7 @@ def _by_category(findings: list[Finding], cat: Category, *, debug: bool = False)
 def _generate_summary(scan: ScanResult) -> str:
     total = len(scan.findings)
     if total == 0:
-        return "No attacks were executed."
+        return "No probes were executed."
     vuln_pct = (scan.vulnerable_count / total) * 100
     if vuln_pct == 0:
         return "Target passed all security tests. No vulnerabilities detected."
@@ -309,10 +309,10 @@ CAMPAIGN_TEMPLATE = Template("""\
 **Model**: {{ target.model }}
 **Date**: {{ date }}
 **Campaign ID**: {{ campaign.campaign_id }}
-**Config**: {{ campaign.config.name }} ({{ campaign.config.trials_per_attack }} trials/attack, \
+**Config**: {{ campaign.config.name }} ({{ campaign.config.trials_per_probe }} trials/probe, \
 {{ "%.0f"|format(campaign.config.confidence_level * 100) }}% CI)
-**Attacks Tested**: {{ campaign.findings | length }} | \
-**Vulnerable**: {{ campaign.vulnerable_attacks }} | \
+**Probes Tested**: {{ campaign.findings | length }} | \
+**Vulnerable**: {{ campaign.vulnerable_probes }} | \
 **Total Trials**: {{ campaign.total_trials }}
 
 ## Summary
@@ -321,7 +321,7 @@ CAMPAIGN_TEMPLATE = Template("""\
 
 ## Statistical Results
 
-| Attack | Severity | Success Rate | 95% CI | Verdict |
+| Probe | Severity | Success Rate | 95% CI | Verdict |
 |--------|----------|-------------|--------|---------|
 {% for f in campaign.findings %}\
 | {{ f.template_id }}: {{ f.template_name[:30] }} | {{ f.severity.value }} | \
@@ -352,8 +352,8 @@ def generate_campaign_report(campaign: CampaignResult) -> str:
 def _generate_campaign_summary(campaign: CampaignResult) -> str:
     total = len(campaign.findings)
     if total == 0:
-        return "No attacks were tested."
-    vuln_pct = (campaign.vulnerable_attacks / total) * 100
+        return "No probes were tested."
+    vuln_pct = (campaign.vulnerable_probes / total) * 100
     if vuln_pct == 0:
         return (
             f"Target passed all {total} statistical security tests across "
@@ -361,7 +361,7 @@ def _generate_campaign_summary(campaign: CampaignResult) -> str:
         )
     return (
         f"Statistical analysis across {campaign.total_trials} trials found "
-        f"{campaign.vulnerable_attacks} of {total} attacks with statistically "
+        f"{campaign.vulnerable_probes} of {total} probes with statistically "
         f"significant vulnerability rates ({vuln_pct:.0f}%)."
     )
 
@@ -372,7 +372,7 @@ def _generate_campaign_recommendations(campaign: CampaignResult) -> list[str]:
     if high_rate:
         ids = ", ".join(f.template_id for f in high_rate[:5])
         recs.append(f"Prioritize fixing high-rate vulnerabilities: {ids}")
-    if campaign.vulnerable_attacks > 0:
+    if campaign.vulnerable_probes > 0:
         recs.append("Run follow-up campaign after remediations to verify fixes.")
     if not recs:
         recs.append("Continue regular campaign testing to maintain security posture.")

@@ -103,7 +103,7 @@ def discover(
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
     """Fingerprint agent capabilities."""
-    from keelson.attacker.discovery import discover_capabilities
+    from keelson.prober.discovery import discover_capabilities
 
     target_adapter = make_adapter(
         url, api_key, adapter, assistant_id=assistant_id, tool_name=tool_name
@@ -165,7 +165,7 @@ def diff(
                 console.print("\n[bold]Regression Alerts[/bold]")
                 alert_table = Table()
                 alert_table.add_column("Severity", style="bold")
-                alert_table.add_column("Attack")
+                alert_table.add_column("Probe")
                 alert_table.add_column("Change")
                 alert_table.add_column("Description")
 

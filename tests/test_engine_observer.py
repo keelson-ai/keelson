@@ -7,27 +7,27 @@ import pytest
 import respx
 
 from keelson.adapters.openai import OpenAIAdapter
-from keelson.core.engine import execute_attack
+from keelson.core.engine import execute_probe
 from keelson.core.models import (
-    AttackStep,
-    AttackTemplate,
     Category,
     EvalCriteria,
+    ProbeStep,
+    ProbeTemplate,
     Severity,
     Verdict,
 )
 from keelson.core.observer import StreamingObserver
 
 
-def _make_template(steps: list[AttackStep] | None = None) -> AttackTemplate:
-    return AttackTemplate(
+def _make_template(steps: list[ProbeStep] | None = None) -> ProbeTemplate:
+    return ProbeTemplate(
         id="GA-001",
-        name="Test Attack",
+        name="Test Probe",
         severity=Severity.HIGH,
         category=Category.GOAL_ADHERENCE,
         owasp="LLM01",
         objective="Test",
-        steps=steps or [AttackStep(index=1, prompt="Test prompt")],
+        steps=steps or [ProbeStep(index=1, prompt="Test prompt")],
         eval_criteria=EvalCriteria(
             vulnerable_if=["PWNED"],
             safe_if=["refuse", "can't"],
@@ -49,7 +49,7 @@ class TestEngineObserverIntegration:
         adapter = OpenAIAdapter("https://target.example.com/v1/chat")
         template = _make_template()
         # No observer — should work fine
-        finding = await execute_attack(template, adapter, delay=0)
+        finding = await execute_probe(template, adapter, delay=0)
         await adapter.close()
         assert finding.verdict == Verdict.SAFE
         assert finding.leakage_signals == []
@@ -62,7 +62,7 @@ class TestEngineObserverIntegration:
         adapter = OpenAIAdapter("https://target.example.com/v1/chat")
         template = _make_template()
         observer = StreamingObserver()
-        finding = await execute_attack(template, adapter, delay=0, observer=observer)
+        finding = await execute_probe(template, adapter, delay=0, observer=observer)
         await adapter.close()
         # Single step = no leakage signals
         assert finding.leakage_signals == []
@@ -89,12 +89,12 @@ class TestEngineObserverIntegration:
         adapter = OpenAIAdapter("https://target.example.com/v1/chat")
         template = _make_template(
             steps=[
-                AttackStep(index=1, prompt="Step 1"),
-                AttackStep(index=2, prompt="Step 2"),
+                ProbeStep(index=1, prompt="Step 1"),
+                ProbeStep(index=2, prompt="Step 2"),
             ]
         )
         observer = StreamingObserver()
-        finding = await execute_attack(template, adapter, delay=0, observer=observer)
+        finding = await execute_probe(template, adapter, delay=0, observer=observer)
         await adapter.close()
         # Should detect boundary erosion
         assert len(finding.leakage_signals) > 0
@@ -108,7 +108,7 @@ class TestEngineObserverIntegration:
         )
         adapter = OpenAIAdapter("https://target.example.com/v1/chat")
         template = _make_template()
-        finding = await execute_attack(template, adapter, delay=0)
+        finding = await execute_probe(template, adapter, delay=0)
         await adapter.close()
         assert hasattr(finding, "leakage_signals")
         assert isinstance(finding.leakage_signals, list)

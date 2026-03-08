@@ -93,7 +93,7 @@ class ComplianceFramework(StrEnum):
 
 
 @dataclass
-class AttackStep:
+class ProbeStep:
     index: int
     prompt: str
     is_followup: bool = False
@@ -109,14 +109,14 @@ class EvalCriteria:
 
 
 @dataclass
-class AttackTemplate:
+class ProbeTemplate:
     id: str
     name: str
     severity: Severity
     category: Category
     owasp: str
     objective: str
-    steps: list[AttackStep]
+    steps: list[ProbeStep]
     eval_criteria: EvalCriteria
     source_path: str = ""
     success_rate: float = 0.0
@@ -154,11 +154,11 @@ class Finding:
     reasoning: str = ""
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     leakage_signals: list[LeakageSignal] = field(default_factory=lambda: [])
-    probe_source: str = ""  # template_id that triggered this probe (empty = original attack)
+    probe_source: str = ""  # template_id that triggered this probe (empty = original probe)
     confidence: float = 0.0  # 0.0-1.0 confidence in the verdict
     scoring_method: ScoringMethod = ScoringMethod.PATTERN
     discovery_pass: int = 0  # Convergence pass that discovered this (0 = standard, 1+ = pass N)
-    cross_feed_source: str = ""  # Finding(s) that triggered this cross-feed attack
+    cross_feed_source: str = ""  # Finding(s) that triggered this cross-feed probe
 
 
 @dataclass
@@ -199,7 +199,7 @@ class ScanResult:
 
 @dataclass
 class TrialResult:
-    """Single trial execution of an attack."""
+    """Single trial execution of a probe."""
 
     trial_index: int
     verdict: Verdict
@@ -210,7 +210,7 @@ class TrialResult:
 
 @dataclass
 class StatisticalFinding:
-    """Aggregated result over N trials for a single attack."""
+    """Aggregated result over N trials for a single probe."""
 
     template_id: str
     template_name: str
@@ -245,12 +245,12 @@ class CampaignConfig:
     """Configuration for a statistical campaign."""
 
     name: str = "default"
-    trials_per_attack: int = 5
+    trials_per_probe: int = 5
     confidence_level: float = 0.95
     delay_between_trials: float = 1.0
-    delay_between_attacks: float = 2.0
+    delay_between_probes: float = 2.0
     category: str | None = None
-    attack_ids: list[str] = field(default_factory=lambda: [])
+    probe_ids: list[str] = field(default_factory=lambda: [])
     target_url: str = ""
     api_key: str = ""
     model: str = "default"
@@ -273,7 +273,7 @@ class CampaignResult:
         return sum(f.num_trials for f in self.findings)
 
     @property
-    def vulnerable_attacks(self) -> int:
+    def vulnerable_probes(self) -> int:
         return sum(1 for f in self.findings if f.verdict == Verdict.VULNERABLE)
 
 
@@ -306,8 +306,8 @@ class ScanDiff:
 
 
 @dataclass
-class MutatedAttack:
-    """An attack template with a mutation applied."""
+class MutatedProbe:
+    """An probe template with a mutation applied."""
 
     original_id: str
     mutation_type: MutationType
@@ -366,17 +366,17 @@ class RegressionAlert:
     description: str = ""
     old_verdict: Verdict | None = None
     new_verdict: Verdict | None = None
-    attack_severity: Severity | None = None
+    probe_severity: Severity | None = None
 
 
 @dataclass
-class AttackChain:
-    """A compound attack chain combining multiple capabilities."""
+class ProbeChain:
+    """A compound probe chain combining multiple capabilities."""
 
     chain_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     name: str = ""
     capabilities: list[str] = field(default_factory=lambda: [])
-    steps: list[AttackStep] = field(default_factory=lambda: [])
+    steps: list[ProbeStep] = field(default_factory=lambda: [])
     severity: Severity = Severity.HIGH
     category: Category = Category.AGENTIC_SECURITY
     owasp: str = ""

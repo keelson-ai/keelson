@@ -1,7 +1,7 @@
 """Conversation path memoization — learn from past sessions to guide future ones.
 
 Records (technique, category) → outcome for each conversation session,
-then provides insights to reorder attacks and inject context into future sessions.
+then provides insights to reorder probes and inject context into future sessions.
 """
 
 from __future__ import annotations
@@ -10,11 +10,11 @@ import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from keelson.core.models import AttackTemplate, Category, Finding, Verdict
+from keelson.core.models import Category, Finding, ProbeTemplate, Verdict
 
 
 class Technique(StrEnum):
-    """Attack framing techniques detected from prompt content."""
+    """Probe framing techniques detected from prompt content."""
 
     AUTHORITY = "authority"
     ROLEPLAY = "roleplay"
@@ -79,7 +79,7 @@ class ResponseOutcome(StrEnum):
 class ConversationMemo:
     """A single recorded conversation path and its outcome."""
 
-    attack_id: str
+    probe_id: str
     category: Category
     techniques: list[Technique]
     outcome: ResponseOutcome
@@ -92,7 +92,7 @@ class MemoTable:
     """Memoization table tracking conversation paths and outcomes.
 
     After each session, record what techniques were tried and what happened.
-    Before the next session, query the table to guide attack selection.
+    Before the next session, query the table to guide probe selection.
     """
 
     entries: list[ConversationMemo] = field(default_factory=list[ConversationMemo])
@@ -105,7 +105,7 @@ class MemoTable:
 
         self.entries.append(
             ConversationMemo(
-                attack_id=finding.template_id,
+                probe_id=finding.template_id,
                 category=finding.category,
                 techniques=techniques,
                 outcome=outcome,
@@ -185,7 +185,7 @@ class MemoTable:
         return result
 
     def category_success_rate(self, category: Category) -> float:
-        """Fraction of attacks in this category that found vulnerabilities."""
+        """Fraction of probes in this category that found vulnerabilities."""
         relevant = [e for e in self.entries if e.category == category]
         if not relevant:
             return 0.0
@@ -206,7 +206,7 @@ class MemoTable:
 
 
 def infer_techniques(finding: Finding) -> list[Technique]:
-    """Infer which techniques were used in an attack from the evidence prompts."""
+    """Infer which techniques were used in a probe from the evidence prompts."""
     all_prompts = " ".join(e.prompt for e in finding.evidence)
     techniques = _match_techniques(all_prompts)
 
@@ -217,8 +217,8 @@ def infer_techniques(finding: Finding) -> list[Technique]:
     return techniques or [Technique.INSTRUCTION_INJECTION]  # default fallback
 
 
-def infer_techniques_from_template(template: AttackTemplate) -> list[Technique]:
-    """Infer techniques from an attack template's step prompts (no execution needed)."""
+def infer_techniques_from_template(template: ProbeTemplate) -> list[Technique]:
+    """Infer techniques from an probe template's step prompts (no execution needed)."""
     all_prompts = " ".join(step.prompt for step in template.steps)
     techniques = _match_techniques(all_prompts)
 
@@ -275,12 +275,12 @@ def _extract_leaked_info(finding: Finding) -> list[str]:
     return list(dict.fromkeys(leaked))  # deduplicate, preserve order
 
 
-def score_attack_by_memo(
-    attack_techniques: list[Technique],
+def score_probe_by_memo(
+    probe_techniques: list[Technique],
     memo: MemoTable,
     category: Category,
 ) -> float:
-    """Score an attack based on how its techniques performed historically.
+    """Score a probe based on how its techniques performed historically.
 
     Returns a float where higher = more promising.
     Uses promising_techniques (includes INCONCLUSIVE signal) for boosting,
@@ -294,7 +294,7 @@ def score_attack_by_memo(
     global_promising = memo.promising_techniques(category=None)
 
     score = 0.0
-    for tech in attack_techniques:
+    for tech in probe_techniques:
         if tech in promising:
             score += promising[tech] * 2.0  # weight successes heavily
         elif tech in global_promising:

@@ -9,7 +9,7 @@ from keelson.adapters.base import BaseAdapter
 
 
 class LangChainAdapter(BaseAdapter):
-    """Adapter that sends attack prompts to a LangChain agent/chain directly.
+    """Adapter that sends probe prompts to a LangChain agent/chain directly.
 
     Requires `langchain-core` to be installed: `pip install keelson[langchain]`
 

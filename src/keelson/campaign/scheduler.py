@@ -52,7 +52,7 @@ async def run_scheduled(
         config: Campaign configuration.
         interval_seconds: Seconds between campaign runs.
         max_runs: Maximum number of runs (None = run forever).
-        attacks_dir: Override attacks directory.
+        attacks_dir: Override probes directory.
         on_campaign: Callback(result, run_number) after each campaign.
 
     Returns:

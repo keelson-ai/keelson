@@ -57,7 +57,7 @@ class TestEvolveCommand:
     def test_evolve_help(self):
         result = runner.invoke(app, ["evolve", "--help"])
         assert result.exit_code == 0
-        assert "mutate" in result.output.lower() or "attack" in result.output.lower()
+        assert "mutate" in result.output.lower() or "probe" in result.output.lower()
 
     def test_evolve_nonexistent_attack(self):
         result = runner.invoke(app, ["evolve", "http://test", "NONEXISTENT-999"])

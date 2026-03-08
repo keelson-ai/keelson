@@ -241,7 +241,7 @@ async def run_pipeline(
 
     Phases:
         1. Discovery  -- load templates and restore checkpoint
-        2. Scanning   -- parallel attack execution with checkpointing
+        2. Scanning   -- parallel probe execution with checkpointing
         3. Verification -- re-probe VULNERABLE findings to confirm
         4. Reporting  -- assemble final ScanResult
     """
@@ -249,13 +249,13 @@ async def run_pipeline(
         config = PipelineConfig()
 
     # --- Phase 1: Discovery ---
-    logger.info("Phase 1/4: Discovery — loading attack templates")
+    logger.info("Phase 1/4: Discovery — loading probe templates")
     templates = load_all_templates(attacks_dir=attacks_dir, category=category)
     if not templates:
-        logger.warning("No attack templates found")
+        logger.warning("No probe templates found")
         return ScanResult(target=target, finished_at=datetime.now(UTC))
 
-    logger.info("Loaded %d attack templates", len(templates))
+    logger.info("Loaded %d probe templates", len(templates))
 
     result = ScanResult(target=target)
 
@@ -284,7 +284,7 @@ async def run_pipeline(
             result.scan_id = checkpoint.scan_id
             resumed_findings = [_finding_from_json(f) for f in checkpoint.findings_json]
             logger.info(
-                "Resumed checkpoint: %d/%d attacks completed (phase=%s)",
+                "Resumed checkpoint: %d/%d probes completed (phase=%s)",
                 len(checkpoint.completed_ids),
                 len(templates),
                 checkpoint.phase,
@@ -303,7 +303,7 @@ async def run_pipeline(
     # Filter out already-completed templates
     remaining = [t for t in templates if t.id not in checkpoint.completed_ids]
     logger.info(
-        "Phase 2/4: Scanning — %d remaining attacks (concurrency=%d)",
+        "Phase 2/4: Scanning — %d remaining probes (concurrency=%d)",
         len(remaining),
         config.max_concurrent,
     )

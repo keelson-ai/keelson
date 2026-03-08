@@ -1,10 +1,10 @@
 ---
 name: Template Request
-about: Suggest a new attack template
+about: Suggest a new probe template
 labels: template
 ---
 
-## Attack Description
+## Probe Description
 <!-- What vulnerability does this template test? -->
 
 ## Behavior Category
@@ -15,7 +15,7 @@ labels: template
 ## OWASP Mapping
 <!-- Which OWASP LLM Top 10 category? (LLM01-LLM10) -->
 
-## Attack Steps
+## Probe Steps
 <!-- Describe the prompts/steps to test this vulnerability -->
 
 ## Indicators

@@ -10,10 +10,10 @@ from keelson.core.models import CampaignConfig, ConcurrencyConfig, ScanTier
 TIER_PRESETS: dict[ScanTier, CampaignConfig] = {
     ScanTier.FAST: CampaignConfig(
         name="fast",
-        trials_per_attack=1,
+        trials_per_probe=1,
         confidence_level=0.95,
         delay_between_trials=0.5,
-        delay_between_attacks=0.5,
+        delay_between_probes=0.5,
         concurrency=ConcurrencyConfig(
             max_concurrent_trials=10,
             early_termination_threshold=0,  # No early termination with 1 trial
@@ -21,10 +21,10 @@ TIER_PRESETS: dict[ScanTier, CampaignConfig] = {
     ),
     ScanTier.DEEP: CampaignConfig(
         name="deep",
-        trials_per_attack=10,
+        trials_per_probe=10,
         confidence_level=0.99,
         delay_between_trials=1.5,
-        delay_between_attacks=2.0,
+        delay_between_probes=2.0,
         concurrency=ConcurrencyConfig(
             max_concurrent_trials=1,  # Sequential for accuracy
             early_termination_threshold=0,  # No early termination — run all trials
@@ -32,10 +32,10 @@ TIER_PRESETS: dict[ScanTier, CampaignConfig] = {
     ),
     ScanTier.CONTINUOUS: CampaignConfig(
         name="continuous",
-        trials_per_attack=3,
+        trials_per_probe=3,
         confidence_level=0.95,
         delay_between_trials=1.0,
-        delay_between_attacks=1.5,
+        delay_between_probes=1.5,
         concurrency=ConcurrencyConfig(
             max_concurrent_trials=3,
             early_termination_threshold=3,
@@ -60,10 +60,10 @@ def get_tier_config(
     # Start from preset defaults
     config = CampaignConfig(
         name=preset.name,
-        trials_per_attack=preset.trials_per_attack,
+        trials_per_probe=preset.trials_per_probe,
         confidence_level=preset.confidence_level,
         delay_between_trials=preset.delay_between_trials,
-        delay_between_attacks=preset.delay_between_attacks,
+        delay_between_probes=preset.delay_between_probes,
         concurrency=ConcurrencyConfig(
             max_concurrent_trials=preset.concurrency.max_concurrent_trials,
             early_termination_threshold=preset.concurrency.early_termination_threshold,

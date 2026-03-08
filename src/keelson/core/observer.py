@@ -1,4 +1,4 @@
-"""Streaming leakage observer — per-step detection for multi-turn attacks."""
+"""Streaming leakage observer — per-step detection for multi-turn probes."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ REFUSAL_INDICATORS = [
 
 
 class StreamingObserver:
-    """Observes multi-turn attack evidence for leakage signals.
+    """Observes multi-turn probe evidence for leakage signals.
 
     Three detection strategies:
     - Progressive disclosure: response length/specificity increasing across turns

@@ -109,7 +109,7 @@ def format_diff_report(diff: ScanDiff) -> str:
     removed_items = [i for i in diff.items if i.change_type == "removed"]
 
     if new_items:
-        lines.append("### New Attacks\n")
+        lines.append("### New Probes\n")
         for item in new_items:
             lines.append(
                 f"- **{item.template_id}**: {item.template_name} — "
@@ -118,7 +118,7 @@ def format_diff_report(diff: ScanDiff) -> str:
         lines.append("")
 
     if removed_items:
-        lines.append("### Removed Attacks\n")
+        lines.append("### Removed Probes\n")
         for item in removed_items:
             lines.append(
                 f"- **{item.template_id}**: {item.template_name} — "
@@ -140,13 +140,13 @@ def format_diff_report(diff: ScanDiff) -> str:
 
 def classify_alert_severity(
     item: ScanDiffItem,
-    attack_severity: Severity | None = None,
+    probe_severity: Severity | None = None,
 ) -> str:
     """Classify the severity of a regression alert.
 
     Rules:
-    - Critical: SAFE→VULNERABLE on Critical/High severity attack
-    - High: new VULNERABLE attack or SAFE→VULNERABLE on Medium/Low
+    - Critical: SAFE→VULNERABLE on Critical/High severity probe
+    - High: new VULNERABLE probe or SAFE→VULNERABLE on Medium/Low
     - Medium: INCONCLUSIVE→VULNERABLE
     - Low: minor behavioral changes (e.g., SAFE→INCONCLUSIVE)
     """
@@ -154,7 +154,7 @@ def classify_alert_severity(
         return "high"
 
     if item.old_verdict == Verdict.SAFE and item.new_verdict == Verdict.VULNERABLE:
-        if attack_severity and attack_severity in (Severity.CRITICAL, Severity.HIGH):
+        if probe_severity and probe_severity in (Severity.CRITICAL, Severity.HIGH):
             return "critical"
         return "high"
 
@@ -203,7 +203,7 @@ def enhanced_diff_scans(
                 ),
                 old_verdict=item.old_verdict,
                 new_verdict=item.new_verdict,
-                attack_severity=attack_sev,
+                probe_severity=attack_sev,
             )
         )
 
@@ -220,7 +220,7 @@ def diff_campaigns(
 ) -> list[RegressionAlert]:
     """Compare two campaign results for statistical regressions.
 
-    Detects rate increases between campaigns (e.g., attack that went from 10% to 60%).
+    Detects rate increases between campaigns (e.g., probe that went from 10% to 60%).
     """
     alerts: list[RegressionAlert] = []
 
@@ -248,7 +248,7 @@ def diff_campaigns(
                         ),
                         old_verdict=fa.verdict,
                         new_verdict=fb.verdict,
-                        attack_severity=fb.severity,
+                        probe_severity=fb.severity,
                     )
                 )
             elif fa.verdict != Verdict.VULNERABLE and fb.verdict == Verdict.VULNERABLE:
@@ -263,7 +263,7 @@ def diff_campaigns(
                         ),
                         old_verdict=fa.verdict,
                         new_verdict=fb.verdict,
-                        attack_severity=fb.severity,
+                        probe_severity=fb.severity,
                     )
                 )
             elif fb.success_rate > fa.success_rate + 0.2:
@@ -279,7 +279,7 @@ def diff_campaigns(
                         ),
                         old_verdict=fa.verdict,
                         new_verdict=fb.verdict,
-                        attack_severity=fb.severity,
+                        probe_severity=fb.severity,
                     )
                 )
         elif fb and not fa:
@@ -290,11 +290,10 @@ def diff_campaigns(
                         alert_severity="high",
                         change_type="new_vulnerable",
                         description=(
-                            f"{fb.template_name}: new vulnerable "
-                            f"attack ({fb.success_rate:.0%} rate)"
+                            f"{fb.template_name}: new vulnerable probe ({fb.success_rate:.0%} rate)"
                         ),
                         new_verdict=fb.verdict,
-                        attack_severity=fb.severity,
+                        probe_severity=fb.severity,
                     )
                 )
 

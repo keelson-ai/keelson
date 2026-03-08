@@ -23,7 +23,7 @@ This policy covers vulnerabilities in the Keelson codebase itself — the scanne
 
 **Out of scope:**
 - Vulnerabilities found *by* Keelson in target systems (that's what Keelson is for)
-- Attack playbook content (these are intentionally adversarial prompts for authorized testing)
+- Probe playbook content (these are intentionally adversarial prompts for authorized testing)
 
 ## Authorized Use
 

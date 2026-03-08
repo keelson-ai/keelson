@@ -1,4 +1,4 @@
-"""Tests for Phase 3 store extensions (cache, regression alerts, attack chains)."""
+"""Tests for Phase 3 store extensions (cache, regression alerts, probe chains)."""
 
 from collections.abc import Generator
 from pathlib import Path
@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 
 from keelson.core.models import (
-    AttackChain,
-    AttackStep,
     Category,
+    ProbeChain,
+    ProbeStep,
     RegressionAlert,
     Severity,
 )
@@ -99,22 +99,22 @@ class TestRegressionAlertsPersistence:
         assert rows[0]["acknowledged"] == 1
 
 
-class TestAttackChainPersistence:
+class TestProbeChainPersistence:
     def test_save_and_get_chain(self, store: Store) -> None:
-        chain = AttackChain(
+        chain = ProbeChain(
             chain_id="chain-001",
             name="Data Exfiltration",
             capabilities=["file_access", "web_access"],
             steps=[
-                AttackStep(index=1, prompt="Read files"),
-                AttackStep(index=2, prompt="Send data", is_followup=True),
+                ProbeStep(index=1, prompt="Read files"),
+                ProbeStep(index=2, prompt="Send data", is_followup=True),
             ],
             severity=Severity.CRITICAL,
             category=Category.AGENTIC_SECURITY,
             owasp="LLM08",
         )
-        store.save_attack_chain(chain, profile_id=None)
-        loaded = store.get_attack_chain("chain-001")
+        store.save_probe_chain(chain, profile_id=None)
+        loaded = store.get_probe_chain("chain-001")
         assert loaded is not None
         assert loaded.name == "Data Exfiltration"
         assert loaded.capabilities == ["file_access", "web_access"]
@@ -124,7 +124,7 @@ class TestAttackChainPersistence:
         assert loaded.severity == Severity.CRITICAL
 
     def test_get_nonexistent_chain(self, store: Store) -> None:
-        assert store.get_attack_chain("nonexistent") is None
+        assert store.get_probe_chain("nonexistent") is None
 
     def test_list_chains(self, store: Store) -> None:
         # Insert a profile first to satisfy FK constraint
@@ -138,38 +138,38 @@ class TestAttackChainPersistence:
         store.save_agent_profile(profile)
 
         for i in range(3):
-            chain = AttackChain(
+            chain = ProbeChain(
                 chain_id=f"chain-{i:03d}",
                 name=f"Chain {i}",
                 capabilities=["file_access"],
-                steps=[AttackStep(index=1, prompt="test")],
+                steps=[ProbeStep(index=1, prompt="test")],
                 severity=Severity.HIGH,
                 category=Category.AGENTIC_SECURITY,
                 owasp="LLM08",
             )
-            store.save_attack_chain(chain, profile_id="profile-1")
+            store.save_probe_chain(chain, profile_id="profile-1")
 
-        all_chains = store.list_attack_chains()
+        all_chains = store.list_probe_chains()
         assert len(all_chains) == 3
 
-        profile_chains = store.list_attack_chains(profile_id="profile-1")
+        profile_chains = store.list_probe_chains(profile_id="profile-1")
         assert len(profile_chains) == 3
 
     def test_upsert_chain(self, store: Store) -> None:
-        chain = AttackChain(
+        chain = ProbeChain(
             chain_id="chain-001",
             name="Original",
             capabilities=["file_access"],
-            steps=[AttackStep(index=1, prompt="test")],
+            steps=[ProbeStep(index=1, prompt="test")],
             severity=Severity.HIGH,
             category=Category.AGENTIC_SECURITY,
             owasp="LLM08",
         )
-        store.save_attack_chain(chain)
+        store.save_probe_chain(chain)
 
         chain.name = "Updated"
-        store.save_attack_chain(chain)
+        store.save_probe_chain(chain)
 
-        loaded = store.get_attack_chain("chain-001")
+        loaded = store.get_probe_chain("chain-001")
         assert loaded is not None
         assert loaded.name == "Updated"

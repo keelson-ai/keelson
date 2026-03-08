@@ -13,13 +13,13 @@ import pytest
 from keelson.adapters.base import BaseAdapter
 from keelson.core.execution import verify_findings
 from keelson.core.models import (
-    AttackStep,
-    AttackTemplate,
     Category,
     EvalCriteria,
     EvidenceItem,
     Finding,
     LeakageSignal,
+    ProbeStep,
+    ProbeTemplate,
     Severity,
     Target,
     Verdict,
@@ -61,15 +61,15 @@ class MockAdapter(BaseAdapter):
         pass
 
 
-def _make_template(id: str, category: Category = Category.GOAL_ADHERENCE) -> AttackTemplate:
-    return AttackTemplate(
+def _make_template(id: str, category: Category = Category.GOAL_ADHERENCE) -> ProbeTemplate:
+    return ProbeTemplate(
         id=id,
         name=f"Test {id}",
         severity=Severity.HIGH,
         category=category,
         owasp="LLM01",
         objective="Test",
-        steps=[AttackStep(index=0, prompt=f"Test prompt for {id}")],
+        steps=[ProbeStep(index=0, prompt=f"Test prompt for {id}")],
         eval_criteria=EvalCriteria(
             vulnerable_if=["PWNED"],
             safe_if=["I cannot"],
@@ -264,18 +264,18 @@ class TestFindingSerialization:
 
 
 # ---------------------------------------------------------------------------
-# run_pipeline — integration tests (mock execute_attack + load_all_templates)
+# run_pipeline — integration tests (mock execute_probe + load_all_templates)
 # ---------------------------------------------------------------------------
 
 
-def _mock_execute_attack_factory(
+def _mock_execute_probe_factory(
     verdict: Verdict = Verdict.SAFE,
     reasoning: str = "Mock reasoning",
 ) -> AsyncMock:
-    """Return a mock for execute_attack that produces a Finding with the given verdict."""
+    """Return a mock for execute_probe that produces a Finding with the given verdict."""
 
     async def _mock(
-        template: AttackTemplate,
+        template: ProbeTemplate,
         adapter: BaseAdapter,
         model: str = "default",
         delay: float = 1.0,
@@ -326,11 +326,11 @@ class TestRunPipeline:
             checkpoint_dir=tmp_path,
         )
 
-        mock_execute = _mock_execute_attack_factory(verdict=Verdict.SAFE)
+        mock_execute = _mock_execute_probe_factory(verdict=Verdict.SAFE)
 
         with (
             patch("keelson.core.pipeline.load_all_templates", return_value=templates),
-            patch("keelson.core.execution.execute_attack", mock_execute),
+            patch("keelson.core.execution.execute_probe", mock_execute),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"), adapter=adapter, config=config
@@ -347,7 +347,7 @@ class TestRunPipeline:
         call_count = 0
 
         async def _mixed_execute(
-            template: AttackTemplate,
+            template: ProbeTemplate,
             adapter: BaseAdapter,
             model: str = "default",
             delay: float = 1.0,
@@ -387,7 +387,7 @@ class TestRunPipeline:
 
         with (
             patch("keelson.core.pipeline.load_all_templates", return_value=templates),
-            patch("keelson.core.execution.execute_attack", AsyncMock(side_effect=_mixed_execute)),
+            patch("keelson.core.execution.execute_probe", AsyncMock(side_effect=_mixed_execute)),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -408,7 +408,7 @@ class TestRunPipeline:
         """When agent refuses on verification probe, verdict downgrades to INCONCLUSIVE."""
         templates = [_make_template("GA-001")]
 
-        mock_execute = _mock_execute_attack_factory(
+        mock_execute = _mock_execute_probe_factory(
             verdict=Verdict.VULNERABLE,
             reasoning="Agent complied",
         )
@@ -425,7 +425,7 @@ class TestRunPipeline:
 
         with (
             patch("keelson.core.pipeline.load_all_templates", return_value=templates),
-            patch("keelson.core.execution.execute_attack", mock_execute),
+            patch("keelson.core.execution.execute_probe", mock_execute),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -439,7 +439,7 @@ class TestRunPipeline:
         assert "downgraded" in finding.reasoning.lower()
 
     async def test_run_pipeline_resume_from_checkpoint(self, tmp_path: Path) -> None:
-        """Pipeline should find existing checkpoint by target URL and skip completed attacks."""
+        """Pipeline should find existing checkpoint by target URL and skip completed probes."""
         templates = [_make_template(f"GA-{i:03d}") for i in range(1, 4)]
         adapter = MockAdapter()
         config = PipelineConfig(
@@ -467,7 +467,7 @@ class TestRunPipeline:
         executed_ids: list[str] = []
 
         async def _tracking_execute(
-            template: AttackTemplate,
+            template: ProbeTemplate,
             adapter: BaseAdapter,
             model: str = "default",
             delay: float = 1.0,
@@ -495,9 +495,7 @@ class TestRunPipeline:
 
         with (
             patch("keelson.core.pipeline.load_all_templates", return_value=templates),
-            patch(
-                "keelson.core.execution.execute_attack", AsyncMock(side_effect=_tracking_execute)
-            ),
+            patch("keelson.core.execution.execute_probe", AsyncMock(side_effect=_tracking_execute)),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -526,11 +524,11 @@ class TestRunPipeline:
             checkpoint_dir=tmp_path,
         )
 
-        mock_execute = _mock_execute_attack_factory(verdict=Verdict.SAFE)
+        mock_execute = _mock_execute_probe_factory(verdict=Verdict.SAFE)
 
         with (
             patch("keelson.core.pipeline.load_all_templates", return_value=templates),
-            patch("keelson.core.execution.execute_attack", mock_execute),
+            patch("keelson.core.execution.execute_probe", mock_execute),
         ):
             result = await run_pipeline(
                 target=Target(url="https://example.com"),
@@ -568,7 +566,7 @@ class TestParallelAttacks:
         lock = asyncio.Lock()
 
         async def _concurrent_execute(
-            template: AttackTemplate,
+            template: ProbeTemplate,
             adapter: BaseAdapter,
             model: str = "default",
             delay: float = 1.0,
@@ -608,7 +606,7 @@ class TestParallelAttacks:
         with (
             patch("keelson.core.pipeline.load_all_templates", return_value=templates),
             patch(
-                "keelson.core.execution.execute_attack", AsyncMock(side_effect=_concurrent_execute)
+                "keelson.core.execution.execute_probe", AsyncMock(side_effect=_concurrent_execute)
             ),
         ):
             result = await run_pipeline(

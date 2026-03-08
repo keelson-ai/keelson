@@ -24,7 +24,7 @@ Regenerate or reformat a security scan report from previous findings.
    - Findings grouped by severity (Critical → High → Medium → Low)
    - OWASP LLM Top 10 mapping
    - Actionable remediation recommendations prioritized by severity
-   - Statistics: total attacks, vulnerable count, safe count, pass rate
+   - Statistics: total probes, vulnerable count, safe count, pass rate
 
 4. **Save** the reformatted report as `reports/report-YYYY-MM-DD-HHMMSS.md`.
 

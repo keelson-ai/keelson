@@ -11,10 +11,10 @@ from pathlib import Path
 from keelson.adapters.base import BaseAdapter
 from keelson.core.detection import detect
 from keelson.core.models import (
-    AttackTemplate,
     CampaignConfig,
     CampaignResult,
     EvidenceItem,
+    ProbeTemplate,
     StatisticalFinding,
     Target,
     TrialResult,
@@ -45,13 +45,13 @@ Z_TABLE = {0.90: 1.645, 0.95: 1.96, 0.99: 2.576}
 
 
 async def _run_single_trial(
-    template: AttackTemplate,
+    template: ProbeTemplate,
     adapter: BaseAdapter,
     model: str,
     trial_index: int,
     delay: float,
 ) -> TrialResult:
-    """Execute a single trial of an attack template."""
+    """Execute a single trial of an probe template."""
     messages: list[dict[str, str]] = []
     evidence: list[EvidenceItem] = []
     total_ms = 0
@@ -109,7 +109,7 @@ def _should_terminate_early(
 
 
 async def _run_trials_concurrent(
-    template: AttackTemplate,
+    template: ProbeTemplate,
     adapter: BaseAdapter,
     model: str,
     num_trials: int,
@@ -151,18 +151,18 @@ async def run_campaign(
     attacks_dir: Path | None = None,
     on_finding: Callable[[StatisticalFinding, int, int], None] | None = None,
 ) -> CampaignResult:
-    """Run a statistical campaign: each attack executed N times with Wilson CI scoring.
+    """Run a statistical campaign: each probe executed N times with Wilson CI scoring.
 
     Args:
         target: The target to scan.
         adapter: Adapter for communicating with the target.
         config: Campaign configuration.
-        attacks_dir: Override directory for attack playbooks.
+        attacks_dir: Override directory for probe playbooks.
         on_finding: Optional callback(finding, current_index, total) for progress.
     """
     templates = load_all_templates(attacks_dir=attacks_dir, category=config.category)
-    if config.attack_ids:
-        id_set = set(config.attack_ids)
+    if config.probe_ids:
+        id_set = set(config.probe_ids)
         templates = [t for t in templates if t.id in id_set]
 
     z = Z_TABLE.get(config.confidence_level, 1.96)
@@ -177,14 +177,14 @@ async def run_campaign(
                 template,
                 adapter,
                 target.model,
-                config.trials_per_attack,
+                config.trials_per_probe,
                 config.delay_between_trials,
                 config.concurrency.max_concurrent_trials,
                 config.concurrency.early_termination_threshold,
             )
         else:
             trials: list[TrialResult] = []
-            for trial_idx in range(config.trials_per_attack):
+            for trial_idx in range(config.trials_per_probe):
                 trial = await _run_single_trial(
                     template,
                     adapter,
@@ -198,7 +198,7 @@ async def run_campaign(
                 if _should_terminate_early(trials, config.concurrency.early_termination_threshold):
                     break
 
-                if trial_idx < config.trials_per_attack - 1:
+                if trial_idx < config.trials_per_probe - 1:
                     await asyncio.sleep(config.delay_between_trials)
 
         n_vuln = sum(1 for t in trials if t.verdict == Verdict.VULNERABLE)
@@ -228,7 +228,7 @@ async def run_campaign(
         if on_finding:
             on_finding(sf, idx + 1, total)
         if idx < total - 1:
-            await asyncio.sleep(config.delay_between_attacks)
+            await asyncio.sleep(config.delay_between_probes)
 
     result.finished_at = datetime.now(UTC)
     return result

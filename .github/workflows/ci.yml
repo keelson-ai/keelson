@@ -29,7 +29,7 @@ jobs:
       - name: Ruff format check
         run: ruff format --check src/ tests/
 
-  validate-attacks:
+  validate-probes:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
       - name: Install PyYAML
         run: pip install pyyaml
 
-      - name: Validate attack playbooks
+      - name: Validate probe playbooks
         run: python scripts/validate_attacks.py
 
   test:

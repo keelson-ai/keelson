@@ -11,13 +11,13 @@ from typing import Any
 from keelson.core.models import (
     AgentCapability,
     AgentProfile,
-    AttackChain,
-    AttackStep,
     CampaignConfig,
     CampaignResult,
     Category,
     EvidenceItem,
     Finding,
+    ProbeChain,
+    ProbeStep,
     RegressionAlert,
     ScanResult,
     Severity,
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS regression_alerts (
     acknowledged INTEGER DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS attack_chains (
+CREATE TABLE IF NOT EXISTS probe_chains (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     chain_id TEXT UNIQUE NOT NULL,
     profile_id TEXT,
@@ -344,10 +344,10 @@ class Store:
                 json.dumps(
                     {
                         "name": campaign.config.name,
-                        "trials_per_attack": campaign.config.trials_per_attack,
+                        "trials_per_probe": campaign.config.trials_per_probe,
                         "confidence_level": campaign.config.confidence_level,
                         "category": campaign.config.category,
-                        "attack_ids": campaign.config.attack_ids,
+                        "probe_ids": campaign.config.probe_ids,
                     }
                 ),
                 campaign.started_at.isoformat(),
@@ -423,10 +423,10 @@ class Store:
         config_data = json.loads(row["config_json"])
         config = CampaignConfig(
             name=config_data.get("name", "default"),
-            trials_per_attack=config_data.get("trials_per_attack", 5),
+            trials_per_probe=config_data.get("trials_per_probe", 5),
             confidence_level=config_data.get("confidence_level", 0.95),
             category=config_data.get("category"),
-            attack_ids=config_data.get("attack_ids", []),
+            probe_ids=config_data.get("probe_ids", []),
         )
         findings = self._load_statistical_findings(campaign_id)
         finished = datetime.fromisoformat(row["finished_at"]) if row["finished_at"] else None
@@ -498,7 +498,7 @@ class Store:
         """List recent campaigns."""
         rows = self._conn.execute(
             "SELECT c.campaign_id, c.target_url, c.started_at, c.finished_at, "
-            "COUNT(sf.id) as total_attacks, "
+            "COUNT(sf.id) as total_probes, "
             "SUM(CASE WHEN sf.verdict = 'VULNERABLE' THEN 1 ELSE 0 END) as vulnerable "
             "FROM campaigns c LEFT JOIN statistical_findings sf ON c.campaign_id = sf.campaign_id "
             "GROUP BY c.campaign_id ORDER BY c.started_at DESC LIMIT ?",
@@ -683,12 +683,12 @@ class Store:
         )
         self._conn.commit()
 
-    # --- Phase 3: Attack chain persistence ---
+    # --- Phase 3: Probe chain persistence ---
 
-    def save_attack_chain(self, chain: AttackChain, profile_id: str | None = None) -> None:
-        """Persist an attack chain."""
+    def save_probe_chain(self, chain: ProbeChain, profile_id: str | None = None) -> None:
+        """Persist an probe chain."""
         self._conn.execute(
-            "INSERT OR REPLACE INTO attack_chains "
+            "INSERT OR REPLACE INTO probe_chains "
             "(chain_id, profile_id, name, "
             "capabilities_json, steps_json, severity, "
             "category, owasp, created_at) "
@@ -710,24 +710,22 @@ class Store:
                 datetime.now(UTC).isoformat(),
             ),
         )
-        self._log_event("attack_chain_saved", {"chain_id": chain.chain_id, "name": chain.name})
+        self._log_event("probe_chain_saved", {"chain_id": chain.chain_id, "name": chain.name})
         self._conn.commit()
 
-    def get_attack_chain(self, chain_id: str) -> AttackChain | None:
-        """Load an attack chain by ID."""
+    def get_probe_chain(self, chain_id: str) -> ProbeChain | None:
+        """Load an probe chain by ID."""
         row = self._conn.execute(
-            "SELECT * FROM attack_chains WHERE chain_id = ?", (chain_id,)
+            "SELECT * FROM probe_chains WHERE chain_id = ?", (chain_id,)
         ).fetchone()
         if not row:
             return None
         steps_data = json.loads(row["steps_json"])
         steps = [
-            AttackStep(
-                index=s["index"], prompt=s["prompt"], is_followup=s.get("is_followup", False)
-            )
+            ProbeStep(index=s["index"], prompt=s["prompt"], is_followup=s.get("is_followup", False))
             for s in steps_data
         ]
-        return AttackChain(
+        return ProbeChain(
             chain_id=row["chain_id"],
             name=row["name"],
             capabilities=json.loads(row["capabilities_json"]),
@@ -737,18 +735,18 @@ class Store:
             owasp=row["owasp"],
         )
 
-    def list_attack_chains(
+    def list_probe_chains(
         self, profile_id: str | None = None, limit: int = 50
     ) -> list[dict[str, Any]]:
-        """List attack chains, optionally filtered by profile."""
+        """List probe chains, optionally filtered by profile."""
         if profile_id:
             rows = self._conn.execute(
-                "SELECT * FROM attack_chains WHERE profile_id = ? ORDER BY created_at DESC LIMIT ?",
+                "SELECT * FROM probe_chains WHERE profile_id = ? ORDER BY created_at DESC LIMIT ?",
                 (profile_id, limit),
             ).fetchall()
         else:
             rows = self._conn.execute(
-                "SELECT * FROM attack_chains ORDER BY created_at DESC LIMIT ?",
+                "SELECT * FROM probe_chains ORDER BY created_at DESC LIMIT ?",
                 (limit,),
             ).fetchall()
         return [dict(r) for r in rows]

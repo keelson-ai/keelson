@@ -87,7 +87,7 @@ def scan(
         console.print(f"\n[bold]Keelson Security Scan (tier: {tier})[/bold]")
         console.print(f"Target: {url}")
         concurrency = config.concurrency.max_concurrent_trials
-        console.print(f"Trials/attack: {config.trials_per_attack} | Concurrency: {concurrency}")
+        console.print(f"Trials/probe: {config.trials_per_probe} | Concurrency: {concurrency}")
         console.print()
 
         result = run_with_adapter(
@@ -106,13 +106,13 @@ def scan(
         print_cache_stats(target_adapter)
 
         console.print("\n[bold]Results[/bold]")
-        console.print(f"  Attacks tested: {len(result.findings)}")
-        console.print(f"  Vulnerable: [red]{result.vulnerable_attacks}[/]")
+        console.print(f"  Probes tested: {len(result.findings)}")
+        console.print(f"  Vulnerable: [red]{result.vulnerable_probes}[/]")
         console.print(f"  Total trials: {result.total_trials}")
         console.print(f"\nReport saved: {report_path}")
 
         check_fail_gates(
-            result.vulnerable_attacks, len(result.findings), fail_on_vuln, fail_threshold
+            result.vulnerable_probes, len(result.findings), fail_on_vuln, fail_threshold
         )
 
         return
@@ -170,7 +170,7 @@ def pipeline_scan(
         help="Adapter type: openai, anthropic, langgraph, mcp, or a2a",
     ),
     use_cache: bool = typer.Option(False, "--cache", help="Enable response caching"),
-    concurrency: int = typer.Option(5, "--concurrency", help="Max concurrent attacks"),
+    concurrency: int = typer.Option(5, "--concurrency", help="Max concurrent probes"),
     no_verify: bool = typer.Option(
         False, "--no-verify", help="Skip vulnerability verification phase"
     ),
@@ -286,7 +286,7 @@ def smart_scan(
         help="Max response tokens per request (saves tokens). Use 0 for unlimited",
     ),
 ) -> None:
-    """Adaptive smart scan: discover, classify, select relevant attacks, execute in sessions."""
+    """Adaptive smart scan: discover, classify, select relevant probes, execute in sessions."""
     from keelson.core.smart_scan import run_smart_scan
 
     target = Target(url=url, api_key=api_key, model=model)
@@ -434,7 +434,7 @@ def convergence_scan(
 @app.command()
 def test(
     url: str = typer.Argument(help="Target endpoint URL"),
-    attack_id: str = typer.Argument(help="Test ID (e.g., GA-001)"),
+    probe_id: str = typer.Argument(help="Test ID (e.g., GA-001)"),
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
     adapter: str = typer.Option(
@@ -444,12 +444,12 @@ def test(
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
     """Run a single security test against a target."""
-    from keelson.core.engine import execute_attack
+    from keelson.core.engine import execute_probe
 
     templates = load_all_templates()
-    template = next((t for t in templates if t.id == attack_id), None)
+    template = next((t for t in templates if t.id == probe_id), None)
     if not template:
-        console.print(f"[red]Test {attack_id} not found[/]")
+        console.print(f"[red]Test {probe_id} not found[/]")
         raise typer.Exit(1)
 
     target_adapter = make_adapter(
@@ -460,7 +460,7 @@ def test(
     console.print()
 
     finding = run_with_adapter(
-        lambda: execute_attack(template, target_adapter, model=model),
+        lambda: execute_probe(template, target_adapter, model=model),
         target_adapter,
     )
 
@@ -475,9 +475,9 @@ def test(
 
 
 @app.command(hidden=True, deprecated=True)
-def attack(
+def probe(
     url: str = typer.Argument(help="Target endpoint URL"),
-    attack_id: str = typer.Argument(help="Test ID (e.g., GA-001)"),
+    probe_id: str = typer.Argument(help="Test ID (e.g., GA-001)"),
     api_key: str = typer.Option("", "--api-key", "-k"),
     model: str = typer.Option("default", "--model", "-m"),
     adapter: str = typer.Option(
@@ -487,4 +487,4 @@ def attack(
     tool_name: str = typer.Option("chat", "--tool-name", help="MCP tool name to call"),
 ) -> None:
     """Run a single security test (use 'test' instead)."""
-    test(url, attack_id, api_key, model, adapter, assistant_id, tool_name)
+    test(url, probe_id, api_key, model, adapter, assistant_id, tool_name)

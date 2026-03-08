@@ -87,14 +87,14 @@ def should_mutate(
 ) -> bool:
     """Return True when a partial success rate warrants mutation attempts.
 
-    The sweet spot is attacks that sometimes succeed (above noise) but aren't
+    The sweet spot is probes that sometimes succeed (above noise) but aren't
     fully bypassing defences (below saturation). Outside that window mutations
     are unlikely to add signal.
 
     Args:
         success_rate: Fraction of trials that returned a VULNERABLE verdict (0.0–1.0).
-        low_threshold:  Below this the attack shows no signal — skip mutations.
-        high_threshold: Above this the attack already saturates — skip mutations.
+        low_threshold:  Below this the probe shows no signal — skip mutations.
+        high_threshold: Above this the probe already saturates — skip mutations.
 
     Returns:
         True iff ``low_threshold < success_rate < high_threshold``.

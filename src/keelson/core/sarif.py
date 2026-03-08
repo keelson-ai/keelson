@@ -81,7 +81,7 @@ def _finding_to_result(finding: Finding, rule_index: int) -> dict[str, Any]:
         result["locations"] = [
             {
                 "physicalLocation": {
-                    "artifactLocation": {"uri": finding.template_id, "uriBaseId": "ATTACKS"},
+                    "artifactLocation": {"uri": finding.template_id, "uriBaseId": "PROBES"},
                 },
             }
         ]

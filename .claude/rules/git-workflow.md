@@ -33,7 +33,7 @@ Pre-commit hooks are configured in `.pre-commit-config.yaml` and must be install
 <type>: <brief description>
 
 Examples:
-feat: Add multi-turn attack engine
+feat: Add multi-turn probe engine
 fix: Handle 429 rate limit in HTTP adapter
 refactor: Extract detection pipeline into modules
 test: Add integration tests for scanner

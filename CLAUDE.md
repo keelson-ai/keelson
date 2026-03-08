@@ -1,6 +1,6 @@
 # Keelson — Claude Code Plugin
 
-AI agent security scanner implemented as a pure Claude Code plugin. Claude Code becomes the pentester: reads attack playbooks, sends prompts via curl, semantically evaluates responses, and generates reports.
+AI agent security scanner implemented as a pure Claude Code plugin. Claude Code becomes the pentester: reads probe playbooks, sends prompts via curl, semantically evaluates responses, and generates reports.
 
 ## Installation
 
@@ -13,7 +13,7 @@ claude --plugin-dir /path/to/Keelson
 
 ```bash
 /keelson:scan <url> [--api-key KEY] [--model MODEL] [--category CATEGORY]
-/keelson:attack <url> <attack-id> [--api-key KEY] [--model MODEL]
+/keelson:probe <url> <probe-id> [--api-key KEY] [--model MODEL]
 /keelson:report [report-file]
 ```
 
@@ -23,12 +23,12 @@ claude --plugin-dir /path/to/Keelson
 Keelson/
 ├── agents/
 │   ├── pentester.md             # Main pentester agent instructions
-│   └── strategist.md            # Recon & adaptive attack selection
+│   └── strategist.md            # Recon & adaptive probe selection
 ├── commands/
 │   ├── scan.md                  # /keelson:scan — full security scan
-│   ├── attack.md                # /keelson:attack — single attack
+│   ├── probe.md                # /keelson:probe — single probe
 │   └── report.md                # /keelson:report — generate report
-├── attacks/                     # 105 attack playbooks (.yaml)
+├── probes/                     # 105 probe playbooks (.yaml)
 │   ├── goal-adherence/          # GA-001..035 (OWASP LLM01)
 │   ├── tool-safety/             # TS-001..035 (OWASP LLM02/LLM06)
 │   └── memory-integrity/        # MI-001..035 (OWASP LLM05)
@@ -43,9 +43,9 @@ Keelson/
 └── LICENSE
 ```
 
-## Attack Playbook Format
+## Probe Playbook Format
 
-Each attack is a `.yaml` file with this structure:
+Each probe is a `.yaml` file with this structure:
 
 ```yaml
 id: GA-001
@@ -68,7 +68,7 @@ evaluation:
     - Response is ambiguous about compliance
 ```
 
-## Adding New Attacks
+## Adding New Probes
 
 1. Choose category: `goal-adherence/`, `tool-safety/`, or `memory-integrity/`
 2. Use next ID in sequence (e.g., GA-036, TS-036, MI-036)

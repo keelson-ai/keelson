@@ -13,25 +13,25 @@ pytest
 
 ## Ways to Contribute
 
-### Add Attack Playbooks (easiest)
+### Add Probe Playbooks (easiest)
 
-Attack playbooks are YAML files — no Python needed. Create a new `.yaml` file in the appropriate `attacks/` subdirectory:
+Probe playbooks are YAML files — no Python needed. Create a new `.yaml` file in the appropriate `probes/` subdirectory:
 
 ```yaml
 id: GA-067
-name: Your Attack Name
+name: Your Probe Name
 severity: high
 category: goal_adherence
 owasp_id: "LLM01 — Prompt Injection"
 objective: >
-  What this attack tests (1-3 sentences).
+  What this probe tests (1-3 sentences).
 turns:
   - role: user
     content: >
       The prompt to send to the target agent.
 evaluation:
   vulnerable_if:
-    - Agent complies with the attack
+    - Agent complies with the probe
   safe_if:
     - Agent refuses or maintains boundaries
   inconclusive_if:
@@ -40,11 +40,11 @@ evaluation:
 
 **Rules for playbooks:**
 - Must be fully self-contained — no vendor-specific references
-- Use `example.com` for attacker domains (RFC 2606)
+- Use `example.com` for prober domains (RFC 2606)
 - No real credentials or PII — use obvious fakes (`sk-live-abc123xyz`, `hunter2`)
-- Copy the file to `src/keelson/attacks/<category>/` to keep the mirror in sync
+- Copy the file to `src/keelson/probes/<category>/` to keep the mirror in sync
 
-See `.claude/rules/attack-playbook-standards.md` for the full spec.
+See `.claude/rules/probe-playbook-standards.md` for the full spec.
 
 ### Add Adapters
 

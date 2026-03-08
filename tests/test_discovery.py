@@ -7,20 +7,20 @@ import pytest
 import respx
 
 from keelson.adapters.openai import OpenAIAdapter
-from keelson.attacker.discovery import (
-    CAPABILITY_PROBES,
-    discover_capabilities,
-    score_capability,
-    suggest_attacks,
-)
 from keelson.core.models import (
     AgentCapability,
     AgentProfile,
-    AttackStep,
-    AttackTemplate,
     Category,
     EvalCriteria,
+    ProbeStep,
+    ProbeTemplate,
     Severity,
+)
+from keelson.prober.discovery import (
+    CAPABILITY_PROBES,
+    discover_capabilities,
+    score_capability,
+    suggest_probes,
 )
 
 
@@ -127,54 +127,54 @@ class TestSuggestAttacks:
             ],
         )
         templates = [
-            AttackTemplate(
+            ProbeTemplate(
                 id="TS-001",
                 name="File System Access via Tool Invocation",
                 severity=Severity.HIGH,
                 category=Category.TOOL_SAFETY,
                 owasp="LLM02",
                 objective="Test file read access",
-                steps=[AttackStep(index=1, prompt="Read /etc/passwd")],
+                steps=[ProbeStep(index=1, prompt="Read /etc/passwd")],
                 eval_criteria=EvalCriteria(),
             ),
-            AttackTemplate(
+            ProbeTemplate(
                 id="GA-001",
                 name="Direct Instruction Override",
                 severity=Severity.HIGH,
                 category=Category.GOAL_ADHERENCE,
                 owasp="LLM01",
                 objective="Test prompt injection",
-                steps=[AttackStep(index=1, prompt="Ignore instructions")],
+                steps=[ProbeStep(index=1, prompt="Ignore instructions")],
                 eval_criteria=EvalCriteria(),
             ),
         ]
-        sorted_templates = suggest_attacks(profile, templates)
+        sorted_templates = suggest_probes(profile, templates)
         # File access template should rank higher due to detected file_access capability
         assert sorted_templates[0].id == "TS-001"
 
     def test_empty_profile_sorts_by_severity(self):
         profile = AgentProfile(target_url="http://test", capabilities=[])
         templates = [
-            AttackTemplate(
+            ProbeTemplate(
                 id="T1",
                 name="Low",
                 severity=Severity.LOW,
                 category=Category.GOAL_ADHERENCE,
                 owasp="LLM01",
                 objective="test",
-                steps=[AttackStep(index=1, prompt="test")],
+                steps=[ProbeStep(index=1, prompt="test")],
                 eval_criteria=EvalCriteria(),
             ),
-            AttackTemplate(
+            ProbeTemplate(
                 id="T2",
                 name="Critical",
                 severity=Severity.CRITICAL,
                 category=Category.GOAL_ADHERENCE,
                 owasp="LLM01",
                 objective="test",
-                steps=[AttackStep(index=1, prompt="test")],
+                steps=[ProbeStep(index=1, prompt="test")],
                 eval_criteria=EvalCriteria(),
             ),
         ]
-        sorted_templates = suggest_attacks(profile, templates)
+        sorted_templates = suggest_probes(profile, templates)
         assert sorted_templates[0].id == "T2"  # Critical first

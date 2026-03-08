@@ -1,4 +1,4 @@
-"""Conversation branching engine — tree-based attack exploration."""
+"""Conversation branching engine — tree-based probe exploration."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ import re
 from keelson.adapters.base import BaseAdapter
 from keelson.core.detection import REFUSAL_PHRASES, detect
 from keelson.core.models import (
-    AttackTemplate,
     ConversationNode,
     EvidenceItem,
+    ProbeTemplate,
     ResponseClass,
     Verdict,
 )
@@ -116,24 +116,24 @@ _FOLLOW_UPS: dict[ResponseClass, list[str]] = {
 
 
 async def execute_branching_attack(
-    template: AttackTemplate,
+    template: ProbeTemplate,
     adapter: BaseAdapter,
     model: str = "default",
     max_depth: int = 3,
-    attacker: BaseAdapter | None = None,
+    prober: BaseAdapter | None = None,
     delay: float = 1.0,
 ) -> ConversationNode:
-    """Execute a branching attack that explores conversation trees.
+    """Execute a branching probe that explores conversation trees.
 
     Starting from the template's first step, sends the prompt and classifies the response.
     Then branches based on response class, trying follow-ups to find compliance.
 
     Args:
-        template: Attack template to execute.
+        template: Probe template to execute.
         adapter: Target adapter.
         model: Model to use for target requests.
         max_depth: Maximum conversation depth.
-        attacker: Optional attacker LLM for generating dynamic follow-ups.
+        prober: Optional prober LLM for generating dynamic follow-ups.
         delay: Delay between requests.
 
     Returns:
@@ -149,7 +149,7 @@ async def execute_branching_attack(
         messages=[],
         depth=0,
         max_depth=max_depth,
-        attacker=attacker,
+        prober=prober,
         delay=delay,
     )
     return root
@@ -158,12 +158,12 @@ async def execute_branching_attack(
 async def _explore_branch(
     prompt: str,
     adapter: BaseAdapter,
-    template: AttackTemplate,
+    template: ProbeTemplate,
     model: str,
     messages: list[dict[str, str]],
     depth: int,
     max_depth: int,
-    attacker: BaseAdapter | None,
+    prober: BaseAdapter | None,
     delay: float,
 ) -> ConversationNode:
     """Recursively explore a conversation branch."""
@@ -199,7 +199,7 @@ async def _explore_branch(
         return node  # Found vulnerability, no need to go deeper
 
     # Generate follow-ups
-    follow_ups = await _get_follow_ups(response_class, response_text, attacker, model)
+    follow_ups = await _get_follow_ups(response_class, response_text, prober, model)
 
     for follow_up in follow_ups:
         await asyncio.sleep(delay)
@@ -211,7 +211,7 @@ async def _explore_branch(
             messages=messages,
             depth=depth + 1,
             max_depth=max_depth,
-            attacker=attacker,
+            prober=prober,
             delay=delay,
         )
         node.children.append(child)
@@ -225,16 +225,16 @@ async def _explore_branch(
 async def _get_follow_ups(
     response_class: ResponseClass,
     response_text: str,
-    attacker: BaseAdapter | None,
+    prober: BaseAdapter | None,
     model: str,
 ) -> list[str]:
     """Get follow-up prompts based on response classification.
 
-    If an attacker LLM is available, generates a dynamic follow-up.
+    If an prober LLM is available, generates a dynamic follow-up.
     Otherwise falls back to static follow-ups.
     """
-    if attacker:
-        dynamic = await _generate_dynamic_followup(response_class, response_text, attacker, model)
+    if prober:
+        dynamic = await _generate_dynamic_followup(response_class, response_text, prober, model)
         if dynamic:
             return [dynamic]
 
@@ -244,10 +244,10 @@ async def _get_follow_ups(
 async def _generate_dynamic_followup(
     response_class: ResponseClass,
     response_text: str,
-    attacker: BaseAdapter,
+    prober: BaseAdapter,
     model: str,
 ) -> str | None:
-    """Use the attacker LLM to generate a context-aware follow-up."""
+    """Use the prober LLM to generate a context-aware follow-up."""
     messages = [
         {
             "role": "user",
@@ -261,7 +261,7 @@ async def _generate_dynamic_followup(
         }
     ]
     try:
-        response, _ = await attacker.send_messages(messages, model=model)
+        response, _ = await prober.send_messages(messages, model=model)
         return response.strip()
     except Exception:
         return None
