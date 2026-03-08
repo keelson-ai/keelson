@@ -1,7 +1,6 @@
 
 import { A2AAdapter } from './a2a.js';
 import { AnthropicAdapter } from './anthropic.js';
-import { BaseAdapter } from './base.js';
 import { CrewAIAdapter } from './crewai.js';
 import { GenericHTTPAdapter } from './http.js';
 import { LangChainAdapter } from './langchain.js';

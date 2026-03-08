@@ -1,5 +1,5 @@
 import { BaseAdapter } from './base.js';
-import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
+import type { AdapterResponse, Turn } from '../types/index.js';
 
 
 /**
