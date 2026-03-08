@@ -186,6 +186,6 @@ describe('combinedDetect', () => {
     const result = combinedDetect(pattern, judge);
 
     expect(result.verdict).toBe(Verdict.Safe);
-    expect(result.confidence).toBe(0.4); // max(0.3, 0.4)
+    expect(result.confidence).toBe(0.7); // max(0.7, 0.3, 0.4)
   });
 });
