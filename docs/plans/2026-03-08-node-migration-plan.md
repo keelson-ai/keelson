@@ -234,80 +234,36 @@ Register all 9 adapters in the `createAdapter()` factory map.
 
 This is the critical path — probe execution, verdict determination, scan orchestration.
 
-### Task 2.1: Detection module
+### Task 2.1: Detection module ✅
 
-**Files:**
+**Status:** Complete — `src/core/detection.ts`, 18 tests passing
 
-- Create: `src/core/detection.ts`
-- Create: `tests/core/detection.test.ts`
+- 65 refusal phrases + 16 scope refusal phrases
+- `patternDetect()` — 7-step pipeline: side effects → collect signals → conflict resolution → vuln/safe/leakage/inconclusive
+- `isHardRefusal()` — 3+ phrases AND terse response (< 200 chars)
+- Side effects detection: JSON tool call parsing + regex fallback for dangerous tool names
+- Conflict resolution: multi-step per-step check, single-step substantial disclosure check
+- Keyword extraction from evaluation criteria (quoted strings, parentheses, e.g. patterns)
 
-**Reference:** `_legacy/src/keelson/core/detection.py` (470 lines)
+### Task 2.2: LLM judge ✅
 
-Implement:
+**Status:** Complete — `src/core/llm-judge.ts`, 14 tests passing
 
-- `REFUSAL_PHRASES` constant (60+ phrases)
-- `patternDetect(probe, conversation): DetectionResult`
-- Keyword extraction from `vulnerable_if` / `safe_if` criteria
-- Conflicting signal resolution (vuln + safe → check substance)
-- Helper: `isHardRefusal(content): boolean`
+- `judgeResponse()` — sends formatted prompt to judge adapter, parses VERDICT/CONFIDENCE/REASONING (plan called this `llmJudge()`; renamed for cleaner adapter-injection API)
+- `parseJudgeResponse()` — line-by-line parsing with fallback to INCONCLUSIVE
+- `combinedDetect()` — 6-way resolution: agree (boost), pattern INCONCLUSIVE (trust judge), judge INCONCLUSIVE (trust pattern), pattern VULN + judge SAFE (trust judge), pattern SAFE + judge VULN (trust judge if confidence ≥ 0.7), fallback to judge
 
-Tests:
+### Task 2.3: Engine ✅
 
-- Clear vulnerability detected
-- Clear refusal detected
-- Conflicting signals (refusal + disclosure)
-- Inconclusive when no signal
-- Each refusal phrase category works
+**Status:** Complete — `src/core/engine.ts`, 10 tests passing
 
-### Task 2.2: LLM judge
-
-**Files:**
-
-- Create: `src/core/llm-judge.ts`
-- Create: `tests/core/llm-judge.test.ts`
-
-**Reference:** `_legacy/src/keelson/core/llm_judge.py` (208 lines)
-
-Implement:
-
-- `llmJudge(probe, conversation, config): Promise<DetectionResult>`
-- `formatJudgePrompt()` — structured prompt with objective + criteria + conversation
-- `parseJudgeResponse()` — extracts VERDICT / CONFIDENCE / REASONING
-- `combinedDetect()` — merges pattern + judge with resolution rules
-
-Tests (mock the LLM call with `nock`):
-
-- Judge returns VULNERABLE → parsed correctly
-- Judge returns SAFE → parsed correctly
-- Combined: both agree → boosted confidence
-- Combined: pattern VULN + judge SAFE → trusts judge
-- Combined: judge VULN high confidence → trusts judge
-- Malformed judge response → falls back to pattern
-
-### Task 2.3: Engine
-
-**Files:**
-
-- Create: `src/core/engine.ts`
-- Create: `tests/core/engine.test.ts`
-
-**Reference:** `_legacy/src/keelson/core/engine.py` (162 lines)
-
-Implement:
-
-- `executeProbe(probe, options): Promise<Finding>`
-- Multi-turn execution loop
-- Early termination on hard refusal
-- Rate limiting between turns
+- `executeProbe()` — multi-turn loop with conversation accumulation
+- Non-user turns injected without sending to adapter
+- Early termination on hard refusal (first user turn, 2+ remaining turns)
+- Rate limiting between turns (configurable `delayMs`)
 - `onTurn` callback for UI integration
-
-Tests (mock adapter):
-
-- Single-turn probe produces finding
-- Multi-turn probe accumulates conversation
-- Hard refusal terminates early
-- Rate limiting delay respected
-- onTurn callback fires per turn
+- Observer support for leakage signal detection
+- Pattern-only or combined (pattern + judge) detection
 
 ### Task 2.4: Scanner
 
