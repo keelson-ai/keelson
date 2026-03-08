@@ -80,7 +80,7 @@ export function registerScanCommands(program: Command): void {
           },
         });
       } finally {
-        await adapter.close();
+        await adapter.close?.();
       }
 
       // Print detailed findings for vulnerabilities
@@ -147,7 +147,7 @@ export function registerScanCommands(program: Command): void {
           },
         });
       } finally {
-        await adapter.close();
+        await adapter.close?.();
       }
 
       printScanSummary(result);
@@ -228,7 +228,7 @@ export function registerScanCommands(program: Command): void {
           }
         }
       } finally {
-        await adapter.close();
+        await adapter.close?.();
       }
 
       // Use the last pass result as the final result
@@ -291,7 +291,7 @@ export function registerScanCommands(program: Command): void {
           },
         });
       } finally {
-        await adapter.close();
+        await adapter.close?.();
       }
 
       console.log(`Verdict: ${VERDICT_LABELS[finding.verdict]}`);
