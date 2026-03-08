@@ -1,6 +1,5 @@
-import { SEVERITY_ORDER } from '../components/theme.js';
 import type { Finding, ProbeTemplate } from '../types/index.js';
-import { Verdict } from '../types/index.js';
+import { SEVERITY_ORDER, Verdict } from '../types/index.js';
 
 export enum AgentType {
   ToolRich = 'tool_rich',

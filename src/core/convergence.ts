@@ -3,9 +3,8 @@ import type { Observer } from './engine.js';
 import { MemoTable } from './memo.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
-import { SEVERITY_ORDER } from '../components/theme.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
-import { Verdict } from '../types/index.js';
+import { SEVERITY_ORDER, Verdict } from '../types/index.js';
 
 const MAX_PASSES = 4;
 const MAX_CROSSFEED_PROBES = 20;

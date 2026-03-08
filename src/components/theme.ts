@@ -12,10 +12,3 @@ export const SEVERITY_COLOR: Record<Severity, string> = {
   [Severity.Medium]: 'yellow',
   [Severity.Low]: 'gray',
 };
-
-export const SEVERITY_ORDER: Record<Severity, number> = {
-  [Severity.Critical]: 0,
-  [Severity.High]: 1,
-  [Severity.Medium]: 2,
-  [Severity.Low]: 3,
-};

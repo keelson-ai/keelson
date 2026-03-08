@@ -4,10 +4,10 @@ import chalk from 'chalk';
 import type { Command } from 'commander';
 
 import { SEVERITY_COLORS, countBy, printScanSummary, writeReport } from './utils.js';
-import { SEVERITY_ORDER } from '../components/theme.js';
 import { loadProbes } from '../core/templates.js';
 import { scanResultSchema } from '../schemas/scan-result.js';
 import type { ProbeTemplate, ScanResult } from '../types/index.js';
+import { SEVERITY_ORDER } from '../types/index.js';
 
 function formatProbeRow(probe: ProbeTemplate): string {
   const id = chalk.bold(probe.id.padEnd(8));
@@ -98,7 +98,7 @@ export function registerOpsCommands(program: Command): void {
         process.exit(1);
       }
 
-      const result = parsed as ScanResult;
+      const result = validation.data as ScanResult;
 
       printScanSummary(result);
 
