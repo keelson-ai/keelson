@@ -59,6 +59,10 @@ export async function executeProbe(
     if (template.newSession && stepIdx > 0) {
       messages.length = 0;
       userTurnCount = 0;
+      // Segment evidence across sessions: run detection on accumulated evidence
+      // for the prior session, then reset for the new session. This prevents
+      // cross-session data from being evaluated as a single conversation.
+      evidence.length = 0;
     }
 
     // Non-user turns injected into context without sending

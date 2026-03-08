@@ -148,6 +148,15 @@ export interface ScanSummary {
   byCategory: Record<string, number>;
 }
 
+export interface ConversationMemoEntry {
+  probeId: string;
+  category: string;
+  techniques: string[];
+  outcome: string;
+  verdict: Verdict;
+  leakedInfo: string[];
+}
+
 export interface ScanResult {
   scanId: string;
   target: string;
@@ -155,6 +164,7 @@ export interface ScanResult {
   completedAt: string;
   findings: Finding[];
   summary: ScanSummary;
+  memo?: ConversationMemoEntry[];
 }
 
 // ─── Adapter Interfaces ──────────────────────────────────
