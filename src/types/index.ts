@@ -47,6 +47,15 @@ export enum MutationType {
   CaesarCipher = 'caesar_cipher',
 }
 
+export enum ComplianceFramework {
+  OwaspLlmTop10 = 'owasp-llm-top10',
+  NistAiRmf = 'nist-ai-rmf',
+  EuAiAct = 'eu-ai-act',
+  Iso42001 = 'iso-42001',
+  Soc2 = 'soc2',
+  PciDssV4 = 'pci-dss-v4',
+}
+
 export enum ScoringMethod {
   Pattern = 'pattern',
   LlmJudge = 'llm_judge',
@@ -59,17 +68,11 @@ export enum ResponseClass {
   Compliance = 'compliance',
 }
 
-export enum Technique {
-  Authority = 'authority',
-  Roleplay = 'roleplay',
-  TechnicalJargon = 'technical_jargon',
-  SocialEngineering = 'social_engineering',
-  MultiTurnEscalation = 'multi_turn_escalation',
-  EncodingObfuscation = 'encoding_obfuscation',
-  ContextOverflow = 'context_overflow',
-  InstructionInjection = 'instruction_injection',
-  DataExtraction = 'data_extraction',
-  ToolInvocation = 'tool_invocation',
+export enum ScanMode {
+  Sequential = 'sequential',
+  Pipeline = 'pipeline',
+  Smart = 'smart',
+  Convergence = 'convergence',
 }
 
 // ─── Core Data Interfaces ────────────────────────────────
@@ -208,6 +211,12 @@ export interface MutatedProbe {
   mutationDescription: string;
 }
 
+export interface StrategyResult {
+  findings: Finding[];
+  probesExecuted: number;
+  mutationsApplied: number;
+}
+
 // ─── Detection / Judging ─────────────────────────────────
 
 export interface DetectionResult {
@@ -217,8 +226,20 @@ export interface DetectionResult {
   method: ScoringMethod;
 }
 
-// ─── Shared Utilities ────────────────────────────────────
+// ─── Scan Configuration ──────────────────────────────────
 
-export function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+export interface JudgeConfig {
+  provider: string;
+  model: string;
+  apiKey: string;
+}
+
+export interface ScanConfig {
+  target: AdapterConfig;
+  categories?: string[];
+  severities?: Severity[];
+  mode: ScanMode;
+  concurrency?: number;
+  delayMs?: number;
+  judge?: JudgeConfig;
 }

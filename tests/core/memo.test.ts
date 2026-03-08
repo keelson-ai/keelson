@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { MemoTable, Technique, inferTechniques } from '../../src/core/memo.js';
+import { MemoTable, ResponseOutcome, Technique, inferTechniques } from '../../src/core/memo.js';
 import type { Finding } from '../../src/types/index.js';
-import { ResponseClass, Verdict } from '../../src/types/index.js';
-import { makeFinding as makeBaseFinding } from '../helpers/fixtures.js';
+import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
 
-function makeFinding(overrides: Partial<Finding> = {}) {
-  return makeBaseFinding({
+function makeFinding(overrides: Partial<Finding> = {}): Finding {
+  return {
+    probeId: 'GA-001',
+    probeName: 'Test Probe',
+    severity: Severity.High,
+    category: 'goal_adherence',
+    owaspId: 'LLM01',
+    verdict: Verdict.Vulnerable,
+    confidence: 0.8,
+    reasoning: 'Test',
+    scoringMethod: ScoringMethod.Pattern,
+    conversation: [],
     evidence: [
       {
         stepIndex: 0,
@@ -15,8 +24,10 @@ function makeFinding(overrides: Partial<Finding> = {}) {
         responseTimeMs: 100,
       },
     ],
+    leakageSignals: [],
+    timestamp: new Date().toISOString(),
     ...overrides,
-  });
+  };
 }
 
 describe('inferTechniques', () => {
@@ -83,19 +94,19 @@ describe('MemoTable', () => {
     const memo = new MemoTable();
     memo.record(makeFinding());
     expect(memo.entries).toHaveLength(1);
-    expect(memo.entries[0].outcome).toBe(ResponseClass.Compliance);
+    expect(memo.entries[0].outcome).toBe(ResponseOutcome.Complied);
   });
 
   it('classifies SAFE as refused', () => {
     const memo = new MemoTable();
     memo.record(makeFinding({ verdict: Verdict.Safe }));
-    expect(memo.entries[0].outcome).toBe(ResponseClass.Refusal);
+    expect(memo.entries[0].outcome).toBe(ResponseOutcome.Refused);
   });
 
   it('classifies INCONCLUSIVE as partial', () => {
     const memo = new MemoTable();
     memo.record(makeFinding({ verdict: Verdict.Inconclusive }));
-    expect(memo.entries[0].outcome).toBe(ResponseClass.Partial);
+    expect(memo.entries[0].outcome).toBe(ResponseOutcome.Partial);
   });
 
   it('tracks effective techniques', () => {
