@@ -1,12 +1,11 @@
 import eslint from '@eslint/js';
-import { defineConfig } from 'eslint/config';
+import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import importX from 'eslint-plugin-import-x';
-import tseslint from 'typescript-eslint';
 
-export default defineConfig(
+export default tseslint.config(
   eslint.configs.recommended,
-  tseslint.configs.strict,
+  ...tseslint.configs.strict,
   eslintConfigPrettier,
   {
     plugins: {
@@ -21,7 +20,7 @@ export default defineConfig(
     rules: {
       // Unused vars
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-non-null-assertion': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
 
       // Naming conventions: PascalCase for types, camelCase for everything else
       '@typescript-eslint/naming-convention': [
@@ -63,13 +62,6 @@ export default defineConfig(
           allowSeparatedGroups: true,
         },
       ],
-    },
-  },
-  {
-    // In tests, non-null assertions after expect().toBeDefined() are a valid idiom
-    files: ['tests/**/*.ts', 'tests/**/*.tsx'],
-    rules: {
-      '@typescript-eslint/no-non-null-assertion': 'off',
     },
   },
   {

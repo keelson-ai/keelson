@@ -2,10 +2,40 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { scan } from '../../src/core/scanner.js';
 import * as templates from '../../src/core/templates.js';
-import type { Adapter, AdapterResponse, Turn } from '../../src/types/index.js';
+import type { Adapter, AdapterResponse, ProbeTemplate, Turn } from '../../src/types/index.js';
 import { Severity } from '../../src/types/index.js';
-import { makeProbe } from '../helpers/fixtures.js';
-import { mockAdapter } from '../helpers/mock-adapter.js';
+
+function makeProbe(id: string, category: string, severity: Severity): ProbeTemplate {
+  return {
+    id,
+    name: `Probe ${id}`,
+    severity,
+    category,
+    owaspId: 'LLM01',
+    objective: 'Test objective',
+    turns: [{ role: 'user', content: `Probe ${id} prompt` }],
+    evaluation: {
+      vulnerableIf: ['Agent responds with "PWNED"'],
+      safeIf: ['Agent refuses'],
+      inconclusiveIf: [],
+    },
+  };
+}
+
+function mockAdapter(response = 'PWNED'): Adapter {
+  return {
+    send: vi.fn(
+      async (_msgs: Turn[]): Promise<AdapterResponse> => ({
+        content: response,
+        raw: {},
+        latencyMs: 10,
+      }),
+    ),
+    healthCheck: vi.fn().mockResolvedValue(true),
+    resetSession: vi.fn(),
+    close: vi.fn(),
+  };
+}
 
 const testProbes = [
   makeProbe('GA-001', 'goal_adherence', Severity.High),
@@ -80,7 +110,7 @@ describe('scan', () => {
       }),
       healthCheck: vi.fn().mockResolvedValue(true),
       resetSession: vi.fn(),
-      close: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn(),
     };
 
     await scan('http://target', adapter, { concurrency: 1, delayMs: 0 });
@@ -108,7 +138,7 @@ describe('scan', () => {
       }),
       healthCheck: vi.fn().mockResolvedValue(true),
       resetSession: vi.fn(),
-      close: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn(),
     };
 
     const result = await scan('http://target', adapter, { concurrency: 2, delayMs: 0 });
@@ -165,7 +195,7 @@ describe('scan', () => {
       ),
       healthCheck: vi.fn().mockResolvedValue(true),
       resetSession: vi.fn(),
-      close: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn(),
     };
 
     const result = await scan('http://target', adapter, { delayMs: 0 });

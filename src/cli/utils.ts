@@ -30,21 +30,6 @@ export function colorSeverity(severity: Severity): string {
   return colorFn(severity);
 }
 
-export function parseIntSafe(value: string, fallback: number): number {
-  const parsed = parseInt(value, 10);
-  return Number.isNaN(parsed) ? fallback : parsed;
-}
-
-export function parseFloatSafe(value: string, fallback: number): number {
-  const parsed = parseFloat(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
-}
-
-export function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen) + '...';
-}
-
 export function formatFinding(finding: Finding, index: number): string {
   const icon = VERDICT_ICONS[finding.verdict];
   const sev = colorSeverity(finding.severity);
@@ -57,13 +42,16 @@ export function formatFinding(finding: Finding, index: number): string {
   ];
 
   if (finding.reasoning) {
-    lines.push(`    ${chalk.dim('Reasoning:')} ${truncate(finding.reasoning, 200)}`);
+    const truncated = finding.reasoning.length > 200 ? finding.reasoning.slice(0, 200) + '...' : finding.reasoning;
+    lines.push(`    ${chalk.dim('Reasoning:')} ${truncated}`);
   }
 
   if (finding.evidence.length > 0) {
     const ev = finding.evidence[0];
-    lines.push(`    ${chalk.dim('Prompt:')} ${truncate(ev.prompt, 80)}`);
-    lines.push(`    ${chalk.dim('Response:')} ${truncate(ev.response, 80)}`);
+    const promptPreview = ev.prompt.length > 80 ? ev.prompt.slice(0, 80) + '...' : ev.prompt;
+    const responsePreview = ev.response.length > 80 ? ev.response.slice(0, 80) + '...' : ev.response;
+    lines.push(`    ${chalk.dim('Prompt:')} ${promptPreview}`);
+    lines.push(`    ${chalk.dim('Response:')} ${responsePreview}`);
   }
 
   return lines.join('\n');
@@ -110,6 +98,8 @@ function printCategoryBreakdown(summary: ScanSummary): void {
 
 /**
  * Check CI/CD fail gates. Returns the process exit code.
+ * - If failOnVuln is false, always returns 0.
+ * - If failOnVuln is true and vulnerability rate exceeds threshold, returns 1.
  */
 export function checkFailGates(
   vulnerableCount: number,
@@ -134,13 +124,17 @@ export function checkFailGates(
 
 /**
  * Write a scan result to a file in the specified format.
+ * Reporting modules (markdown, SARIF, JUnit) may not exist yet (Track 4 parallel work).
  * Falls back to JSON if the requested format is unavailable.
  */
 export async function writeReport(result: ScanResult, format: string, output: string): Promise<void> {
   await mkdir(dirname(output), { recursive: true });
 
+  // Try to use reporting formatters if available
   if (format !== 'json') {
     try {
+      // Dynamic import — reporting module may not exist yet (Track 4).
+      // Use a variable to prevent TypeScript from resolving the module at compile time.
       const reportingPath = '../reporting/index.js';
       const reporting = (await import(/* webpackIgnore: true */ reportingPath)) as {
         formatReport: (result: ScanResult, format: string) => Promise<string>;
@@ -149,30 +143,13 @@ export async function writeReport(result: ScanResult, format: string, output: st
       await writeFile(output, formatted, 'utf-8');
       console.log(chalk.green(`Report saved: ${output}`));
       return;
-    } catch (err: unknown) {
-      // Distinguish module-not-found from formatter errors
-      const isModuleNotFound =
-        err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ERR_MODULE_NOT_FOUND';
-
-      if (isModuleNotFound) {
-        console.log(chalk.yellow(`Warning: '${format}' formatter not available, falling back to JSON`));
-      } else {
-        console.error(chalk.red(`Error in '${format}' formatter: ${err instanceof Error ? err.message : String(err)}`));
-        console.log(chalk.yellow('Falling back to JSON'));
-      }
+    } catch {
+      // Reporting module not available — fall back to JSON
+      console.log(chalk.yellow(`Warning: '${format}' formatter not available, falling back to JSON`));
     }
   }
 
+  // Default: write JSON
   await writeFile(output, JSON.stringify(result, null, 2), 'utf-8');
   console.log(chalk.green(`Report saved: ${output}`));
-}
-
-/** Count occurrences grouped by a key extractor. */
-export function countBy<T>(items: T[], keyFn: (item: T) => string): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const item of items) {
-    const key = keyFn(item);
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return counts;
 }

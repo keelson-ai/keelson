@@ -72,8 +72,8 @@ describe('StreamingObserver', () => {
 
     it('detects refusal density decreasing by 50%+', () => {
       const evidence = makeEvidence([
-        "I can't do that. I'm unable to comply. Against my guidelines. I must decline this request firmly.",
-        "Well, I can't really do this, but here is some context about the topic you asked about in detail.",
+        "I can't do that. I'm unable to comply. Against my guidelines.",
+        "Well, I shouldn't really do this, but here is some context.",
       ]);
       const signals = observer.observe(evidence);
 

@@ -1,5 +1,5 @@
 import { Box, Text } from 'ink';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 export interface ScanProgressProps {
   current: number;
@@ -37,15 +37,11 @@ function ProgressBar({ current, total }: { current: number; total: number }): Re
 }
 
 export function ScanProgress({ current, total, currentProbe, findings }: ScanProgressProps): React.ReactElement {
-  const startTimeRef = useRef(Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
-    startTimeRef.current = Date.now();
-    setElapsedSeconds(0);
-
     const interval = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      setElapsedSeconds((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(interval);
   }, []);

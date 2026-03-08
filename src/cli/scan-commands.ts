@@ -5,14 +5,10 @@ import {
   checkFailGates,
   colorSeverity,
   formatFinding,
-  parseFloatSafe,
-  parseIntSafe,
   printScanSummary,
-  truncate,
   writeReport,
 } from './utils.js';
 import { createAdapter } from '../adapters/index.js';
-import { runConvergenceScan } from '../core/convergence.js';
 import { executeProbe } from '../core/engine.js';
 import { scan } from '../core/scanner.js';
 import { loadProbes } from '../core/templates.js';
@@ -33,61 +29,33 @@ function buildAdapterConfig(opts: {
   };
 }
 
-interface ScanCommandOpts {
-  target: string;
-  apiKey?: string;
-  model: string;
-  category?: string;
-  delay: string;
-  output?: string;
-  format: string;
-  adapterType: string;
-  failOnVuln: boolean;
-  failThreshold: string;
-  concurrency?: string;
-  maxPasses?: string;
-}
-
-function addCommonScanOptions<T extends Command>(cmd: T): T {
-  return cmd
+export function registerScanCommands(program: Command): void {
+  program
+    .command('scan')
+    .description('Run a full security scan against an AI agent endpoint')
     .requiredOption('--target <url>', 'Target endpoint URL')
     .option('--api-key <key>', 'API key for authentication')
     .option('--model <model>', 'Model name for requests', 'default')
+    .option('--category <category>', 'Filter by category')
     .option('--delay <ms>', 'Milliseconds between requests', '1500')
     .option('--output <path>', 'Report output path')
     .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
     .option('--adapter-type <type>', 'Adapter type', 'openai')
     .option('--fail-on-vuln', 'Exit with code 1 if vulnerabilities found', false)
-    .option('--fail-threshold <rate>', 'Vulnerability rate threshold (0.0-1.0)', '0.0') as T;
-}
-
-async function finalizeScan(result: ScanResult, opts: ScanCommandOpts): Promise<void> {
-  printScanSummary(result);
-
-  if (opts.output) {
-    await writeReport(result, opts.format, opts.output);
-  }
-
-  const exitCode = checkFailGates(
-    result.summary.vulnerable,
-    result.summary.total,
-    opts.failOnVuln,
-    parseFloatSafe(opts.failThreshold, 0),
-  );
-  if (exitCode !== 0) {
-    process.exit(exitCode);
-  }
-}
-
-export function registerScanCommands(program: Command): void {
-  addCommonScanOptions(program.command('scan').description('Run a full security scan against an AI agent endpoint'))
-    .option('--category <category>', 'Filter by category')
+    .option('--fail-threshold <rate>', 'Vulnerability rate threshold (0.0-1.0)', '0.0')
     .option('--concurrency <n>', 'Max concurrent probes', '1')
-    .action(async (opts: ScanCommandOpts) => {
-      const adapter = createAdapter(buildAdapterConfig(opts));
+    .action(async (opts) => {
+      const adapterConfig = buildAdapterConfig({
+        target: opts.target,
+        apiKey: opts.apiKey,
+        model: opts.model,
+        adapterType: opts.adapterType,
+      });
+      const adapter = createAdapter(adapterConfig);
+
       const categories = opts.category ? [opts.category] : undefined;
-      const delayMs = parseIntSafe(opts.delay, 1500);
-      const concurrency = parseIntSafe(opts.concurrency ?? '1', 1);
+      const delayMs = parseInt(opts.delay, 10);
+      const concurrency = parseInt(opts.concurrency, 10);
 
       console.log('\nKeelson Security Scan');
       console.log(`Target: ${opts.target}`);
@@ -96,6 +64,8 @@ export function registerScanCommands(program: Command): void {
         console.log(`Category: ${opts.category}`);
       }
       console.log();
+
+      let findingIndex = 0;
 
       let result: ScanResult;
       try {
@@ -119,51 +89,109 @@ export function registerScanCommands(program: Command): void {
       const vulnFindings = result.findings.filter((f) => f.verdict === Verdict.Vulnerable);
       if (vulnFindings.length > 0) {
         console.log('\nVulnerabilities Found:');
-        for (const [i, f] of vulnFindings.entries()) {
-          console.log(formatFinding(f, i));
+        for (const f of vulnFindings) {
+          console.log(formatFinding(f, findingIndex++));
         }
       }
 
-      await finalizeScan(result, opts);
+      printScanSummary(result);
+
+      if (opts.output) {
+        await writeReport(result, opts.format, opts.output);
+      }
+
+      const exitCode = checkFailGates(
+        result.summary.vulnerable,
+        result.summary.total,
+        opts.failOnVuln,
+        parseFloat(opts.failThreshold),
+      );
+      if (exitCode !== 0) {
+        process.exit(exitCode);
+      }
     });
 
-  addCommonScanOptions(
-    program.command('smart-scan').description('Adaptive scan: recon, classify, select relevant probes, execute'),
-  ).action(async (opts: ScanCommandOpts) => {
-    const adapter = createAdapter(buildAdapterConfig(opts));
-    const delayMs = parseIntSafe(opts.delay, 2000);
-
-    console.log('\nKeelson Smart Scan');
-    console.log(`Target: ${opts.target}`);
-    console.log(`Model: ${opts.model}`);
-    console.log();
-
-    let result: ScanResult;
-    try {
-      result = await scan(opts.target, adapter, {
-        delayMs,
-        reorder: true,
-        onFinding: (finding, current, total) => {
-          const progress = `[${current}/${total}]`;
-          console.log(`  ${progress} ${finding.probeId}: ${finding.verdict}`);
-        },
+  program
+    .command('smart-scan')
+    .description('Adaptive scan: recon, classify, select relevant probes, execute')
+    .requiredOption('--target <url>', 'Target endpoint URL')
+    .option('--api-key <key>', 'API key for authentication')
+    .option('--model <model>', 'Model name for requests', 'default')
+    .option('--delay <ms>', 'Milliseconds between requests', '2000')
+    .option('--output <path>', 'Report output path')
+    .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
+    .option('--adapter-type <type>', 'Adapter type', 'openai')
+    .option('--fail-on-vuln', 'Exit with code 1 if vulnerabilities found', false)
+    .option('--fail-threshold <rate>', 'Vulnerability rate threshold (0.0-1.0)', '0.0')
+    .action(async (opts) => {
+      const adapterConfig = buildAdapterConfig({
+        target: opts.target,
+        apiKey: opts.apiKey,
+        model: opts.model,
+        adapterType: opts.adapterType,
       });
-    } finally {
-      await adapter.close();
-    }
+      const adapter = createAdapter(adapterConfig);
 
-    await finalizeScan(result, opts);
-  });
+      console.log('\nKeelson Smart Scan');
+      console.log(`Target: ${opts.target}`);
+      console.log(`Model: ${opts.model}`);
+      console.log();
 
-  addCommonScanOptions(
-    program.command('convergence-scan').description('Cross-category feedback loop with iterative passes'),
-  )
+      // Smart scan uses all probes ordered by effectiveness, reordering as it goes
+      let result: ScanResult;
+      try {
+        result = await scan(opts.target, adapter, {
+          delayMs: parseInt(opts.delay, 10),
+          reorder: true,
+          onFinding: (finding, current, total) => {
+            const progress = `[${current}/${total}]`;
+            console.log(`  ${progress} ${finding.probeId}: ${finding.verdict}`);
+          },
+        });
+      } finally {
+        await adapter.close();
+      }
+
+      printScanSummary(result);
+
+      if (opts.output) {
+        await writeReport(result, opts.format, opts.output);
+      }
+
+      const exitCode = checkFailGates(
+        result.summary.vulnerable,
+        result.summary.total,
+        opts.failOnVuln,
+        parseFloat(opts.failThreshold),
+      );
+      if (exitCode !== 0) {
+        process.exit(exitCode);
+      }
+    });
+
+  program
+    .command('convergence-scan')
+    .description('Cross-category feedback loop with iterative passes')
+    .requiredOption('--target <url>', 'Target endpoint URL')
+    .option('--api-key <key>', 'API key for authentication')
+    .option('--model <model>', 'Model name for requests', 'default')
     .option('--category <category>', 'Initial category filter')
+    .option('--delay <ms>', 'Milliseconds between requests', '1500')
+    .option('--output <path>', 'Report output path')
+    .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
+    .option('--adapter-type <type>', 'Adapter type', 'openai')
+    .option('--fail-on-vuln', 'Exit with code 1 if vulnerabilities found', false)
+    .option('--fail-threshold <rate>', 'Vulnerability rate threshold (0.0-1.0)', '0.0')
     .option('--max-passes <n>', 'Maximum convergence passes', '4')
-    .action(async (opts: ScanCommandOpts) => {
-      const adapter = createAdapter(buildAdapterConfig(opts));
-      const maxPasses = Math.max(1, parseIntSafe(opts.maxPasses ?? '4', 4));
-      const delayMs = parseIntSafe(opts.delay, 1500);
+    .action(async (opts) => {
+      const adapterConfig = buildAdapterConfig({
+        target: opts.target,
+        apiKey: opts.apiKey,
+        model: opts.model,
+        adapterType: opts.adapterType,
+      });
+      const adapter = createAdapter(adapterConfig);
+      const maxPasses = parseInt(opts.maxPasses, 10);
 
       console.log('\nKeelson Convergence Scan');
       console.log(`Target: ${opts.target}`);
@@ -174,73 +202,130 @@ export function registerScanCommands(program: Command): void {
       }
       console.log();
 
-      let result: ScanResult;
+      // Run multiple convergence passes
+      const allFindings: ScanResult[] = [];
       try {
-        result = await runConvergenceScan(opts.target, adapter, {
-          category: opts.category,
-          maxPasses,
-          delayMs,
-          onFinding: (finding, current, total) => {
-            console.log(`    [${current}/${total}] ${finding.probeId}: ${finding.verdict}`);
-          },
-          onPass: (passNumber, description) => {
-            console.log(`  PASS ${passNumber}  ${description}`);
-          },
-        });
+        for (let pass = 1; pass <= maxPasses; pass++) {
+          console.log(`  PASS ${pass}  Running probes...`);
+
+          const categories = opts.category ? [opts.category] : undefined;
+          const passResult = await scan(opts.target, adapter, {
+            categories,
+            delayMs: parseInt(opts.delay, 10),
+            reorder: true,
+            onFinding: (finding, current, total) => {
+              console.log(`    [${current}/${total}] ${finding.probeId}: ${finding.verdict}`);
+            },
+          });
+
+          allFindings.push(passResult);
+
+          const newVulns = passResult.summary.vulnerable;
+          console.log(`  PASS ${pass}  Complete: ${newVulns} vulnerabilities found`);
+
+          // Converge: stop if no new vulnerabilities were found
+          if (newVulns === 0 && pass > 1) {
+            console.log('  Converged: no new vulnerabilities in this pass.');
+            break;
+          }
+        }
       } finally {
         await adapter.close();
       }
 
-      await finalizeScan(result, opts);
+      // Use the last pass result as the final result
+      const result = allFindings[allFindings.length - 1];
+      printScanSummary(result);
+
+      if (opts.output) {
+        await writeReport(result, opts.format, opts.output);
+      }
+
+      const exitCode = checkFailGates(
+        result.summary.vulnerable,
+        result.summary.total,
+        opts.failOnVuln,
+        parseFloat(opts.failThreshold),
+      );
+      if (exitCode !== 0) {
+        process.exit(exitCode);
+      }
     });
 
-  const probeAction = async (opts: {
-    target: string;
-    probeId: string;
-    apiKey?: string;
-    model: string;
-    adapterType: string;
-  }) => {
-    const adapter = createAdapter(buildAdapterConfig(opts));
-
-    const probes = await loadProbes();
-    const template = probes.find((p) => p.id === opts.probeId);
-    if (!template) {
-      console.error(`Probe ${opts.probeId} not found`);
-      process.exit(1);
-    }
-
-    console.log(`\n${template.id}: ${template.name}`);
-    console.log(`Severity: ${colorSeverity(template.severity)} | Category: ${template.category}`);
-    console.log();
-
-    let finding;
-    try {
-      finding = await executeProbe(template, adapter, {
-        onTurn: (stepIndex, prompt, response) => {
-          console.log(`  Step ${stepIndex}:`);
-          console.log(`  Prompt: ${truncate(prompt, 150)}`);
-          console.log(`  Response: ${truncate(response, 200)}`);
-          console.log();
-        },
-      });
-    } finally {
-      await adapter.close();
-    }
-
-    console.log(`Verdict: ${VERDICT_LABELS[finding.verdict]}`);
-    console.log(`Confidence: ${Math.round(finding.confidence * 100)}%`);
-    console.log(`Reasoning: ${finding.reasoning}`);
-  };
-
-  program
+  const testCmd = program
     .command('test')
-    .alias('probe')
     .description('Run a single probe against a target')
     .requiredOption('--target <url>', 'Target endpoint URL')
     .requiredOption('--probe-id <id>', 'Probe ID (e.g., GA-001)')
     .option('--api-key <key>', 'API key for authentication')
     .option('--model <model>', 'Model name for requests', 'default')
     .option('--adapter-type <type>', 'Adapter type', 'openai')
-    .action(probeAction);
+    .action(async (opts) => {
+      const adapterConfig = buildAdapterConfig({
+        target: opts.target,
+        apiKey: opts.apiKey,
+        model: opts.model,
+        adapterType: opts.adapterType,
+      });
+      const adapter = createAdapter(adapterConfig);
+
+      const probes = await loadProbes();
+      const template = probes.find((p) => p.id === opts.probeId);
+      if (!template) {
+        console.error(`Probe ${opts.probeId} not found`);
+        process.exit(1);
+      }
+
+      console.log(`\n${template.id}: ${template.name}`);
+      console.log(`Severity: ${colorSeverity(template.severity)} | Category: ${template.category}`);
+      console.log();
+
+      let finding;
+      try {
+        finding = await executeProbe(template, adapter, {
+          onTurn: (stepIndex, prompt, response) => {
+            console.log(`  Step ${stepIndex}:`);
+            const promptPreview = prompt.length > 150 ? prompt.slice(0, 150) + '...' : prompt;
+            const responsePreview = response.length > 200 ? response.slice(0, 200) + '...' : response;
+            console.log(`  Prompt: ${promptPreview}`);
+            console.log(`  Response: ${responsePreview}`);
+            console.log();
+          },
+        });
+      } finally {
+        await adapter.close();
+      }
+
+      console.log(`Verdict: ${VERDICT_LABELS[finding.verdict]}`);
+      console.log(`Confidence: ${Math.round(finding.confidence * 100)}%`);
+      console.log(`Reasoning: ${finding.reasoning}`);
+    });
+
+  // 'probe' is an alias for 'test'
+  program
+    .command('probe')
+    .description('Run a single probe (alias for test)')
+    .requiredOption('--target <url>', 'Target endpoint URL')
+    .requiredOption('--probe-id <id>', 'Probe ID (e.g., GA-001)')
+    .option('--api-key <key>', 'API key for authentication')
+    .option('--model <model>', 'Model name for requests', 'default')
+    .option('--adapter-type <type>', 'Adapter type', 'openai')
+    .action(async (opts) => {
+      // Delegate to the test command action
+      await testCmd.parseAsync(
+        [
+          'test',
+          '--target',
+          opts.target,
+          '--probe-id',
+          opts.probeId,
+          ...(opts.apiKey ? ['--api-key', opts.apiKey] : []),
+          '--model',
+          opts.model,
+          '--adapter-type',
+          opts.adapterType,
+        ],
+        { from: 'user' },
+      );
+    });
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseProbe } from '../../src/schemas/probe.js';
+import { parseProbe, probeSchema } from '../../src/schemas/probe.js';
 import { Severity } from '../../src/types/index.js';
 
 const VALID_RAW_PROBE = {
@@ -27,28 +27,31 @@ const VALID_RAW_PROBE = {
   },
 };
 
-describe('parseProbe', () => {
-  it('parses a valid probe', () => {
-    const probe = parseProbe(VALID_RAW_PROBE);
-    expect(probe.id).toBe('GA-001');
-    expect(probe.name).toBe('Direct Instruction Override');
+describe('probeSchema', () => {
+  it('validates a correct probe', () => {
+    const result = probeSchema.safeParse(VALID_RAW_PROBE);
+    expect(result.success).toBe(true);
   });
 
   it('rejects missing required fields', () => {
     const { id: _, ...noId } = VALID_RAW_PROBE;
-    expect(() => parseProbe(noId)).toThrow();
+    const result = probeSchema.safeParse(noId);
+    expect(result.success).toBe(false);
   });
 
   it('rejects invalid ID format', () => {
-    expect(() => parseProbe({ ...VALID_RAW_PROBE, id: 'bad-id' })).toThrow();
+    const result = probeSchema.safeParse({ ...VALID_RAW_PROBE, id: 'bad-id' });
+    expect(result.success).toBe(false);
   });
 
   it('rejects empty turns array', () => {
-    expect(() => parseProbe({ ...VALID_RAW_PROBE, turns: [] })).toThrow();
+    const result = probeSchema.safeParse({ ...VALID_RAW_PROBE, turns: [] });
+    expect(result.success).toBe(false);
   });
 
   it('rejects invalid severity', () => {
-    expect(() => parseProbe({ ...VALID_RAW_PROBE, severity: 'extreme' })).toThrow();
+    const result = probeSchema.safeParse({ ...VALID_RAW_PROBE, severity: 'extreme' });
+    expect(result.success).toBe(false);
   });
 
   it('defaults inconclusive_if to empty array', () => {
@@ -59,10 +62,12 @@ describe('parseProbe', () => {
         safe_if: ['test'],
       },
     };
-    const probe = parseProbe(noInconclusive);
-    expect(probe.evaluation.inconclusiveIf).toEqual([]);
+    const result = probeSchema.parse(noInconclusive);
+    expect(result.evaluation.inconclusive_if).toEqual([]);
   });
+});
 
+describe('parseProbe', () => {
   it('converts snake_case to camelCase', () => {
     const probe = parseProbe(VALID_RAW_PROBE, 'probes/goal-adherence/GA-001.yaml');
 

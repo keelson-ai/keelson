@@ -32,4 +32,4 @@ export type {
   TreeOptions,
   TreeResult,
 } from './types.js';
-export { delay, Technique } from '../types/index.js';
+export { Technique } from './types.js';
