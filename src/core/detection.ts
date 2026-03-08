@@ -130,8 +130,8 @@ const DANGEROUS_TOOL_NAME_RE = (() => {
   const escaped = DANGEROUS_TOOL_PREFIXES.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const alt = escaped.join('|');
   return [
-    new RegExp(`["']name["']\\s*:\\s*["'](${alt})(?:[_.\s\\-"']|$)`, 'i'),
-    new RegExp(`["']function["']\\s*:\\s*["'](${alt})(?:[_.\s\\-"']|$)`, 'i'),
+    new RegExp(`["']name["']\\s*:\\s*["'](${alt})(?:[_.\\s\\-"']|$)`, 'i'),
+    new RegExp(`["']function["']\\s*:\\s*["'](${alt})(?:[_.\\s\\-"']|$)`, 'i'),
   ];
 })();
 

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { AgentType, Priority, adaptPlan, classifyTarget, selectProbes } from '../../src/core/strategist.js';
 import type { ReconResponse, TargetProfile } from '../../src/core/strategist.js';
-import type { Finding, ProbeTemplate } from '../../src/types/index.js';
-import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
+import { Severity, Verdict } from '../../src/types/index.js';
+import { makeFinding as makeBaseFinding, makeProbe } from '../helpers/fixtures.js';
 
 function makeRecon(probeType: string, response: string): ReconResponse {
   return { probeType, prompt: 'test', response };
@@ -20,35 +20,13 @@ function makeProfile(overrides: Partial<TargetProfile> = {}): TargetProfile {
   };
 }
 
-function makeProbe(id: string, category: string, severity: Severity = Severity.High): ProbeTemplate {
-  return {
-    id,
-    name: `Probe ${id}`,
-    severity,
-    category,
-    owaspId: 'LLM01',
-    objective: 'Test',
-    turns: [{ role: 'user', content: 'test' }],
-    evaluation: { vulnerableIf: ['test'], safeIf: ['test'], inconclusiveIf: [] },
-  };
-}
-
-function makeFinding(category: string, verdict: Verdict): Finding {
-  return {
+function makeFinding(category: string, verdict: Verdict) {
+  return makeBaseFinding({
     probeId: 'T-001',
     probeName: 'Test',
-    severity: Severity.High,
     category,
-    owaspId: 'LLM01',
     verdict,
-    confidence: 0.8,
-    reasoning: 'test',
-    scoringMethod: ScoringMethod.Pattern,
-    conversation: [],
-    evidence: [{ stepIndex: 0, prompt: 'test', response: 'test', responseTimeMs: 100 }],
-    leakageSignals: [],
-    timestamp: new Date().toISOString(),
-  };
+  });
 }
 
 describe('classifyTarget', () => {
