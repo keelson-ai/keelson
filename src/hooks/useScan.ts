@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 
-import { scan } from '../core/scanner.js';
-import type { ScanOptions } from '../core/scanner.js';
+import { scan } from '../core/index.js';
+import type { ScanOptions } from '../core/index.js';
 import type { Adapter, Finding, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 

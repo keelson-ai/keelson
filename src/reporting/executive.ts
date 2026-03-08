@@ -5,9 +5,8 @@
  * severity breakdown, PoC evidence, and prioritized recommendations.
  */
 
-import { SEVERITY_ORDER } from '../core/convergence.js';
 import type { Finding, ScanResult } from '../types/index.js';
-import { Severity, Verdict } from '../types/index.js';
+import { SEVERITY_ORDER, Severity, Verdict } from '../types/index.js';
 
 // ─── Interfaces ─────────────────────────────────────────
 

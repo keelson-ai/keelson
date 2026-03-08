@@ -20,22 +20,22 @@ describe('registerScanCommands', () => {
     const program = new Command();
     registerScanCommands(program);
 
-    const scanCmd = program.commands.find((c) => c.name() === 'scan');
+    const scanCmd = program.commands.find((c) => c.name() === 'scan') as Command;
     expect(scanCmd).toBeDefined();
 
-    const targetOpt = scanCmd!.options.find((o) => o.long === '--target');
+    const targetOpt = scanCmd.options.find((o) => o.long === '--target');
     expect(targetOpt).toBeDefined();
-    expect(targetOpt!.required).toBe(true);
+    expect((targetOpt as typeof targetOpt & { required: boolean }).required).toBe(true);
   });
 
   it('scan command has expected options', () => {
     const program = new Command();
     registerScanCommands(program);
 
-    const scanCmd = program.commands.find((c) => c.name() === 'scan');
+    const scanCmd = program.commands.find((c) => c.name() === 'scan') as Command;
     expect(scanCmd).toBeDefined();
 
-    const optionLongs = scanCmd!.options.map((o) => o.long);
+    const optionLongs = scanCmd.options.map((o) => o.long);
     expect(optionLongs).toContain('--api-key');
     expect(optionLongs).toContain('--model');
     expect(optionLongs).toContain('--category');
@@ -52,37 +52,37 @@ describe('registerScanCommands', () => {
     const program = new Command();
     registerScanCommands(program);
 
-    const testCmd = program.commands.find((c) => c.name() === 'test');
+    const testCmd = program.commands.find((c) => c.name() === 'test') as Command;
     expect(testCmd).toBeDefined();
 
-    const targetOpt = testCmd!.options.find((o) => o.long === '--target');
-    const probeIdOpt = testCmd!.options.find((o) => o.long === '--probe-id');
+    const targetOpt = testCmd.options.find((o) => o.long === '--target');
+    const probeIdOpt = testCmd.options.find((o) => o.long === '--probe-id');
     expect(targetOpt).toBeDefined();
-    expect(targetOpt!.required).toBe(true);
+    expect((targetOpt as typeof targetOpt & { required: boolean }).required).toBe(true);
     expect(probeIdOpt).toBeDefined();
-    expect(probeIdOpt!.required).toBe(true);
+    expect((probeIdOpt as typeof probeIdOpt & { required: boolean }).required).toBe(true);
   });
 
   it('smart-scan command has required --target option', () => {
     const program = new Command();
     registerScanCommands(program);
 
-    const smartCmd = program.commands.find((c) => c.name() === 'smart-scan');
+    const smartCmd = program.commands.find((c) => c.name() === 'smart-scan') as Command;
     expect(smartCmd).toBeDefined();
 
-    const targetOpt = smartCmd!.options.find((o) => o.long === '--target');
+    const targetOpt = smartCmd.options.find((o) => o.long === '--target');
     expect(targetOpt).toBeDefined();
-    expect(targetOpt!.required).toBe(true);
+    expect((targetOpt as typeof targetOpt & { required: boolean }).required).toBe(true);
   });
 
   it('convergence-scan command has max-passes option', () => {
     const program = new Command();
     registerScanCommands(program);
 
-    const convCmd = program.commands.find((c) => c.name() === 'convergence-scan');
+    const convCmd = program.commands.find((c) => c.name() === 'convergence-scan') as Command;
     expect(convCmd).toBeDefined();
 
-    const maxPassesOpt = convCmd!.options.find((o) => o.long === '--max-passes');
+    const maxPassesOpt = convCmd.options.find((o) => o.long === '--max-passes');
     expect(maxPassesOpt).toBeDefined();
   });
 });

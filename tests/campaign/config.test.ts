@@ -67,7 +67,7 @@ target:
 
     expect(config.campaign.trialsPerProbe).toBe(1);
     expect(config.campaign.confidenceLevel).toBe(0.95);
-    expect(config.campaign.delayMs).toBe(2000);
+    expect(config.campaign.delayMs).toBe(1500);
     expect(config.target.adapterType).toBe('openai');
   });
 

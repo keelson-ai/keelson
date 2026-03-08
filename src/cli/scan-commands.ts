@@ -9,9 +9,7 @@ import {
   writeReport,
 } from './utils.js';
 import { createAdapter } from '../adapters/index.js';
-import { executeProbe } from '../core/engine.js';
-import { scan } from '../core/scanner.js';
-import { loadProbes } from '../core/templates.js';
+import { executeProbe, loadProbes, scan } from '../core/index.js';
 import type { AdapterConfig, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 

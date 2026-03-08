@@ -106,7 +106,7 @@ export async function executeProbe(
 
   let detection: DetectionResult;
   if (judge) {
-    const judgeResult = await judgeResponse(template, evidence, judge);
+    const judgeResult = await judgeResponse(template, allEvidence, judge);
     detection = combinedDetect(patternResult, judgeResult);
   } else {
     detection = patternResult;
