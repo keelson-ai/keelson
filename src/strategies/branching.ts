@@ -119,7 +119,7 @@ export async function executeBranchingProbe(
   template: ProbeTemplate,
   options: BranchingOptions,
 ): Promise<ConversationNode> {
-  const { target, prober, model, evaluate } = options;
+  const { target, prober, evaluate } = options;
   const maxDepth = options.maxDepth ?? 3;
   const delayMs = options.delayMs ?? 1000;
 
@@ -157,7 +157,7 @@ export async function executeBranchingProbe(
 
     // Generate follow-ups
     const followUps = prober
-      ? await generateDynamicFollowups(prober, model ?? 'default', template.objective, response.content, responseClass)
+      ? await generateDynamicFollowups(prober, template.objective, response.content, responseClass)
       : (DEFAULT_FOLLOWUPS[responseClass] ?? []);
 
     // Explore branches
@@ -179,7 +179,6 @@ export async function executeBranchingProbe(
 
 async function generateDynamicFollowups(
   prober: Adapter,
-  model: string,
   objective: string,
   lastResponse: string,
   responseClass: string,

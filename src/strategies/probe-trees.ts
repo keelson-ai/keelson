@@ -2,7 +2,7 @@ import { classifyResponse } from './branching.js';
 import { Technique, delay } from './types.js';
 import type { MemoEntry, ProbeTree, TreeBranch, TreeOptions, TreeResult } from './types.js';
 import { ScoringMethod } from '../types/index.js';
-import type { EvidenceItem, Finding, Turn, Verdict } from '../types/index.js';
+import type { EvidenceItem, Finding, ProbeTemplate, Turn, Verdict } from '../types/index.js';
 
 // ─── Tree execution ──────────────────────────────────────────────
 
@@ -17,6 +17,9 @@ export async function executeProbeTree(tree: ProbeTree, options: TreeOptions): P
   const path: Array<{ prompt: string; response: string; classification: string }> = [];
   const conversation: Turn[] = [];
 
+  // Build the ProbeTemplate once for all evaluations
+  const probeTemplate = treeToProbeTemplate(tree);
+
   // Send root prompt
   conversation.push({ role: 'user', content: tree.rootPrompt });
   const rootResponse = await target.send(conversation);
@@ -29,23 +32,7 @@ export async function executeProbeTree(tree: ProbeTree, options: TreeOptions): P
   const rootEvidence: EvidenceItem[] = [
     { stepIndex: 0, prompt: tree.rootPrompt, response: rootResponse.content, responseTimeMs: rootResponse.latencyMs },
   ];
-  const rootEval = await evaluate(
-    {
-      id: tree.id,
-      name: tree.name,
-      severity: tree.severity as never,
-      category: tree.category,
-      owaspId: tree.owasp,
-      objective: tree.objective,
-      turns: [],
-      evaluation: {
-        vulnerableIf: tree.evalCriteria.vulnerableIf,
-        safeIf: tree.evalCriteria.safeIf,
-        inconclusiveIf: [],
-      },
-    },
-    rootEvidence,
-  );
+  const rootEval = await evaluate(probeTemplate, rootEvidence);
 
   if (rootEval.verdict === ('VULNERABLE' as Verdict)) {
     return buildTreeResult(tree, path, true, rootEval);
@@ -71,23 +58,7 @@ export async function executeProbeTree(tree: ProbeTree, options: TreeOptions): P
     const evidence: EvidenceItem[] = [
       { stepIndex: depth, prompt: branch.prompt, response: response.content, responseTimeMs: response.latencyMs },
     ];
-    const evalResult = await evaluate(
-      {
-        id: tree.id,
-        name: tree.name,
-        severity: tree.severity as never,
-        category: tree.category,
-        owaspId: tree.owasp,
-        objective: tree.objective,
-        turns: [],
-        evaluation: {
-          vulnerableIf: tree.evalCriteria.vulnerableIf,
-          safeIf: tree.evalCriteria.safeIf,
-          inconclusiveIf: [],
-        },
-      },
-      evidence,
-    );
+    const evalResult = await evaluate(probeTemplate, evidence);
 
     if (evalResult.verdict === ('VULNERABLE' as Verdict)) {
       return buildTreeResult(tree, path, true, evalResult);
@@ -102,25 +73,26 @@ export async function executeProbeTree(tree: ProbeTree, options: TreeOptions): P
   const finalEvidence: EvidenceItem[] = [
     { stepIndex: path.length - 1, prompt: lastStep.prompt, response: lastStep.response, responseTimeMs: 0 },
   ];
-  const finalEval = await evaluate(
-    {
-      id: tree.id,
-      name: tree.name,
-      severity: tree.severity as never,
-      category: tree.category,
-      owaspId: tree.owasp,
-      objective: tree.objective,
-      turns: [],
-      evaluation: {
-        vulnerableIf: tree.evalCriteria.vulnerableIf,
-        safeIf: tree.evalCriteria.safeIf,
-        inconclusiveIf: [],
-      },
-    },
-    finalEvidence,
-  );
+  const finalEval = await evaluate(probeTemplate, finalEvidence);
 
   return buildTreeResult(tree, path, false, finalEval);
+}
+
+function treeToProbeTemplate(tree: ProbeTree): ProbeTemplate {
+  return {
+    id: tree.id,
+    name: tree.name,
+    severity: tree.severity as never,
+    category: tree.category,
+    owaspId: tree.owasp,
+    objective: tree.objective,
+    turns: [],
+    evaluation: {
+      vulnerableIf: tree.evalCriteria.vulnerableIf,
+      safeIf: tree.evalCriteria.safeIf,
+      inconclusiveIf: [],
+    },
+  };
 }
 
 function selectBranch(branches: TreeBranch[], memo: MemoEntry[] | undefined, category: string): TreeBranch {

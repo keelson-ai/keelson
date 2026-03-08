@@ -99,7 +99,6 @@ export interface ConversationNode {
 export interface BranchingOptions {
   target: Adapter;
   prober?: Adapter;
-  model?: string;
   maxDepth?: number;
   delayMs?: number;
   evaluate: EvaluateFn;
