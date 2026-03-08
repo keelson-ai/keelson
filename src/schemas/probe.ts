@@ -18,7 +18,7 @@ const effectivenessSchema = z.object({
   times_tested: z.number().int().min(0),
 });
 
-export const probeSchema = z.object({
+const probeSchema = z.object({
   id: z.string().regex(/^[A-Z]{2}-\d{3}$/, 'ID must match XX-NNN format'),
   name: z.string().min(1),
   severity: z.enum(['critical', 'high', 'medium', 'low']),
@@ -31,8 +31,6 @@ export const probeSchema = z.object({
   new_session: z.boolean().optional(),
   note: z.string().optional(),
 });
-
-export type RawProbe = z.infer<typeof probeSchema>;
 
 const SEVERITY_MAP: Record<string, Severity> = {
   critical: 'Critical' as Severity,

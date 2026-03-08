@@ -7,6 +7,13 @@ export enum Severity {
   Low = 'Low',
 }
 
+export const SEVERITY_ORDER: Record<Severity, number> = {
+  [Severity.Critical]: 0,
+  [Severity.High]: 1,
+  [Severity.Medium]: 2,
+  [Severity.Low]: 3,
+};
+
 export enum Verdict {
   Vulnerable = 'VULNERABLE',
   Safe = 'SAFE',

@@ -20,7 +20,7 @@ const leakageSignalSchema = z.object({
 });
 
 const scanResultFindingSchema = findingSchema.extend({
-  leakage_signals: z.array(leakageSignalSchema).default([]),
+  leakageSignals: z.array(leakageSignalSchema).default([]),
 });
 
 export const scanResultSchema = z.object({
@@ -32,5 +32,3 @@ export const scanResultSchema = z.object({
   summary: scanSummarySchema,
   memo: z.array(z.unknown()).optional(),
 });
-
-export type RawScanResult = z.infer<typeof scanResultSchema>;

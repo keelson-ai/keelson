@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { SEVERITY_COLOR, SEVERITY_ORDER, VERDICT_ICON } from '../../src/components/theme.js';
-import { Severity, Verdict } from '../../src/types/index.js';
+import { SEVERITY_COLOR, VERDICT_ICON } from '../../src/components/theme.js';
+import { SEVERITY_ORDER, Severity, Verdict } from '../../src/types/index.js';
 
 describe('theme constants', () => {
   it('VERDICT_ICON has entries for all verdicts', () => {
