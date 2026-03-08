@@ -200,7 +200,7 @@ export function registerScanCommands(program: Command): void {
 
           console.log(`  PASS ${pass}  Complete: ${newVulns} new vulnerabilities found`);
 
-          if (newVulns === 0 && pass > 1) {
+          if (newVulns === 0) {
             console.log('  Converged: no new vulnerabilities in this pass.');
             break;
           }
