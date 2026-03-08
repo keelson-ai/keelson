@@ -261,19 +261,19 @@ const OWASP_NAME_TO_ID: Record<string, string> = Object.fromEntries(
 
 // ─── Helpers ────────────────────────────────────────────
 
-/** Higher = worse verdict. Used to keep the worst finding per probe. */
-function verdictPriority(verdict: Verdict): number {
-  if (verdict === Verdict.Vulnerable) return 2;
-  if (verdict === Verdict.Inconclusive) return 1;
-  return 0;
-}
-
 function controlStatus(findings: Finding[]): 'pass' | 'fail' | 'partial' {
   if (findings.length === 0) return 'pass';
   if (findings.some((f) => f.verdict === Verdict.Vulnerable)) return 'fail';
   if (findings.every((f) => f.verdict === Verdict.Safe)) return 'pass';
   return 'partial';
 }
+
+/** Verdict severity ranking: higher is worse. */
+const VERDICT_SEVERITY: Record<Verdict, number> = {
+  [Verdict.Safe]: 0,
+  [Verdict.Inconclusive]: 1,
+  [Verdict.Vulnerable]: 2,
+};
 
 function matchFindingsToControl(
   findings: Finding[],
@@ -294,7 +294,7 @@ function matchFindingsToControl(
 
     if (matchesByCategory || matchesByPrefix || matchesByOwasp) {
       const existing = bestByProbe.get(f.probeId);
-      if (!existing || verdictPriority(f.verdict) > verdictPriority(existing.verdict)) {
+      if (!existing || VERDICT_SEVERITY[f.verdict] > VERDICT_SEVERITY[existing.verdict]) {
         bestByProbe.set(f.probeId, f);
       }
     }
