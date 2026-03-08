@@ -115,7 +115,7 @@ _FOLLOW_UPS: dict[ResponseClass, list[str]] = {
 }
 
 
-async def execute_branching_attack(
+async def execute_branching_probe(
     template: ProbeTemplate,
     adapter: BaseAdapter,
     model: str = "default",

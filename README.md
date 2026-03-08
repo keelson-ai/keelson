@@ -461,7 +461,7 @@ keelson/
 │   ├── adaptive/                   # Mutation engine + orchestrators
 │   │   ├── mutations.py            # 13 programmatic + LLM mutations
 │   │   ├── branching.py            # Conversation tree exploration
-│   │   ├── attack_tree.py          # Probe tree data structures
+│   │   ├── probe_tree.py           # Probe tree data structures
 │   │   ├── pair.py                 # PAIR iterative refinement orchestrator
 │   │   ├── crescendo.py            # Crescendo gradual escalation orchestrator
 │   │   └── strategies.py           # Mutation scheduling

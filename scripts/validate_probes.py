@@ -116,22 +116,22 @@ def validate_file(path: Path) -> list[str]:
 
 def main() -> int:
     """Validate all YAML probe files and report errors."""
-    attacks_dir = Path(__file__).resolve().parents[1] / "probes"
+    probes_dir = Path(__file__).resolve().parents[1] / "probes"
 
-    if not attacks_dir.is_dir():
-        print(f"ERROR: probes directory not found at {attacks_dir}")
+    if not probes_dir.is_dir():
+        print(f"ERROR: probes directory not found at {probes_dir}")
         return 1
 
-    yaml_files = sorted(attacks_dir.rglob("*.yaml"))
+    yaml_files = sorted(probes_dir.rglob("*.yaml"))
     if not yaml_files:
-        print(f"ERROR: no YAML files found in {attacks_dir}")
+        print(f"ERROR: no YAML files found in {probes_dir}")
         return 1
 
     total_errors = 0
     for path in yaml_files:
         errors = validate_file(path)
         if errors:
-            rel = path.relative_to(attacks_dir)
+            rel = path.relative_to(probes_dir)
             for error in errors:
                 print(f"  {rel}: {error}")
             total_errors += len(errors)

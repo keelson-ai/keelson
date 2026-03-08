@@ -26,10 +26,10 @@ def load_template(path: Path) -> ProbeTemplate:
 
 
 def load_all_templates(
-    attacks_dir: Path | None = None, category: str | None = None
+    probes_dir: Path | None = None, category: str | None = None
 ) -> list[ProbeTemplate]:
     """Load all probe templates from the probes directory."""
-    root = attacks_dir or PROBES_DIR
+    root = probes_dir or PROBES_DIR
     if category:
         root = root / category
     return load_yaml_templates_dir(root)
