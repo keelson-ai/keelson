@@ -5,6 +5,7 @@
  * severity breakdown, PoC evidence, and prioritized recommendations.
  */
 
+import { SEVERITY_ORDER } from '../core/index.js';
 import type { Finding, ScanResult } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
 
@@ -30,13 +31,6 @@ export interface RecommendationItem {
 }
 
 // ─── Constants ──────────────────────────────────────────
-
-const SEVERITY_ORDER: Record<Severity, number> = {
-  [Severity.Critical]: 0,
-  [Severity.High]: 1,
-  [Severity.Medium]: 2,
-  [Severity.Low]: 3,
-};
 
 const CATEGORY_RECOMMENDATIONS: Record<string, string> = {
   'Goal Adherence':

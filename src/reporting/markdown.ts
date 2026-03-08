@@ -5,6 +5,7 @@
  * findings grouped by severity, evidence sections, and recommendations.
  */
 
+import { SEVERITY_ORDER } from '../core/index.js';
 import type { EvidenceItem, Finding, ScanResult } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
 
@@ -14,13 +15,6 @@ const VERDICT_ICONS: Record<Verdict, string> = {
   [Verdict.Vulnerable]: '\u274C', // red X
   [Verdict.Safe]: '\u2705',       // green check
   [Verdict.Inconclusive]: '\u2753', // question mark
-};
-
-const SEVERITY_ORDER: Record<Severity, number> = {
-  [Severity.Critical]: 0,
-  [Severity.High]: 1,
-  [Severity.Medium]: 2,
-  [Severity.Low]: 3,
 };
 
 // ─── Helpers ────────────────────────────────────────────
