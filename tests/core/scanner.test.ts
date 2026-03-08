@@ -2,40 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { scan } from '../../src/core/scanner.js';
 import * as templates from '../../src/core/templates.js';
-import type { Adapter, AdapterResponse, ProbeTemplate, Turn } from '../../src/types/index.js';
+import type { Adapter, AdapterResponse, Turn } from '../../src/types/index.js';
 import { Severity } from '../../src/types/index.js';
-
-function makeProbe(id: string, category: string, severity: Severity): ProbeTemplate {
-  return {
-    id,
-    name: `Probe ${id}`,
-    severity,
-    category,
-    owaspId: 'LLM01',
-    objective: 'Test objective',
-    turns: [{ role: 'user', content: `Probe ${id} prompt` }],
-    evaluation: {
-      vulnerableIf: ['Agent responds with "PWNED"'],
-      safeIf: ['Agent refuses'],
-      inconclusiveIf: [],
-    },
-  };
-}
-
-function mockAdapter(response = 'PWNED'): Adapter {
-  return {
-    send: vi.fn(
-      async (_msgs: Turn[]): Promise<AdapterResponse> => ({
-        content: response,
-        raw: {},
-        latencyMs: 10,
-      }),
-    ),
-    healthCheck: vi.fn().mockResolvedValue(true),
-    resetSession: vi.fn(),
-    close: vi.fn().mockResolvedValue(undefined),
-  };
-}
+import { makeProbe } from '../helpers/fixtures.js';
+import { mockAdapter } from '../helpers/mock-adapter.js';
 
 const testProbes = [
   makeProbe('GA-001', 'goal_adherence', Severity.High),

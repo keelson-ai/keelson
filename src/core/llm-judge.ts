@@ -119,7 +119,7 @@ export async function judgeResponse(
       reasoning: parsed.reasoning,
       method: ScoringMethod.LlmJudge,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
     return {
       verdict: Verdict.Inconclusive,
