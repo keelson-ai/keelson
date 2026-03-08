@@ -6,7 +6,7 @@ import chalk from 'chalk';
 import { loadProbes } from '../core/templates.js';
 import type { ProbeTemplate, ScanResult } from '../types/index.js';
 import { Severity } from '../types/index.js';
-import { colorSeverity, printScanSummary, writeReport } from './utils.js';
+import { printScanSummary, SEVERITY_COLORS, writeReport } from './utils.js';
 
 const SEVERITY_ORDER: Record<Severity, number> = {
   [Severity.Critical]: 0,
@@ -18,7 +18,9 @@ const SEVERITY_ORDER: Record<Severity, number> = {
 function formatProbeRow(probe: ProbeTemplate): string {
   const id = chalk.bold(probe.id.padEnd(8));
   const name = probe.name.padEnd(40).slice(0, 40);
-  const sev = colorSeverity(probe.severity).padEnd(20);
+  const paddedSeverity = probe.severity.padEnd(20);
+  const colorFn = SEVERITY_COLORS[probe.severity];
+  const sev = colorFn(paddedSeverity);
   const cat = probe.category.padEnd(25).slice(0, 25);
   const steps = String(probe.turns.length).padStart(5);
   return `  ${id} ${name} ${sev} ${cat} ${steps}`;
