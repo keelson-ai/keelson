@@ -1,5 +1,6 @@
 import { executeProbe } from './engine.js';
 import type { Observer } from './engine.js';
+import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
@@ -289,29 +290,12 @@ export async function runConvergenceScan(
     }
   }
 
-  const summary = {
-    total: allFindings.length,
-    vulnerable: allFindings.filter((f) => f.verdict === Verdict.Vulnerable).length,
-    safe: allFindings.filter((f) => f.verdict === Verdict.Safe).length,
-    inconclusive: allFindings.filter((f) => f.verdict === Verdict.Inconclusive).length,
-    bySeverity: {} as Record<Severity, number>,
-    byCategory: {} as Record<string, number>,
-  };
-
-  for (const s of Object.values(Severity)) summary.bySeverity[s] = 0;
-  for (const f of allFindings) {
-    if (f.verdict === Verdict.Vulnerable) {
-      summary.bySeverity[f.severity] = (summary.bySeverity[f.severity] ?? 0) + 1;
-      summary.byCategory[f.category] = (summary.byCategory[f.category] ?? 0) + 1;
-    }
-  }
-
   return {
     scanId: crypto.randomUUID(),
     target,
     startedAt,
     completedAt: new Date().toISOString(),
     findings: allFindings,
-    summary,
+    summary: summarize(allFindings),
   };
 }
