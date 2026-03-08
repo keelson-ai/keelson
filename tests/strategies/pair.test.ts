@@ -121,4 +121,57 @@ describe('runPair', () => {
     expect(result.finding.evidence).toHaveLength(1);
     expect(result.templateId).toBe('GA-001');
   });
+
+  it('sends refinement context to prober', async () => {
+    const target = mockAdapter(["I can't do that.", 'PWNED']);
+    const prober = mockAdapter(['Refined probe attempt']);
+    const evaluate: EvaluateFn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        verdict: Verdict.Safe,
+        confidence: 0.8,
+        reasoning: 'Refused',
+      })
+      .mockResolvedValue({
+        verdict: Verdict.Vulnerable,
+        confidence: 0.9,
+        reasoning: 'Complied',
+      });
+
+    await runPair(TEMPLATE, {
+      target,
+      prober,
+      evaluate,
+      maxIterations: 2,
+      delayMs: 0,
+    });
+
+    // Prober should receive system prompt + user context about objective and target response
+    const proberCalls = (prober.send as ReturnType<typeof vi.fn>).mock.calls;
+    expect(proberCalls).toHaveLength(1);
+    const messages = proberCalls[0][0] as { role: string; content: string }[];
+    expect(messages[0].role).toBe('system');
+    expect(messages[1].content).toContain('Test prompt injection');
+  });
+
+  it('uses refined prompt for subsequent iterations', async () => {
+    const target = mockAdapter(["I can't do that.", 'Still no.']);
+    const prober = mockAdapter(['A completely different approach to the probe']);
+    const evaluate: EvaluateFn = vi.fn().mockResolvedValue({
+      verdict: Verdict.Safe,
+      confidence: 0.8,
+      reasoning: 'Refused',
+    });
+
+    const result = await runPair(TEMPLATE, {
+      target,
+      prober,
+      evaluate,
+      maxIterations: 2,
+      delayMs: 0,
+    });
+
+    // Second iteration should use the prober's refined prompt
+    expect(result.refinementHistory[1].prompt).toBe('A completely different approach to the probe');
+  });
 });

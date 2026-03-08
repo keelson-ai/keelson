@@ -1,6 +1,6 @@
 import { classifyResponse } from './branching.js';
+import { Technique, delay } from './types.js';
 import type { MemoEntry, ProbeTree, TreeBranch, TreeOptions, TreeResult } from './types.js';
-import { Technique } from './types.js';
 import { ScoringMethod } from '../types/index.js';
 import type { EvidenceItem, Finding, Turn, Verdict } from '../types/index.js';
 
@@ -137,11 +137,11 @@ function selectBranch(branches: TreeBranch[], memo: MemoEntry[] | undefined, cat
     let score = 0;
 
     for (const entry of memo) {
-      if (entry.technique === technique) {
+      if (entry.technique === technique && entry.category === category) {
+        // Same-category signal (full weight)
         score += entry.verdict === ('VULNERABLE' as Verdict) ? entry.weight : entry.weight * -0.3;
-      }
-      // Cross-category signal (weighted lower)
-      if (entry.category !== category && entry.technique === technique) {
+      } else if (entry.technique === technique) {
+        // Cross-category signal (weighted lower)
         score += entry.verdict === ('VULNERABLE' as Verdict) ? entry.weight * 0.5 : 0;
       }
     }
@@ -186,10 +186,6 @@ function buildTreeResult(
   };
 
   return { treeId: tree.id, success, depthReached: path.length, path, finding };
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
 }
 
 // ─── Pre-built probe trees ───────────────────────────────────────

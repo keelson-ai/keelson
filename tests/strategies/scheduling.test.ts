@@ -86,6 +86,51 @@ describe('shouldMutate', () => {
   });
 });
 
+describe('shouldMutate boundary conditions', () => {
+  it('returns false at exact low threshold', () => {
+    expect(shouldMutate(0.05)).toBe(false);
+  });
+
+  it('returns false at exact high threshold', () => {
+    expect(shouldMutate(0.8)).toBe(false);
+  });
+
+  it('returns true just above low threshold', () => {
+    expect(shouldMutate(0.051)).toBe(true);
+  });
+
+  it('returns true just below high threshold', () => {
+    expect(shouldMutate(0.799)).toBe(true);
+  });
+});
+
+describe('weightedByHistory edge cases', () => {
+  it('falls back to random when all mutations have 0% success', () => {
+    const history = [
+      { type: MutationType.Base64Encode, success: false },
+      { type: MutationType.Leetspeak, success: false },
+      { type: MutationType.Rot13, success: false },
+    ];
+    // All have 0 weight, totalWeight is 0 → random fallback
+    const result = weightedByHistory(history, AVAILABLE);
+    expect(AVAILABLE).toContain(result);
+  });
+
+  it('handles single available mutation', () => {
+    const single = [MutationType.Base64Encode];
+    const result = weightedByHistory([], single);
+    expect(result).toBe(MutationType.Base64Encode);
+  });
+});
+
+describe('roundRobin edge cases', () => {
+  it('handles mutation not in available list', () => {
+    const history = [{ type: MutationType.CaesarCipher, success: false }];
+    // CaesarCipher not in AVAILABLE, indexOf returns -1, (-1+1)%3 = 0
+    expect(roundRobin(history, AVAILABLE)).toBe(MutationType.Base64Encode);
+  });
+});
+
 describe('mutation type constants', () => {
   it('PROGRAMMATIC_TYPES has 9 entries', () => {
     expect(PROGRAMMATIC_TYPES).toHaveLength(9);

@@ -1,3 +1,4 @@
+import { delay } from './types.js';
 import type { CrescendoOptions, CrescendoResult, CrescendoStep } from './types.js';
 import type { Adapter, EvidenceItem, Finding, ProbeTemplate, Turn, Verdict } from '../types/index.js';
 import { ScoringMethod } from '../types/index.js';
@@ -178,8 +179,4 @@ function buildResult(
   };
 
   return { templateId: template.id, turnsUsed, maxTurns, success, finding, escalationPath: steps };
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
 }

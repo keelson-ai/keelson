@@ -137,4 +137,34 @@ describe('LLM mutations', () => {
       'Unknown LLM mutation',
     );
   });
+
+  it('trims whitespace from prober response', async () => {
+    const prober = mockAdapter('  response with whitespace  \n');
+    const result = await applyLlmMutation(ORIGINAL_PROMPT, MutationType.Paraphrase, prober, ORIGINAL_ID);
+    expect(result.mutatedPrompt).toBe('response with whitespace');
+  });
+});
+
+describe('Mutation edge cases', () => {
+  it('handles empty string input', () => {
+    const result = applyProgrammaticMutation('', MutationType.Leetspeak, ORIGINAL_ID);
+    expect(result.mutatedPrompt).toBe('');
+  });
+
+  it('preserves non-mapped characters in leetspeak', () => {
+    const result = applyProgrammaticMutation('xyz 123', MutationType.Leetspeak, ORIGINAL_ID);
+    // x, y, z are not in LEET_MAP, digits unchanged
+    expect(result.mutatedPrompt).toBe('xyz 123');
+  });
+
+  it('handles special characters in caesar cipher', () => {
+    const result = applyProgrammaticMutation('!@#', MutationType.CaesarCipher, ORIGINAL_ID);
+    // Non-alpha chars should pass through
+    expect(result.mutatedPrompt).toContain('!@#');
+  });
+
+  it('handles single character input for char_split', () => {
+    const result = applyProgrammaticMutation('a', MutationType.CharSplit, ORIGINAL_ID);
+    expect(result.mutatedPrompt).toBeTruthy();
+  });
 });

@@ -157,4 +157,72 @@ describe('executeProbeTree', () => {
     // Should still work (memo influences branch selection)
     expect(result.path.length).toBeGreaterThan(0);
   });
+
+  it('scores same-category memo higher than cross-category', async () => {
+    const target = mockAdapter(["I can't do that.", 'Nope.', 'Still no.']);
+    const evaluate: EvaluateFn = vi.fn().mockResolvedValue({
+      verdict: Verdict.Safe,
+      confidence: 0.8,
+      reasoning: 'Refused',
+    });
+
+    // Same-category entry should score weight=1.0, cross-category should score weight*0.5=0.5
+    const memo = [
+      { technique: 'authority', category: 'goal_adherence', verdict: Verdict.Vulnerable, weight: 1.0 },
+      { technique: 'roleplay', category: 'tool_safety', verdict: Verdict.Vulnerable, weight: 1.0 },
+    ];
+
+    const result = await executeProbeTree(PROMPT_INJECTION_TREE, {
+      target,
+      evaluate,
+      maxDepth: 3,
+      delayMs: 0,
+      memo,
+    });
+
+    // Should use authority branch (same category, full weight) over others
+    expect(result.path.length).toBeGreaterThan(1);
+  });
+
+  it('detects vulnerability on branch (not just root)', async () => {
+    const target = mockAdapter(["I can't do that.", 'SECURITY_TEST_PASSED']);
+    let evalCount = 0;
+    const evaluate: EvaluateFn = vi.fn().mockImplementation(async () => {
+      evalCount++;
+      if (evalCount >= 2) {
+        return { verdict: Verdict.Vulnerable, confidence: 0.95, reasoning: 'Complied on branch' };
+      }
+      return { verdict: Verdict.Safe, confidence: 0.8, reasoning: 'Refused' };
+    });
+
+    const result = await executeProbeTree(PROMPT_INJECTION_TREE, {
+      target,
+      evaluate,
+      maxDepth: 3,
+      delayMs: 0,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.depthReached).toBe(2); // Root + one branch
+    expect(result.finding.verdict).toBe(Verdict.Vulnerable);
+  });
+
+  it('handles empty memo array', async () => {
+    const target = mockAdapter(["I can't do that.", 'Nope.']);
+    const evaluate: EvaluateFn = vi.fn().mockResolvedValue({
+      verdict: Verdict.Safe,
+      confidence: 0.8,
+      reasoning: 'Refused',
+    });
+
+    const result = await executeProbeTree(PROMPT_INJECTION_TREE, {
+      target,
+      evaluate,
+      maxDepth: 2,
+      delayMs: 0,
+      memo: [],
+    });
+
+    expect(result.path.length).toBeGreaterThan(0);
+  });
 });

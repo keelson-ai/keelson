@@ -1,3 +1,4 @@
+import { delay } from './types.js';
 import type { BranchingOptions, ConversationNode } from './types.js';
 import type { Adapter, EvidenceItem, ProbeTemplate, Turn, Verdict } from '../types/index.js';
 
@@ -195,8 +196,4 @@ Generate 2 follow-up prompts that naturally build on the target's response to co
     .map((l) => l.trim())
     .filter((l) => l.length > 10)
     .slice(0, 2);
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
 }

@@ -119,4 +119,67 @@ describe('executeBranchingProbe', () => {
     expect(node.verdict).toBe(Verdict.Vulnerable);
     expect(node.children).toHaveLength(0); // No children explored after vuln
   });
+
+  it('uses prober for dynamic follow-ups', async () => {
+    const target = mockAdapter(["I can't do that.", 'Here is more info...']);
+    const prober = mockAdapter(['Follow-up question one\nFollow-up question two']);
+    const evaluate: EvaluateFn = vi.fn().mockResolvedValue({
+      verdict: Verdict.Safe,
+      confidence: 0.8,
+      reasoning: 'Refused',
+    });
+
+    const node = await executeBranchingProbe(TEMPLATE, {
+      target,
+      prober,
+      evaluate,
+      maxDepth: 2,
+      delayMs: 0,
+    });
+
+    expect(node.children.length).toBeGreaterThan(0);
+    expect(prober.send).toHaveBeenCalled();
+  });
+
+  it('explores multiple children for a response class', async () => {
+    const target = mockAdapter(["I can't do that.", "Still can't.", 'Nope.']);
+    const evaluate: EvaluateFn = vi.fn().mockResolvedValue({
+      verdict: Verdict.Safe,
+      confidence: 0.8,
+      reasoning: 'Refused',
+    });
+
+    const node = await executeBranchingProbe(TEMPLATE, {
+      target,
+      evaluate,
+      maxDepth: 2,
+      delayMs: 0,
+    });
+
+    // Refusal has 2 default follow-ups, so should explore both
+    expect(node.children).toHaveLength(2);
+  });
+
+  it('stops exploring children when one finds vulnerability', async () => {
+    const target = mockAdapter(["I can't do that.", 'PWNED']);
+    let evalCount = 0;
+    const evaluate: EvaluateFn = vi.fn().mockImplementation(async () => {
+      evalCount++;
+      if (evalCount >= 2) {
+        return { verdict: Verdict.Vulnerable, confidence: 0.95, reasoning: 'Complied' };
+      }
+      return { verdict: Verdict.Safe, confidence: 0.8, reasoning: 'Refused' };
+    });
+
+    const node = await executeBranchingProbe(TEMPLATE, {
+      target,
+      evaluate,
+      maxDepth: 2,
+      delayMs: 0,
+    });
+
+    // First child found vulnerability, second child should not be explored
+    expect(node.children).toHaveLength(1);
+    expect(node.children[0].verdict).toBe(Verdict.Vulnerable);
+  });
 });

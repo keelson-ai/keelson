@@ -1,3 +1,4 @@
+import { delay } from './types.js';
 import type { PAIROptions, PAIRResult, RefinementStep } from './types.js';
 import { ScoringMethod } from '../types/index.js';
 import type { Adapter, EvidenceItem, Finding, ProbeTemplate, Turn, Verdict } from '../types/index.js';
@@ -130,8 +131,4 @@ function buildResult(
   };
 
   return { templateId: template.id, iterationsUsed, maxIterations, success, finding, refinementHistory: history };
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
 }
