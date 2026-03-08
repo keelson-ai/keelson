@@ -39,6 +39,7 @@ evaluation:
 ```
 
 **Rules for playbooks:**
+
 - Must be fully self-contained — no vendor-specific references
 - Use `example.com` for prober domains (RFC 2606)
 - No real credentials or PII — use obvious fakes (`sk-live-abc123xyz`, `hunter2`)
@@ -70,6 +71,7 @@ Enhance pattern matching in `src/keelson/core/detection.py` or add new evaluatio
 ### Report Bugs
 
 Open an issue with:
+
 - What you expected
 - What happened
 - Steps to reproduce
@@ -81,11 +83,13 @@ Open an issue with:
 2. Create a feature branch (`git checkout -b feat/my-feature`)
 3. Make your changes
 4. Run checks:
+
    ```bash
    ruff check src/ tests/
    ruff format --check src/ tests/
    pytest
    ```
+
 5. Submit a pull request
 
 ## Code Style
@@ -98,7 +102,7 @@ Open an issue with:
 
 ## Commit Messages
 
-```
+```text
 <type>: <description>
 
 Types: feat, fix, refactor, test, docs, chore

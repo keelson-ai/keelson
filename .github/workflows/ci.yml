@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/node-migration]
   pull_request:
-    branches: [main]
+    branches: [main, feat/node-migration]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -16,48 +16,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: pnpm/action-setup@v4
         with:
-          python-version: "3.13"
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pnpm install --frozen-lockfile
 
-      - name: Ruff check
-        run: ruff check src/ tests/
-
-      - name: Ruff format check
-        run: ruff format --check src/ tests/
-
-  validate-probes:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install PyYAML
-        run: pip install pyyaml
-
-      - name: Validate probe playbooks
-        run: python scripts/validate_probes.py
+      - name: Type check
+        run: pnpm lint
 
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        node-version: ["22", "24"]
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: pnpm/action-setup@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pytest tests/ -v --tb=short
+        run: pnpm test

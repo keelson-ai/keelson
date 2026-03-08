@@ -1,16 +1,15 @@
 # Keelson
 
-[![PyPI version](https://img.shields.io/pypi/v/keelson-ai?cacheSeconds=60)](https://pypi.org/project/keelson-ai/)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Node.js 22+](https://img.shields.io/badge/node-22+-brightgreen.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/typescript-strict-blue.svg)](https://www.typescriptlang.org/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-774%20passing-brightgreen)]()
 
 **Autonomous security testing agent for AI systems.** Keelson ships 210 security test playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), 12 adaptive test trees, 10 compound test chains, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, iterative convergence scanning with cross-category feedback, runtime defense hooks, and compliance reporting for 6 frameworks. Test strategies are informed by field-tested effectiveness data from real scans.
 
 > **Authorized use only.** Keelson is designed for testing AI systems you own or have explicit written permission to test. Unauthorized use may violate applicable laws including the Computer Fraud and Abuse Act (CFAA). By using this software, you accept full responsibility for compliance with all applicable laws. The authors disclaim all liability for misuse. See [LEGAL.md](LEGAL.md) for full terms.
 
-```
-pip install keelson-ai
+```bash
+npm install -g keelson
 ```
 
 ## Quick Start
@@ -78,28 +77,42 @@ Results appear in the **Security** tab under Code Scanning. See [keelson-action]
 
 ## How It Works
 
-```
-Playbooks (.yaml)   Target Agent        Keelson Engine
-┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│ 210 probes  │───>│ 9 Adapters   │───>│ Scan Modes           │
-│ 13 categories│    │ OpenAI /     │    │  scan (sequential)   │
-│ OWASP mapped │    │ Anthropic /  │    │  pipeline (parallel) │
-└──────────────┘    │ MCP / A2A /  │    │  smart (adaptive)    │
-                    │ SiteGPT /... │    │  convergence (iter.) │
-                    └──────────────┘    └──────────┬───────────┘
-  Orchestrators                                    │
-┌──────────────┐                        ┌──────────┴──────────┐
-│ PAIR         │───────────────────────>│  Detection pipeline  │
-│ Crescendo    │                        │  Pattern + LLM Judge │
-│ Mutations    │                        │  Verification pass   │
-│ (13 types)   │                        │  Memo feedback loop  │
-└──────────────┘                        └──────────┬──────────┘
-                                                   │
-                                        ┌──────────┴──────────┐
-                                        │  Reports             │
-                                        │  Markdown / SARIF /  │
-                                        │  JUnit / Compliance  │
-                                        └─────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Playbooks[" "]
+        PB["**Playbooks (.yaml)**<br/>210 probes<br/>13 categories<br/>OWASP mapped"]
+    end
+
+    subgraph Adapters[" "]
+        AD["**9 Adapters**<br/>OpenAI / Anthropic<br/>MCP / A2A<br/>SiteGPT / ..."]
+    end
+
+    subgraph Engine[" "]
+        SM["**Scan Modes**<br/>scan (sequential)<br/>pipeline (parallel)<br/>smart (adaptive)<br/>convergence (iter.)"]
+    end
+
+    subgraph Orchestrators[" "]
+        OR["**Orchestrators**<br/>PAIR / Crescendo<br/>Mutations (13 types)"]
+    end
+
+    subgraph Detection[" "]
+        DET["**Detection Pipeline**<br/>Pattern + LLM Judge<br/>Verification pass<br/>Memo feedback loop"]
+    end
+
+    subgraph Reports[" "]
+        RPT["**Reports**<br/>Markdown / SARIF<br/>JUnit / Compliance"]
+    end
+
+    PB --> AD --> SM --> DET
+    OR --> DET
+    DET --> RPT
+
+    style Playbooks fill:#e8f4fd,stroke:#333
+    style Adapters fill:#fdf8e8,stroke:#333
+    style Engine fill:#fde8e8,stroke:#333
+    style Orchestrators fill:#f9f0ff,stroke:#333
+    style Detection fill:#fde8e8,stroke:#333
+    style Reports fill:#e8fde8,stroke:#333
 ```
 
 1. **Load** probe playbooks from `probes/**/*.yaml` (structured YAML, no code)
@@ -112,18 +125,18 @@ Playbooks (.yaml)   Target Agent        Keelson Engine
 
 ## Test Categories
 
-| Category | Prefix | Count | OWASP | What It Tests |
-|----------|--------|-------|-------|---------------|
-| **Goal Adherence** | GA | 56 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, context overflow, crescendo escalation, skeleton key, many-shot jailbreak, reasoning-layer (CoT) probes, rapport exploitation, structured data injection, model fingerprinting, indirect prompt injection (IDPI), Unicode/homoglyph evasion, authority simulation, multilingual repetition, multi-vector psychological exploitation, enterprise framing bypass, syllogistic reasoning manipulation, hypothetical counterfactual bypass, meta-reasoning inversion, logical paradox exploitation, response template hijacking, shared resource injection, **legitimate knowledge extraction**, **incremental architecture disclosure** |
-| **Tool Safety** | TS | 40 | LLM02/LLM06/LLM07 | File access, command injection, SQL injection, unauthorized API calls, privilege escalation, path traversal, MCP tool poisoning, MCP rug pull, cross-server contamination, SSRF, side-effect detection, excessive agency, forced financial transactions, two-phase URL exfiltration, URI scheme redirect, forced URL opening, **private data source enumeration**, **write access probing** |
-| **Memory Integrity** | MI | 23 | LLM05 | History poisoning, identity persistence, false tool results, cross-turn exfiltration, error info leakage, stored payload injection, context window flooding, gradual memory poisoning, false memory implantation, contradictory fact confusion, RAG poisoning, natural language sleeper triggers, collapsed UI content poisoning |
-| **Permission Boundaries** | PB | 12 | LLM02 | Role escalation, cross-user access, scope expansion, authorization bypass, privilege persistence |
-| **Delegation Integrity** | DI | 7 | LLM08/LLM09 | Unauthorized sub-agents, trust boundary violation, delegation scope laundering, cross-agent lateral movement |
-| **Execution Safety** | ES | 13 | LLM02/LLM06 | Unbounded execution, resource exhaustion, sandbox escape, audit evasion, unsafe deserialization, HTML/script output injection, destructive command injection |
-| **Session Isolation** | SI | 13 | LLM01/LLM05 | Cross-session leakage, session hijacking, multi-tenant breach, model fingerprinting, conversation history poisoning, debug harness extraction |
-| **Cognitive Architecture** | CA | 8 | LLM01/LLM09 | Chain-of-thought poisoning, reasoning manipulation, meta-cognitive probes |
-| **Conversational Exfiltration** | EX | 9 | LLM01/LLM06 | Data extraction via conversation, behavioral fingerprinting, **framework/infrastructure fingerprinting** |
+| Category | Prefix | Count | OWASP | Key Threats |
+|----------|--------|------:|-------|-------------|
+| **Goal Adherence** | GA | 56 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, jailbreaks |
+| **Tool Safety** | TS | 40 | LLM02/LLM06/LLM07 | Command injection, SQL injection, privilege escalation, MCP poisoning, SSRF |
+| **Memory Integrity** | MI | 23 | LLM05 | History poisoning, cross-turn exfiltration, RAG poisoning, false memory implantation |
+| **Execution Safety** | ES | 13 | LLM02/LLM06 | Sandbox escape, resource exhaustion, unsafe deserialization, destructive commands |
+| **Session Isolation** | SI | 13 | LLM01/LLM05 | Cross-session leakage, session hijacking, multi-tenant breach |
+| **Permission Boundaries** | PB | 12 | LLM02 | Role escalation, cross-user access, authorization bypass |
+| **Conversational Exfiltration** | EX | 9 | LLM01/LLM06 | Data extraction, behavioral fingerprinting, infrastructure disclosure |
+| **Cognitive Architecture** | CA | 8 | LLM01/LLM09 | Chain-of-thought poisoning, reasoning manipulation |
 | **Supply Chain Language** | SL | 8 | LLM03/LLM05 | RAG document injection, dependency confusion, plugin poisoning |
+| **Delegation Integrity** | DI | 7 | LLM08/LLM09 | Unauthorized sub-agents, trust boundary violation |
 | **Output Weaponization** | OW | 7 | LLM02/LLM06 | Backdoor code generation, malicious output crafting |
 | **Temporal Persistence** | TP | 7 | LLM05/LLM08 | Delayed action injection, time-based persistence |
 | **Multi-Agent Security** | MA | 7 | LLM08/LLM09 | Agent impersonation, cross-agent probes |
@@ -132,17 +145,17 @@ Playbooks (.yaml)   Target Agent        Keelson Engine
 
 Keelson communicates with targets through a pluggable adapter interface:
 
-| Adapter | Flag | Protocol | Use Case |
-|---------|------|----------|----------|
-| **OpenAI** | `--adapter openai` | Chat Completions API | GPT models, OpenAI API |
-| **Generic HTTP** | `--adapter http` | Chat Completions API | Local models (Ollama, vLLM), any OpenAI-compatible endpoint |
-| **Anthropic** | `--adapter anthropic` | Messages API | Claude models |
-| **LangGraph** | `--adapter langgraph` | LangGraph Platform | LangGraph agents |
-| **MCP** | `--adapter mcp` | JSON-RPC 2.0 | MCP tool servers |
-| **A2A** | `--adapter a2a` | Google A2A Protocol | A2A-compatible agents |
-| **CrewAI** | `test-crew` command | In-process | CrewAI crews/agents |
-| **LangChain** | `test-chain` command | In-process | LangChain agents/chains |
-| **SiteGPT** | `--adapter sitegpt` | WebSocket / REST | SiteGPT chatbots |
+| Adapter          | Flag                  | Protocol             | Use Case                                                    |
+|------------------|-----------------------|----------------------|-------------------------------------------------------------|
+| **OpenAI**       | `--adapter openai`    | Chat Completions API | GPT models, OpenAI API                                      |
+| **Generic HTTP** | `--adapter http`      | Chat Completions API | Local models (Ollama, vLLM), any OpenAI-compatible endpoint |
+| **Anthropic**    | `--adapter anthropic` | Messages API         | Claude models                                               |
+| **LangGraph**    | `--adapter langgraph` | LangGraph Platform   | LangGraph agents                                            |
+| **MCP**          | `--adapter mcp`       | JSON-RPC 2.0         | MCP tool servers                                            |
+| **A2A**          | `--adapter a2a`       | Google A2A Protocol  | A2A-compatible agents                                       |
+| **CrewAI**       | `test-crew` command   | In-process           | CrewAI crews/agents                                         |
+| **LangChain**    | `test-chain` command  | In-process           | LangChain agents/chains                                     |
+| **SiteGPT**      | `--adapter sitegpt`   | WebSocket / REST     | SiteGPT chatbots                                            |
 
 ```bash
 # OpenAI-compatible (default)
@@ -172,26 +185,26 @@ keelson scan https://widget.sitegpt.ai --adapter sitegpt --chatbot-id YOUR_CHATB
 
 ## CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `keelson scan <url>` | Full security scan (sequential, with dynamic reorder) |
-| `keelson pipeline-scan <url>` | Parallel scan with checkpoint/resume and verification |
-| `keelson smart-scan <url>` | Adaptive scan: discover, classify, memo-guided sessions |
-| `keelson convergence-scan <url>` | Iterative scan with cross-category feedback and leakage harvesting |
-| `keelson test <url> <id>` | Run a single security test |
-| `keelson list` | List all available probes |
-| `keelson campaign <config.toml>` | Statistical campaign (N trials per probe) |
-| `keelson discover <url>` | Fingerprint agent capabilities |
-| `keelson evolve <url> <id>` | Mutate a probe to find bypasses |
-| `keelson chain <url> <profile-id>` | Synthesize and run compound probe chains |
-| `keelson generate <prober-url>` | Generate novel probes using an prober LLM |
-| `keelson test-crew <module.py>` | Scan a CrewAI agent directly |
-| `keelson test-chain <module.py>` | Scan a LangChain agent directly |
-| `keelson diff <scan-a> <scan-b>` | Compare two scans for regressions |
-| `keelson baseline <scan-id>` | Set a regression baseline |
-| `keelson compliance <scan-id>` | Generate compliance report |
-| `keelson report <scan-id>` | Regenerate a scan report |
-| `keelson history` | Show scan history |
+| Command                            | Description                                                        |
+|------------------------------------|--------------------------------------------------------------------|
+| `keelson scan <url>`               | Full security scan (sequential, with dynamic reorder)              |
+| `keelson pipeline-scan <url>`      | Parallel scan with checkpoint/resume and verification              |
+| `keelson smart-scan <url>`         | Adaptive scan: discover, classify, memo-guided sessions            |
+| `keelson convergence-scan <url>`   | Iterative scan with cross-category feedback and leakage harvesting |
+| `keelson test <url> <id>`          | Run a single security test                                         |
+| `keelson list`                     | List all available probes                                          |
+| `keelson campaign <config.toml>`   | Statistical campaign (N trials per probe)                          |
+| `keelson discover <url>`           | Fingerprint agent capabilities                                     |
+| `keelson evolve <url> <id>`        | Mutate a probe to find bypasses                                    |
+| `keelson chain <url> <profile-id>` | Synthesize and run compound probe chains                           |
+| `keelson generate <prober-url>`    | Generate novel probes using an prober LLM                          |
+| `keelson test-crew <module.py>`    | Scan a CrewAI agent directly                                       |
+| `keelson test-chain <module.py>`   | Scan a LangChain agent directly                                    |
+| `keelson diff <scan-a> <scan-b>`   | Compare two scans for regressions                                  |
+| `keelson baseline <scan-id>`       | Set a regression baseline                                          |
+| `keelson compliance <scan-id>`     | Generate compliance report                                         |
+| `keelson report <scan-id>`         | Regenerate a scan report                                           |
+| `keelson history`                  | Show scan history                                                  |
 
 ## Output Formats
 
@@ -256,11 +269,11 @@ jobs:
     permissions:
       security-events: write
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
+          node-version: "22"
 
-      - run: pip install keelson-ai
+      - run: npm install -g keelson
 
       - run: keelson scan ${{ vars.AGENT_URL }} --api-key ${{ secrets.AGENT_KEY }} --format sarif --output results/ --fail-on-vuln --no-save
 
@@ -333,24 +346,14 @@ log_all: false
 
 ### CrewAI Integration
 
-```python
-from keelson.defend import load_policy, PolicyEngine, register_crewai_hooks
-
-policy = load_policy("defend-policy.yaml")
-engine = PolicyEngine(policy)
-register_crewai_hooks(engine)
-# All CrewAI tool calls are now policy-enforced
+```typescript
+// Coming soon — defense hooks will be added post-migration
 ```
 
 ### LangChain Integration
 
-```python
-from keelson.defend import load_policy, PolicyEngine, KeelsonDefendMiddleware
-
-policy = load_policy("defend-policy.yaml")
-engine = PolicyEngine(policy)
-middleware = KeelsonDefendMiddleware(engine)
-# Wrap your agent's tool and model calls
+```typescript
+// Coming soon — defense hooks will be added post-migration
 ```
 
 ## Adding Custom Tests
@@ -385,7 +388,7 @@ evaluation:
 
 ## Project Structure
 
-```
+```text
 keelson/
 ├── agents/                         # Agent instructions
 │   └── pentester.md                # Pentester agent prompt
@@ -407,84 +410,25 @@ keelson/
 │   ├── multi-agent-security/       # MA (7 probes)
 │   ├── output-weaponization/       # OW (7 probes)
 │   └── temporal-persistence/       # TP (7 probes)
-├── src/keelson/                     # Python engine
-│   ├── cli/                        # Typer CLI (18 commands)
-│   │   ├── __init__.py             # App setup, shared helpers
-│   │   ├── commands.py             # Command module registration
-│   │   ├── scan_commands.py        # scan, pipeline-scan, smart-scan, probe
-│   │   ├── ops_commands.py         # list, report, history, diff, discover, baseline, compliance
-│   │   └── advanced_commands.py    # campaign, evolve, chain, generate, test-crew, test-chain
-│   ├── adapters/                   # 9 target adapters
-│   │   ├── base.py                 # BaseAdapter interface
-│   │   ├── openai.py               # OpenAI API
-│   │   ├── http.py                 # GenericHTTPAdapter (OpenAI-compat)
-│   │   ├── anthropic.py            # Anthropic Messages API
-│   │   ├── langgraph.py            # LangGraph Platform
-│   │   ├── mcp.py                  # Model Context Protocol
-│   │   ├── a2a.py                  # Google A2A Protocol
-│   │   ├── crewai.py               # CrewAI native (in-process)
-│   │   ├── langchain.py            # LangChain native (in-process)
-│   │   ├── sitegpt.py              # SiteGPT (WebSocket / REST)
-│   │   ├── cache.py                # Response caching decorator
-│   │   └── prober.py             # Prober LLM wrapper
-│   ├── core/                       # Engine, scanner, detection
-│   │   ├── engine.py               # Multi-turn probe executor
-│   │   ├── execution.py            # Shared primitives (sequential, parallel, verify)
-│   │   ├── scanner.py              # Sequential scan with dynamic reorder
-│   │   ├── pipeline.py             # Parallel scan with checkpoint/resume
-│   │   ├── smart_scan.py           # Adaptive scan with memo feedback
-│   │   ├── convergence.py          # Iterative convergence with cross-feed
-│   │   ├── memo.py                 # Memo table for technique tracking
-│   │   ├── strategist.py           # LLM-based target classification
-│   │   ├── detection.py            # Pattern-based verdict detection
-│   │   ├── observer.py             # Streaming leakage analysis
-│   │   ├── llm_judge.py             # LLM-as-judge semantic evaluation
-│   │   ├── templates.py            # Playbook parser (markdown)
-│   │   ├── yaml_templates.py       # Playbook parser (YAML)
-│   │   ├── models.py               # Core data models
-│   │   ├── reporter.py             # Markdown report generation
-│   │   ├── executive_report.py     # Executive summary format
-│   │   ├── sarif.py                # SARIF v2.1.0 output
-│   │   ├── junit.py                # JUnit XML output
-│   │   └── compliance.py           # 6 compliance frameworks
-│   ├── defend/                     # Runtime protection
-│   │   ├── engine.py               # Policy evaluation engine
-│   │   ├── models.py               # Policy, rules, actions
-│   │   ├── loader.py               # YAML policy loader
-│   │   ├── crewai_hook.py          # CrewAI middleware hooks
-│   │   └── langchain_hook.py       # LangChain middleware hooks
-│   ├── prober/                   # Probe generation
-│   │   ├── generator.py            # LLM-powered prompt generation
-│   │   ├── discovery.py            # Agent capability fingerprinting
-│   │   ├── chains.py               # Compound probe chain synthesis
-│   │   └── provider.py             # Cross-provider prober selection
-│   ├── adaptive/                   # Mutation engine + orchestrators
-│   │   ├── mutations.py            # 13 programmatic + LLM mutations
-│   │   ├── branching.py            # Conversation tree exploration
-│   │   ├── attack_tree.py          # Probe tree data structures
-│   │   ├── pair.py                 # PAIR iterative refinement orchestrator
-│   │   ├── crescendo.py            # Crescendo gradual escalation orchestrator
-│   │   └── strategies.py           # Mutation scheduling
-│   ├── campaign/                   # Statistical campaigns
-│   │   ├── runner.py               # N-trial execution with CI
-│   │   ├── tiers.py                # Fast/Deep/Continuous presets
-│   │   ├── scheduler.py            # Campaign scheduling
-│   │   └── config.py               # TOML config parser
-│   ├── diff/                       # Scan comparison
-│   │   └── comparator.py           # Regression detection
-│   └── state/                      # Persistence
-│       ├── base.py                 # Storage base interface
-│       └── store.py                # SQLite storage
-├── tests/                          # 774 tests
+├── src/                             # TypeScript engine
+│   ├── cli/                        # Commander CLI commands
+│   ├── components/                 # Ink/React terminal UI
+│   ├── hooks/                      # React hooks for Ink
+│   ├── core/                       # Engine, scanner, detection, LLM judge
+│   ├── adapters/                   # 9 target adapters (OpenAI, HTTP, Anthropic, etc.)
+│   ├── strategies/                 # Mutations, PAIR, crescendo, branching
+│   ├── reporting/                  # Markdown, SARIF, JUnit, compliance
+│   ├── schemas/                    # Zod validation schemas
+│   ├── types/                      # TypeScript type definitions
+│   └── config.ts                   # App config, env loading
+├── _legacy/                        # Python source reference (temporary)
+├── tests/                          # Vitest tests (mirrors src/)
 ├── docs/                           # Documentation
 │   ├── adr/                        # Architecture Decision Records
-│   │   ├── ADR-001-framework.md    # FastAPI selection
-│   │   ├── ADR-002-dependency-management.md  # uv selection
-│   │   └── ADR-003-observability.md  # Structured logging + OTel plan
-│   ├── plans/                      # Roadmap
-│   ├── openapi.yaml                # OpenAPI 3.1.0 API contract
-│   └── github-action-spec.md       # GitHub Action design
-├── pyproject.toml                  # Python packaging
+│   └── plans/                      # Design & implementation plans
+├── package.json
+├── tsconfig.json
+├── vitest.config.ts
 └── LICENSE                         # Apache 2.0
 ```
 
@@ -495,33 +439,17 @@ keelson/
 git clone https://github.com/keelson-ai/keelson.git
 cd keelson
 
-# Install with dev dependencies
-pip install -e ".[dev]"
+# Install dependencies
+pnpm install
+
+# Build
+pnpm build
 
 # Run tests
-pytest
+pnpm test
 
-# Run tests with verbose output
-pytest -v
-
-# Lint
-ruff check .
-
-# Type check (strict mode, 0 errors)
-pyright
-```
-
-### Optional Dependencies
-
-```bash
-# CrewAI adapter
-pip install "keelson-ai[crewai]"
-
-# LangChain adapter
-pip install "keelson-ai[langchain]"
-
-# All optional adapters
-pip install "keelson-ai[all]"
+# Type check
+pnpm lint
 ```
 
 ## Contributing
@@ -529,8 +457,8 @@ pip install "keelson-ai[all]"
 Contributions are welcome. Here's how to help:
 
 1. **Add probe playbooks** — Write new `.yaml` files in `probes/`. Follow the format above.
-2. **Add adapters** — Implement the `BaseAdapter` interface (implement `_send_messages_impl`, `health_check`, `close`; optional: `reset_session`). The base class provides `send_messages` with automatic retry logic.
-3. **Improve detection** — Enhance patterns in `core/detection.py` or add new evaluation strategies.
+2. **Add adapters** — Extend `BaseAdapter` and implement `send()`. The base class provides automatic retry logic.
+3. **Improve detection** — Enhance patterns in `core/detection.ts` or add new evaluation strategies.
 4. **Report bugs** — Open an issue with reproduction steps.
 
 ### Workflow
@@ -538,7 +466,7 @@ Contributions are welcome. Here's how to help:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feat/my-feature`)
 3. Make your changes
-4. Run `pytest` and `ruff check .`
+4. Run `pnpm test` and `pnpm lint`
 5. Submit a pull request
 
 ### Security
@@ -903,25 +831,18 @@ flowchart LR
     style MUT fill:#f9f,stroke:#333
 ```
 
-### API Specification
-
-The authoritative OpenAPI 3.1.0 contract for the Keelson service is at [`docs/openapi.yaml`](docs/openapi.yaml). It covers the `/health` endpoint (implemented) and placeholder paths for Phase 2 scan, probe, and report endpoints.
-
 ### Architecture Decision Records
 
-Key technical decisions are documented as [MADR](https://adr.github.io/madr/) records in [`docs/adr/`](docs/adr/):
+Key technical decisions are documented as [MADR](https://adr.github.io/madr/) records in [`docs/adr/`](docs/adr/).
 
-| ADR | Decision | Status |
-|-----|----------|--------|
-| [ADR-001](docs/adr/ADR-001-framework.md) | Web framework: FastAPI (async-first, auto-OpenAPI) | Accepted |
-| [ADR-002](docs/adr/ADR-002-dependency-management.md) | Dependency management: uv (fast resolver, `uv.lock`) | Accepted |
-| [ADR-003](docs/adr/ADR-003-observability.md) | Observability: structured logging now, OpenTelemetry in Phase 2 | Accepted |
+The current migration to TypeScript supersedes earlier Python-era ADRs. See [`docs/plans/`](docs/plans/) for the migration design and implementation plan.
 
 ## Roadmap
 
 See [docs/plans/](docs/plans/) for the full roadmap.
 
 **Next up:**
+
 - Drift detection and continuous monitoring
 - Semantic coverage tracking
 - REST API and web dashboard
