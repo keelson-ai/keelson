@@ -168,6 +168,15 @@ export interface AdapterConfig {
   timeout?: number;
   retryAttempts?: number;
   retryDelay?: number;
+  // LangGraph-specific
+  assistantId?: string;
+  // MCP-specific
+  toolName?: string;
+  // SiteGPT-specific
+  chatbotId?: string;
+  // LangChain-specific
+  inputKey?: string;
+  outputKey?: string;
 }
 
 export interface AdapterResponse {
@@ -179,6 +188,8 @@ export interface AdapterResponse {
 export interface Adapter {
   send(messages: Turn[]): Promise<AdapterResponse>;
   healthCheck(): Promise<boolean>;
+  resetSession(): void;
+  close(): Promise<void>;
 }
 
 // ─── Strategy Interfaces ─────────────────────────────────
