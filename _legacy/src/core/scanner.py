@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from keelson.adapters.base import BaseAdapter
-from keelson.adaptive.branching import execute_branching_attack, find_vulnerable_paths
+from keelson.adaptive.branching import execute_branching_probe, find_vulnerable_paths
 from keelson.core.engine import execute_probe
 from keelson.core.models import (
     EvidenceItem,
@@ -56,7 +56,7 @@ async def _deep_probe(
     When a probe succeeds, we explore follow-up conversation paths to discover
     additional vulnerable behaviors stemming from the same weakness.
     """
-    root = await execute_branching_attack(
+    root = await execute_branching_probe(
         template=template,
         adapter=adapter,
         model=model,
@@ -108,7 +108,7 @@ async def _deep_probe(
 async def run_scan(
     target: Target,
     adapter: BaseAdapter,
-    attacks_dir: Path | None = None,
+    probes_dir: Path | None = None,
     category: str | None = None,
     delay: float = 1.5,
     on_finding: Callable[[Finding, int, int], None] | None = None,
@@ -121,7 +121,7 @@ async def run_scan(
     Args:
         target: The target to scan.
         adapter: Adapter for communicating with the target.
-        attacks_dir: Override directory for probe playbooks.
+        probes_dir: Override directory for probe playbooks.
         category: Filter to a specific category subdirectory.
         delay: Seconds to wait between probes.
         on_finding: Optional callback(finding, current_index, total) for progress.
@@ -130,7 +130,7 @@ async def run_scan(
         max_response_tokens: Limit target response length to save tokens (default 512).
             Set to None to allow unlimited responses.
     """
-    templates = load_all_templates(attacks_dir=attacks_dir, category=category)
+    templates = load_all_templates(probes_dir=probes_dir, category=category)
     result = ScanResult(target=target)
     total = len(templates)
 

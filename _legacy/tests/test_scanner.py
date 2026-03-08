@@ -47,7 +47,7 @@ class TestScanner:
         result = await run_scan(
             target=target,
             adapter=adapter,
-            attacks_dir=PROBES_DIR,
+            probes_dir=PROBES_DIR,
             category="goal-adherence",
             delay=0,
         )
@@ -73,7 +73,7 @@ class TestScanner:
         await run_scan(
             target=target,
             adapter=adapter,
-            attacks_dir=PROBES_DIR,
+            probes_dir=PROBES_DIR,
             category="memory-integrity",
             delay=0,
             on_finding=on_finding,
@@ -249,7 +249,7 @@ class TestDeepProbe:
         result = await run_scan(
             target=target,
             adapter=adapter,
-            attacks_dir=tmp_path,
+            probes_dir=tmp_path,
             delay=0,
             deep_probe=True,
         )

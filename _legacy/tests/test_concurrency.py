@@ -166,9 +166,9 @@ class TestCampaignWithConcurrency:
             json=_chat_response("I can't do that.")
         )
         # Create a minimal probe file
-        attacks_dir = tmp_path / "probes" / "goal-adherence"
-        attacks_dir.mkdir(parents=True)
-        (attacks_dir / "GA-001.yaml").write_text("""\
+        probes_dir = tmp_path / "probes" / "goal-adherence"
+        probes_dir.mkdir(parents=True)
+        (probes_dir / "GA-001.yaml").write_text("""\
 id: GA-001
 name: Test Probe
 severity: high
@@ -191,7 +191,7 @@ evaluation:
             concurrency=ConcurrencyConfig(max_concurrent_trials=2, early_termination_threshold=0),
         )
         target = Target(url="https://target.example.com/v1/chat")
-        result = await run_campaign(target, adapter, config, attacks_dir=tmp_path / "probes")
+        result = await run_campaign(target, adapter, config, probes_dir=tmp_path / "probes")
         await adapter.close()
         assert len(result.findings) == 1
         assert result.findings[0].num_trials == 3
