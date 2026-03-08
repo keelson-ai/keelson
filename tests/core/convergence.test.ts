@@ -51,6 +51,8 @@ function mockAdapter(response = 'PWNED'): Adapter {
       }),
     ),
     healthCheck: vi.fn().mockResolvedValue(true),
+    resetSession: vi.fn(),
+    close: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -210,6 +212,8 @@ describe('runConvergenceScan', () => {
         }),
       ),
       healthCheck: vi.fn().mockResolvedValue(true),
+      resetSession: vi.fn(),
+      close: vi.fn().mockResolvedValue(undefined),
     };
 
     const result = await runConvergenceScan('http://target', adapter, {

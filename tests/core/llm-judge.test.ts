@@ -36,6 +36,8 @@ function mockAdapter(content: string): Adapter {
   return {
     send: vi.fn().mockResolvedValue({ content, raw: {}, latencyMs: 100 }),
     healthCheck: vi.fn().mockResolvedValue(true),
+    resetSession: vi.fn(),
+    close: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -101,6 +103,8 @@ describe('judgeResponse', () => {
     const adapter: Adapter = {
       send: vi.fn().mockRejectedValue(new Error('Connection refused: sk-live-abc123')),
       healthCheck: vi.fn().mockResolvedValue(false),
+      resetSession: vi.fn(),
+      close: vi.fn().mockResolvedValue(undefined),
     };
     const result = await judgeResponse(makeTemplate(), makeEvidence(), adapter);
 

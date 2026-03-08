@@ -11,6 +11,8 @@ function mockAdapter(response: string): Adapter {
   return {
     send: vi.fn().mockResolvedValue({ content: response, raw: {}, latencyMs: 50 } as AdapterResponse),
     healthCheck: vi.fn().mockResolvedValue(true),
+    resetSession: vi.fn(),
+    close: vi.fn().mockResolvedValue(undefined),
   };
 }
 

@@ -31,6 +31,8 @@ function mockAdapter(responses: string[]): Adapter {
       return { content, raw: {}, latencyMs: 50 };
     }),
     healthCheck: vi.fn().mockResolvedValue(true),
+    resetSession: vi.fn(),
+    close: vi.fn().mockResolvedValue(undefined),
   };
 }
 
