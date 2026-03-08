@@ -255,7 +255,7 @@ This is the critical path — probe execution, verdict determination, scan orche
 
 ### Task 2.3: Engine ✅
 
-**Status:** Complete — `src/core/engine.ts`, 10 tests passing
+**Status:** Complete — `src/core/engine.ts`, 12 tests passing
 
 - `executeProbe()` — multi-turn loop with conversation accumulation
 - Non-user turns injected without sending to adapter
@@ -265,65 +265,49 @@ This is the critical path — probe execution, verdict determination, scan orche
 - Observer support for leakage signal detection
 - Pattern-only or combined (pattern + judge) detection
 
-### Task 2.4: Scanner
+### Task 2.4: Scanner ✅
 
-**Files:**
+**Status:** Complete — `src/core/scanner.ts`, 8 tests passing
 
-- Create: `src/core/scanner.ts`
-- Create: `tests/core/scanner.test.ts`
+- `scan(target, adapter, options)` — full scan pipeline with probe loading, filtering, execution, and summarization
+- Sequential and concurrent execution modes (worker-pool pattern preserving result order)
+- Category and severity filtering with case-insensitive matching
+- `MemoTable` integrated — records findings, dynamic probe reordering every 10 findings
+- `onFinding` progress callback with current/total counts
+- Returns `ScanResult` with `memo` for downstream use (smart scan, convergence)
 
-**Reference:** `_legacy/src/keelson/core/scanner.py` (175 lines)
+### Task 2.5: Observer + Memo ✅
 
-Implement:
+**Status:** Complete — `src/core/observer.ts` (10 tests), `src/core/memo.ts` (16 tests)
 
-- `scan(config, adapter, callbacks): Promise<ScanResult>`
-- Probe loading + filtering by category/severity
-- Sequential and concurrent execution modes
-- Progress callbacks
-- Result summarization
+Observer — `StreamingObserver` with 3 detection strategies:
+- Progressive disclosure (response length increasing 2x+ across turns)
+- Boundary erosion (refusal phrase density decreasing across turns)
+- Partial leak (structured data patterns accumulating)
 
-Tests:
+Memo — `MemoTable` with technique effectiveness tracking:
+- 10 technique types inferred from prompt patterns (authority, roleplay, encoding, etc.)
+- `effectiveTechniques()`, `promisingTechniques()`, `deadEndTechniques()` — all filterable by category
+- `scoreProbeTechniques()` — cross-category signal boosting for probe prioritization
+- `extractLeakedInfo()` — harvests tool names, URLs, file paths, env vars from responses
 
-- Filters probes by category
-- Filters probes by severity
-- Sequential mode runs one at a time
-- Concurrent mode respects concurrency limit
-- Progress callback fires
-- Summary counts are correct
+### Task 2.6: Strategist + Convergence ✅
 
-### Task 2.5: Observer + Memo
+**Status:** Complete — `src/core/strategist.ts` (19 tests), `src/core/convergence.ts` (15 tests)
 
-**Files:**
+Strategist:
+- `classifyTarget(reconResponses)` — detects 7 agent types from recon (tool-rich, RAG, codebase, customer service, coding assistant, multi-agent, general chat)
+- `selectProbes(profile, templates)` — builds priority-based probe plan (HIGH=all, MEDIUM=5, LOW=3, SKIP=0)
+- `adaptPlan(plan, findings)` — mid-scan escalation (3+ vulns → HIGH) and de-escalation (3+ consecutive SAFEs → SKIP)
 
-- Create: `src/core/observer.ts`
-- Create: `src/core/memo.ts`
-- Create: `tests/core/observer.test.ts`
-- Create: `tests/core/memo.test.ts`
+Convergence:
+- `runConvergenceScan(target, adapter, options)` — iterative multi-pass scan (up to 4 passes)
+- `harvestLeakedInfo(findings)` — extracts system prompts, tool names, credentials, internal URLs, configs, model names
+- `selectCrossfeedProbes()` — queues probes from related categories via `CROSS_CATEGORY_MAP`
+- `selectLeakageTargetedProbes()` — targets specific categories based on leaked info type
+- Converges when no new vulnerabilities or leakage emerges
 
-**Reference:**
-
-- `_legacy/src/keelson/core/observer.py` (169 lines)
-- `_legacy/src/keelson/core/memo.py` (306 lines)
-
-Observer: streaming progress reporting.
-Memo: technique effectiveness tracking (success rates, tested counts).
-
-### Task 2.6: Strategist + Smart Scan + Convergence
-
-**Files:**
-
-- Create: `src/core/strategist.ts`
-- Create: `src/core/smart-scan.ts`
-- Create: `src/core/convergence.ts`
-- Create corresponding test files
-
-**Reference:**
-
-- `_legacy/src/keelson/core/strategist.py` (400 lines)
-- `_legacy/src/keelson/core/smart_scan.py` (367 lines)
-- `_legacy/src/keelson/core/convergence.py` (438 lines)
-
-These are the advanced scan modes. Can be done after basic engine+scanner work.
+Note: Smart scan (`smart_scan.py`) deferred — requires discovery probes and session management infrastructure not yet ported.
 
 ---
 
