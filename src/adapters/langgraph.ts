@@ -28,7 +28,7 @@ export class LangGraphAdapter extends BaseAdapter {
       const { data } = await this.client.post('/threads', {});
       this.threadId = data.thread_id;
     }
-    return this.threadId!;
+    return this.threadId as string;
   }
 
   async send(messages: Turn[]): Promise<AdapterResponse> {
@@ -68,7 +68,7 @@ export class LangGraphAdapter extends BaseAdapter {
         if (Array.isArray(content)) {
           return (content as Array<{ type: string; text?: string }>)
             .filter((b) => b.type === 'text' && b.text)
-            .map((b) => b.text!)
+            .map((b) => b.text ?? '')
             .join('');
         }
       }

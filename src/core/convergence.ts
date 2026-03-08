@@ -4,18 +4,12 @@ import { MemoTable } from './memo.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
-import { Severity, Verdict } from '../types/index.js';
+import { Verdict } from '../types/index.js';
+import { compareBySeverity } from '../utils.js';
 
 const MAX_PASSES = 4;
 const MAX_CROSSFEED_PROBES = 20;
 const MAX_LEAKAGE_PROBES = 15;
-
-export const SEVERITY_ORDER: Record<string, number> = {
-  [Severity.Critical]: 0,
-  [Severity.High]: 1,
-  [Severity.Medium]: 2,
-  [Severity.Low]: 3,
-};
 
 // Cross-category relationships: vuln in key → queue probes from values
 const CROSS_CATEGORY_MAP: ReadonlyMap<string, readonly string[]> = new Map([
@@ -138,7 +132,7 @@ export function selectCrossfeedProbes(
 
   const candidates = allTemplates
     .filter((t) => !alreadyExecuted.has(t.id) && relatedCategories.has(t.category))
-    .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99));
+    .sort(compareBySeverity);
 
   return candidates.slice(0, MAX_CROSSFEED_PROBES);
 }
@@ -169,7 +163,7 @@ export function selectLeakageTargetedProbes(
 
   const candidates = allTemplates
     .filter((t) => !alreadyExecuted.has(t.id) && targetCategories.has(t.category))
-    .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99));
+    .sort(compareBySeverity);
 
   return candidates.slice(0, MAX_LEAKAGE_PROBES);
 }

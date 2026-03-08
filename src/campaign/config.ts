@@ -9,7 +9,8 @@ import { basename, extname } from 'node:path';
 import YAML from 'yaml';
 import { z } from 'zod';
 
-import { applyTier } from './tiers.js';
+import { TIER_NAMES, applyTier } from './tiers.js';
+import type { TierName } from './tiers.js';
 
 // ─── Zod Schema ─────────────────────────────────────────
 
@@ -18,10 +19,10 @@ export const campaignConfigSchema = z.object({
     name: z.string(),
     trialsPerProbe: z.number().int().positive().default(1),
     confidenceLevel: z.number().min(0).max(1).default(0.95),
-    delayMs: z.number().int().min(0).default(2000),
+    delayMs: z.number().int().min(0).default(1500),
     category: z.string().optional(),
     probeIds: z.array(z.string()).optional(),
-    tier: z.enum(['fast', 'deep', 'continuous']).optional(),
+    tier: z.enum(TIER_NAMES).optional(),
   }),
   target: z.object({
     url: z.url(),
@@ -75,7 +76,7 @@ export async function parseCampaignConfig(filePath: string): Promise<CampaignCon
  */
 function applyTierWithOverrides(
   config: CampaignConfig,
-  tier: string,
+  tier: TierName,
   rawData: Record<string, unknown>,
 ): CampaignConfig {
   const tiered = applyTier(config, tier);

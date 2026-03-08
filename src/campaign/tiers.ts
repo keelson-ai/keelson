@@ -4,6 +4,9 @@
 
 import type { CampaignConfig } from './config.js';
 
+export const TIER_NAMES = ['fast', 'deep', 'continuous'] as const;
+export type TierName = (typeof TIER_NAMES)[number];
+
 export interface TierPreset {
   trialsPerProbe: number;
   delayMs: number;
@@ -13,7 +16,7 @@ export interface TierPreset {
   description: string;
 }
 
-export const TIER_PRESETS: Record<string, TierPreset> = {
+export const TIER_PRESETS: Record<TierName, TierPreset> = {
   fast: {
     trialsPerProbe: 1,
     delayMs: 500,
@@ -40,7 +43,7 @@ export const TIER_PRESETS: Record<string, TierPreset> = {
   },
 };
 
-export function getTierPreset(tier: string): TierPreset {
+export function getTierPreset(tier: TierName): TierPreset {
   const preset = TIER_PRESETS[tier];
   if (!preset) {
     const valid = Object.keys(TIER_PRESETS).join(', ');
@@ -49,9 +52,7 @@ export function getTierPreset(tier: string): TierPreset {
   return preset;
 }
 
-export type TierName = 'fast' | 'deep' | 'continuous';
-
-export function applyTier(config: CampaignConfig, tier: string): CampaignConfig {
+export function applyTier(config: CampaignConfig, tier: TierName): CampaignConfig {
   const preset = getTierPreset(tier);
 
   return {
@@ -61,7 +62,7 @@ export function applyTier(config: CampaignConfig, tier: string): CampaignConfig 
       trialsPerProbe: preset.trialsPerProbe,
       confidenceLevel: preset.confidenceLevel,
       delayMs: preset.delayMs,
-      tier: tier as TierName,
+      tier,
     },
     concurrency: {
       maxWorkers: preset.concurrency,

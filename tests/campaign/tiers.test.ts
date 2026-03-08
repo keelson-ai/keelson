@@ -48,11 +48,13 @@ describe('getTierPreset', () => {
   });
 
   it('throws on unknown tier', () => {
-    expect(() => getTierPreset('ultra')).toThrow('Unknown tier "ultra"');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime guard
+    expect(() => getTierPreset('ultra' as any)).toThrow('Unknown tier "ultra"');
   });
 
   it('error message includes valid tier names', () => {
-    expect(() => getTierPreset('nonexistent')).toThrow('fast, deep, continuous');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime guard
+    expect(() => getTierPreset('nonexistent' as any)).toThrow('fast, deep, continuous');
   });
 });
 
@@ -62,7 +64,7 @@ describe('applyTier', () => {
       name: 'test-campaign',
       trialsPerProbe: 1,
       confidenceLevel: 0.95,
-      delayMs: 2000,
+      delayMs: 1500,
     },
     target: {
       url: 'https://api.example.com/v1/chat',
@@ -116,6 +118,7 @@ describe('applyTier', () => {
   });
 
   it('throws on unknown tier', () => {
-    expect(() => applyTier(baseConfig, 'turbo')).toThrow('Unknown tier "turbo"');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime guard
+    expect(() => applyTier(baseConfig, 'turbo' as any)).toThrow('Unknown tier "turbo"');
   });
 });

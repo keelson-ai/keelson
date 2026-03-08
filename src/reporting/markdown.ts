@@ -5,9 +5,8 @@
  * findings grouped by severity, evidence sections, and recommendations.
  */
 
-import { SEVERITY_ORDER } from '../core/convergence.js';
 import type { EvidenceItem, Finding, ScanResult } from '../types/index.js';
-import { Severity, Verdict } from '../types/index.js';
+import { SEVERITY_ORDER, Severity, Verdict } from '../types/index.js';
 
 // ─── Constants ──────────────────────────────────────────
 

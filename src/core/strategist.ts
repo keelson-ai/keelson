@@ -1,6 +1,6 @@
-import { SEVERITY_ORDER } from './convergence.js';
 import type { Finding, ProbeTemplate } from '../types/index.js';
 import { Verdict } from '../types/index.js';
+import { compareBySeverity } from '../utils.js';
 
 export enum AgentType {
   ToolRich = 'tool_rich',
@@ -226,7 +226,7 @@ export function selectProbes(profile: TargetProfile, templates: ProbeTemplate[],
     templatesByCategory.set(t.category, list);
   }
   for (const list of templatesByCategory.values()) {
-    list.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99));
+    list.sort(compareBySeverity);
   }
 
   // Build category plans with limits
