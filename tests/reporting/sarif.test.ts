@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { makeFinding, makeResult, makeSummary } from './helpers.js';
 import { generateSarif } from '../../src/reporting/sarif.js';
 import type { SarifLog } from '../../src/reporting/sarif.js';
 import { Severity, Verdict } from '../../src/types/index.js';
-import { makeFinding, makeResult, makeSummary } from './helpers.js';
 
 describe('generateSarif', () => {
   it('produces valid SARIF v2.1.0 structure', () => {

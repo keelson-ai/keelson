@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { makeEvidence, makeFinding, makeResult, makeSummary } from './helpers.js';
 import { formatEvidence, generateMarkdownReport } from '../../src/reporting/markdown.js';
 import { Verdict } from '../../src/types/index.js';
-import { makeEvidence, makeFinding, makeResult, makeSummary } from './helpers.js';
 
 describe('generateMarkdownReport', () => {
   it('includes header with scan metadata', () => {

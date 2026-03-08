@@ -47,6 +47,15 @@ export enum MutationType {
   CaesarCipher = 'caesar_cipher',
 }
 
+export enum ComplianceFramework {
+  OwaspLlmTop10 = 'owasp-llm-top10',
+  NistAiRmf = 'nist-ai-rmf',
+  EuAiAct = 'eu-ai-act',
+  Iso42001 = 'iso-42001',
+  Soc2 = 'soc2',
+  PciDssV4 = 'pci-dss-v4',
+}
+
 export enum ScoringMethod {
   Pattern = 'pattern',
   LlmJudge = 'llm_judge',
