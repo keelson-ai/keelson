@@ -205,8 +205,8 @@ export interface AdapterResponse {
 export interface Adapter {
   send(messages: Turn[]): Promise<AdapterResponse>;
   healthCheck(): Promise<boolean>;
-  resetSession(): void;
-  close(): Promise<void>;
+  resetSession?(): void;
+  close?(): Promise<void>;
 }
 
 // ─── Strategy Interfaces ─────────────────────────────────

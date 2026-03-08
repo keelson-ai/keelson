@@ -1,6 +1,7 @@
 import { executeProbe } from './engine.js';
 import type { Observer } from './engine.js';
 import { MemoTable } from './memo.js';
+import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
@@ -179,11 +180,16 @@ async function executeProbeList(
   const findings: Finding[] = [];
   for (let i = 0; i < templates.length; i++) {
     const template = templates[i];
-    const finding = await executeProbe(template, adapter, {
-      delayMs: options.delayMs,
-      judge: options.judge,
-      observer: options.observer,
-    });
+    let finding: Finding;
+    try {
+      finding = await executeProbe(template, adapter, {
+        delayMs: options.delayMs,
+        judge: options.judge,
+        observer: options.observer,
+      });
+    } catch (err: unknown) {
+      finding = errorFinding(template, sanitizeErrorMessage(err));
+    }
     findings.push(finding);
     memo?.record(finding);
     executedIds.add(template.id);

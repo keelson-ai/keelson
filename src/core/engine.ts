@@ -61,7 +61,7 @@ export async function executeProbe(
       messages.length = 0;
       userTurnCount = 0;
       evidence.length = 0; // reset per-session evidence; allEvidence keeps accumulating
-      adapter.resetSession(); // notify adapter to reset server-side session state
+      adapter.resetSession?.(); // notify adapter to reset server-side session state
     }
 
     // Non-user turns injected into context without sending
