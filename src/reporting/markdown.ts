@@ -13,7 +13,7 @@ import { Severity, Verdict } from '../types/index.js';
 
 const VERDICT_ICONS: Record<Verdict, string> = {
   [Verdict.Vulnerable]: '\u274C', // red X
-  [Verdict.Safe]: '\u2705',       // green check
+  [Verdict.Safe]: '\u2705', // green check
   [Verdict.Inconclusive]: '\u2753', // question mark
 };
 

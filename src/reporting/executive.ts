@@ -217,11 +217,8 @@ function buildRecommendations(findings: Finding[]): RecommendationItem[] {
     });
 
     for (const [category, catFindings] of sorted) {
-      const worstFinding = catFindings.reduce((a, b) =>
-        severitySortKey(a) <= severitySortKey(b) ? a : b,
-      );
-      const recommendation =
-        CATEGORY_RECOMMENDATIONS[category] ?? `Review ${category} controls.`;
+      const worstFinding = catFindings.reduce((a, b) => (severitySortKey(a) <= severitySortKey(b) ? a : b));
+      const recommendation = CATEGORY_RECOMMENDATIONS[category] ?? `Review ${category} controls.`;
       const probeIds = [...new Set(catFindings.map((f) => f.probeId))].sort().join(', ');
       recs.push({
         category,
@@ -245,9 +242,7 @@ function buildRecommendations(findings: Finding[]): RecommendationItem[] {
   }
 
   // Meta-recommendation: inconclusive findings
-  const hasInconclusive = findings.some(
-    (f) => f.verdict === Verdict.Inconclusive,
-  );
+  const hasInconclusive = findings.some((f) => f.verdict === Verdict.Inconclusive);
   if (hasInconclusive) {
     recs.push({
       category: 'Manual Review',
@@ -306,9 +301,7 @@ export function generateExecutiveReport(result: ScanResult): string {
     const bar = row.count > 0 ? '\u2588'.repeat(row.count) : '-';
     lines.push(`| **${row.severity}** | ${row.count} | ${bar} ${row.percentage.toFixed(0)}% |`);
   }
-  lines.push(
-    `| **Total Vulnerable** | **${result.summary.vulnerable}** | |`,
-  );
+  lines.push(`| **Total Vulnerable** | **${result.summary.vulnerable}** | |`);
   lines.push('');
 
   // Category Breakdown
@@ -319,9 +312,7 @@ export function generateExecutiveReport(result: ScanResult): string {
   lines.push('| Category | Vulnerable | Total | Rate |');
   lines.push('|----------|----------:|------:|-----:|');
   for (const row of categoryRows) {
-    lines.push(
-      `| ${row.category} | ${row.vulnCount} | ${row.totalCount} | ${row.rate.toFixed(0)}% |`,
-    );
+    lines.push(`| ${row.category} | ${row.vulnCount} | ${row.totalCount} | ${row.rate.toFixed(0)}% |`);
   }
   lines.push('');
 
@@ -392,12 +383,8 @@ export function generateExecutiveReport(result: ScanResult): string {
       if (f.leakageSignals.length > 0) {
         lines.push('**Leakage Signals Detected**:');
         for (const sig of f.leakageSignals) {
-          const confLabel = sig.confidence
-            ? ` (confidence: ${(sig.confidence * 100).toFixed(0)}%)`
-            : '';
-          lines.push(
-            `- [${sig.severity.toUpperCase()}] ${sig.signalType}: ${sig.description}${confLabel}`,
-          );
+          const confLabel = sig.confidence ? ` (confidence: ${(sig.confidence * 100).toFixed(0)}%)` : '';
+          lines.push(`- [${sig.severity.toUpperCase()}] ${sig.signalType}: ${sig.description}${confLabel}`);
         }
         lines.push('');
       }

@@ -5,7 +5,6 @@
  * to generate reports in any supported format.
  */
 
-
 import { FRAMEWORK_CONTROLS, generateComplianceReport, mapFindingsToFramework } from './compliance.js';
 import { generateExecutiveReport } from './executive.js';
 import { generateJunit } from './junit.js';
@@ -34,16 +33,8 @@ export interface ReportOptions {
  * Returns a string for text-based formats (markdown, executive, compliance, junit)
  * or an object for structured formats (sarif, ocsf).
  */
-export function generateReport(
-  result: ScanResult,
-  format: 'sarif',
-  options?: ReportOptions,
-): SarifLog;
-export function generateReport(
-  result: ScanResult,
-  format: 'ocsf',
-  options?: ReportOptions,
-): OcsfEvent[];
+export function generateReport(result: ScanResult, format: 'sarif', options?: ReportOptions): SarifLog;
+export function generateReport(result: ScanResult, format: 'ocsf', options?: ReportOptions): OcsfEvent[];
 export function generateReport(
   result: ScanResult,
   format: 'markdown' | 'executive' | 'compliance' | 'junit',
@@ -60,10 +51,7 @@ export function generateReport(
     case 'executive':
       return generateExecutiveReport(result);
     case 'compliance':
-      return generateComplianceReport(
-        result,
-        options?.complianceFramework ?? ComplianceFramework.OwaspLlmTop10,
-      );
+      return generateComplianceReport(result, options?.complianceFramework ?? ComplianceFramework.OwaspLlmTop10);
     case 'sarif':
       return generateSarif(result);
     case 'junit':

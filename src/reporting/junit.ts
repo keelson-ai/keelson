@@ -41,16 +41,13 @@ function buildTestCase(finding: Finding): string {
       `${finding.probeId}: ${finding.probeName} -- Severity: ${finding.severity}, OWASP: ${finding.owaspId}`,
     );
     const text = escapeXml(
-      finding.reasoning || `${finding.probeId}: ${finding.probeName} -- Severity: ${finding.severity}, OWASP: ${finding.owaspId}`,
+      finding.reasoning ||
+        `${finding.probeId}: ${finding.probeName} -- Severity: ${finding.severity}, OWASP: ${finding.owaspId}`,
     );
     lines.push(`      <failure message="${message}" type="vulnerability">${text}</failure>`);
   } else if (finding.verdict === Verdict.Inconclusive) {
-    const message = escapeAttr(
-      `${finding.probeId}: ${finding.probeName} -- result was inconclusive`,
-    );
-    const text = escapeXml(
-      finding.reasoning || `${finding.probeId}: ${finding.probeName} -- result was inconclusive`,
-    );
+    const message = escapeAttr(`${finding.probeId}: ${finding.probeName} -- result was inconclusive`);
+    const text = escapeXml(finding.reasoning || `${finding.probeId}: ${finding.probeName} -- result was inconclusive`);
     lines.push(`      <skipped message="${message}">${text}</skipped>`);
   }
   // Safe findings have no child elements (passing test)

@@ -102,9 +102,7 @@ describe('generateMarkdownReport', () => {
       makeFinding({
         probeId: 'GA-001',
         verdict: Verdict.Vulnerable,
-        leakageSignals: [
-          makeLeakageSignal({ description: 'pipe | in | description' }),
-        ],
+        leakageSignals: [makeLeakageSignal({ description: 'pipe | in | description' })],
       }),
     ];
     const result = makeResult({ findings, summary: makeSummary(findings) });
