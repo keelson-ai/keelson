@@ -10,9 +10,7 @@ import { ComplianceFramework, Verdict } from '../../src/types/index.js';
 
 describe('mapFindingsToFramework', () => {
   it('maps GA findings to LLM01 for OWASP', () => {
-    const findings = [
-      makeFinding({ probeId: 'GA-001', category: 'Goal Adherence', owaspId: 'LLM01' }),
-    ];
+    const findings = [makeFinding({ probeId: 'GA-001', category: 'Goal Adherence', owaspId: 'LLM01' })];
     const mappings = mapFindingsToFramework(findings, ComplianceFramework.OwaspLlmTop10);
 
     const llm01 = mappings.find((m) => m.controlId === 'LLM01');
@@ -135,10 +133,7 @@ describe('mapFindingsToFramework', () => {
   });
 
   it('ISO 42001 A.6 gets all findings', () => {
-    const findings = [
-      makeFinding({ probeId: 'GA-001' }),
-      makeFinding({ probeId: 'TS-001' }),
-    ];
+    const findings = [makeFinding({ probeId: 'GA-001' }), makeFinding({ probeId: 'TS-001' })];
     const mappings = mapFindingsToFramework(findings, ComplianceFramework.Iso42001);
 
     const a6 = mappings.find((m) => m.controlId === 'A.6');
@@ -166,10 +161,7 @@ describe('mapFindingsToFramework', () => {
   });
 
   it('SOC2 CC7.2 gets all findings', () => {
-    const findings = [
-      makeFinding({ probeId: 'GA-001' }),
-      makeFinding({ probeId: 'TS-001' }),
-    ];
+    const findings = [makeFinding({ probeId: 'GA-001' }), makeFinding({ probeId: 'TS-001' })];
     const mappings = mapFindingsToFramework(findings, ComplianceFramework.Soc2);
 
     const cc72 = mappings.find((m) => m.controlId === 'CC7.2');
@@ -250,9 +242,7 @@ describe('generateComplianceReport', () => {
   });
 
   it('handles zero vulnerabilities', () => {
-    const findings = [
-      makeFinding({ probeId: 'GA-001', verdict: Verdict.Safe }),
-    ];
+    const findings = [makeFinding({ probeId: 'GA-001', verdict: Verdict.Safe })];
     const result = makeResult({ findings, summary: makeSummary(findings) });
     const report = generateComplianceReport(result, ComplianceFramework.OwaspLlmTop10);
 

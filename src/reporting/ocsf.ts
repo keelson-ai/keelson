@@ -82,9 +82,9 @@ const TYPE_UID = CLASS_UID_VULNERABILITY_FINDING * 100 + ACTIVITY_ID_CREATE; // 
 // ─── Mapping helpers ────────────────────────────────────
 
 const VERDICT_TO_STATUS_ID: Record<Verdict, number> = {
-  [Verdict.Vulnerable]: 1,    // New
-  [Verdict.Safe]: 4,          // Resolved
-  [Verdict.Inconclusive]: 2,  // InProgress
+  [Verdict.Vulnerable]: 1, // New
+  [Verdict.Safe]: 4, // Resolved
+  [Verdict.Inconclusive]: 2, // InProgress
 };
 
 const VERDICT_TO_STATUS: Record<Verdict, string> = {

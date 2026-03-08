@@ -19,22 +19,10 @@ describe('findingToOcsf', () => {
   });
 
   it('maps severity correctly', () => {
-    const critical = findingToOcsf(
-      makeFinding({ severity: Severity.Critical }),
-      'https://api.example.com',
-    );
-    const high = findingToOcsf(
-      makeFinding({ severity: Severity.High }),
-      'https://api.example.com',
-    );
-    const medium = findingToOcsf(
-      makeFinding({ severity: Severity.Medium }),
-      'https://api.example.com',
-    );
-    const low = findingToOcsf(
-      makeFinding({ severity: Severity.Low }),
-      'https://api.example.com',
-    );
+    const critical = findingToOcsf(makeFinding({ severity: Severity.Critical }), 'https://api.example.com');
+    const high = findingToOcsf(makeFinding({ severity: Severity.High }), 'https://api.example.com');
+    const medium = findingToOcsf(makeFinding({ severity: Severity.Medium }), 'https://api.example.com');
+    const low = findingToOcsf(makeFinding({ severity: Severity.Low }), 'https://api.example.com');
 
     expect(critical.severity_id).toBe(5);
     expect(critical.severity).toBe('Critical');
@@ -47,18 +35,9 @@ describe('findingToOcsf', () => {
   });
 
   it('maps verdict to status correctly', () => {
-    const vulnerable = findingToOcsf(
-      makeFinding({ verdict: Verdict.Vulnerable }),
-      'https://api.example.com',
-    );
-    const safe = findingToOcsf(
-      makeFinding({ verdict: Verdict.Safe }),
-      'https://api.example.com',
-    );
-    const inconclusive = findingToOcsf(
-      makeFinding({ verdict: Verdict.Inconclusive }),
-      'https://api.example.com',
-    );
+    const vulnerable = findingToOcsf(makeFinding({ verdict: Verdict.Vulnerable }), 'https://api.example.com');
+    const safe = findingToOcsf(makeFinding({ verdict: Verdict.Safe }), 'https://api.example.com');
+    const inconclusive = findingToOcsf(makeFinding({ verdict: Verdict.Inconclusive }), 'https://api.example.com');
 
     expect(vulnerable.status_id).toBe(1);
     expect(vulnerable.status).toBe('New');

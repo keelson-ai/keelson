@@ -60,10 +60,10 @@ describe('generateSarif', () => {
     const sarif = generateSarif(result);
     const rules = sarif.runs[0].tool.driver.rules;
 
-    expect(rules[0].defaultConfiguration.level).toBe('error');   // Critical
-    expect(rules[1].defaultConfiguration.level).toBe('error');   // High
+    expect(rules[0].defaultConfiguration.level).toBe('error'); // Critical
+    expect(rules[1].defaultConfiguration.level).toBe('error'); // High
     expect(rules[2].defaultConfiguration.level).toBe('warning'); // Medium
-    expect(rules[3].defaultConfiguration.level).toBe('note');    // Low
+    expect(rules[3].defaultConfiguration.level).toBe('note'); // Low
   });
 
   it('maps verdict to SARIF kind correctly', () => {

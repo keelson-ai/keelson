@@ -78,8 +78,7 @@ export interface SarifLog {
 // ─── Constants ──────────────────────────────────────────
 
 const SARIF_VERSION = '2.1.0';
-const SARIF_SCHEMA =
-  'https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json';
+const SARIF_SCHEMA = 'https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json';
 const TOOL_NAME = 'keelson';
 const TOOL_VERSION = VERSION;
 const TOOL_INFO_URI = 'https://github.com/keelson-ai/keelson';
@@ -175,7 +174,7 @@ export function generateSarif(result: ScanResult): SarifLog {
       seenRules.set(finding.probeId, rules.length);
       rules.push(findingToRule(finding));
     }
-    const ruleIndex = seenRules.get(finding.probeId)!;
+    const ruleIndex = seenRules.get(finding.probeId) ?? 0;
     results.push(findingToResult(finding, ruleIndex));
   }
 

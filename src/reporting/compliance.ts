@@ -29,27 +29,22 @@ interface ControlDefinition {
 const OWASP_LLM_CONTROLS: Record<string, ControlDefinition> = {
   LLM01: {
     name: 'Prompt Injection',
-    description:
-      'Direct and indirect prompt injection probes that manipulate LLM behavior.',
-    remediation:
-      'Implement input validation, privilege control, and human-in-the-loop for critical actions.',
+    description: 'Direct and indirect prompt injection probes that manipulate LLM behavior.',
+    remediation: 'Implement input validation, privilege control, and human-in-the-loop for critical actions.',
     categories: ['Goal Adherence'],
     probePrefixes: ['GA-'],
   },
   LLM02: {
     name: 'Insecure Output Handling',
-    description:
-      'Failure to validate/sanitize LLM outputs before passing to downstream systems.',
-    remediation:
-      'Apply output encoding, input validation on downstream systems, and least privilege.',
+    description: 'Failure to validate/sanitize LLM outputs before passing to downstream systems.',
+    remediation: 'Apply output encoding, input validation on downstream systems, and least privilege.',
     categories: ['Tool Safety', 'Permission Boundaries'],
     probePrefixes: ['TS-', 'PB-'],
   },
   LLM03: {
     name: 'Training Data Poisoning',
     description: 'Manipulation of training data to introduce vulnerabilities or biases.',
-    remediation:
-      'Vet training data sources, use data sanitization, and implement anomaly detection.',
+    remediation: 'Vet training data sources, use data sanitization, and implement anomaly detection.',
     categories: [],
     probePrefixes: [],
   },
@@ -62,8 +57,7 @@ const OWASP_LLM_CONTROLS: Record<string, ControlDefinition> = {
   },
   LLM05: {
     name: 'Supply Chain Vulnerabilities',
-    description:
-      'Vulnerabilities in third-party components, plugins, or pre-trained models.',
+    description: 'Vulnerabilities in third-party components, plugins, or pre-trained models.',
     remediation: 'Vet third-party components, maintain SBOM, and monitor for CVEs.',
     categories: ['Memory Integrity', 'Session Isolation'],
     probePrefixes: ['MI-', 'SI-'],
@@ -71,32 +65,28 @@ const OWASP_LLM_CONTROLS: Record<string, ControlDefinition> = {
   LLM06: {
     name: 'Sensitive Information Disclosure',
     description: 'LLM revealing sensitive data through responses.',
-    remediation:
-      'Apply data sanitization, PII filtering, and access controls on training data.',
+    remediation: 'Apply data sanitization, PII filtering, and access controls on training data.',
     categories: ['Content Safety', 'Execution Safety'],
     probePrefixes: ['CS-', 'ES-'],
   },
   LLM07: {
     name: 'Insecure Plugin Design',
     description: 'Plugins with inadequate access controls or input validation.',
-    remediation:
-      'Apply least privilege to plugins, validate inputs, and require user confirmation.',
+    remediation: 'Apply least privilege to plugins, validate inputs, and require user confirmation.',
     categories: ['Tool Safety'],
     probePrefixes: ['TS-'],
   },
   LLM08: {
     name: 'Excessive Agency',
     description: 'LLM granted excessive capabilities, permissions, or autonomy.',
-    remediation:
-      'Limit LLM permissions, implement function-level authorization, require human approval.',
+    remediation: 'Limit LLM permissions, implement function-level authorization, require human approval.',
     categories: ['Agentic Security', 'Delegation Integrity'],
     probePrefixes: ['AS-', 'DI-'],
   },
   LLM09: {
     name: 'Overreliance',
     description: 'Excessive dependence on LLM output without verification.',
-    remediation:
-      'Implement human oversight, output verification, and confidence scoring.',
+    remediation: 'Implement human oversight, output verification, and confidence scoring.',
     categories: ['Agentic Security', 'Delegation Integrity'],
     probePrefixes: ['AS-', 'DI-'],
   },
@@ -129,9 +119,15 @@ const NIST_AI_RMF_CONTROLS: Record<string, ControlDefinition> = {
     description: 'Analyze and assess AI system risks quantitatively.',
     remediation: 'Address identified vulnerabilities and re-test.',
     categories: [
-      'Goal Adherence', 'Tool Safety', 'Memory Integrity', 'Permission Boundaries',
-      'Delegation Integrity', 'Execution Safety', 'Session Isolation',
-      'Content Safety', 'Agentic Security',
+      'Goal Adherence',
+      'Tool Safety',
+      'Memory Integrity',
+      'Permission Boundaries',
+      'Delegation Integrity',
+      'Execution Safety',
+      'Session Isolation',
+      'Content Safety',
+      'Agentic Security',
     ],
     probePrefixes: [],
   },
@@ -168,8 +164,7 @@ const EU_AI_ACT_CONTROLS: Record<string, ControlDefinition> = {
   },
   'Article 15': {
     name: 'Accuracy, Robustness and Cybersecurity',
-    description:
-      'High-risk AI systems shall be designed for accuracy, robustness and cybersecurity.',
+    description: 'High-risk AI systems shall be designed for accuracy, robustness and cybersecurity.',
     remediation: 'Address vulnerabilities to meet Article 15 requirements.',
     categories: ['Goal Adherence', 'Tool Safety', 'Memory Integrity', 'Permission Boundaries', 'Execution Safety'],
     probePrefixes: ['GA-', 'TS-', 'MI-', 'PB-', 'ES-'],
@@ -206,38 +201,39 @@ const SOC2_CONTROLS: Record<string, ControlDefinition> = {
 const PCI_DSS_V4_CONTROLS: Record<string, ControlDefinition> = {
   '6.2': {
     name: 'Secure Development',
-    description:
-      'Bespoke and custom software is developed securely, including AI/ML components.',
-    remediation:
-      'Apply secure development practices to AI agent integrations and prompt handling.',
+    description: 'Bespoke and custom software is developed securely, including AI/ML components.',
+    remediation: 'Apply secure development practices to AI agent integrations and prompt handling.',
     categories: ['Goal Adherence', 'Delegation Integrity', 'Execution Safety'],
     probePrefixes: ['GA-', 'DI-', 'ES-'],
   },
   '6.3': {
     name: 'Security Testing',
-    description:
-      'Security vulnerabilities are identified and addressed, including AI-specific probe vectors.',
+    description: 'Security vulnerabilities are identified and addressed, including AI-specific probe vectors.',
     remediation:
       'Perform regular security testing of AI agent capabilities including prompt injection and tool misuse.',
     categories: [
-      'Goal Adherence', 'Tool Safety', 'Memory Integrity', 'Permission Boundaries',
-      'Delegation Integrity', 'Execution Safety', 'Session Isolation',
-      'Content Safety', 'Agentic Security',
+      'Goal Adherence',
+      'Tool Safety',
+      'Memory Integrity',
+      'Permission Boundaries',
+      'Delegation Integrity',
+      'Execution Safety',
+      'Session Isolation',
+      'Content Safety',
+      'Agentic Security',
     ],
     probePrefixes: ['GA-', 'TS-', 'MI-', 'PB-', 'DI-', 'ES-', 'SI-', 'CS-', 'AS-'],
   },
   '6.4': {
     name: 'Public-Facing Application Protection',
     description: 'Public-facing AI applications are protected against known probes.',
-    remediation:
-      'Implement input validation, output filtering, and rate limiting on public-facing AI endpoints.',
+    remediation: 'Implement input validation, output filtering, and rate limiting on public-facing AI endpoints.',
     categories: ['Goal Adherence', 'Content Safety', 'Permission Boundaries'],
     probePrefixes: ['GA-', 'CS-', 'PB-'],
   },
   '11.3': {
     name: 'Penetration Testing',
-    description:
-      'Regular penetration testing of AI systems to identify exploitable vulnerabilities.',
+    description: 'Regular penetration testing of AI systems to identify exploitable vulnerabilities.',
     remediation:
       'Conduct AI-specific penetration testing covering prompt injection, tool abuse, and privilege escalation.',
     categories: ['Tool Safety', 'Permission Boundaries', 'Agentic Security', 'Execution Safety'],
@@ -304,11 +300,8 @@ function matchFindingsToControl(
   const bestByProbe = new Map<string, Finding>();
 
   for (const f of findings) {
-    const matchesByCategory = control.categories.length > 0 &&
-      control.categories.includes(f.category);
-    const matchesByPrefix = control.probePrefixes.some((prefix) =>
-      f.probeId.startsWith(prefix),
-    );
+    const matchesByCategory = control.categories.length > 0 && control.categories.includes(f.category);
+    const matchesByPrefix = control.probePrefixes.some((prefix) => f.probeId.startsWith(prefix));
     // Only apply OWASP ID matching for the OWASP framework
     let matchesByOwasp = false;
     if (framework === ComplianceFramework.OwaspLlmTop10) {
@@ -327,9 +320,7 @@ function matchFindingsToControl(
   return [...bestByProbe.values()];
 }
 
-function complianceRecommendations(
-  mappings: FrameworkMapping[],
-): string[] {
+function complianceRecommendations(mappings: FrameworkMapping[]): string[] {
   const recs: string[] = [];
   const failed = mappings.filter((m) => m.status === 'fail');
   const notTested = mappings.filter((m) => m.findings.length === 0);
@@ -338,9 +329,7 @@ function complianceRecommendations(
     recs.push(`Address failing controls: ${failed.map((m) => m.controlId).join(', ')}`);
   }
   if (notTested.length > 0) {
-    recs.push(
-      `Expand testing to cover untested controls: ${notTested.map((m) => m.controlId).join(', ')}`,
-    );
+    recs.push(`Expand testing to cover untested controls: ${notTested.map((m) => m.controlId).join(', ')}`);
   }
   if (failed.length === 0) {
     recs.push('Maintain current security posture with regular testing.');
@@ -352,10 +341,7 @@ function complianceRecommendations(
 // ─── Public API ─────────────────────────────────────────
 
 /** Map findings to the controls of a compliance framework. */
-export function mapFindingsToFramework(
-  findings: Finding[],
-  framework: ComplianceFramework,
-): FrameworkMapping[] {
+export function mapFindingsToFramework(findings: Finding[], framework: ComplianceFramework): FrameworkMapping[] {
   const controls = FRAMEWORK_CONTROLS[framework];
   const mappings: FrameworkMapping[] = [];
 
@@ -387,10 +373,7 @@ export function mapFindingsToFramework(
 }
 
 /** Generate a compliance report for the given framework. */
-export function generateComplianceReport(
-  result: ScanResult,
-  framework: ComplianceFramework,
-): string {
+export function generateComplianceReport(result: ScanResult, framework: ComplianceFramework): string {
   const controls = FRAMEWORK_CONTROLS[framework];
   const mappings = mapFindingsToFramework(result.findings, framework);
   const recs = complianceRecommendations(mappings);
@@ -416,9 +399,7 @@ export function generateComplianceReport(
   lines.push('## Executive Summary');
   lines.push('');
   if (result.summary.vulnerable === 0) {
-    lines.push(
-      `All tested ${frameworkNames[framework]} controls passed security validation.`,
-    );
+    lines.push(`All tested ${frameworkNames[framework]} controls passed security validation.`);
   } else {
     lines.push(
       `Security testing identified ${result.summary.vulnerable} vulnerabilities across ` +
