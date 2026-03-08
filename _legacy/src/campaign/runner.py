@@ -148,7 +148,7 @@ async def run_campaign(
     target: Target,
     adapter: BaseAdapter,
     config: CampaignConfig,
-    attacks_dir: Path | None = None,
+    probes_dir: Path | None = None,
     on_finding: Callable[[StatisticalFinding, int, int], None] | None = None,
 ) -> CampaignResult:
     """Run a statistical campaign: each probe executed N times with Wilson CI scoring.
@@ -157,10 +157,10 @@ async def run_campaign(
         target: The target to scan.
         adapter: Adapter for communicating with the target.
         config: Campaign configuration.
-        attacks_dir: Override directory for probe playbooks.
+        probes_dir: Override directory for probe playbooks.
         on_finding: Optional callback(finding, current_index, total) for progress.
     """
-    templates = load_all_templates(attacks_dir=attacks_dir, category=config.category)
+    templates = load_all_templates(probes_dir=probes_dir, category=config.category)
     if config.probe_ids:
         id_set = set(config.probe_ids)
         templates = [t for t in templates if t.id in id_set]

@@ -41,7 +41,7 @@ async def run_scheduled(
     config: CampaignConfig,
     interval_seconds: int,
     max_runs: int | None = None,
-    attacks_dir: Path | None = None,
+    probes_dir: Path | None = None,
     on_campaign: Callable[[CampaignResult, int], None] | None = None,
 ) -> list[CampaignResult]:
     """Run campaigns on a schedule.
@@ -52,7 +52,7 @@ async def run_scheduled(
         config: Campaign configuration.
         interval_seconds: Seconds between campaign runs.
         max_runs: Maximum number of runs (None = run forever).
-        attacks_dir: Override probes directory.
+        probes_dir: Override probes directory.
         on_campaign: Callback(result, run_number) after each campaign.
 
     Returns:
@@ -63,7 +63,7 @@ async def run_scheduled(
 
     while max_runs is None or run_number < max_runs:
         run_number += 1
-        result = await run_campaign(target, adapter, config, attacks_dir=attacks_dir)
+        result = await run_campaign(target, adapter, config, probes_dir=probes_dir)
         results.append(result)
 
         if on_campaign:

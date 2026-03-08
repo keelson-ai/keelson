@@ -63,4 +63,12 @@ export abstract class BaseAdapter implements Adapter {
       return false;
     }
   }
+
+  resetSession(): void {
+    // No-op for stateless adapters. Stateful adapters override.
+  }
+
+  async close(): Promise<void> {
+    // No-op by default. Adapters with resources override.
+  }
 }
