@@ -1,7 +1,6 @@
 import { BaseAdapter } from './base.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
-
 /**
  * Generic HTTP adapter for any OpenAI-compatible chat completions endpoint.
  * Appends /v1/chat/completions to the base URL.
