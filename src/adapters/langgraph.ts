@@ -1,7 +1,6 @@
 import { BaseAdapter } from './base.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
-
 /**
  * LangGraph Platform adapter. Stateful: maintains a thread across calls.
  * Communicates via /threads/{id}/runs/wait endpoint.

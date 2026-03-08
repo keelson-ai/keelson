@@ -3,7 +3,6 @@ import crypto from 'node:crypto';
 import { BaseAdapter } from './base.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
-
 const WIDGET_BASE = 'https://widget.sitegpt.ai';
 const PK_HOST = 'pk.sitegpt.ai';
 const API_BASE = 'https://sitegpt.ai/api/v0';
