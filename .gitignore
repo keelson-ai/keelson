@@ -13,6 +13,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
 # Logs
 *.log
 
