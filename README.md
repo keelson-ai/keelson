@@ -528,11 +528,10 @@ keelson/
 ├── tests/                          # 802 tests
 ├── docs/                           # Documentation
 │   ├── adr/                        # Architecture Decision Records
-│   │   ├── ADR-001-framework.md    # FastAPI selection
+│   │   ├── ADR-001-framework.md    # FastAPI selection (historical)
 │   │   ├── ADR-002-dependency-management.md  # uv selection
 │   │   └── ADR-003-observability.md  # Structured logging + OTel plan
 │   ├── plans/                      # Roadmap
-│   ├── openapi.yaml                # OpenAPI 3.1.0 API contract
 │   └── github-action-spec.md       # GitHub Action design
 ├── pyproject.toml                  # Python packaging
 └── LICENSE                         # Apache 2.0
@@ -603,7 +602,6 @@ See [docs/plans/](docs/plans/) for the full roadmap.
 - Wiz WIN integration (AI Security category)
 - Splunk HEC + Cortex XSIAM connectors
 - Drift detection and continuous monitoring
-- REST API and web dashboard
 - GitHub Action (`keelson-ai/keelson-action`)
 
 ## License
