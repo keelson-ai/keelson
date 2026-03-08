@@ -42,7 +42,7 @@ def _chat_response(content: str) -> dict[str, Any]:
 
 
 @pytest.fixture
-def attacks_dir(tmp_path: Path) -> Generator[Path, None, None]:
+def probes_dir(tmp_path: Path) -> Generator[Path, None, None]:
     """Create a temp probes dir with a single controlled template."""
     cat_dir = tmp_path / "goal-adherence"
     cat_dir.mkdir()
@@ -82,7 +82,7 @@ class TestWilsonCI:
 @pytest.mark.asyncio
 class TestRunCampaign:
     @respx.mock
-    async def test_basic_campaign(self, attacks_dir: Path) -> None:
+    async def test_basic_campaign(self, probes_dir: Path) -> None:
         """Run 3 trials against a single probe, all returning VULNERABLE."""
         respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("PWNED")
@@ -94,7 +94,7 @@ class TestRunCampaign:
             delay_between_trials=0,
             delay_between_probes=0,
         )
-        result = await run_campaign(target, adapter, config, attacks_dir=attacks_dir)
+        result = await run_campaign(target, adapter, config, probes_dir=probes_dir)
         await adapter.close()
         assert len(result.findings) == 1
         sf = result.findings[0]
@@ -105,7 +105,7 @@ class TestRunCampaign:
         assert result.finished_at is not None
 
     @respx.mock
-    async def test_campaign_safe_verdict(self, attacks_dir: Path) -> None:
+    async def test_campaign_safe_verdict(self, probes_dir: Path) -> None:
         """All trials safe → low CI upper bound."""
         respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("I can't do that. I refuse to comply.")
@@ -117,14 +117,14 @@ class TestRunCampaign:
             delay_between_trials=0,
             delay_between_probes=0,
         )
-        result = await run_campaign(target, adapter, config, attacks_dir=attacks_dir)
+        result = await run_campaign(target, adapter, config, probes_dir=probes_dir)
         await adapter.close()
         sf = result.findings[0]
         assert sf.num_vulnerable == 0
         assert sf.ci_lower == 0.0
 
     @respx.mock
-    async def test_campaign_progress_callback(self, attacks_dir: Path) -> None:
+    async def test_campaign_progress_callback(self, probes_dir: Path) -> None:
         respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("PWNED")
         )
@@ -144,7 +144,7 @@ class TestRunCampaign:
             target,
             adapter,
             config,
-            attacks_dir=attacks_dir,
+            probes_dir=probes_dir,
             on_finding=on_finding,
         )
         await adapter.close()
@@ -152,7 +152,7 @@ class TestRunCampaign:
         assert progress[0] == ("TEST-001", 1, 1)
 
     @respx.mock
-    async def test_campaign_mixed_results(self, attacks_dir: Path) -> None:
+    async def test_campaign_mixed_results(self, probes_dir: Path) -> None:
         """Mixed results across trials."""
         route = respx.post("https://target.example.com/v1/chat/completions")
         responses = [
@@ -170,7 +170,7 @@ class TestRunCampaign:
             delay_between_trials=0,
             delay_between_probes=0,
         )
-        result = await run_campaign(target, adapter, config, attacks_dir=attacks_dir)
+        result = await run_campaign(target, adapter, config, probes_dir=probes_dir)
         await adapter.close()
         sf = result.findings[0]
         assert sf.num_vulnerable == 3
@@ -179,7 +179,7 @@ class TestRunCampaign:
         assert sf.verdict == Verdict.INCONCLUSIVE
 
     @respx.mock
-    async def test_campaign_total_trials(self, attacks_dir: Path) -> None:
+    async def test_campaign_total_trials(self, probes_dir: Path) -> None:
         respx.post("https://target.example.com/v1/chat/completions").respond(  # type: ignore[reportUnknownMemberType]
             json=_chat_response("PWNED")
         )
@@ -190,7 +190,7 @@ class TestRunCampaign:
             delay_between_trials=0,
             delay_between_probes=0,
         )
-        result = await run_campaign(target, adapter, config, attacks_dir=attacks_dir)
+        result = await run_campaign(target, adapter, config, probes_dir=probes_dir)
         await adapter.close()
         assert result.total_trials == 4
         assert result.vulnerable_probes == 1
