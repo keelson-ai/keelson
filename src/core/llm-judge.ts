@@ -159,7 +159,7 @@ export function combinedDetect(patternResult: DetectionResult, judgeResult: Dete
   if (jv === Verdict.Inconclusive) {
     return {
       verdict: pv,
-      confidence: Math.max(patternResult.confidence, judgeResult.confidence, PATTERN_FALLBACK_CONFIDENCE),
+      confidence: Math.max(patternResult.confidence, PATTERN_FALLBACK_CONFIDENCE),
       reasoning: `Judge inconclusive, trusting pattern: ${patternResult.reasoning}`,
       method: ScoringMethod.Combined,
     };

@@ -51,6 +51,7 @@ export async function executeProbe(
 
   const messages: Turn[] = [];
   const evidence: EvidenceItem[] = [];
+  const allEvidence: EvidenceItem[] = [];
   let userTurnCount = 0;
 
   for (let stepIdx = 0; stepIdx < template.turns.length; stepIdx++) {
@@ -59,9 +60,9 @@ export async function executeProbe(
     if (template.newSession && stepIdx > 0) {
       messages.length = 0;
       userTurnCount = 0;
-      // Segment evidence across sessions: run detection on accumulated evidence
-      // for the prior session, then reset for the new session. This prevents
-      // cross-session data from being evaluated as a single conversation.
+      // Segment evidence across sessions: save prior session evidence to allEvidence,
+      // then reset for the new session. Detection evaluates per-session evidence only.
+      allEvidence.push(...evidence);
       evidence.length = 0;
     }
 
@@ -100,6 +101,9 @@ export async function executeProbe(
     }
   }
 
+  // Collect final session's evidence
+  allEvidence.push(...evidence);
+
   const leakageSignals = observer?.observe(evidence) ?? [];
   const patternResult = patternDetect(template, evidence, leakageSignals);
 
@@ -122,7 +126,7 @@ export async function executeProbe(
     reasoning: detection.reasoning,
     scoringMethod: detection.method,
     conversation: [...messages],
-    evidence,
+    evidence: allEvidence,
     leakageSignals,
     timestamp: new Date().toISOString(),
   };

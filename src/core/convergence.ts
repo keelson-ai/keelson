@@ -1,5 +1,6 @@
 import { executeProbe } from './engine.js';
 import type { Observer } from './engine.js';
+import { MemoTable } from './memo.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
@@ -9,7 +10,7 @@ const MAX_PASSES = 4;
 const MAX_CROSSFEED_PROBES = 20;
 const MAX_LEAKAGE_PROBES = 15;
 
-const SEVERITY_ORDER: Record<string, number> = {
+export const SEVERITY_ORDER: Record<string, number> = {
   [Severity.Critical]: 0,
   [Severity.High]: 1,
   [Severity.Medium]: 2,
@@ -179,6 +180,7 @@ async function executeProbeList(
   executedIds: Set<string>,
   options: ConvergenceOptions,
   total: number,
+  memo?: MemoTable,
 ): Promise<Finding[]> {
   const findings: Finding[] = [];
   for (let i = 0; i < templates.length; i++) {
@@ -189,6 +191,7 @@ async function executeProbeList(
       observer: options.observer,
     });
     findings.push(finding);
+    memo?.record(finding);
     executedIds.add(template.id);
     options.onFinding?.(finding, i + 1, total);
   }
@@ -223,6 +226,7 @@ export async function runConvergenceScan(
 
   const allFindings: Finding[] = [];
   const executedIds = new Set<string>();
+  const memo = new MemoTable();
   let leakedInfo: LeakedInfo[] = [];
 
   // Pass 1: Initial scan
@@ -234,6 +238,7 @@ export async function runConvergenceScan(
     executedIds,
     options,
     initialTemplates.length,
+    memo,
   );
   allFindings.push(...pass1Findings);
 
@@ -268,7 +273,14 @@ export async function runConvergenceScan(
       `Cross-feed pass: ${crossfeed.length} category-related + ${leakageTargeted.length} leakage-targeted = ${nextTemplates.length} probes`,
     );
 
-    const passFindings = await executeProbeList(nextTemplates, adapter, executedIds, options, nextTemplates.length);
+    const passFindings = await executeProbeList(
+      nextTemplates,
+      adapter,
+      executedIds,
+      options,
+      nextTemplates.length,
+      memo,
+    );
 
     allFindings.push(...passFindings);
 
@@ -297,5 +309,6 @@ export async function runConvergenceScan(
     completedAt: new Date().toISOString(),
     findings: allFindings,
     summary: summarize(allFindings),
+    memo: memo.entries,
   };
 }
