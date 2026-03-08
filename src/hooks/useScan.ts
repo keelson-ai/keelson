@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { scan } from '../core/scanner.js';
 import type { ScanOptions } from '../core/scanner.js';
@@ -35,8 +35,11 @@ export function useScan(
     verdictCounts: { vulnerable: 0, safe: 0, inconclusive: 0 },
   });
 
+  const runningRef = useRef(false);
+
   const start = useCallback(() => {
-    if (state.status === 'running') return;
+    if (runningRef.current) return;
+    runningRef.current = true;
 
     setState((prev) => ({
       ...prev,
@@ -72,6 +75,7 @@ export function useScan(
 
     scan(target, adapter, scanOptions)
       .then((result) => {
+        runningRef.current = false;
         setState((prev) => ({
           ...prev,
           status: 'complete',
@@ -80,13 +84,14 @@ export function useScan(
         }));
       })
       .catch((err: unknown) => {
+        runningRef.current = false;
         setState((prev) => ({
           ...prev,
           status: 'error',
           error: err instanceof Error ? err.message : String(err),
         }));
       });
-  }, [target, adapter, options, state.status]);
+  }, [target, adapter, options]);
 
   return { ...state, start };
 }
