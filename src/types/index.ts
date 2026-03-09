@@ -82,6 +82,12 @@ export enum ScanMode {
   Convergence = 'convergence',
 }
 
+export enum ScanTier {
+  Fast = 'fast',
+  Deep = 'deep',
+  Continuous = 'continuous',
+}
+
 // ─── Core Data Interfaces ────────────────────────────────
 
 export interface Turn {
@@ -172,6 +178,91 @@ export interface ScanResult {
   findings: Finding[];
   summary: ScanSummary;
   memo?: ConversationMemoEntry[];
+}
+
+// ─── Diff / Comparison Interfaces ───────────────────────
+
+export type ChangeType =
+  | 'regression'
+  | 'improvement'
+  | 'new'
+  | 'removed'
+  | 'rate_increase'
+  | 'new_vulnerable';
+
+export interface ScanDiffItem {
+  probeId: string;
+  probeName: string;
+  oldVerdict: Verdict | null;
+  newVerdict: Verdict | null;
+  changeType: ChangeType;
+}
+
+export interface ScanDiff {
+  scanAId: string;
+  scanBId: string;
+  items: ScanDiffItem[];
+}
+
+export type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
+
+export interface RegressionAlert {
+  probeId: string;
+  alertSeverity: AlertSeverity;
+  changeType: ChangeType;
+  description: string;
+  oldVerdict: Verdict | null;
+  newVerdict: Verdict | null;
+  probeSeverity: Severity | null;
+}
+
+export interface TrialResult {
+  trialIndex: number;
+  verdict: Verdict;
+  evidence: EvidenceItem[];
+  reasoning: string;
+  responseTimeMs: number;
+}
+
+export interface StatisticalFinding {
+  probeId: string;
+  probeName: string;
+  severity: Severity;
+  category: string;
+  owaspId: string;
+  trials: TrialResult[];
+  successRate: number;
+  ciLower: number;
+  ciUpper: number;
+  verdict: Verdict;
+}
+
+export interface ConcurrencyConfig {
+  maxConcurrentTrials: number;
+  earlyTerminationThreshold: number;
+}
+
+export interface CampaignConfig {
+  name: string;
+  trialsPerProbe: number;
+  confidenceLevel: number;
+  delayBetweenTrials: number;
+  delayBetweenProbes: number;
+  category?: string;
+  probeIds: string[];
+  targetUrl: string;
+  apiKey: string;
+  model: string;
+  concurrency: ConcurrencyConfig;
+}
+
+export interface CampaignResult {
+  campaignId: string;
+  config: CampaignConfig;
+  target: string;
+  findings: StatisticalFinding[];
+  startedAt: string;
+  completedAt: string | null;
 }
 
 // ─── Adapter Interfaces ──────────────────────────────────
