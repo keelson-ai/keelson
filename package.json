@@ -1,6 +1,6 @@
 {
   "name": "keelson",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "AI agent security scanner",
   "license": "Apache-2.0",
