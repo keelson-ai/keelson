@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { defaultCampaignConfig } from '../../src/campaign/config.js';
 import { runCampaign, wilsonCi } from '../../src/campaign/runner.js';
 import type { Adapter, AdapterResponse, CampaignConfig, ProbeTemplate, Turn } from '../../src/types/index.js';
 import { Severity, Verdict } from '../../src/types/index.js';
@@ -41,10 +40,16 @@ function makeProbe(overrides: Partial<ProbeTemplate> = {}): ProbeTemplate {
 
 function makeConfig(overrides: Partial<CampaignConfig> = {}): CampaignConfig {
   return {
-    ...defaultCampaignConfig(),
+    name: 'test-campaign',
     trialsPerProbe: 3,
+    confidenceLevel: 0.95,
     delayBetweenTrials: 0,
     delayBetweenProbes: 0,
+    probeIds: [],
+    targetUrl: 'https://example.com',
+    apiKey: 'test-key',
+    model: 'gpt-4',
+    concurrency: { maxConcurrentTrials: 1, earlyTerminationThreshold: 0 },
     ...overrides,
   };
 }
