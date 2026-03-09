@@ -1,20 +1,20 @@
 /**
- * JSON file persistence for scans, findings, campaigns, agent profiles,
+ * SQLite-backed persistence for scans, findings, campaigns, agent profiles,
  * baselines, cache entries, regression alerts, and probe chains.
  *
- * Mirrors the Python SQLite store from `_legacy/src/state/store.py`,
- * using flat JSON files under `~/.keelson/` instead of SQLite.
+ * Uses better-sqlite3 for synchronous, single-file storage under `~/.keelson/`.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-import { z } from 'zod';
+import Database from 'better-sqlite3';
+import type { Database as DatabaseType, Statement } from 'better-sqlite3';
 
 import type { AgentProfile } from '../prober/types.js';
 import type { ScanResult } from '../types/index.js';
-import { Severity, Verdict } from '../types/index.js';
+import { Verdict } from '../types/index.js';
 
 // ─── Persisted Data Shapes ──────────────────────────────
 
@@ -51,7 +51,7 @@ export interface PersistedTrialResult {
 export interface PersistedStatisticalFinding {
   templateId: string;
   templateName: string;
-  severity: Severity;
+  severity: string;
   category: string;
   owasp: string;
   trials: PersistedTrialResult[];
@@ -104,7 +104,7 @@ export interface PersistedProbeChain {
   name: string;
   capabilities: string[];
   steps: PersistedProbeStep[];
-  severity: Severity;
+  severity: string;
   category: string;
   owasp: string;
   createdAt: string;
@@ -141,357 +141,360 @@ export interface CampaignListEntry {
   vulnerable: number;
 }
 
-// ─── Store Data Schema (Zod validation for persisted JSON) ──
-
-const evidenceItemSchema = z.object({
-  stepIndex: z.number(),
-  prompt: z.string(),
-  response: z.string(),
-  responseTimeMs: z.number(),
-});
-
-const findingSchema = z.object({
-  probeId: z.string(),
-  probeName: z.string(),
-  severity: z.string(),
-  category: z.string(),
-  owaspId: z.string(),
-  verdict: z.string(),
-  confidence: z.number(),
-  reasoning: z.string(),
-  scoringMethod: z.string(),
-  conversation: z.array(z.object({ role: z.string(), content: z.string() })),
-  evidence: z.array(evidenceItemSchema),
-  leakageSignals: z.array(z.unknown()).default([]),
-  timestamp: z.string(),
-});
-
-const scanSummarySchema = z.object({
-  total: z.number(),
-  vulnerable: z.number(),
-  safe: z.number(),
-  inconclusive: z.number(),
-  bySeverity: z.record(z.string(), z.number()),
-  byCategory: z.record(z.string(), z.number()),
-});
-
-const scanResultSchema = z.object({
-  scanId: z.string(),
-  target: z.string(),
-  startedAt: z.string(),
-  completedAt: z.string(),
-  findings: z.array(findingSchema),
-  summary: scanSummarySchema,
-  memo: z.array(z.unknown()).optional(),
-});
-
-const trialResultSchema = z.object({
-  trialIndex: z.number(),
-  verdict: z.enum([Verdict.Vulnerable, Verdict.Safe, Verdict.Inconclusive]),
-  evidence: z.array(evidenceItemSchema),
-  reasoning: z.string(),
-  responseTimeMs: z.number(),
-});
-
-const statisticalFindingSchema = z.object({
-  templateId: z.string(),
-  templateName: z.string(),
-  severity: z.enum([Severity.Critical, Severity.High, Severity.Medium, Severity.Low]),
-  category: z.string(),
-  owasp: z.string(),
-  trials: z.array(trialResultSchema),
-  successRate: z.number(),
-  ciLower: z.number(),
-  ciUpper: z.number(),
-  verdict: z.enum([Verdict.Vulnerable, Verdict.Safe, Verdict.Inconclusive]),
-});
-
-const campaignConfigSchema = z.object({
-  name: z.string(),
-  trialsPerProbe: z.number(),
-  confidenceLevel: z.number(),
-  category: z.string().nullable(),
-  probeIds: z.array(z.string()),
-});
-
-const targetSchema = z.object({
-  url: z.string(),
-  apiKey: z.string(),
-  model: z.string(),
-  name: z.string(),
-});
-
-const campaignResultSchema = z.object({
-  campaignId: z.string(),
-  config: campaignConfigSchema,
-  target: targetSchema,
-  findings: z.array(statisticalFindingSchema),
-  startedAt: z.string(),
-  finishedAt: z.string().nullable(),
-});
-
-const agentCapabilitySchema = z.object({
-  name: z.string(),
-  detected: z.boolean(),
-  probePrompt: z.string(),
-  responseExcerpt: z.string(),
-  confidence: z.number(),
-});
-
-const agentProfileSchema = z.object({
-  profileId: z.string(),
-  targetUrl: z.string(),
-  capabilities: z.array(agentCapabilitySchema),
-  createdAt: z.string(),
-});
-
-const cacheEntrySchema = z.object({
-  cacheKey: z.string(),
-  messages: z.array(z.record(z.string(), z.unknown())),
-  model: z.string(),
-  responseText: z.string(),
-  responseTimeMs: z.number(),
-  createdAt: z.string(),
-  hitCount: z.number(),
-});
-
-const regressionAlertSchema = z.object({
-  id: z.number(),
-  scanAId: z.string(),
-  scanBId: z.string(),
-  templateId: z.string(),
-  alertSeverity: z.string(),
-  changeType: z.string(),
-  description: z.string(),
-  createdAt: z.string(),
-  acknowledged: z.boolean(),
-});
-
-const probeStepSchema = z.object({
-  index: z.number(),
-  prompt: z.string(),
-  isFollowup: z.boolean(),
-});
-
-const probeChainSchema = z.object({
-  chainId: z.string(),
-  profileId: z.string().nullable(),
-  name: z.string(),
-  capabilities: z.array(z.string()),
-  steps: z.array(probeStepSchema),
-  severity: z.enum([Severity.Critical, Severity.High, Severity.Medium, Severity.Low]),
-  category: z.string(),
-  owasp: z.string(),
-  createdAt: z.string(),
-});
-
-const baselineSchema = z.object({
-  scanId: z.string(),
-  label: z.string(),
-  createdAt: z.string(),
-});
-
-const eventRecordSchema = z.object({
-  timestamp: z.string(),
-  eventType: z.string(),
-  data: z.record(z.string(), z.unknown()),
-});
-
-const storeDataSchema = z.object({
-  scans: z.array(scanResultSchema).default([]),
-  campaigns: z.array(campaignResultSchema).default([]),
-  agentProfiles: z.array(agentProfileSchema).default([]),
-  cache: z.array(cacheEntrySchema).default([]),
-  regressionAlerts: z.array(regressionAlertSchema).default([]),
-  probeChains: z.array(probeChainSchema).default([]),
-  baselines: z.array(baselineSchema).default([]),
-  events: z.array(eventRecordSchema).default([]),
-});
-
-type StoreData = z.infer<typeof storeDataSchema>;
-
 // ─── Default path ───────────────────────────────────────
 
-const DEFAULT_STORE_PATH = join(homedir(), '.keelson', 'store.json');
+const DEFAULT_DB_PATH = join(homedir(), '.keelson', 'store.db');
+
+// ─── SQL Schema ─────────────────────────────────────────
+
+const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS scans (
+  scan_id TEXT PRIMARY KEY,
+  target TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  completed_at TEXT NOT NULL,
+  findings TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  memo TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_scans_started_at ON scans(started_at DESC);
+
+CREATE TABLE IF NOT EXISTS campaigns (
+  campaign_id TEXT PRIMARY KEY,
+  config TEXT NOT NULL,
+  target TEXT NOT NULL,
+  findings TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  finished_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_campaigns_started_at ON campaigns(started_at DESC);
+
+CREATE TABLE IF NOT EXISTS agent_profiles (
+  profile_id TEXT PRIMARY KEY,
+  target_url TEXT NOT NULL,
+  capabilities TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS baselines (
+  scan_id TEXT PRIMARY KEY,
+  label TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_baselines_created_at ON baselines(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS cache (
+  cache_key TEXT PRIMARY KEY,
+  messages TEXT NOT NULL,
+  model TEXT NOT NULL,
+  response_text TEXT NOT NULL,
+  response_time_ms INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  hit_count INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS regression_alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  scan_a_id TEXT NOT NULL,
+  scan_b_id TEXT NOT NULL,
+  template_id TEXT NOT NULL,
+  alert_severity TEXT NOT NULL,
+  change_type TEXT NOT NULL,
+  description TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  acknowledged INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON regression_alerts(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS probe_chains (
+  chain_id TEXT PRIMARY KEY,
+  profile_id TEXT,
+  name TEXT NOT NULL,
+  capabilities TEXT NOT NULL,
+  steps TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  category TEXT NOT NULL,
+  owasp TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chains_profile ON probe_chains(profile_id);
+CREATE INDEX IF NOT EXISTS idx_chains_created_at ON probe_chains(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  data TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp DESC);
+`;
 
 // ─── Store Implementation ───────────────────────────────
 
 export class Store {
-  private data: StoreData;
-  private dirty = false;
-  private nextAlertId = 1;
+  readonly dbPath: string;
+  private db: DatabaseType;
 
-  private constructor(
-    readonly storePath: string,
-    data: StoreData,
-  ) {
-    this.data = data;
-    // Derive next alert ID from existing data
-    const maxId = data.regressionAlerts.reduce((max, a) => Math.max(max, a.id), 0);
-    this.nextAlertId = maxId + 1;
+  // Cached prepared statements
+  private stmtUpsertScan: Statement;
+  private stmtGetScan: Statement;
+  private stmtListScans: Statement;
+  private stmtUpsertCampaign: Statement;
+  private stmtGetCampaign: Statement;
+  private stmtListCampaigns: Statement;
+  private stmtUpsertProfile: Statement;
+  private stmtGetProfile: Statement;
+  private stmtUpsertBaseline: Statement;
+  private stmtListBaselines: Statement;
+  private stmtUpsertCache: Statement;
+  private stmtGetCache: Statement;
+  private stmtIncrCacheHit: Statement;
+  private stmtInsertAlert: Statement;
+  private stmtListAlerts: Statement;
+  private stmtAckAlert: Statement;
+  private stmtUpsertChain: Statement;
+  private stmtGetChain: Statement;
+  private stmtListChains: Statement;
+  private stmtListChainsByProfile: Statement;
+  private stmtInsertEvent: Statement;
+  private stmtListEvents: Statement;
+  private stmtCountTable: Map<string, Statement>;
+
+  private constructor(dbPath: string, db: DatabaseType) {
+    this.dbPath = dbPath;
+    this.db = db;
+
+    // Prepare all statements
+    this.stmtUpsertScan = db.prepare(
+      `INSERT OR REPLACE INTO scans (scan_id, target, started_at, completed_at, findings, summary, memo)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    );
+    this.stmtGetScan = db.prepare(`SELECT * FROM scans WHERE scan_id = ?`);
+    this.stmtListScans = db.prepare(`SELECT * FROM scans ORDER BY started_at DESC LIMIT ?`);
+
+    this.stmtUpsertCampaign = db.prepare(
+      `INSERT OR REPLACE INTO campaigns (campaign_id, config, target, findings, started_at, finished_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    );
+    this.stmtGetCampaign = db.prepare(`SELECT * FROM campaigns WHERE campaign_id = ?`);
+    this.stmtListCampaigns = db.prepare(`SELECT * FROM campaigns ORDER BY started_at DESC LIMIT ?`);
+
+    this.stmtUpsertProfile = db.prepare(
+      `INSERT OR REPLACE INTO agent_profiles (profile_id, target_url, capabilities, created_at)
+       VALUES (?, ?, ?, ?)`,
+    );
+    this.stmtGetProfile = db.prepare(`SELECT * FROM agent_profiles WHERE profile_id = ?`);
+
+    this.stmtUpsertBaseline = db.prepare(
+      `INSERT OR REPLACE INTO baselines (scan_id, label, created_at) VALUES (?, ?, ?)`,
+    );
+    this.stmtListBaselines = db.prepare(`SELECT * FROM baselines ORDER BY created_at DESC LIMIT ?`);
+
+    this.stmtUpsertCache = db.prepare(
+      `INSERT OR REPLACE INTO cache (cache_key, messages, model, response_text, response_time_ms, created_at, hit_count)
+       VALUES (?, ?, ?, ?, ?, ?, 0)`,
+    );
+    this.stmtGetCache = db.prepare(`SELECT * FROM cache WHERE cache_key = ?`);
+    this.stmtIncrCacheHit = db.prepare(`UPDATE cache SET hit_count = hit_count + 1 WHERE cache_key = ?`);
+
+    this.stmtInsertAlert = db.prepare(
+      `INSERT INTO regression_alerts (scan_a_id, scan_b_id, template_id, alert_severity, change_type, description, created_at, acknowledged)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+    );
+    this.stmtListAlerts = db.prepare(`SELECT * FROM regression_alerts ORDER BY created_at DESC LIMIT ?`);
+    this.stmtAckAlert = db.prepare(`UPDATE regression_alerts SET acknowledged = 1 WHERE id = ?`);
+
+    this.stmtUpsertChain = db.prepare(
+      `INSERT OR REPLACE INTO probe_chains (chain_id, profile_id, name, capabilities, steps, severity, category, owasp, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    this.stmtGetChain = db.prepare(`SELECT * FROM probe_chains WHERE chain_id = ?`);
+    this.stmtListChains = db.prepare(`SELECT * FROM probe_chains ORDER BY created_at DESC LIMIT ?`);
+    this.stmtListChainsByProfile = db.prepare(
+      `SELECT * FROM probe_chains WHERE profile_id = ? ORDER BY created_at DESC LIMIT ?`,
+    );
+
+    this.stmtInsertEvent = db.prepare(
+      `INSERT INTO events (timestamp, event_type, data) VALUES (?, ?, ?)`,
+    );
+    this.stmtListEvents = db.prepare(`SELECT * FROM events ORDER BY timestamp DESC LIMIT ?`);
+
+    // Table count statements
+    this.stmtCountTable = new Map();
+    for (const table of ['scans', 'campaigns', 'agent_profiles', 'baselines', 'cache', 'regression_alerts', 'probe_chains', 'events']) {
+      this.stmtCountTable.set(table, db.prepare(`SELECT COUNT(*) as count FROM ${table}`));
+    }
   }
 
   /** Create or open a store at the given path. */
-  static async open(storePath?: string): Promise<Store> {
-    const path = storePath ?? DEFAULT_STORE_PATH;
-    let data: StoreData;
-    try {
-      const raw = await readFile(path, 'utf-8');
-      const parsed: unknown = JSON.parse(raw);
-      data = storeDataSchema.parse(parsed);
-    } catch (err: unknown) {
-      // File doesn't exist -- start with empty store (normal first-run)
-      if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
-        data = storeDataSchema.parse({});
-      } else if (err instanceof z.ZodError) {
-        // Zod validation failed -- data is corrupt/outdated, warn and reset
-        console.warn(`[keelson] Store file at ${path} failed validation, starting fresh: ${err.message}`);
-        data = storeDataSchema.parse({});
-      } else if (err instanceof SyntaxError) {
-        // Corrupt JSON -- warn and reset
-        console.warn(`[keelson] Store file at ${path} contains invalid JSON, starting fresh: ${err.message}`);
-        data = storeDataSchema.parse({});
-      } else {
-        // Permission denied, disk full, etc. -- do NOT silently swallow
-        throw err;
-      }
-    }
-    return new Store(path, data);
+  static open(dbPath?: string): Store {
+    const path = dbPath ?? DEFAULT_DB_PATH;
+    mkdirSync(dirname(path), { recursive: true });
+    const db = new Database(path);
+    db.pragma('journal_mode = WAL');
+    db.exec(SCHEMA_SQL);
+    return new Store(path, db);
   }
 
   // ─── Scan persistence ──────────────────────────────────
 
-  async saveScan(scan: ScanResult): Promise<void> {
-    // Remove existing scan with same ID (upsert)
-    this.data.scans = this.data.scans.filter((s) => s.scanId !== scan.scanId);
-    this.data.scans.push(scan as unknown as StoreData['scans'][number]);
+  saveScan(scan: ScanResult): void {
+    this.stmtUpsertScan.run(
+      scan.scanId,
+      scan.target,
+      scan.startedAt,
+      scan.completedAt,
+      JSON.stringify(scan.findings),
+      JSON.stringify(scan.summary),
+      scan.memo ? JSON.stringify(scan.memo) : null,
+    );
     this.logEvent('scan_completed', {
       scanId: scan.scanId,
       target: scan.target,
     });
-    await this.flush();
   }
 
   getScan(scanId: string): ScanResult | undefined {
-    const found = this.data.scans.find((s) => s.scanId === scanId);
-    return found as unknown as ScanResult | undefined;
+    const row = this.stmtGetScan.get(scanId) as Record<string, unknown> | undefined;
+    if (!row) return undefined;
+    return this.rowToScan(row);
   }
 
   listScans(limit = 20): ScanListEntry[] {
-    const sorted = [...this.data.scans].sort(
-      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-    );
-    return sorted.slice(0, limit).map((s) => ({
-      scanId: s.scanId,
-      target: s.target,
-      startedAt: s.startedAt,
-      completedAt: s.completedAt,
-      total: s.summary.total,
-      vulnerable: s.summary.vulnerable,
-      safe: s.summary.safe,
-    }));
+    const rows = this.stmtListScans.all(limit) as Array<Record<string, unknown>>;
+    return rows.map((row) => {
+      const summary = JSON.parse(row.summary as string) as { total: number; vulnerable: number; safe: number };
+      return {
+        scanId: row.scan_id as string,
+        target: row.target as string,
+        startedAt: row.started_at as string,
+        completedAt: row.completed_at as string,
+        total: summary.total,
+        vulnerable: summary.vulnerable,
+        safe: summary.safe,
+      };
+    });
   }
 
   // ─── Campaign persistence ─────────────────────────────
 
-  async saveCampaign(campaign: PersistedCampaignResult): Promise<void> {
-    this.data.campaigns = this.data.campaigns.filter((c) => c.campaignId !== campaign.campaignId);
-    this.data.campaigns.push(campaign);
+  saveCampaign(campaign: PersistedCampaignResult): void {
+    this.stmtUpsertCampaign.run(
+      campaign.campaignId,
+      JSON.stringify(campaign.config),
+      JSON.stringify(campaign.target),
+      JSON.stringify(campaign.findings),
+      campaign.startedAt,
+      campaign.finishedAt ?? null,
+    );
     this.logEvent('campaign_completed', {
       campaignId: campaign.campaignId,
       target: campaign.target.url,
     });
-    await this.flush();
   }
 
   getCampaign(campaignId: string): PersistedCampaignResult | undefined {
-    return this.data.campaigns.find((c) => c.campaignId === campaignId);
+    const row = this.stmtGetCampaign.get(campaignId) as Record<string, unknown> | undefined;
+    if (!row) return undefined;
+    return this.rowToCampaign(row);
   }
 
   listCampaigns(limit = 20): CampaignListEntry[] {
-    const sorted = [...this.data.campaigns].sort(
-      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-    );
-    return sorted.slice(0, limit).map((c) => ({
-      campaignId: c.campaignId,
-      targetUrl: c.target.url,
-      startedAt: c.startedAt,
-      finishedAt: c.finishedAt,
-      totalProbes: c.findings.length,
-      vulnerable: c.findings.filter((f) => f.verdict === Verdict.Vulnerable).length,
-    }));
+    const rows = this.stmtListCampaigns.all(limit) as Array<Record<string, unknown>>;
+    return rows.map((row) => {
+      const target = JSON.parse(row.target as string) as PersistedTarget;
+      const findings = JSON.parse(row.findings as string) as PersistedStatisticalFinding[];
+      return {
+        campaignId: row.campaign_id as string,
+        targetUrl: target.url,
+        startedAt: row.started_at as string,
+        finishedAt: (row.finished_at as string | null) ?? null,
+        totalProbes: findings.length,
+        vulnerable: findings.filter((f) => f.verdict === Verdict.Vulnerable).length,
+      };
+    });
   }
 
   // ─── Agent profile persistence ────────────────────────
 
-  async saveAgentProfile(profile: AgentProfile): Promise<void> {
-    this.data.agentProfiles = this.data.agentProfiles.filter((p) => p.profileId !== profile.profileId);
-    this.data.agentProfiles.push(profile);
+  saveAgentProfile(profile: AgentProfile): void {
+    this.stmtUpsertProfile.run(
+      profile.profileId,
+      profile.targetUrl,
+      JSON.stringify(profile.capabilities),
+      profile.createdAt,
+    );
     this.logEvent('profile_saved', {
       profileId: profile.profileId,
       target: profile.targetUrl,
     });
-    await this.flush();
   }
 
   getAgentProfile(profileId: string): AgentProfile | undefined {
-    return this.data.agentProfiles.find((p) => p.profileId === profileId);
+    const row = this.stmtGetProfile.get(profileId) as Record<string, unknown> | undefined;
+    if (!row) return undefined;
+    return {
+      profileId: row.profile_id as string,
+      targetUrl: row.target_url as string,
+      capabilities: JSON.parse(row.capabilities as string),
+      createdAt: row.created_at as string,
+    };
   }
 
   // ─── Baseline persistence ─────────────────────────────
 
-  async saveBaseline(scanId: string, label = ''): Promise<void> {
-    this.data.baselines = this.data.baselines.filter((b) => b.scanId !== scanId);
-    this.data.baselines.push({
-      scanId,
-      label,
-      createdAt: new Date().toISOString(),
-    });
+  saveBaseline(scanId: string, label = ''): void {
+    this.stmtUpsertBaseline.run(scanId, label, new Date().toISOString());
     this.logEvent('baseline_set', { scanId, label });
-    await this.flush();
   }
 
   getBaselines(limit = 20): Baseline[] {
-    const sorted = [...this.data.baselines].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-    return sorted.slice(0, limit);
+    const rows = this.stmtListBaselines.all(limit) as Array<Record<string, unknown>>;
+    return rows.map((row) => ({
+      scanId: row.scan_id as string,
+      label: row.label as string,
+      createdAt: row.created_at as string,
+    }));
   }
 
   // ─── Response cache persistence ───────────────────────
 
-  async saveCacheEntry(
+  saveCacheEntry(
     cacheKey: string,
     messages: Array<Record<string, unknown>>,
     model: string,
     responseText: string,
     responseTimeMs: number,
-  ): Promise<void> {
-    this.data.cache = this.data.cache.filter((c) => c.cacheKey !== cacheKey);
-    this.data.cache.push({
+  ): void {
+    this.stmtUpsertCache.run(
       cacheKey,
-      messages,
+      JSON.stringify(messages),
       model,
       responseText,
       responseTimeMs,
-      createdAt: new Date().toISOString(),
-      hitCount: 0,
-    });
-    await this.flush();
+      new Date().toISOString(),
+    );
   }
 
-  async getCacheEntry(cacheKey: string): Promise<CacheEntry | undefined> {
-    const entry = this.data.cache.find((c) => c.cacheKey === cacheKey);
-    if (!entry) return undefined;
+  getCacheEntry(cacheKey: string): CacheEntry | undefined {
+    const row = this.stmtGetCache.get(cacheKey) as Record<string, unknown> | undefined;
+    if (!row) return undefined;
     // Increment hit count
-    entry.hitCount++;
-    await this.flush();
-    return entry;
+    this.stmtIncrCacheHit.run(cacheKey);
+    return {
+      cacheKey: row.cache_key as string,
+      messages: JSON.parse(row.messages as string),
+      model: row.model as string,
+      responseText: row.response_text as string,
+      responseTimeMs: row.response_time_ms as number,
+      createdAt: row.created_at as string,
+      hitCount: (row.hit_count as number) + 1,
+    };
   }
 
   // ─── Regression alerts ────────────────────────────────
 
-  async saveRegressionAlerts(
+  saveRegressionAlerts(
     scanAId: string,
     scanBId: string,
     alerts: Array<{
@@ -500,100 +503,154 @@ export class Store {
       changeType: string;
       description: string;
     }>,
-  ): Promise<void> {
-    for (const alert of alerts) {
-      this.data.regressionAlerts.push({
-        id: this.nextAlertId++,
-        scanAId,
-        scanBId,
-        templateId: alert.templateId,
-        alertSeverity: alert.alertSeverity,
-        changeType: alert.changeType,
-        description: alert.description,
-        createdAt: new Date().toISOString(),
-        acknowledged: false,
-      });
-    }
+  ): void {
+    const now = new Date().toISOString();
+    const insertMany = this.db.transaction(() => {
+      for (const alert of alerts) {
+        this.stmtInsertAlert.run(
+          scanAId,
+          scanBId,
+          alert.templateId,
+          alert.alertSeverity,
+          alert.changeType,
+          alert.description,
+          now,
+        );
+      }
+    });
+    insertMany();
     this.logEvent('regression_alerts_saved', {
       scanAId,
       scanBId,
       count: alerts.length,
     });
-    await this.flush();
   }
 
   listRegressionAlerts(limit = 50): PersistedRegressionAlert[] {
-    const sorted = [...this.data.regressionAlerts].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-    return sorted.slice(0, limit);
+    const rows = this.stmtListAlerts.all(limit) as Array<Record<string, unknown>>;
+    return rows.map((row) => ({
+      id: row.id as number,
+      scanAId: row.scan_a_id as string,
+      scanBId: row.scan_b_id as string,
+      templateId: row.template_id as string,
+      alertSeverity: row.alert_severity as string,
+      changeType: row.change_type as string,
+      description: row.description as string,
+      createdAt: row.created_at as string,
+      acknowledged: (row.acknowledged as number) === 1,
+    }));
   }
 
-  async acknowledgeAlert(alertId: number): Promise<void> {
-    const alert = this.data.regressionAlerts.find((a) => a.id === alertId);
-    if (alert) {
-      alert.acknowledged = true;
-      await this.flush();
-    }
+  acknowledgeAlert(alertId: number): void {
+    this.stmtAckAlert.run(alertId);
   }
 
   // ─── Probe chain persistence ──────────────────────────
 
-  async saveProbeChain(chain: Omit<PersistedProbeChain, 'createdAt'>): Promise<void> {
-    this.data.probeChains = this.data.probeChains.filter((c) => c.chainId !== chain.chainId);
-    this.data.probeChains.push({
-      ...chain,
-      createdAt: new Date().toISOString(),
-    });
+  saveProbeChain(chain: Omit<PersistedProbeChain, 'createdAt'>): void {
+    const now = new Date().toISOString();
+    this.stmtUpsertChain.run(
+      chain.chainId,
+      chain.profileId ?? null,
+      chain.name,
+      JSON.stringify(chain.capabilities),
+      JSON.stringify(chain.steps),
+      chain.severity,
+      chain.category,
+      chain.owasp,
+      now,
+    );
     this.logEvent('probe_chain_saved', {
       chainId: chain.chainId,
       name: chain.name,
     });
-    await this.flush();
   }
 
   getProbeChain(chainId: string): PersistedProbeChain | undefined {
-    return this.data.probeChains.find((c) => c.chainId === chainId);
+    const row = this.stmtGetChain.get(chainId) as Record<string, unknown> | undefined;
+    if (!row) return undefined;
+    return this.rowToChain(row);
   }
 
   listProbeChains(profileId?: string, limit = 50): PersistedProbeChain[] {
-    let chains = [...this.data.probeChains];
-    if (profileId) {
-      chains = chains.filter((c) => c.profileId === profileId);
-    }
-    chains.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return chains.slice(0, limit);
+    const rows = profileId
+      ? (this.stmtListChainsByProfile.all(profileId, limit) as Array<Record<string, unknown>>)
+      : (this.stmtListChains.all(limit) as Array<Record<string, unknown>>);
+    return rows.map((row) => this.rowToChain(row));
   }
 
   // ─── Events ───────────────────────────────────────────
 
   getEvents(limit = 100): EventRecord[] {
-    const sorted = [...this.data.events].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
-    return sorted.slice(0, limit);
+    const rows = this.stmtListEvents.all(limit) as Array<Record<string, unknown>>;
+    return rows.map((row) => ({
+      timestamp: row.timestamp as string,
+      eventType: row.event_type as string,
+      data: JSON.parse(row.data as string),
+    }));
+  }
+
+  // ─── Stats ────────────────────────────────────────────
+
+  getStats(): Record<string, number> {
+    const stats: Record<string, number> = {};
+    for (const [table, stmt] of this.stmtCountTable) {
+      const row = stmt.get() as { count: number };
+      stats[table] = row.count;
+    }
+    return stats;
+  }
+
+  // ─── Lifecycle ────────────────────────────────────────
+
+  close(): void {
+    this.db.close();
   }
 
   // ─── Internal helpers ─────────────────────────────────
 
   private logEvent(eventType: string, data: Record<string, unknown>): void {
-    this.data.events.push({
-      timestamp: new Date().toISOString(),
+    this.stmtInsertEvent.run(
+      new Date().toISOString(),
       eventType,
-      data,
-    });
-    this.dirty = true;
+      JSON.stringify(data),
+    );
   }
 
-  private async flush(): Promise<void> {
-    this.dirty = true;
-    await mkdir(dirname(this.storePath), { recursive: true });
-    await writeFile(this.storePath, JSON.stringify(this.data, null, 2), 'utf-8');
-    this.dirty = false;
+  private rowToScan(row: Record<string, unknown>): ScanResult {
+    return {
+      scanId: row.scan_id as string,
+      target: row.target as string,
+      startedAt: row.started_at as string,
+      completedAt: row.completed_at as string,
+      findings: JSON.parse(row.findings as string),
+      summary: JSON.parse(row.summary as string),
+      memo: row.memo ? JSON.parse(row.memo as string) : undefined,
+    };
   }
 
-  /** Returns true if there are unsaved changes (for testing). */
-  isDirty(): boolean {
-    return this.dirty;
+  private rowToCampaign(row: Record<string, unknown>): PersistedCampaignResult {
+    return {
+      campaignId: row.campaign_id as string,
+      config: JSON.parse(row.config as string),
+      target: JSON.parse(row.target as string),
+      findings: JSON.parse(row.findings as string),
+      startedAt: row.started_at as string,
+      finishedAt: (row.finished_at as string | null) ?? null,
+    };
+  }
+
+  private rowToChain(row: Record<string, unknown>): PersistedProbeChain {
+    return {
+      chainId: row.chain_id as string,
+      profileId: (row.profile_id as string | null) ?? null,
+      name: row.name as string,
+      capabilities: JSON.parse(row.capabilities as string),
+      steps: JSON.parse(row.steps as string),
+      severity: row.severity as string,
+      category: row.category as string,
+      owasp: row.owasp as string,
+      createdAt: row.created_at as string,
+    };
   }
 }
