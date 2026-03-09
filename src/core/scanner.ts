@@ -6,6 +6,7 @@ import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
+import { generateScanId } from '../utils/id.js';
 
 const REORDER_INTERVAL = 10;
 
@@ -149,7 +150,7 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
       : await executeConcurrent(probes, adapter, memo, options, concurrency);
 
   return {
-    scanId: crypto.randomUUID(),
+    scanId: generateScanId(),
     target,
     startedAt,
     completedAt: new Date().toISOString(),
