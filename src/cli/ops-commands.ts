@@ -1,11 +1,12 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 
 import chalk from 'chalk';
 import type { Command } from 'commander';
 
 import { colorSeverity, printScanSummary, writeReport } from './utils.js';
 import { loadProbes } from '../core/index.js';
-import type { ProbeTemplate, ScanResult } from '../types/index.js';
+import { diffScans, enhancedDiffScans, formatDiffReport } from '../diff/index.js';
+import type { ProbeTemplate, RegressionAlert, ScanResult } from '../types/index.js';
 import { SEVERITY_ORDER } from '../types/index.js';
 import { getErrorMessage } from '../utils.js';
 
@@ -173,6 +174,78 @@ export function registerOpsCommands(program: Command): void {
       console.log();
       for (const [cat, count] of [...categories.entries()].sort()) {
         console.log(`  ${cat}: ${count} probes`);
+      }
+    });
+
+  program
+    .command('diff')
+    .description('Compare two scan results to detect regressions and improvements')
+    .requiredOption('--scan-a <path>', 'Path to first (baseline) scan result JSON')
+    .requiredOption('--scan-b <path>', 'Path to second (current) scan result JSON')
+    .option('--enhanced', 'Include severity-classified regression alerts', false)
+    .option('--output <path>', 'Write diff report to file')
+    .action(async (opts) => {
+      let rawA: string;
+      let rawB: string;
+      try {
+        rawA = await readFile(opts.scanA, 'utf-8');
+      } catch {
+        console.error(chalk.red(`Error: cannot read file ${opts.scanA}`));
+        process.exit(1);
+      }
+      try {
+        rawB = await readFile(opts.scanB, 'utf-8');
+      } catch {
+        console.error(chalk.red(`Error: cannot read file ${opts.scanB}`));
+        process.exit(1);
+      }
+
+      let scanA: ScanResult;
+      let scanB: ScanResult;
+      try {
+        scanA = JSON.parse(rawA) as ScanResult;
+        scanB = JSON.parse(rawB) as ScanResult;
+      } catch (err) {
+        console.error(chalk.red(`Error: invalid scan result JSON — ${getErrorMessage(err)}`));
+        process.exit(1);
+      }
+
+      if (opts.enhanced) {
+        const { diff, alerts } = enhancedDiffScans(scanA, scanB);
+        const report = formatDiffReport(diff);
+        console.log(report);
+
+        if (alerts.length > 0) {
+          console.log(chalk.bold('\nRegression Alerts'));
+          for (const alert of alerts) {
+            const color =
+              alert.alertSeverity === 'critical' || alert.alertSeverity === 'high'
+                ? chalk.red
+                : alert.alertSeverity === 'medium'
+                  ? chalk.yellow
+                  : chalk.dim;
+            console.log(`  ${color(`[${alert.alertSeverity.toUpperCase()}]`)} ${alert.description}`);
+          }
+        }
+
+        if (opts.output) {
+          const alertSection = alerts.length > 0
+            ? '\n### Regression Alerts\n\n' +
+              alerts.map((a: RegressionAlert) => `- **[${a.alertSeverity.toUpperCase()}]** ${a.description}`).join('\n') +
+              '\n'
+            : '';
+          await writeFile(opts.output, report + alertSection, 'utf-8');
+          console.log(`\nReport saved: ${opts.output}`);
+        }
+      } else {
+        const diff = diffScans(scanA, scanB);
+        const report = formatDiffReport(diff);
+        console.log(report);
+
+        if (opts.output) {
+          await writeFile(opts.output, report, 'utf-8');
+          console.log(`\nReport saved: ${opts.output}`);
+        }
       }
     });
 }
