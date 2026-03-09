@@ -356,9 +356,30 @@ export class Store {
       const raw = await readFile(path, 'utf-8');
       const parsed: unknown = JSON.parse(raw);
       data = storeDataSchema.parse(parsed);
-    } catch {
-      // File doesn't exist or is invalid -- start fresh
-      data = storeDataSchema.parse({});
+    } catch (err: unknown) {
+      // File doesn't exist -- start with empty store (normal first-run)
+      if (
+        err instanceof Error &&
+        'code' in err &&
+        (err as NodeJS.ErrnoException).code === 'ENOENT'
+      ) {
+        data = storeDataSchema.parse({});
+      } else if (err instanceof z.ZodError) {
+        // Zod validation failed -- data is corrupt/outdated, warn and reset
+        console.warn(
+          `[keelson] Store file at ${path} failed validation, starting fresh: ${err.message}`,
+        );
+        data = storeDataSchema.parse({});
+      } else if (err instanceof SyntaxError) {
+        // Corrupt JSON -- warn and reset
+        console.warn(
+          `[keelson] Store file at ${path} contains invalid JSON, starting fresh: ${err.message}`,
+        );
+        data = storeDataSchema.parse({});
+      } else {
+        // Permission denied, disk full, etc. -- do NOT silently swallow
+        throw err;
+      }
     }
     return new Store(path, data);
   }
