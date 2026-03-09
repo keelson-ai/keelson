@@ -1,4 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 import chalk from 'chalk';
 import type { Command } from 'commander';
@@ -6,6 +8,7 @@ import type { Command } from 'commander';
 import { assertScanResult, colorSeverity, printScanSummary, writeReport } from './utils.js';
 import { loadProbes } from '../core/index.js';
 import { diffScans, enhancedDiffScans, formatDiffReport } from '../diff/index.js';
+import { Store } from '../state/index.js';
 import type { ProbeTemplate, RegressionAlert, ScanResult } from '../types/index.js';
 import { SEVERITY_ORDER } from '../types/index.js';
 import { getErrorMessage } from '../utils.js';
@@ -72,24 +75,39 @@ export function registerOpsCommands(program: Command): void {
 
   program
     .command('report')
-    .description('Generate report from saved scan JSON')
-    .requiredOption('--input <path>', 'Path to scan result JSON file')
+    .description('Generate a report from a stored scan or JSON file')
+    .option('--scan-id <id>', 'Scan ID to load from store')
+    .option('--input <path>', 'Path to scan result JSON file')
     .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
     .option('--output <path>', 'Output file path')
     .action(async (opts) => {
-      let resultData: string;
-      try {
-        resultData = await readFile(opts.input, 'utf-8');
-      } catch {
-        console.error(chalk.red(`Error: cannot read file ${opts.input}`));
-        process.exit(1);
-      }
-
       let result: ScanResult;
-      try {
-        result = assertScanResult(JSON.parse(resultData), 'scan result');
-      } catch (err) {
-        console.error(chalk.red(`Error: invalid scan result JSON — ${getErrorMessage(err)}`));
+
+      if (opts.scanId) {
+        const store = Store.open();
+        const scan = store.getScan(opts.scanId);
+        store.close();
+        if (!scan) {
+          console.error(chalk.red(`Scan not found: ${opts.scanId}`));
+          process.exit(1);
+        }
+        result = scan;
+      } else if (opts.input) {
+        let resultData: string;
+        try {
+          resultData = await readFile(opts.input, 'utf-8');
+        } catch {
+          console.error(chalk.red(`Error: cannot read file ${opts.input}`));
+          process.exit(1);
+        }
+        try {
+          result = assertScanResult(JSON.parse(resultData), 'scan result');
+        } catch (err) {
+          console.error(chalk.red(`Error: invalid scan result JSON — ${getErrorMessage(err)}`));
+          process.exit(1);
+        }
+      } else {
+        console.error(chalk.red('Error: provide --scan-id or --input'));
         process.exit(1);
       }
 
@@ -98,7 +116,6 @@ export function registerOpsCommands(program: Command): void {
       if (opts.output) {
         await writeReport(result, opts.format, opts.output);
       } else {
-        // Write to stdout as JSON if no output specified
         console.log(JSON.stringify(result, null, 2));
       }
     });
@@ -175,37 +192,62 @@ export function registerOpsCommands(program: Command): void {
 
   program
     .command('diff')
-    .description('Compare two scan results to detect regressions and improvements')
-    .requiredOption('--scan-a <path>', 'Path to first (baseline) scan result JSON')
-    .requiredOption('--scan-b <path>', 'Path to second (current) scan result JSON')
+    .description('Compare two scans to detect regressions and improvements')
+    .option('--scan-a <id>', 'First scan ID (from store)')
+    .option('--scan-b <id>', 'Second scan ID (from store)')
+    .option('--file-a <name>', 'First scan filename (in output dir)')
+    .option('--file-b <name>', 'Second scan filename (in output dir)')
+    .option('--latest', 'Use the most recent scan')
+    .option('--previous', 'Use the second most recent scan (with --latest)')
+    .option('--baseline', 'Use the current baseline scan (with --latest)')
     .option('--enhanced', 'Include severity-classified regression alerts', false)
     .option('--output <path>', 'Write diff report to file')
     .action(async (opts) => {
-      let rawA: string;
-      let rawB: string;
-      try {
-        rawA = await readFile(opts.scanA, 'utf-8');
-      } catch {
-        console.error(chalk.red(`Error: cannot read file ${opts.scanA}`));
-        process.exit(1);
+      const store = Store.open();
+
+      let scanA: ScanResult | undefined;
+      let scanB: ScanResult | undefined;
+
+      // Resolve scan A
+      if (opts.scanA) {
+        scanA = store.getScan(opts.scanA);
+        if (!scanA) { console.error(chalk.red(`Scan not found: ${opts.scanA}`)); store.close(); process.exit(1); }
+      } else if (opts.fileA) {
+        const outputDir = join(homedir(), '.keelson', 'output');
+        const raw = await readFile(join(outputDir, opts.fileA), 'utf-8');
+        scanA = assertScanResult(JSON.parse(raw), 'file-a');
+      } else if (opts.baseline) {
+        const baselines = store.getBaselines(1);
+        if (baselines.length === 0) { console.error(chalk.red('No baseline set')); store.close(); process.exit(1); }
+        scanA = store.getScan(baselines[0].scanId);
+        if (!scanA) { console.error(chalk.red(`Baseline scan not found: ${baselines[0].scanId}`)); store.close(); process.exit(1); }
       }
-      try {
-        rawB = await readFile(opts.scanB, 'utf-8');
-      } catch {
-        console.error(chalk.red(`Error: cannot read file ${opts.scanB}`));
+
+      // Resolve scan B
+      if (opts.scanB) {
+        scanB = store.getScan(opts.scanB);
+        if (!scanB) { console.error(chalk.red(`Scan not found: ${opts.scanB}`)); store.close(); process.exit(1); }
+      } else if (opts.fileB) {
+        const outputDir = join(homedir(), '.keelson', 'output');
+        const raw = await readFile(join(outputDir, opts.fileB), 'utf-8');
+        scanB = assertScanResult(JSON.parse(raw), 'file-b');
+      } else if (opts.latest) {
+        const recent = store.listScans(2);
+        if (recent.length === 0) { console.error(chalk.red('No scans in store')); store.close(); process.exit(1); }
+        scanB = store.getScan(recent[0].scanId);
+        if (opts.previous && recent.length >= 2) {
+          scanA = store.getScan(recent[1].scanId);
+        }
+      }
+
+      store.close();
+
+      if (!scanA || !scanB) {
+        console.error(chalk.red('Error: could not resolve both scans. Use --scan-a/--scan-b, --file-a/--file-b, or --latest --previous/--baseline'));
         process.exit(1);
       }
 
-      let scanA: ScanResult;
-      let scanB: ScanResult;
-      try {
-        scanA = assertScanResult(JSON.parse(rawA), 'scan-a');
-        scanB = assertScanResult(JSON.parse(rawB), 'scan-b');
-      } catch (err) {
-        console.error(chalk.red(`Error: invalid scan result JSON — ${getErrorMessage(err)}`));
-        process.exit(1);
-      }
-
+      // Keep existing diff logic (enhanced vs basic)
       if (opts.enhanced) {
         const { diff, alerts } = enhancedDiffScans(scanA, scanB);
         const report = formatDiffReport(diff);
@@ -214,12 +256,8 @@ export function registerOpsCommands(program: Command): void {
         if (alerts.length > 0) {
           console.log(chalk.bold('\nRegression Alerts'));
           for (const alert of alerts) {
-            const color =
-              alert.alertSeverity === 'critical' || alert.alertSeverity === 'high'
-                ? chalk.red
-                : alert.alertSeverity === 'medium'
-                  ? chalk.yellow
-                  : chalk.dim;
+            const color = alert.alertSeverity === 'critical' || alert.alertSeverity === 'high' ? chalk.red
+              : alert.alertSeverity === 'medium' ? chalk.yellow : chalk.dim;
             console.log(`  ${color(`[${alert.alertSeverity.toUpperCase()}]`)} ${alert.description}`);
           }
         }
@@ -227,8 +265,7 @@ export function registerOpsCommands(program: Command): void {
         if (opts.output) {
           const alertSection = alerts.length > 0
             ? '\n### Regression Alerts\n\n' +
-              alerts.map((a: RegressionAlert) => `- **[${a.alertSeverity.toUpperCase()}]** ${a.description}`).join('\n') +
-              '\n'
+              alerts.map((a: RegressionAlert) => `- **[${a.alertSeverity.toUpperCase()}]** ${a.description}`).join('\n') + '\n'
             : '';
           await writeFile(opts.output, report + alertSection, 'utf-8');
           console.log(`\nReport saved: ${opts.output}`);
@@ -243,5 +280,171 @@ export function registerOpsCommands(program: Command): void {
           console.log(`\nReport saved: ${opts.output}`);
         }
       }
+    });
+
+  // ─── History command ─────────────────────────────────────
+
+  program
+    .command('history')
+    .description('List recent scans with date, target, and vulnerability counts')
+    .option('--limit <n>', 'Max results to show', '20')
+    .action((opts) => {
+      const store = Store.open();
+      const scans = store.listScans(parseInt(opts.limit, 10));
+      store.close();
+
+      if (scans.length === 0) {
+        console.log('\nNo scans found. Run `keelson scan` to get started.');
+        return;
+      }
+
+      console.log(chalk.bold('\nScan History'));
+      console.log(chalk.dim('─'.repeat(100)));
+      const header =
+        `  ${'ID'.padEnd(30)} ${'Target'.padEnd(30)} ` +
+        `${'Date'.padEnd(20)} ${'Total'.padStart(5)} ${'Vuln'.padStart(5)} ${'Safe'.padStart(5)}`;
+      console.log(chalk.dim(header));
+      console.log(chalk.dim('─'.repeat(100)));
+
+      for (const s of scans) {
+        const date = new Date(s.startedAt).toISOString().slice(0, 16).replace('T', ' ');
+        const target = s.target.slice(0, 30).padEnd(30);
+        const vuln = s.vulnerable > 0 ? chalk.red(String(s.vulnerable).padStart(5)) : String(s.vulnerable).padStart(5);
+        console.log(
+          `  ${s.scanId.padEnd(30)} ${target} ${date.padEnd(20)} ${String(s.total).padStart(5)} ${vuln} ${String(s.safe).padStart(5)}`,
+        );
+      }
+
+      console.log(chalk.dim('─'.repeat(100)));
+      console.log(`  ${scans.length} scan(s)`);
+    });
+
+  // ─── Baseline commands ───────────────────────────────────
+
+  const baselineCmd = program
+    .command('baseline')
+    .description('Manage scan baselines for regression comparison');
+
+  baselineCmd
+    .command('set')
+    .description('Mark a scan as the baseline for future comparisons')
+    .argument('<scan-id>', 'Scan ID to set as baseline')
+    .option('--label <label>', 'Optional label for this baseline', '')
+    .action((scanId: string, opts) => {
+      const store = Store.open();
+      const scan = store.getScan(scanId);
+      if (!scan) {
+        console.error(chalk.red(`Scan not found: ${scanId}`));
+        store.close();
+        process.exit(1);
+      }
+      store.saveBaseline(scanId, opts.label);
+      store.close();
+      console.log(`Baseline set: ${scanId}${opts.label ? ` (${opts.label})` : ''}`);
+    });
+
+  baselineCmd
+    .command('list')
+    .description('Show all saved baselines')
+    .option('--limit <n>', 'Max results', '20')
+    .action((opts) => {
+      const store = Store.open();
+      const baselines = store.getBaselines(parseInt(opts.limit, 10));
+      store.close();
+
+      if (baselines.length === 0) {
+        console.log('\nNo baselines set. Use `keelson baseline set <scan-id>` after a scan.');
+        return;
+      }
+
+      console.log(chalk.bold('\nBaselines'));
+      console.log(chalk.dim('─'.repeat(70)));
+      for (const b of baselines) {
+        const date = new Date(b.createdAt).toISOString().slice(0, 16).replace('T', ' ');
+        const label = b.label ? chalk.dim(` (${b.label})`) : '';
+        console.log(`  ${b.scanId}  ${date}${label}`);
+      }
+    });
+
+  // ─── Alerts commands ─────────────────────────────────────
+
+  const alertsCmd = program
+    .command('alerts')
+    .description('List unacknowledged regression alerts')
+    .option('--all', 'Show acknowledged alerts too', false)
+    .option('--limit <n>', 'Max results', '50')
+    .action((opts) => {
+      const store = Store.open();
+      const alerts = store.listRegressionAlerts(parseInt(opts.limit, 10));
+      store.close();
+
+      const filtered = opts.all ? alerts : alerts.filter((a) => !a.acknowledged);
+
+      if (filtered.length === 0) {
+        console.log('\nNo regression alerts.');
+        return;
+      }
+
+      console.log(chalk.bold('\nRegression Alerts'));
+      console.log(chalk.dim('─'.repeat(90)));
+      for (const a of filtered) {
+        const color = a.alertSeverity === 'critical' || a.alertSeverity === 'high' ? chalk.red
+          : a.alertSeverity === 'medium' ? chalk.yellow : chalk.dim;
+        const ack = a.acknowledged ? chalk.dim(' [ack]') : '';
+        console.log(`  ${chalk.dim(`#${a.id}`)} ${color(`[${a.alertSeverity.toUpperCase()}]`)} ${a.description}${ack}`);
+      }
+    });
+
+  alertsCmd
+    .command('ack')
+    .description('Acknowledge a regression alert')
+    .argument('<alert-id>', 'Alert ID to acknowledge')
+    .action((alertIdStr: string) => {
+      const alertId = parseInt(alertIdStr, 10);
+      if (isNaN(alertId)) {
+        console.error(chalk.red('Invalid alert ID'));
+        process.exit(1);
+      }
+      const store = Store.open();
+      store.acknowledgeAlert(alertId);
+      store.close();
+      console.log(`Alert #${alertId} acknowledged.`);
+    });
+
+  // ─── Store commands ──────────────────────────────────────
+
+  const storeCmd = program
+    .command('store')
+    .description('Manage the persistent store');
+
+  storeCmd
+    .command('path')
+    .description('Print the store database path')
+    .action(() => {
+      const store = Store.open();
+      console.log(store.dbPath);
+      store.close();
+    });
+
+  storeCmd
+    .command('info')
+    .description('Show store location, size, and row counts per table')
+    .action(() => {
+      const store = Store.open();
+      const dbPath = store.dbPath;
+      const stats = store.getStats();
+      store.close();
+
+      console.log(chalk.bold('\nKeelson Store'));
+      console.log(chalk.dim('─'.repeat(40)));
+      console.log(`  Path:       ${dbPath}`);
+      console.log(`  Scans:      ${stats.scans}`);
+      console.log(`  Campaigns:  ${stats.campaigns}`);
+      console.log(`  Profiles:   ${stats.agent_profiles}`);
+      console.log(`  Baselines:  ${stats.baselines}`);
+      console.log(`  Cache:      ${stats.cache}`);
+      console.log(`  Alerts:     ${stats.regression_alerts}`);
+      console.log(`  Chains:     ${stats.probe_chains}`);
+      console.log(`  Events:     ${stats.events}`);
     });
 }
