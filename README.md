@@ -523,7 +523,6 @@ Contributions are welcome. Here's how to help:
 
 This tool is for **authorized security testing only**. Do not use Keelson against systems you don't have permission to test. If you discover a security issue in Keelson itself, please report it via [GitHub Security Advisories](https://github.com/keelson-ai/keelson/security/advisories).
 
-<<<<<<< HEAD
 ## Architecture
 
 ### Flow Diagrams
