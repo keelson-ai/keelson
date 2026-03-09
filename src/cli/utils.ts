@@ -5,14 +5,39 @@ import { dirname, join } from 'node:path';
 import chalk from 'chalk';
 
 import { Store } from '../state/index.js';
-import type { Finding, ScanResult, ScanSummary } from '../types/index.js';
+import type { AdapterConfig, Finding, ScanResult, ScanSummary } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
 import { truncate } from '../utils.js';
+
+/** Build a standard AdapterConfig from common CLI options. */
+export function buildAdapterConfig(opts: {
+  target: string;
+  apiKey?: string;
+  model?: string;
+  adapterType?: string;
+}): AdapterConfig {
+  return {
+    type: opts.adapterType ?? 'openai',
+    baseUrl: opts.target,
+    apiKey: opts.apiKey,
+    model: opts.model,
+  };
+}
 
 /** Open the Store unless --no-store was passed. */
 export function openStore(opts: { noStore?: boolean }): Store | null {
   if (opts.noStore) return null;
   return Store.open();
+}
+
+/** Run a callback with an auto-closing Store. */
+export function withStore<T>(fn: (store: Store) => T): T {
+  const store = Store.open();
+  try {
+    return fn(store);
+  } finally {
+    store.close();
+  }
 }
 
 /** Default output directory. */

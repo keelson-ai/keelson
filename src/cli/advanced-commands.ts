@@ -3,10 +3,18 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 
 import type { Command } from 'commander';
 
-import { DEFAULT_OUTPUT_DIR, VERDICT_ICONS, openStore, writeReport, writeScanOutput } from './utils.js';
+import {
+  DEFAULT_OUTPUT_DIR,
+  VERDICT_ICONS,
+  buildAdapterConfig,
+  openStore,
+  writeReport,
+  writeScanOutput,
+} from './utils.js';
 import { OpenAIAdapter, ProberAdapter, createAdapter } from '../adapters/index.js';
 import { parseCampaignConfig } from '../campaign/config.js';
 import { runCampaign } from '../campaign/runner.js';
@@ -28,20 +36,6 @@ import { generateCampaignId } from '../utils/id.js';
 import { truncate } from '../utils.js';
 
 // ─── Helpers ─────────────────────────────────────────────
-
-function buildAdapterConfig(opts: {
-  target: string;
-  apiKey?: string;
-  model?: string;
-  adapterType?: string;
-}): AdapterConfig {
-  return {
-    type: opts.adapterType ?? 'openai',
-    baseUrl: opts.target,
-    apiKey: opts.apiKey,
-    model: opts.model,
-  };
-}
 
 function templateToMarkdown(t: ProbeTemplate): string {
   const lines: string[] = [
@@ -79,6 +73,82 @@ function templateToMarkdown(t: ProbeTemplate): string {
     lines.push(`- ${inc}`);
   }
   return lines.join('\n') + '\n';
+}
+
+function registerTestCommand(
+  program: Command,
+  name: string,
+  description: string,
+  adapterType: string,
+  header: string,
+  extraOptions?: (cmd: ReturnType<Command['command']>) => void,
+  extraConfig?: (opts: Record<string, string>) => Partial<AdapterConfig>,
+): void {
+  const cmd = program
+    .command(name)
+    .description(description)
+    .requiredOption('--target <url>', 'Target endpoint URL')
+    .option('--api-key <key>', 'API key for authentication')
+    .option('--model <model>', 'Model name for requests', 'default')
+    .option('--category <category>', 'Filter by category')
+    .option('--delay <ms>', 'Milliseconds between requests', '1500')
+    .option('--output <path>', 'Report output path')
+    .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
+    .option('--adapter-type <type>', 'Adapter type', adapterType)
+    .option('--no-store', 'Disable persisting results to local Store')
+    .option('--output-dir <dir>', 'Directory for scan output files', DEFAULT_OUTPUT_DIR);
+
+  extraOptions?.(cmd);
+
+  cmd.action(async (opts) => {
+    const adapterConfig: AdapterConfig = {
+      ...buildAdapterConfig({
+        target: opts.target,
+        apiKey: opts.apiKey,
+        model: opts.model,
+        adapterType: opts.adapterType,
+      }),
+      ...extraConfig?.(opts),
+    };
+    const adapter = createAdapter(adapterConfig);
+    const { scan } = await import('../core/index.js');
+
+    console.log(`\n${header}`);
+    console.log(`Target: ${opts.target}`);
+    console.log();
+
+    const categories = opts.category ? [opts.category] : undefined;
+    const delayMs = parseInt(opts.delay, 10);
+
+    let result;
+    try {
+      result = await scan(opts.target, adapter, {
+        categories,
+        delayMs,
+        onFinding: (finding, current, total) => {
+          const icon = VERDICT_ICONS[finding.verdict];
+          console.log(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
+        },
+      });
+    } finally {
+      await adapter.close?.();
+    }
+
+    const { printScanSummary } = await import('./utils.js');
+    printScanSummary(result);
+
+    const store = openStore(opts);
+    if (store) {
+      store.saveScan(result);
+      store.close();
+    }
+
+    await writeScanOutput(result, opts.format ?? 'json', opts.outputDir);
+
+    if (opts.output) {
+      await writeReport(result, opts.format, opts.output);
+    }
+  });
 }
 
 // ─── Command Registration ────────────────────────────────
@@ -158,7 +228,7 @@ export function registerAdvancedCommands(program: Command): void {
 
       if (opts.output) {
         // Campaign results are not a ScanResult, write as JSON
-        await mkdir(opts.output.replace(/[^/]+$/, ''), { recursive: true }).catch(() => {});
+        await mkdir(dirname(opts.output), { recursive: true }).catch(() => {});
         await writeFile(opts.output, JSON.stringify(result, null, 2), 'utf-8');
         console.log(`\nReport saved: ${opts.output}`);
       }
@@ -482,130 +552,27 @@ export function registerAdvancedCommands(program: Command): void {
     });
 
   // ─── test-crew ─────────────────────────────────────────
-  program
-    .command('test-crew')
-    .description('Run a security scan against a CrewAI-compatible endpoint')
-    .requiredOption('--target <url>', 'Target endpoint URL')
-    .option('--api-key <key>', 'API key for authentication')
-    .option('--model <model>', 'Model name for requests', 'default')
-    .option('--category <category>', 'Filter by category')
-    .option('--delay <ms>', 'Milliseconds between requests', '1500')
-    .option('--output <path>', 'Report output path')
-    .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
-    .option('--adapter-type <type>', 'Adapter type', 'crewai')
-    .option('--no-store', 'Disable persisting results to local Store')
-    .option('--output-dir <dir>', 'Directory for scan output files', DEFAULT_OUTPUT_DIR)
-    .action(async (opts) => {
-      const adapterConfig = buildAdapterConfig({
-        target: opts.target,
-        apiKey: opts.apiKey,
-        model: opts.model,
-        adapterType: opts.adapterType,
-      });
-      const adapter = createAdapter(adapterConfig);
-      const { scan } = await import('../core/index.js');
-
-      console.log('\nKeelson CrewAI Security Scan');
-      console.log(`Target: ${opts.target}`);
-      console.log();
-
-      const categories = opts.category ? [opts.category] : undefined;
-      const delayMs = parseInt(opts.delay, 10);
-
-      let result;
-      try {
-        result = await scan(opts.target, adapter, {
-          categories,
-          delayMs,
-          onFinding: (finding, current, total) => {
-            const icon = VERDICT_ICONS[finding.verdict];
-            console.log(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
-          },
-        });
-      } finally {
-        await adapter.close?.();
-      }
-
-      const { printScanSummary } = await import('./utils.js');
-      printScanSummary(result);
-
-      const store = openStore(opts);
-      if (store) {
-        store.saveScan(result);
-        store.close();
-      }
-
-      await writeScanOutput(result, opts.format ?? 'json', opts.outputDir);
-
-      if (opts.output) {
-        await writeReport(result, opts.format, opts.output);
-      }
-    });
+  registerTestCommand(
+    program,
+    'test-crew',
+    'Run a security scan against a CrewAI-compatible endpoint',
+    'crewai',
+    'Keelson CrewAI Security Scan',
+  );
 
   // ─── test-chain ────────────────────────────────────────
-  program
-    .command('test-chain')
-    .description('Run a security scan against a LangChain-compatible endpoint')
-    .requiredOption('--target <url>', 'Target endpoint URL')
-    .option('--api-key <key>', 'API key for authentication')
-    .option('--model <model>', 'Model name for requests', 'default')
-    .option('--category <category>', 'Filter by category')
-    .option('--delay <ms>', 'Milliseconds between requests', '1500')
-    .option('--output <path>', 'Report output path')
-    .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
-    .option('--adapter-type <type>', 'Adapter type', 'langchain')
-    .option('--input-key <key>', 'Input key for the chain', 'input')
-    .option('--output-key <key>', 'Output key for the chain', 'output')
-    .option('--no-store', 'Disable persisting results to local Store')
-    .option('--output-dir <dir>', 'Directory for scan output files', DEFAULT_OUTPUT_DIR)
-    .action(async (opts) => {
-      const adapterConfig: AdapterConfig = {
-        type: opts.adapterType,
-        baseUrl: opts.target,
-        apiKey: opts.apiKey,
-        model: opts.model,
-        inputKey: opts.inputKey,
-        outputKey: opts.outputKey,
-      };
-      const adapter = createAdapter(adapterConfig);
-      const { scan } = await import('../core/index.js');
-
-      console.log('\nKeelson LangChain Security Scan');
-      console.log(`Target: ${opts.target}`);
-      console.log();
-
-      const categories = opts.category ? [opts.category] : undefined;
-      const delayMs = parseInt(opts.delay, 10);
-
-      let result;
-      try {
-        result = await scan(opts.target, adapter, {
-          categories,
-          delayMs,
-          onFinding: (finding, current, total) => {
-            const icon = VERDICT_ICONS[finding.verdict];
-            console.log(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
-          },
-        });
-      } finally {
-        await adapter.close?.();
-      }
-
-      const { printScanSummary } = await import('./utils.js');
-      printScanSummary(result);
-
-      const store = openStore(opts);
-      if (store) {
-        store.saveScan(result);
-        store.close();
-      }
-
-      await writeScanOutput(result, opts.format ?? 'json', opts.outputDir);
-
-      if (opts.output) {
-        await writeReport(result, opts.format, opts.output);
-      }
-    });
+  registerTestCommand(
+    program,
+    'test-chain',
+    'Run a security scan against a LangChain-compatible endpoint',
+    'langchain',
+    'Keelson LangChain Security Scan',
+    (cmd) =>
+      cmd
+        .option('--input-key <key>', 'Input key for the chain', 'input')
+        .option('--output-key <key>', 'Output key for the chain', 'output'),
+    (opts) => ({ inputKey: opts.inputKey, outputKey: opts.outputKey }),
+  );
 
   // ─── generate ──────────────────────────────────────────
   program

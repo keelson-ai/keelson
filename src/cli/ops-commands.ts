@@ -1,11 +1,17 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import chalk from 'chalk';
 import type { Command } from 'commander';
 
-import { assertScanResult, colorSeverity, printScanSummary, writeReport } from './utils.js';
+import {
+  DEFAULT_OUTPUT_DIR,
+  assertScanResult,
+  colorSeverity,
+  printScanSummary,
+  withStore,
+  writeReport,
+} from './utils.js';
 import { loadProbes } from '../core/index.js';
 import { diffScans, enhancedDiffScans, formatDiffReport } from '../diff/index.js';
 import { Store } from '../state/index.js';
@@ -217,9 +223,15 @@ export function registerOpsCommands(program: Command): void {
           process.exit(1);
         }
       } else if (opts.fileA) {
-        const outputDir = join(homedir(), '.keelson', 'output');
-        const raw = await readFile(join(outputDir, opts.fileA), 'utf-8');
-        scanA = assertScanResult(JSON.parse(raw), 'file-a');
+        const outputDir = DEFAULT_OUTPUT_DIR;
+        try {
+          const raw = await readFile(join(outputDir, opts.fileA), 'utf-8');
+          scanA = assertScanResult(JSON.parse(raw), 'file-a');
+        } catch {
+          console.error(chalk.red(`Error: cannot read file ${opts.fileA} from ${outputDir}`));
+          store.close();
+          process.exit(1);
+        }
       } else if (opts.baseline) {
         const baselines = store.getBaselines(1);
         if (baselines.length === 0) {
@@ -244,9 +256,15 @@ export function registerOpsCommands(program: Command): void {
           process.exit(1);
         }
       } else if (opts.fileB) {
-        const outputDir = join(homedir(), '.keelson', 'output');
-        const raw = await readFile(join(outputDir, opts.fileB), 'utf-8');
-        scanB = assertScanResult(JSON.parse(raw), 'file-b');
+        const outputDir = DEFAULT_OUTPUT_DIR;
+        try {
+          const raw = await readFile(join(outputDir, opts.fileB), 'utf-8');
+          scanB = assertScanResult(JSON.parse(raw), 'file-b');
+        } catch {
+          console.error(chalk.red(`Error: cannot read file ${opts.fileB} from ${outputDir}`));
+          store.close();
+          process.exit(1);
+        }
       } else if (opts.latest) {
         const recent = store.listScans(2);
         if (recent.length === 0) {
@@ -321,9 +339,7 @@ export function registerOpsCommands(program: Command): void {
     .description('List recent scans with date, target, and vulnerability counts')
     .option('--limit <n>', 'Max results to show', '20')
     .action((opts) => {
-      const store = Store.open();
-      const scans = store.listScans(parseInt(opts.limit, 10));
-      store.close();
+      const scans = withStore((store) => store.listScans(parseInt(opts.limit, 10)));
 
       if (scans.length === 0) {
         console.log('\nNo scans found. Run `keelson scan` to get started.');
@@ -361,16 +377,18 @@ export function registerOpsCommands(program: Command): void {
     .argument('<scan-id>', 'Scan ID to set as baseline')
     .option('--label <label>', 'Optional label for this baseline', '')
     .action((scanId: string, opts) => {
-      const store = Store.open();
-      const scan = store.getScan(scanId);
-      if (!scan) {
-        console.error(chalk.red(`Scan not found: ${scanId}`));
-        store.close();
-        process.exit(1);
+      const scan = withStore((store) => {
+        const s = store.getScan(scanId);
+        if (!s) {
+          console.error(chalk.red(`Scan not found: ${scanId}`));
+          process.exit(1);
+        }
+        store.saveBaseline(scanId, opts.label);
+        return s;
+      });
+      if (scan) {
+        console.log(`Baseline set: ${scanId}${opts.label ? ` (${opts.label})` : ''}`);
       }
-      store.saveBaseline(scanId, opts.label);
-      store.close();
-      console.log(`Baseline set: ${scanId}${opts.label ? ` (${opts.label})` : ''}`);
     });
 
   baselineCmd
@@ -378,9 +396,7 @@ export function registerOpsCommands(program: Command): void {
     .description('Show all saved baselines')
     .option('--limit <n>', 'Max results', '20')
     .action((opts) => {
-      const store = Store.open();
-      const baselines = store.getBaselines(parseInt(opts.limit, 10));
-      store.close();
+      const baselines = withStore((store) => store.getBaselines(parseInt(opts.limit, 10)));
 
       if (baselines.length === 0) {
         console.log('\nNo baselines set. Use `keelson baseline set <scan-id>` after a scan.');
@@ -404,9 +420,7 @@ export function registerOpsCommands(program: Command): void {
     .option('--all', 'Show acknowledged alerts too', false)
     .option('--limit <n>', 'Max results', '50')
     .action((opts) => {
-      const store = Store.open();
-      const alerts = store.listRegressionAlerts(parseInt(opts.limit, 10));
-      store.close();
+      const alerts = withStore((store) => store.listRegressionAlerts(parseInt(opts.limit, 10)));
 
       const filtered = opts.all ? alerts : alerts.filter((a) => !a.acknowledged);
 
@@ -439,9 +453,7 @@ export function registerOpsCommands(program: Command): void {
         console.error(chalk.red('Invalid alert ID'));
         process.exit(1);
       }
-      const store = Store.open();
-      store.acknowledgeAlert(alertId);
-      store.close();
+      withStore((store) => store.acknowledgeAlert(alertId));
       console.log(`Alert #${alertId} acknowledged.`);
     });
 
@@ -453,19 +465,18 @@ export function registerOpsCommands(program: Command): void {
     .command('path')
     .description('Print the store database path')
     .action(() => {
-      const store = Store.open();
-      console.log(store.dbPath);
-      store.close();
+      const dbPath = withStore((store) => store.dbPath);
+      console.log(dbPath);
     });
 
   storeCmd
     .command('info')
     .description('Show store location, size, and row counts per table')
     .action(() => {
-      const store = Store.open();
-      const dbPath = store.dbPath;
-      const stats = store.getStats();
-      store.close();
+      const { dbPath, stats } = withStore((store) => ({
+        dbPath: store.dbPath,
+        stats: store.getStats(),
+      }));
 
       console.log(chalk.bold('\nKeelson Store'));
       console.log(chalk.dim('─'.repeat(40)));
