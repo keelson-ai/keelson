@@ -33,7 +33,7 @@ export class LangGraphAdapter extends BaseAdapter {
 
   async send(messages: Turn[]): Promise<AdapterResponse> {
     const threadId = await this.ensureThread();
-    const model = this.config.model && this.config.model !== 'default' ? this.config.model : undefined;
+    const model = this.resolveModel('');
 
     const payload: Record<string, unknown> = {
       input: { messages },
@@ -44,11 +44,8 @@ export class LangGraphAdapter extends BaseAdapter {
       payload.config = { configurable: { model } };
     }
 
-    const start = performance.now();
-    const { data } = await this.client.post(`/threads/${threadId}/runs/wait`, payload);
-    const latencyMs = Math.round(performance.now() - start);
-
-    const content = this.extractAiResponse(data);
+    const { data, latencyMs } = await this.timedPost(`/threads/${threadId}/runs/wait`, payload);
+    const content = this.extractAiResponse(data as Record<string, unknown>);
     return { content, raw: data, latencyMs };
   }
 

@@ -22,13 +22,14 @@ export class LangChainAdapter extends BaseAdapter {
     const lastUser = messages.filter((m) => m.role === 'user').pop();
     const userInput = lastUser?.content ?? '';
 
-    const start = performance.now();
-    const { data } = await this.client.post('/invoke', {
+    const { data, latencyMs } = await this.timedPost('/invoke', {
       [this.inputKey]: userInput,
     });
-    const latencyMs = Math.round(performance.now() - start);
 
-    const content: string = typeof data === 'string' ? data : (data[this.outputKey] ?? data.content ?? '');
+    const content: string =
+      typeof data === 'string'
+        ? data
+        : ((data as Record<string, string>)[this.outputKey] ?? (data as Record<string, string>).content ?? '');
     return { content, raw: data, latencyMs };
   }
 }

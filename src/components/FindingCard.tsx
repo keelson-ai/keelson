@@ -3,6 +3,7 @@ import React from 'react';
 
 import type { Finding } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
+import { truncate } from '../utils.js';
 
 export interface FindingCardProps {
   finding: Finding;
@@ -21,11 +22,6 @@ const SEVERITY_COLOR: Record<Severity, string> = {
   [Severity.Medium]: 'yellow',
   [Severity.Low]: 'gray',
 };
-
-function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen) + '...';
-}
 
 export function FindingCard({ finding, index }: FindingCardProps): React.ReactElement {
   const verdict = VERDICT_ICON[finding.verdict];

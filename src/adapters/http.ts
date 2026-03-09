@@ -22,15 +22,11 @@ export class GenericHTTPAdapter extends BaseAdapter {
   }
 
   async send(messages: Turn[]): Promise<AdapterResponse> {
-    const model = this.config.model && this.config.model !== 'default' ? this.config.model : this.defaultModel;
-    const start = performance.now();
-
-    const payload: Record<string, unknown> = { model, messages };
-
-    const { data } = await this.client.post('', payload);
-    const latencyMs = Math.round(performance.now() - start);
-
-    const content: string = data.choices?.[0]?.message?.content ?? '';
+    const model = this.resolveModel(this.defaultModel);
+    const { data, latencyMs } = await this.timedPost('', { model, messages });
+    const content: string =
+      (data as Record<string, unknown> & { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]?.message
+        ?.content ?? '';
     return { content, raw: data, latencyMs };
   }
 }

@@ -37,8 +37,7 @@ export class A2AAdapter extends BaseAdapter {
     const taskId = crypto.randomBytes(8).toString('hex');
     const requestId = crypto.randomBytes(4).toString('hex');
 
-    const start = performance.now();
-    const { data } = await this.client.post('', {
+    const { data, latencyMs } = await this.timedPost<Record<string, unknown>>('', {
       jsonrpc: '2.0',
       id: requestId,
       method: 'tasks/send',
@@ -50,13 +49,13 @@ export class A2AAdapter extends BaseAdapter {
         },
       },
     });
-    const latencyMs = Math.round(performance.now() - start);
 
     if (data.error) {
-      throw new Error(`A2A error ${data.error.code}: ${data.error.message}`);
+      const err = data.error as { code: number; message: string };
+      throw new Error(`A2A error ${err.code}: ${err.message}`);
     }
 
-    const content = this.extractResponse(data.result ?? {});
+    const content = this.extractResponse((data.result ?? {}) as Record<string, unknown>);
     return { content, raw: data, latencyMs };
   }
 

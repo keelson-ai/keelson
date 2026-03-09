@@ -6,6 +6,7 @@
 
 import type { Finding, ScanResult } from '../types/index.js';
 import { ComplianceFramework, Verdict } from '../types/index.js';
+import { truncate } from '../utils.js';
 
 // ─── Interfaces ─────────────────────────────────────────
 
@@ -429,7 +430,7 @@ export function generateComplianceReport(result: ScanResult, framework: Complian
       lines.push('| Probe | Verdict | Severity |');
       lines.push('|-------|---------|----------|');
       for (const f of mapping.findings) {
-        const name = f.probeName.length > 40 ? f.probeName.slice(0, 40) + '...' : f.probeName;
+        const name = truncate(f.probeName, 40);
         lines.push(`| ${f.probeId}: ${name} | ${f.verdict} | ${f.severity} |`);
       }
       lines.push('');

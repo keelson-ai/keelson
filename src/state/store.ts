@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path';
 
 import { z } from 'zod';
 
+import type { AgentProfile } from '../prober/types.js';
 import type { ScanResult } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
 
@@ -69,21 +70,6 @@ export interface PersistedCampaignResult {
   finishedAt: string | null;
 }
 
-export interface AgentCapability {
-  name: string;
-  detected: boolean;
-  probePrompt: string;
-  responseExcerpt: string;
-  confidence: number;
-}
-
-export interface AgentProfile {
-  profileId: string;
-  targetUrl: string;
-  capabilities: AgentCapability[];
-  createdAt: string;
-}
-
 export interface CacheEntry {
   cacheKey: string;
   messages: Array<Record<string, unknown>>;
@@ -94,7 +80,7 @@ export interface CacheEntry {
   hitCount: number;
 }
 
-export interface RegressionAlert {
+export interface PersistedRegressionAlert {
   id: number;
   scanAId: string;
   scanBId: string;
@@ -106,18 +92,18 @@ export interface RegressionAlert {
   acknowledged: boolean;
 }
 
-export interface ProbeStep {
+export interface PersistedProbeStep {
   index: number;
   prompt: string;
   isFollowup: boolean;
 }
 
-export interface ProbeChain {
+export interface PersistedProbeChain {
   chainId: string;
   profileId: string | null;
   name: string;
   capabilities: string[];
-  steps: ProbeStep[];
+  steps: PersistedProbeStep[];
   severity: Severity;
   category: string;
   owasp: string;
@@ -201,7 +187,7 @@ const scanResultSchema = z.object({
 
 const trialResultSchema = z.object({
   trialIndex: z.number(),
-  verdict: z.nativeEnum(Verdict),
+  verdict: z.enum([Verdict.Vulnerable, Verdict.Safe, Verdict.Inconclusive]),
   evidence: z.array(evidenceItemSchema),
   reasoning: z.string(),
   responseTimeMs: z.number(),
@@ -210,14 +196,14 @@ const trialResultSchema = z.object({
 const statisticalFindingSchema = z.object({
   templateId: z.string(),
   templateName: z.string(),
-  severity: z.nativeEnum(Severity),
+  severity: z.enum([Severity.Critical, Severity.High, Severity.Medium, Severity.Low]),
   category: z.string(),
   owasp: z.string(),
   trials: z.array(trialResultSchema),
   successRate: z.number(),
   ciLower: z.number(),
   ciUpper: z.number(),
-  verdict: z.nativeEnum(Verdict),
+  verdict: z.enum([Verdict.Vulnerable, Verdict.Safe, Verdict.Inconclusive]),
 });
 
 const campaignConfigSchema = z.object({
@@ -293,7 +279,7 @@ const probeChainSchema = z.object({
   name: z.string(),
   capabilities: z.array(z.string()),
   steps: z.array(probeStepSchema),
-  severity: z.nativeEnum(Severity),
+  severity: z.enum([Severity.Critical, Severity.High, Severity.Medium, Severity.Low]),
   category: z.string(),
   owasp: z.string(),
   createdAt: z.string(),
@@ -536,7 +522,7 @@ export class Store {
     await this.flush();
   }
 
-  listRegressionAlerts(limit = 50): RegressionAlert[] {
+  listRegressionAlerts(limit = 50): PersistedRegressionAlert[] {
     const sorted = [...this.data.regressionAlerts].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
@@ -553,7 +539,7 @@ export class Store {
 
   // ─── Probe chain persistence ──────────────────────────
 
-  async saveProbeChain(chain: Omit<ProbeChain, 'createdAt'>): Promise<void> {
+  async saveProbeChain(chain: Omit<PersistedProbeChain, 'createdAt'>): Promise<void> {
     this.data.probeChains = this.data.probeChains.filter((c) => c.chainId !== chain.chainId);
     this.data.probeChains.push({
       ...chain,
@@ -566,11 +552,11 @@ export class Store {
     await this.flush();
   }
 
-  getProbeChain(chainId: string): ProbeChain | undefined {
+  getProbeChain(chainId: string): PersistedProbeChain | undefined {
     return this.data.probeChains.find((c) => c.chainId === chainId);
   }
 
-  listProbeChains(profileId?: string, limit = 50): ProbeChain[] {
+  listProbeChains(profileId?: string, limit = 50): PersistedProbeChain[] {
     let chains = [...this.data.probeChains];
     if (profileId) {
       chains = chains.filter((c) => c.profileId === profileId);

@@ -7,7 +7,7 @@
 
 import type { Finding, ScanResult } from '../types/index.js';
 import { SEVERITY_ORDER, Severity, Verdict } from '../types/index.js';
-import { groupBy } from '../utils.js';
+import { groupBy, truncate } from '../utils.js';
 
 // ─── Interfaces ─────────────────────────────────────────
 
@@ -369,7 +369,7 @@ export function generateExecutiveReport(result: ScanResult): string {
           lines.push(`Agent Response${timeLabel}:`);
           lines.push('');
           lines.push('```');
-          lines.push(ev.response.length > 500 ? ev.response.slice(0, 500) + '...' : ev.response);
+          lines.push(truncate(ev.response, 500));
           lines.push('```');
           lines.push('');
         }

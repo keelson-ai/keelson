@@ -22,6 +22,7 @@ import {
 } from '../strategies/index.js';
 import type { Adapter, AdapterConfig, Finding, MutatedProbe, MutationType, ProbeTemplate } from '../types/index.js';
 import { Verdict } from '../types/index.js';
+import { truncate } from '../utils.js';
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -341,8 +342,7 @@ export function registerAdvancedCommands(program: Command): void {
           });
 
           for (const step of result.escalationPath) {
-            const promptPreview = step.prompt.length > 80 ? step.prompt.slice(0, 80) + '...' : step.prompt;
-            console.log(`  [Turn ${step.turn}] ${promptPreview}`);
+            console.log(`  [Turn ${step.turn}] ${truncate(step.prompt, 80)}`);
           }
 
           const icon = VERDICT_ICONS[result.finding.verdict];

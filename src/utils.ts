@@ -18,3 +18,19 @@ export function groupBy<T>(items: T[], keyFn: (item: T) => string): Map<string, 
   }
   return map;
 }
+
+/** Extract a human-readable error message from an unknown catch value. */
+export function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** Extract the constructor name (error type) from an unknown catch value. */
+export function getErrorName(err: unknown): string {
+  return err instanceof Error ? err.constructor.name : 'UnknownError';
+}
+
+/** Truncate a string to maxLen characters, appending '...' if truncated. */
+export function truncate(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen) + '...';
+}
