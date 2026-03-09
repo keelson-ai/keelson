@@ -47,7 +47,7 @@ describe('StreamingObserver', () => {
 
       const disclosure = signals.find((s) => s.signalType === 'progressive_disclosure');
       expect(disclosure).toBeDefined();
-      expect(disclosure!.severity).toBe('high');
+      expect((disclosure as NonNullable<typeof disclosure>).severity).toBe('high');
     });
 
     it('does not fire when lengths are stable', () => {

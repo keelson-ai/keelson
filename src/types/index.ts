@@ -7,6 +7,13 @@ export enum Severity {
   Low = 'Low',
 }
 
+export const SEVERITY_ORDER: Record<string, number> = {
+  [Severity.Critical]: 0,
+  [Severity.High]: 1,
+  [Severity.Medium]: 2,
+  [Severity.Low]: 3,
+};
+
 export enum Verdict {
   Vulnerable = 'VULNERABLE',
   Safe = 'SAFE',
@@ -173,8 +180,41 @@ export interface ScanResult {
   memo?: ConversationMemoEntry[];
 }
 
+// ─── Diff / Comparison Interfaces ───────────────────────
 
-// ─── Campaign Interfaces ────────────────────────────────────────
+export type ChangeType =
+  | 'regression'
+  | 'improvement'
+  | 'new'
+  | 'removed'
+  | 'rate_increase'
+  | 'new_vulnerable';
+
+export interface ScanDiffItem {
+  probeId: string;
+  probeName: string;
+  oldVerdict: Verdict | null;
+  newVerdict: Verdict | null;
+  changeType: ChangeType;
+}
+
+export interface ScanDiff {
+  scanAId: string;
+  scanBId: string;
+  items: ScanDiffItem[];
+}
+
+export type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
+
+export interface RegressionAlert {
+  probeId: string;
+  alertSeverity: AlertSeverity;
+  changeType: ChangeType;
+  description: string;
+  oldVerdict: Verdict | null;
+  newVerdict: Verdict | null;
+  probeSeverity: Severity | null;
+}
 
 export interface TrialResult {
   trialIndex: number;
@@ -256,8 +296,8 @@ export interface AdapterResponse {
 export interface Adapter {
   send(messages: Turn[]): Promise<AdapterResponse>;
   healthCheck(): Promise<boolean>;
-  resetSession(): void;
-  close(): Promise<void>;
+  resetSession?(): void;
+  close?(): Promise<void>;
 }
 
 // ─── Strategy Interfaces ─────────────────────────────────

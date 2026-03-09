@@ -4,16 +4,9 @@ import chalk from 'chalk';
 import type { Command } from 'commander';
 
 import { colorSeverity, printScanSummary, writeReport } from './utils.js';
-import { loadProbes } from '../core/templates.js';
+import { loadProbes } from '../core/index.js';
 import type { ProbeTemplate, ScanResult } from '../types/index.js';
-import { Severity } from '../types/index.js';
-
-const SEVERITY_ORDER: Record<Severity, number> = {
-  [Severity.Critical]: 0,
-  [Severity.High]: 1,
-  [Severity.Medium]: 2,
-  [Severity.Low]: 3,
-};
+import { SEVERITY_ORDER } from '../types/index.js';
 
 function formatProbeRow(probe: ProbeTemplate): string {
   const id = chalk.bold(probe.id.padEnd(8));

@@ -1,100 +1,72 @@
 /**
- * Scan tier presets -- pre-configured CampaignConfig for common scan profiles.
+ * Tier presets — pre-configured campaign settings for common scan profiles.
  */
 
-import type { CampaignConfig, ConcurrencyConfig } from '../types/index.js';
-import { ScanTier } from '../types/index.js';
+import type { CampaignConfig } from './config.js';
 
-const TIER_PRESETS: Record<ScanTier, CampaignConfig> = {
-  [ScanTier.Fast]: {
-    name: 'fast',
+export const TIER_NAMES = ['fast', 'deep', 'continuous'] as const;
+export type TierName = (typeof TIER_NAMES)[number];
+
+export interface TierPreset {
+  trialsPerProbe: number;
+  delayMs: number;
+  concurrency: number;
+  batchSize: number;
+  confidenceLevel: number;
+  description: string;
+}
+
+export const TIER_PRESETS: Record<TierName, TierPreset> = {
+  fast: {
     trialsPerProbe: 1,
+    delayMs: 500,
+    concurrency: 5,
+    batchSize: 20,
     confidenceLevel: 0.95,
-    delayBetweenTrials: 0.5,
-    delayBetweenProbes: 0.5,
-    probeIds: [],
-    targetUrl: '',
-    apiKey: '',
-    model: 'default',
-    concurrency: {
-      maxConcurrentTrials: 10,
-      earlyTerminationThreshold: 0, // No early termination with 1 trial
-    },
+    description: 'Quick scan — 1 trial, high concurrency, minimal delay',
   },
-  [ScanTier.Deep]: {
-    name: 'deep',
-    trialsPerProbe: 10,
+  deep: {
+    trialsPerProbe: 5,
+    delayMs: 2000,
+    concurrency: 2,
+    batchSize: 10,
     confidenceLevel: 0.99,
-    delayBetweenTrials: 1.5,
-    delayBetweenProbes: 2.0,
-    probeIds: [],
-    targetUrl: '',
-    apiKey: '',
-    model: 'default',
-    concurrency: {
-      maxConcurrentTrials: 1, // Sequential for accuracy
-      earlyTerminationThreshold: 0, // No early termination -- run all trials
-    },
+    description: 'Thorough scan — 5 trials per probe, moderate concurrency',
   },
-  [ScanTier.Continuous]: {
-    name: 'continuous',
-    trialsPerProbe: 3,
+  continuous: {
+    trialsPerProbe: 10,
+    delayMs: 3000,
+    concurrency: 1,
+    batchSize: 5,
     confidenceLevel: 0.95,
-    delayBetweenTrials: 1.0,
-    delayBetweenProbes: 1.5,
-    probeIds: [],
-    targetUrl: '',
-    apiKey: '',
-    model: 'default',
-    concurrency: {
-      maxConcurrentTrials: 3,
-      earlyTerminationThreshold: 3,
-    },
+    description: 'Continuous monitoring — 10 trials, conservative pacing',
   },
 };
 
-/**
- * Get a CampaignConfig for the given tier with optional overrides.
- */
-export function getTierConfig(
-  tier: ScanTier,
-  overrides?: Partial<Omit<CampaignConfig, 'concurrency'> & { concurrency?: Partial<ConcurrencyConfig> }>,
-): CampaignConfig {
+export function getTierPreset(tier: TierName): TierPreset {
   const preset = TIER_PRESETS[tier];
-
-  const config: CampaignConfig = {
-    name: preset.name,
-    trialsPerProbe: preset.trialsPerProbe,
-    confidenceLevel: preset.confidenceLevel,
-    delayBetweenTrials: preset.delayBetweenTrials,
-    delayBetweenProbes: preset.delayBetweenProbes,
-    category: preset.category,
-    probeIds: [...preset.probeIds],
-    targetUrl: preset.targetUrl,
-    apiKey: preset.apiKey,
-    model: preset.model,
-    concurrency: { ...preset.concurrency },
-  };
-
-  if (overrides) {
-    const { concurrency: concurrencyOverrides, ...rest } = overrides;
-    for (const [key, value] of Object.entries(rest)) {
-      if (value !== undefined && key in config) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key assignment from overrides
-        (config as any)[key] = value;
-      }
-    }
-    if (concurrencyOverrides) {
-      if (concurrencyOverrides.maxConcurrentTrials !== undefined) {
-        config.concurrency.maxConcurrentTrials = concurrencyOverrides.maxConcurrentTrials;
-      }
-      if (concurrencyOverrides.earlyTerminationThreshold !== undefined) {
-        config.concurrency.earlyTerminationThreshold = concurrencyOverrides.earlyTerminationThreshold;
-      }
-    }
+  if (!preset) {
+    const valid = Object.keys(TIER_PRESETS).join(', ');
+    throw new Error(`Unknown tier "${tier}". Valid tiers: ${valid}`);
   }
-
-  return config;
+  return preset;
 }
 
-export { TIER_PRESETS };
+export function applyTier(config: CampaignConfig, tier: TierName): CampaignConfig {
+  const preset = getTierPreset(tier);
+
+  return {
+    ...config,
+    campaign: {
+      ...config.campaign,
+      trialsPerProbe: preset.trialsPerProbe,
+      confidenceLevel: preset.confidenceLevel,
+      delayMs: preset.delayMs,
+      tier,
+    },
+    concurrency: {
+      maxWorkers: preset.concurrency,
+      batchSize: preset.batchSize,
+    },
+  };
+}

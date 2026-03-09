@@ -1,77 +1,124 @@
 import { describe, expect, it } from 'vitest';
 
-import { TIER_PRESETS, getTierConfig } from '../../src/campaign/tiers.js';
-import { ScanTier } from '../../src/types/index.js';
+import type { CampaignConfig } from '../../src/campaign/config.js';
+import { TIER_PRESETS, applyTier, getTierPreset } from '../../src/campaign/tiers.js';
 
 describe('TIER_PRESETS', () => {
-  it('has presets for all scan tiers', () => {
-    expect(TIER_PRESETS[ScanTier.Fast]).toBeDefined();
-    expect(TIER_PRESETS[ScanTier.Deep]).toBeDefined();
-    expect(TIER_PRESETS[ScanTier.Continuous]).toBeDefined();
+  it('has fast, deep, and continuous tiers', () => {
+    expect(TIER_PRESETS).toHaveProperty('fast');
+    expect(TIER_PRESETS).toHaveProperty('deep');
+    expect(TIER_PRESETS).toHaveProperty('continuous');
   });
 
-  it('fast tier has 1 trial per probe', () => {
-    expect(TIER_PRESETS[ScanTier.Fast].trialsPerProbe).toBe(1);
-    expect(TIER_PRESETS[ScanTier.Fast].concurrency.maxConcurrentTrials).toBe(10);
+  it('fast tier has expected values', () => {
+    const fast = TIER_PRESETS.fast;
+    expect(fast.trialsPerProbe).toBe(1);
+    expect(fast.delayMs).toBe(500);
+    expect(fast.concurrency).toBe(5);
+    expect(fast.batchSize).toBe(20);
+    expect(fast.confidenceLevel).toBe(0.95);
+    expect(fast.description).toContain('Quick scan');
   });
 
-  it('deep tier runs sequentially with 10 trials', () => {
-    expect(TIER_PRESETS[ScanTier.Deep].trialsPerProbe).toBe(10);
-    expect(TIER_PRESETS[ScanTier.Deep].concurrency.maxConcurrentTrials).toBe(1);
-    expect(TIER_PRESETS[ScanTier.Deep].confidenceLevel).toBe(0.99);
+  it('deep tier has expected values', () => {
+    const deep = TIER_PRESETS.deep;
+    expect(deep.trialsPerProbe).toBe(5);
+    expect(deep.delayMs).toBe(2000);
+    expect(deep.concurrency).toBe(2);
+    expect(deep.batchSize).toBe(10);
+    expect(deep.confidenceLevel).toBe(0.99);
+    expect(deep.description).toContain('Thorough scan');
   });
 
-  it('continuous tier has moderate concurrency', () => {
-    expect(TIER_PRESETS[ScanTier.Continuous].trialsPerProbe).toBe(3);
-    expect(TIER_PRESETS[ScanTier.Continuous].concurrency.maxConcurrentTrials).toBe(3);
-    expect(TIER_PRESETS[ScanTier.Continuous].concurrency.earlyTerminationThreshold).toBe(3);
+  it('continuous tier has expected values', () => {
+    const continuous = TIER_PRESETS.continuous;
+    expect(continuous.trialsPerProbe).toBe(10);
+    expect(continuous.delayMs).toBe(3000);
+    expect(continuous.concurrency).toBe(1);
+    expect(continuous.batchSize).toBe(5);
+    expect(continuous.confidenceLevel).toBe(0.95);
+    expect(continuous.description).toContain('Continuous monitoring');
   });
 });
 
-describe('getTierConfig', () => {
-  it('returns a copy of the preset, not a reference', () => {
-    const a = getTierConfig(ScanTier.Fast);
-    const b = getTierConfig(ScanTier.Fast);
-    expect(a).toEqual(b);
-    expect(a).not.toBe(b);
-    expect(a.concurrency).not.toBe(b.concurrency);
+describe('getTierPreset', () => {
+  it('returns the correct preset', () => {
+    const preset = getTierPreset('fast');
+    expect(preset).toBe(TIER_PRESETS.fast);
   });
 
-  it('applies top-level overrides', () => {
-    const config = getTierConfig(ScanTier.Fast, { name: 'custom', trialsPerProbe: 3 });
-    expect(config.name).toBe('custom');
-    expect(config.trialsPerProbe).toBe(3);
-    // Other fields remain from preset
-    expect(config.confidenceLevel).toBe(0.95);
+  it('throws on unknown tier', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime guard
+    expect(() => getTierPreset('ultra' as any)).toThrow('Unknown tier "ultra"');
   });
 
-  it('applies concurrency overrides', () => {
-    const config = getTierConfig(ScanTier.Deep, {
-      concurrency: { maxConcurrentTrials: 5 },
-    });
-    expect(config.concurrency.maxConcurrentTrials).toBe(5);
-    // Other concurrency fields remain from preset
-    expect(config.concurrency.earlyTerminationThreshold).toBe(0);
+  it('error message includes valid tier names', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime guard
+    expect(() => getTierPreset('nonexistent' as any)).toThrow('fast, deep, continuous');
+  });
+});
+
+describe('applyTier', () => {
+  const baseConfig: CampaignConfig = {
+    campaign: {
+      name: 'test-campaign',
+      trialsPerProbe: 1,
+      confidenceLevel: 0.95,
+      delayMs: 1500,
+    },
+    target: {
+      url: 'https://api.example.com/v1/chat',
+      adapterType: 'openai',
+    },
+  };
+
+  it('applies fast tier preset values', () => {
+    const result = applyTier(baseConfig, 'fast');
+
+    expect(result.campaign.trialsPerProbe).toBe(1);
+    expect(result.campaign.delayMs).toBe(500);
+    expect(result.campaign.confidenceLevel).toBe(0.95);
+    expect(result.campaign.tier).toBe('fast');
+    expect(result.concurrency?.maxWorkers).toBe(5);
+    expect(result.concurrency?.batchSize).toBe(20);
   });
 
-  it('applies both top-level and concurrency overrides simultaneously', () => {
-    const config = getTierConfig(ScanTier.Continuous, {
-      trialsPerProbe: 7,
-      concurrency: { earlyTerminationThreshold: 5 },
-    });
-    expect(config.trialsPerProbe).toBe(7);
-    expect(config.concurrency.earlyTerminationThreshold).toBe(5);
-    expect(config.concurrency.maxConcurrentTrials).toBe(3); // Unchanged from preset
+  it('applies deep tier preset values', () => {
+    const result = applyTier(baseConfig, 'deep');
+
+    expect(result.campaign.trialsPerProbe).toBe(5);
+    expect(result.campaign.delayMs).toBe(2000);
+    expect(result.campaign.confidenceLevel).toBe(0.99);
+    expect(result.campaign.tier).toBe('deep');
+    expect(result.concurrency?.maxWorkers).toBe(2);
+    expect(result.concurrency?.batchSize).toBe(10);
   });
 
-  it('does not mutate the preset', () => {
-    const before = TIER_PRESETS[ScanTier.Fast].trialsPerProbe;
-    getTierConfig(ScanTier.Fast, { trialsPerProbe: 99 });
-    expect(TIER_PRESETS[ScanTier.Fast].trialsPerProbe).toBe(before);
+  it('preserves target and campaign name', () => {
+    const result = applyTier(baseConfig, 'deep');
+
+    expect(result.target.url).toBe('https://api.example.com/v1/chat');
+    expect(result.campaign.name).toBe('test-campaign');
   });
 
-  it('handles no overrides', () => {
-    const config = getTierConfig(ScanTier.Deep);
-    expect(config).toEqual(TIER_PRESETS[ScanTier.Deep]);
+  it('preserves optional campaign fields', () => {
+    const withCategory: CampaignConfig = {
+      ...baseConfig,
+      campaign: {
+        ...baseConfig.campaign,
+        category: 'goal_adherence',
+        probeIds: ['GA-001', 'GA-002'],
+      },
+    };
+
+    const result = applyTier(withCategory, 'fast');
+
+    expect(result.campaign.category).toBe('goal_adherence');
+    expect(result.campaign.probeIds).toEqual(['GA-001', 'GA-002']);
+  });
+
+  it('throws on unknown tier', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime guard
+    expect(() => applyTier(baseConfig, 'turbo' as any)).toThrow('Unknown tier "turbo"');
   });
 });
