@@ -5,9 +5,9 @@
  * severity breakdown, PoC evidence, and prioritized recommendations.
  */
 
-import { SEVERITY_ORDER } from '../core/index.js';
 import type { Finding, ScanResult } from '../types/index.js';
-import { Severity, Verdict } from '../types/index.js';
+import { SEVERITY_ORDER, Severity, Verdict } from '../types/index.js';
+import { groupBy } from '../utils.js';
 
 // ─── Interfaces ─────────────────────────────────────────
 
@@ -165,12 +165,7 @@ function computeSeverityRows(findings: Finding[]): SeverityRow[] {
 }
 
 function computeCategoryRows(findings: Finding[]): CategoryRow[] {
-  const byCategory = new Map<string, Finding[]>();
-  for (const f of findings) {
-    const existing = byCategory.get(f.category) ?? [];
-    existing.push(f);
-    byCategory.set(f.category, existing);
-  }
+  const byCategory = groupBy(findings, (f) => f.category);
 
   const rows: CategoryRow[] = [];
   for (const [category, catFindings] of byCategory) {
