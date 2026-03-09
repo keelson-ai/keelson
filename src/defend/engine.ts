@@ -154,18 +154,20 @@ export class PolicyEngine {
         }
 
         // Wrapper alone is still suspicious
-        const wrapperPat = TOOL_CALL_WRAPPER_RE.find((re) => re.test(content))!;
-        this.recordViolation({
-          toolName: null,
-          contentSnippet: snippet,
-          rule: `side_effect:${wrapperPat.source}`,
-          action: PolicyAction.Deny,
-        });
-        return {
-          allowed: false,
-          rule: wrapperPat.source,
-          reason: `Output matched tool call wrapper: ${wrapperPat.source}`,
-        };
+        const wrapperPat = TOOL_CALL_WRAPPER_RE.find((re) => re.test(content));
+        if (wrapperPat) {
+          this.recordViolation({
+            toolName: null,
+            contentSnippet: snippet,
+            rule: `side_effect:${wrapperPat.source}`,
+            action: PolicyAction.Deny,
+          });
+          return {
+            allowed: false,
+            rule: wrapperPat.source,
+            reason: `Output matched tool call wrapper: ${wrapperPat.source}`,
+          };
+        }
       }
     }
 

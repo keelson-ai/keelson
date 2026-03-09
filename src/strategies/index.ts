@@ -17,6 +17,7 @@ export {
   shouldMutate,
   weightedByHistory,
 } from './scheduling.js';
+export { buildStrategyFinding } from './types.js';
 export type {
   BranchingOptions,
   ConversationNode,
@@ -29,7 +30,8 @@ export type {
   PAIROptions,
   PAIRResult,
   RefinementStep,
+  StrategyStep,
   TreeOptions,
   TreeResult,
 } from './types.js';
-export { Technique } from './types.js';
+export { Technique } from '../types/index.js';

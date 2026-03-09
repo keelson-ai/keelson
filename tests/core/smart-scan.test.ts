@@ -65,12 +65,7 @@ function mockAdapter(response = 'I cannot do that.'): Adapter {
   };
 }
 
-function makeFinding(
-  probeId: string,
-  category: string,
-  verdict: Verdict,
-  prompt = 'test prompt',
-): Finding {
+function makeFinding(probeId: string, category: string, verdict: Verdict, prompt = 'test prompt'): Finding {
   return {
     probeId,
     probeName: `Probe ${probeId}`,
@@ -100,10 +95,7 @@ describe('groupIntoSessions', () => {
     ];
     const byId = new Map(probes.map((p) => [p.id, p]));
 
-    const sessions = groupIntoSessions(
-      ['GA-001', 'GA-002', 'TS-001', 'TS-002'],
-      byId,
-    );
+    const sessions = groupIntoSessions(['GA-001', 'GA-002', 'TS-001', 'TS-002'], byId);
 
     // Two categories → two sessions
     expect(sessions).toHaveLength(2);
@@ -319,10 +311,7 @@ describe('runSmartScan', () => {
   });
 
   it('records memo entries during execution', async () => {
-    const testProbes = [
-      makeProbe('GA-001', 'goal_adherence'),
-      makeProbe('GA-002', 'goal_adherence'),
-    ];
+    const testProbes = [makeProbe('GA-001', 'goal_adherence'), makeProbe('GA-002', 'goal_adherence')];
 
     vi.spyOn(templates, 'loadProbes').mockResolvedValue(testProbes);
     vi.spyOn(discovery, 'discoverCapabilities').mockResolvedValue({

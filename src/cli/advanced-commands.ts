@@ -20,14 +20,7 @@ import {
   runCrescendo,
   runPair,
 } from '../strategies/index.js';
-import type {
-  Adapter,
-  AdapterConfig,
-  Finding,
-  MutatedProbe,
-  MutationType,
-  ProbeTemplate,
-} from '../types/index.js';
+import type { Adapter, AdapterConfig, Finding, MutatedProbe, MutationType, ProbeTemplate } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -121,27 +114,32 @@ export function registerAdvancedCommands(program: Command): void {
 
       let result;
       try {
-        result = await runCampaign(config.target.url, adapter, {
-          name: config.campaign.name,
-          trialsPerProbe: config.campaign.trialsPerProbe,
-          confidenceLevel: config.campaign.confidenceLevel,
-          delayBetweenTrials: config.campaign.delayMs / 1000,
-          delayBetweenProbes: config.campaign.delayMs / 1000,
-          category: config.campaign.category,
-          probeIds: config.campaign.probeIds ?? [],
-          targetUrl: config.target.url,
-          apiKey: config.target.apiKey ?? '',
-          model: config.target.model ?? 'default',
-          concurrency: {
-            maxConcurrentTrials: config.concurrency?.maxWorkers ?? 1,
-            earlyTerminationThreshold: config.concurrency?.batchSize ?? 10,
+        result = await runCampaign(
+          config.target.url,
+          adapter,
+          {
+            name: config.campaign.name,
+            trialsPerProbe: config.campaign.trialsPerProbe,
+            confidenceLevel: config.campaign.confidenceLevel,
+            delayBetweenTrials: config.campaign.delayMs / 1000,
+            delayBetweenProbes: config.campaign.delayMs / 1000,
+            category: config.campaign.category,
+            probeIds: config.campaign.probeIds ?? [],
+            targetUrl: config.target.url,
+            apiKey: config.target.apiKey ?? '',
+            model: config.target.model ?? 'default',
+            concurrency: {
+              maxConcurrentTrials: config.concurrency?.maxWorkers ?? 1,
+              earlyTerminationThreshold: config.concurrency?.batchSize ?? 10,
+            },
           },
-        }, {
-          onFinding: (finding, current, total) => {
-            const icon = VERDICT_ICONS[finding.verdict];
-            console.log(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
+          {
+            onFinding: (finding, current, total) => {
+              const icon = VERDICT_ICONS[finding.verdict];
+              console.log(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
+            },
           },
-        });
+        );
       } finally {
         await adapter.close?.();
       }
@@ -218,10 +216,7 @@ export function registerAdvancedCommands(program: Command): void {
 
       const originalPrompt = template.turns[0].content;
       const history: Array<{ type: string; success: boolean }> = [];
-      const available: MutationType[] = [
-        ...PROGRAMMATIC_TYPES,
-        ...(proberAdapter ? LLM_TYPES : []),
-      ];
+      const available: MutationType[] = [...PROGRAMMATIC_TYPES, ...(proberAdapter ? LLM_TYPES : [])];
 
       const results: Array<{ mutated: MutatedProbe; finding: Finding }> = [];
 
@@ -346,8 +341,7 @@ export function registerAdvancedCommands(program: Command): void {
           });
 
           for (const step of result.escalationPath) {
-            const promptPreview =
-              step.prompt.length > 80 ? step.prompt.slice(0, 80) + '...' : step.prompt;
+            const promptPreview = step.prompt.length > 80 ? step.prompt.slice(0, 80) + '...' : step.prompt;
             console.log(`  [Turn ${step.turn}] ${promptPreview}`);
           }
 
@@ -370,9 +364,7 @@ export function registerAdvancedCommands(program: Command): void {
           }
 
           const icon = VERDICT_ICONS[result.finding.verdict];
-          console.log(
-            `\nChain Result: ${icon} (${result.iterationsUsed}/${result.maxIterations} iterations)`,
-          );
+          console.log(`\nChain Result: ${icon} (${result.iterationsUsed}/${result.maxIterations} iterations)`);
           console.log(`  Success: ${result.success}`);
         }
       } finally {
@@ -513,9 +505,7 @@ export function registerAdvancedCommands(program: Command): void {
 
       // Generate probes using the prober adapter
       const existingProbes = await loadProbes();
-      const categories = opts.category
-        ? [opts.category]
-        : [...new Set(existingProbes.map((p) => p.category))];
+      const categories = opts.category ? [opts.category] : [...new Set(existingProbes.map((p) => p.category))];
 
       const generated: ProbeTemplate[] = [];
 

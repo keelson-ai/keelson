@@ -20,7 +20,7 @@ export default tseslint.config(
     rules: {
       // Unused vars
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/no-non-null-assertion': 'error',
 
       // Naming conventions: PascalCase for types, camelCase for everything else
       '@typescript-eslint/naming-convention': [
@@ -62,6 +62,12 @@ export default tseslint.config(
           allowSeparatedGroups: true,
         },
       ],
+    },
+  },
+  {
+    files: ['tests/**/*.ts', 'tests/**/*.tsx'],
+    rules: {
+      '@typescript-eslint/no-non-null-assertion': 'off',
     },
   },
   {

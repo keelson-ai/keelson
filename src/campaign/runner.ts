@@ -15,6 +15,7 @@ import type {
   Turn,
 } from '../types/index.js';
 import { Verdict } from '../types/index.js';
+import { sleep } from '../utils.js';
 
 // ─── Wilson Score CI ────────────────────────────────────
 
@@ -37,12 +38,6 @@ export function wilsonCi(successes: number, trials: number, z = 1.96): [number, 
   const upper = Math.min(1, (centre + spread) / denominator);
   const point = centre / denominator;
   return [point, lower, upper];
-}
-
-// ─── Single Trial ───────────────────────────────────────
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function runSingleTrial(

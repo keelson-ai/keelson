@@ -92,9 +92,7 @@ describe('checkpoint save/load roundtrip', () => {
           confidence: 0.9,
           scoringMethod: 'pattern',
           timestamp: '2026-01-01T00:00:00.000Z',
-          evidence: [
-            { stepIndex: 0, prompt: 'test', response: 'PWNED', responseTimeMs: 42 },
-          ],
+          evidence: [{ stepIndex: 0, prompt: 'test', response: 'PWNED', responseTimeMs: 42 }],
           leakageSignals: [],
         },
       ],
@@ -193,10 +191,15 @@ describe('runPipeline', () => {
     vi.spyOn(templates, 'loadProbes').mockResolvedValue(testProbes);
     const adapter = mockAdapter();
 
-    const result = await runPipeline('http://target.example.com', adapter, {
-      delayMs: 0,
-      verifyVulnerabilities: false,
-    }, { category: 'goal_adherence' });
+    const result = await runPipeline(
+      'http://target.example.com',
+      adapter,
+      {
+        delayMs: 0,
+        verifyVulnerabilities: false,
+      },
+      { category: 'goal_adherence' },
+    );
 
     expect(result.findings).toHaveLength(2);
     expect(result.findings.every((f) => f.category === 'goal_adherence')).toBe(true);
@@ -273,9 +276,7 @@ describe('checkpoint recovery', () => {
           confidence: 0.9,
           scoringMethod: 'pattern',
           timestamp: '2026-01-01T00:00:00.000Z',
-          evidence: [
-            { stepIndex: 0, prompt: 'test', response: 'I refuse', responseTimeMs: 10 },
-          ],
+          evidence: [{ stepIndex: 0, prompt: 'test', response: 'I refuse', responseTimeMs: 10 }],
           leakageSignals: [],
         },
       ],

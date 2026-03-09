@@ -38,11 +38,11 @@ export const campaignConfigSchema = z.object({
     .optional(),
 });
 
-export type CampaignConfig = z.infer<typeof campaignConfigSchema>;
+export type CampaignFileConfig = z.infer<typeof campaignConfigSchema>;
 
 // ─── Parser ─────────────────────────────────────────────
 
-export async function parseCampaignConfig(filePath: string): Promise<CampaignConfig> {
+export async function parseCampaignConfig(filePath: string): Promise<CampaignFileConfig> {
   const raw = await readFile(filePath, 'utf-8');
   const data = YAML.parse(raw) as unknown;
 
@@ -75,10 +75,10 @@ export async function parseCampaignConfig(filePath: string): Promise<CampaignCon
  * Apply a tier preset but let explicitly-set YAML fields take priority.
  */
 function applyTierWithOverrides(
-  config: CampaignConfig,
+  config: CampaignFileConfig,
   tier: TierName,
   rawData: Record<string, unknown>,
-): CampaignConfig {
+): CampaignFileConfig {
   const tiered = applyTier(config, tier);
 
   // Restore any values that were explicitly set in the YAML

@@ -98,10 +98,7 @@ describe('executeSequential', () => {
   });
 
   it('calls onFinding callback with progress info', async () => {
-    const templates = [
-      makeTemplate({ id: 'GA-001' }),
-      makeTemplate({ id: 'GA-002' }),
-    ];
+    const templates = [makeTemplate({ id: 'GA-001' }), makeTemplate({ id: 'GA-002' })];
     const adapter = mockAdapter(['PWNED', 'PWNED']);
     const onFinding = vi.fn();
     await executeSequential(templates, adapter, { delayMs: 0, onFinding });
@@ -159,10 +156,7 @@ describe('executeParallel', () => {
   });
 
   it('calls onFinding callback for each completed probe', async () => {
-    const templates = [
-      makeTemplate({ id: 'GA-001' }),
-      makeTemplate({ id: 'GA-002' }),
-    ];
+    const templates = [makeTemplate({ id: 'GA-001' }), makeTemplate({ id: 'GA-002' })];
     const adapter = mockAdapter(['PWNED', 'PWNED']);
     const onFinding = vi.fn();
     await executeParallel(templates, adapter, { delayMs: 0, maxConcurrent: 2, onFinding });
@@ -187,9 +181,7 @@ describe('executeParallel', () => {
     let concurrentCount = 0;
     let maxObserved = 0;
 
-    const templates = Array.from({ length: 6 }, (_, i) =>
-      makeTemplate({ id: `GA-${String(i + 1).padStart(3, '0')}` }),
-    );
+    const templates = Array.from({ length: 6 }, (_, i) => makeTemplate({ id: `GA-${String(i + 1).padStart(3, '0')}` }));
 
     const adapter: Adapter = {
       send: vi.fn(async (): Promise<AdapterResponse> => {
@@ -242,7 +234,7 @@ describe('verifyFindings', () => {
 
   it('downgrades to INCONCLUSIVE when agent refuses verification', async () => {
     const finding = makeFinding();
-    const adapter = mockAdapter(["I cannot do that, it goes against my guidelines."]);
+    const adapter = mockAdapter(['I cannot do that, it goes against my guidelines.']);
     const result = await verifyFindings([finding], adapter, { delayMs: 0 });
 
     expect(result).toHaveLength(1);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CampaignConfig } from '../../src/campaign/config.js';
+import type { CampaignFileConfig } from '../../src/campaign/config.js';
 import { TIER_PRESETS, applyTier, getTierPreset } from '../../src/campaign/tiers.js';
 
 describe('TIER_PRESETS', () => {
@@ -59,7 +59,7 @@ describe('getTierPreset', () => {
 });
 
 describe('applyTier', () => {
-  const baseConfig: CampaignConfig = {
+  const baseConfig: CampaignFileConfig = {
     campaign: {
       name: 'test-campaign',
       trialsPerProbe: 1,
@@ -102,7 +102,7 @@ describe('applyTier', () => {
   });
 
   it('preserves optional campaign fields', () => {
-    const withCategory: CampaignConfig = {
+    const withCategory: CampaignFileConfig = {
       ...baseConfig,
       campaign: {
         ...baseConfig.campaign,

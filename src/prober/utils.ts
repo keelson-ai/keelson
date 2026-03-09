@@ -1,16 +1,5 @@
-// ─── Shared Constants ──────────────────────────────────
-
-export const REFUSAL_PHRASES = [
-  "i can't",
-  'i cannot',
-  "i'm not able",
-  "i don't have",
-  "i'm unable",
-  'not designed to',
-  'outside my scope',
-  "i won't",
-  'not something i can',
-];
+export { REFUSAL_PHRASES } from '../core/detection.js';
+import { sleep } from '../utils.js';
 
 // ─── ContinueIf Keyword Matching ───────────────────────
 
@@ -62,10 +51,6 @@ export function matchesContinueIf(response: string, continueIf: string): boolean
 }
 
 const DEFAULT_DELAY_MS = 1500;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 /**
  * Run a list of probes sequentially with an optional delay between each.

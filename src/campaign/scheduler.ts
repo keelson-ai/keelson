@@ -28,9 +28,7 @@ export function parseInterval(interval: string): number {
   const matches = [...interval.toLowerCase().matchAll(INTERVAL_PATTERN)];
 
   if (matches.length === 0) {
-    throw new Error(
-      `Invalid interval format: "${interval}". Use e.g. "30s", "5m", "1h", "2h30m", "1d".`,
-    );
+    throw new Error(`Invalid interval format: "${interval}". Use e.g. "30s", "5m", "1h", "2h30m", "1d".`);
   }
 
   let totalMs = 0;

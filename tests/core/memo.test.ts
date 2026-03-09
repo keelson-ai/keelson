@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { MemoTable, ResponseOutcome, Technique, inferTechniques } from '../../src/core/memo.js';
+import { MemoTable, ResponseOutcome, inferTechniques } from '../../src/core/memo.js';
 import type { Finding } from '../../src/types/index.js';
-import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
+import { ScoringMethod, Severity, Technique, Verdict } from '../../src/types/index.js';
 
 function makeFinding(overrides: Partial<Finding> = {}): Finding {
   return {

@@ -136,9 +136,7 @@ describe('defaultPolicy', () => {
 
   it('blocks destructive tool patterns', () => {
     const policy = defaultPolicy();
-    const destructivePatterns = policy.toolRules
-      .filter((r) => r.action === PolicyAction.Deny)
-      .map((r) => r.pattern);
+    const destructivePatterns = policy.toolRules.filter((r) => r.action === PolicyAction.Deny).map((r) => r.pattern);
 
     expect(destructivePatterns).toContain('delete_*');
     expect(destructivePatterns).toContain('drop_*');
@@ -148,9 +146,7 @@ describe('defaultPolicy', () => {
 
   it('logs sensitive operations', () => {
     const policy = defaultPolicy();
-    const logPatterns = policy.toolRules
-      .filter((r) => r.action === PolicyAction.Log)
-      .map((r) => r.pattern);
+    const logPatterns = policy.toolRules.filter((r) => r.action === PolicyAction.Log).map((r) => r.pattern);
 
     expect(logPatterns).toContain('send_email');
     expect(logPatterns).toContain('http_request');

@@ -12,7 +12,7 @@
 
 import { executeProbe } from './engine.js';
 import type { ExecuteProbeOptions, Observer } from './engine.js';
-import { MemoTable, Technique, inferTechniques } from './memo.js';
+import { MemoTable, inferTechniques } from './memo.js';
 import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { adaptPlan, classifyTarget, selectProbes } from './strategist.js';
 import type { ReconResponse } from './strategist.js';
@@ -22,7 +22,7 @@ import { discoverCapabilities } from '../prober/discovery.js';
 import { runInfrastructureRecon } from '../prober/infrastructure.js';
 import type { AgentProfile, InfraFinding } from '../prober/types.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
-import { Verdict } from '../types/index.js';
+import { Technique, Verdict } from '../types/index.js';
 
 /** Maximum probes per conversational session before resetting thread. */
 export const SESSION_MAX_TURNS = 6;
@@ -73,11 +73,7 @@ export function effectivenessScore(t: ProbeTemplate): number {
  * Reorder templates so effective techniques come first, dead ends last.
  * Combines field-tested success rates with memo-informed scoring.
  */
-export function reorderByMemo(
-  templates: ProbeTemplate[],
-  memo: MemoTable,
-  category: string,
-): ProbeTemplate[] {
+export function reorderByMemo(templates: ProbeTemplate[], memo: MemoTable, category: string): ProbeTemplate[] {
   return [...templates].sort((a, b) => {
     const scoreA = computeMemoScore(a, memo, category);
     const scoreB = computeMemoScore(b, memo, category);
@@ -206,10 +202,7 @@ async function executeSession(
 
 // ─── Run infrastructure recon ───────────────────────────
 
-async function runInfraRecon(
-  adapter: Adapter,
-  options: SmartScanOptions,
-): Promise<InfraFinding[]> {
+async function runInfraRecon(adapter: Adapter, options: SmartScanOptions): Promise<InfraFinding[]> {
   options.onPhase?.('recon', `Infrastructure recon`);
 
   const infraFindings = await runInfrastructureRecon(adapter, {
@@ -244,9 +237,7 @@ async function runDiscovery(
     response: cap.responseExcerpt,
   }));
 
-  const detectedCaps = profile.capabilities
-    .filter((c) => c.detected)
-    .map((c) => c.name);
+  const detectedCaps = profile.capabilities.filter((c) => c.detected).map((c) => c.name);
   options.onPhase?.('discovery', `Detected capabilities: ${detectedCaps.join(', ') || 'none'}`);
 
   return { profile, reconResponses };
@@ -295,10 +286,7 @@ export async function runSmartScan(
   const allTemplates = await loadProbes(options.probesDir);
   let plan = selectProbes(targetProfile, allTemplates);
 
-  options.onPhase?.(
-    'plan',
-    `Selected ${plan.totalProbes} probes (from ${allTemplates.length} available)`,
-  );
+  options.onPhase?.('plan', `Selected ${plan.totalProbes} probes (from ${allTemplates.length} available)`);
   for (const cp of plan.categories) {
     if (cp.probeIds.length > 0) {
       options.onPhase?.(
@@ -366,14 +354,7 @@ export async function runSmartScan(
       }
     }
 
-    const sessionFindings = await executeSession(
-      session,
-      adapter,
-      options,
-      memo,
-      currentOffset,
-      total,
-    );
+    const sessionFindings = await executeSession(session, adapter, options, memo, currentOffset, total);
     allFindings.push(...sessionFindings);
     currentOffset += session.length;
 
@@ -385,10 +366,7 @@ export async function runSmartScan(
       const oldCp = plan.categories[i];
       const newCp = updatedPlan.categories[i];
       if (oldCp && newCp && oldCp.priority !== newCp.priority) {
-        options.onPhase?.(
-          'adapt',
-          `  ${newCp.category}: ${oldCp.priority} -> ${newCp.priority} (${newCp.rationale})`,
-        );
+        options.onPhase?.('adapt', `  ${newCp.category}: ${oldCp.priority} -> ${newCp.priority} (${newCp.rationale})`);
       }
     }
 
@@ -402,10 +380,7 @@ export async function runSmartScan(
 
     if (remainingIds.length > 0) {
       const remainingSessions = groupIntoSessions(remainingIds, templatesById, memo);
-      sessions = [
-        ...sessions.slice(0, sessionIdx + 1),
-        ...remainingSessions,
-      ];
+      sessions = [...sessions.slice(0, sessionIdx + 1), ...remainingSessions];
     }
   }
 

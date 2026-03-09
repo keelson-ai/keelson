@@ -5,11 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Store } from '../../src/state/store.js';
-import type {
-  AgentProfile,
-  PersistedCampaignResult,
-  PersistedTarget,
-} from '../../src/state/store.js';
+import type { AgentProfile, PersistedCampaignResult, PersistedTarget } from '../../src/state/store.js';
 import type { ScanResult } from '../../src/types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
 
