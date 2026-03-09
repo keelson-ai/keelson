@@ -9,7 +9,8 @@ import { basename, extname } from 'node:path';
 import YAML from 'yaml';
 import { z } from 'zod';
 
-import { type TierName, TIER_NAMES, applyTier } from './tiers.js';
+import { TIER_NAMES, applyTier } from './tiers.js';
+import type { TierName } from './tiers.js';
 
 // ─── Zod Schema ─────────────────────────────────────────
 
