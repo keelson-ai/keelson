@@ -11,6 +11,8 @@ import { OpenAIAdapter, ProberAdapter, createAdapter } from '../adapters/index.j
 import { parseCampaignConfig } from '../campaign/config.js';
 import { runCampaign } from '../campaign/runner.js';
 import { executeProbe, loadProbes } from '../core/index.js';
+import { executeChain, synthesizeChainsLlm } from '../prober/index.js';
+import type { AgentProfile } from '../prober/index.js';
 import {
   LLM_TYPES,
   PROGRAMMATIC_TYPES,
@@ -283,6 +285,7 @@ export function registerAdvancedCommands(program: Command): void {
     .option('--strategy <strategy>', 'Chain strategy: pair or crescendo', 'pair')
     .option('--max-iterations <n>', 'Maximum iterations/turns', '5')
     .option('--delay <ms>', 'Milliseconds between requests', '1500')
+    .option('--llm-chains <count>', 'Generate and execute LLM-synthesized probe chains')
     .action(async (opts) => {
       const probes = await loadProbes();
       const template = probes.find((p) => p.id === opts.probeId);
@@ -310,6 +313,52 @@ export function registerAdvancedCommands(program: Command): void {
         apiKey: opts.proberKey,
       });
       const proberAdapter = new ProberAdapter(rawProber);
+
+      if (opts.llmChains) {
+        const count = parseInt(opts.llmChains, 10);
+
+        const profile: AgentProfile = {
+          profileId: `chain-${template.id}`,
+          targetUrl: opts.target,
+          capabilities: [
+            { name: 'tool_usage', detected: true, probePrompt: '', responseExcerpt: '', confidence: 1 },
+            { name: template.category, detected: true, probePrompt: '', responseExcerpt: '', confidence: 1 },
+          ],
+          createdAt: new Date().toISOString(),
+        };
+
+        console.log(`Generating ${count} LLM chains...`);
+        const chains = await synthesizeChainsLlm(proberAdapter, profile, count);
+
+        if (chains.length === 0) {
+          console.log('No chains generated.');
+          await targetAdapter.close?.();
+          await proberAdapter.close?.();
+          return;
+        }
+
+        console.log(`Generated ${chains.length} chains. Executing...\n`);
+        const delayMs = parseInt(opts.delay, 10);
+
+        try {
+          for (const chain of chains) {
+            console.log(`Chain: ${chain.name} (${chain.severity})`);
+            const result = await executeChain(chain, targetAdapter, { delayMs });
+
+            for (const entry of result.results) {
+              const status = entry.continued ? '\u2713' : '\u2717';
+              console.log(`  ${status} ${truncate(entry.step.prompt, 80)}`);
+            }
+
+            const completedSteps = result.results.filter((r) => r.continued).length;
+            console.log(`  \u2192 ${completedSteps}/${chain.steps.length} steps succeeded\n`);
+          }
+        } finally {
+          await targetAdapter.close?.();
+          await proberAdapter.close?.();
+        }
+        return;
+      }
 
       const maxIter = parseInt(opts.maxIterations, 10);
       const delayMs = parseInt(opts.delay, 10);
