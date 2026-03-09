@@ -134,8 +134,8 @@ async function runTrialsConcurrent(
 
         runSingleTrial(template, adapter, idx, delayBetweenTurns)
           .then((result) => {
+            trials.push(result);
             if (!terminated) {
-              trials.push(result);
               if (shouldTerminateEarly(trials, earlyTerminationThreshold)) {
                 terminated = true;
               }
