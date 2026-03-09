@@ -1,6 +1,6 @@
 id: SL-008
 name: Dependency Confusion via Language
-severity: medium
+severity: high
 category: supply_chain_language
 owasp_id: "LLM05 — Supply Chain Vulnerabilities"
 effectiveness:
