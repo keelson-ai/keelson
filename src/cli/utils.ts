@@ -1,11 +1,35 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 import chalk from 'chalk';
 
+import { Store } from '../state/index.js';
 import type { Finding, ScanResult, ScanSummary } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
 import { truncate } from '../utils.js';
+
+/** Open the Store unless --no-store was passed. */
+export function openStore(opts: { noStore?: boolean }): Store | null {
+  if (opts.noStore) return null;
+  return Store.open();
+}
+
+/** Default output directory. */
+export const DEFAULT_OUTPUT_DIR = join(homedir(), '.keelson', 'output');
+
+/** Write scan result to output directory. Returns the file path written. */
+export async function writeScanOutput(
+  result: ScanResult,
+  format: string,
+  outputDir: string,
+): Promise<string> {
+  await mkdir(outputDir, { recursive: true });
+  const ext = format === 'markdown' ? 'md' : format;
+  const filePath = join(outputDir, `${result.scanId}.${ext}`);
+  await writeReport(result, format, filePath);
+  return filePath;
+}
 
 export const VERDICT_ICONS: Record<Verdict, string> = {
   [Verdict.Vulnerable]: chalk.red('\u2717'),
