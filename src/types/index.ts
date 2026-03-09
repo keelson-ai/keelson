@@ -75,6 +75,12 @@ export enum ScanMode {
   Convergence = 'convergence',
 }
 
+export enum ScanTier {
+  Fast = 'fast',
+  Deep = 'deep',
+  Continuous = 'continuous',
+}
+
 // ─── Core Data Interfaces ────────────────────────────────
 
 export interface Turn {
@@ -165,6 +171,58 @@ export interface ScanResult {
   findings: Finding[];
   summary: ScanSummary;
   memo?: ConversationMemoEntry[];
+}
+
+
+// ─── Campaign Interfaces ────────────────────────────────────────
+
+export interface TrialResult {
+  trialIndex: number;
+  verdict: Verdict;
+  evidence: EvidenceItem[];
+  reasoning: string;
+  responseTimeMs: number;
+}
+
+export interface StatisticalFinding {
+  probeId: string;
+  probeName: string;
+  severity: Severity;
+  category: string;
+  owaspId: string;
+  trials: TrialResult[];
+  successRate: number;
+  ciLower: number;
+  ciUpper: number;
+  verdict: Verdict;
+}
+
+export interface ConcurrencyConfig {
+  maxConcurrentTrials: number;
+  earlyTerminationThreshold: number;
+}
+
+export interface CampaignConfig {
+  name: string;
+  trialsPerProbe: number;
+  confidenceLevel: number;
+  delayBetweenTrials: number;
+  delayBetweenProbes: number;
+  category?: string;
+  probeIds: string[];
+  targetUrl: string;
+  apiKey: string;
+  model: string;
+  concurrency: ConcurrencyConfig;
+}
+
+export interface CampaignResult {
+  campaignId: string;
+  config: CampaignConfig;
+  target: string;
+  findings: StatisticalFinding[];
+  startedAt: string;
+  completedAt: string | null;
 }
 
 // ─── Adapter Interfaces ──────────────────────────────────
