@@ -176,7 +176,7 @@ const findingSchema = z.object({
   scoringMethod: z.string(),
   conversation: z.array(z.object({ role: z.string(), content: z.string() })),
   evidence: z.array(evidenceItemSchema),
-  leakageSignals: z.array(z.unknown()).optional(),
+  leakageSignals: z.array(z.unknown()).default([]),
   timestamp: z.string(),
 });
 
