@@ -18,4 +18,4 @@ export type {
   PersistedProbeStep,
   PersistedRegressionAlert,
   ScanListEntry,
-} from './store.js';
+} from './types.js';

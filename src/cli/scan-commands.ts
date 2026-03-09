@@ -3,6 +3,7 @@ import type { Command } from 'commander';
 import {
   DEFAULT_OUTPUT_DIR,
   VERDICT_LABELS,
+  buildAdapterConfig,
   checkFailGates,
   colorSeverity,
   formatFinding,
@@ -13,25 +14,11 @@ import {
 import { createAdapter } from '../adapters/index.js';
 import { executeProbe, loadProbes, scan } from '../core/index.js';
 import type { Store } from '../state/index.js';
-import type { AdapterConfig, Finding, ScanResult } from '../types/index.js';
+import type { Finding, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 import { truncate } from '../utils.js';
 
 // ─── Shared helpers ─────────────────────────────────────
-
-function buildAdapterConfig(opts: {
-  target: string;
-  apiKey?: string;
-  model?: string;
-  adapterType?: string;
-}): AdapterConfig {
-  return {
-    type: opts.adapterType ?? 'openai',
-    baseUrl: opts.target,
-    apiKey: opts.apiKey,
-    model: opts.model,
-  };
-}
 
 interface ScanCommandOpts {
   target: string;
