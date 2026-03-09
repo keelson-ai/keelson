@@ -224,8 +224,8 @@ export function registerScanCommands(program: Command): void {
       await finalizeScan(result, store, opts, false);
     });
 
-  const testCmd = program
-    .command('test')
+  program
+    .command('probe')
     .description('Run a single probe against a target')
     .requiredOption('--target <url>', 'Target endpoint URL')
     .requiredOption('--probe-id <id>', 'Probe ID (e.g., GA-001)')
@@ -263,32 +263,5 @@ export function registerScanCommands(program: Command): void {
       console.log(`Verdict: ${VERDICT_LABELS[finding.verdict]}`);
       console.log(`Confidence: ${Math.round(finding.confidence * 100)}%`);
       console.log(`Reasoning: ${finding.reasoning}`);
-    });
-
-  // 'probe' is an alias for 'test'
-  program
-    .command('probe')
-    .description('Run a single probe (alias for test)')
-    .requiredOption('--target <url>', 'Target endpoint URL')
-    .requiredOption('--probe-id <id>', 'Probe ID (e.g., GA-001)')
-    .option('--api-key <key>', 'API key for authentication')
-    .option('--model <model>', 'Model name for requests', 'default')
-    .option('--adapter-type <type>', 'Adapter type', 'openai')
-    .action(async (opts) => {
-      await testCmd.parseAsync(
-        [
-          'test',
-          '--target',
-          opts.target,
-          '--probe-id',
-          opts.probeId,
-          ...(opts.apiKey ? ['--api-key', opts.apiKey] : []),
-          '--model',
-          opts.model,
-          '--adapter-type',
-          opts.adapterType,
-        ],
-        { from: 'user' },
-      );
     });
 }

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { registerScanCommands } from '../../src/cli/scan-commands.js';
 
 describe('registerScanCommands', () => {
-  it('registers scan, smart-scan, convergence-scan, test, and probe commands', () => {
+  it('registers scan, smart-scan, convergence-scan, and probe commands', () => {
     const program = new Command();
     registerScanCommands(program);
 
@@ -12,8 +12,8 @@ describe('registerScanCommands', () => {
     expect(commandNames).toContain('scan');
     expect(commandNames).toContain('smart-scan');
     expect(commandNames).toContain('convergence-scan');
-    expect(commandNames).toContain('test');
     expect(commandNames).toContain('probe');
+    expect(commandNames).not.toContain('test');
   });
 
   it('scan command has required --target option', () => {
@@ -49,15 +49,15 @@ describe('registerScanCommands', () => {
     expect(optionLongs).toContain('--concurrency');
   });
 
-  it('test command has required --target and --probe-id options', () => {
+  it('probe command has required --target and --probe-id options', () => {
     const program = new Command();
     registerScanCommands(program);
 
-    const testCmd = program.commands.find((c) => c.name() === 'test') as Command;
-    expect(testCmd).toBeDefined();
+    const probeCmd = program.commands.find((c) => c.name() === 'probe') as Command;
+    expect(probeCmd).toBeDefined();
 
-    const targetOpt = testCmd.options.find((o) => o.long === '--target');
-    const probeIdOpt = testCmd.options.find((o) => o.long === '--probe-id');
+    const targetOpt = probeCmd.options.find((o) => o.long === '--target');
+    const probeIdOpt = probeCmd.options.find((o) => o.long === '--probe-id');
     expect(targetOpt).toBeDefined();
     expect((targetOpt as typeof targetOpt & { required: boolean }).required).toBe(true);
     expect(probeIdOpt).toBeDefined();
