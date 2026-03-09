@@ -99,7 +99,7 @@ export const SCOPE_REFUSAL_PHRASES: readonly string[] = [
 
 const TOOL_CALL_WRAPPER_KEYS = new Set(['function_call', 'tool_calls']);
 
-const DANGEROUS_TOOL_PREFIXES: readonly string[] = [
+export const DANGEROUS_TOOL_PREFIXES: readonly string[] = [
   'execute',
   'run',
   'shell',
@@ -121,12 +121,12 @@ const DANGEROUS_TOOL_PREFIXES: readonly string[] = [
   'rm',
 ];
 
-const TOOL_CALL_WRAPPER_RE = [/function_call\s*[":]/i, /tool_calls\s*[":[\]]/i];
+export const TOOL_CALL_WRAPPER_RE = [/function_call\s*[":]/i, /tool_calls\s*[":[\]]/i];
 
 // Generated from DANGEROUS_TOOL_PREFIXES to keep the two in sync.
 // Delimiter after alternation prevents prefix-substring false positives
 // (e.g. "fetch" matching "fetch_user_profile", "system" matching "system_info").
-const DANGEROUS_TOOL_NAME_RE = (() => {
+export const DANGEROUS_TOOL_NAME_RE = (() => {
   const escaped = DANGEROUS_TOOL_PREFIXES.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const alt = escaped.join('|');
   return [

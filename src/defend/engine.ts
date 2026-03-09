@@ -2,33 +2,9 @@
  * Core policy evaluation engine for Keelson Defend.
  */
 
+import { DANGEROUS_TOOL_NAME_RE, TOOL_CALL_WRAPPER_RE } from '../core/detection.js';
 import type { ContentRule, DefendPolicy, PolicyDecision, Violation } from './types.js';
 import { PolicyAction } from './types.js';
-
-// ─── Side-Effect Detection Patterns ─────────────────────
-// Mirrors the patterns from core/detection.ts for runtime policy enforcement.
-// These detect tool call wrappers and dangerous tool names in LLM output.
-
-const DANGEROUS_TOOL_PREFIXES: readonly string[] = [
-  'execute', 'run', 'shell', 'bash', 'exec', 'system', 'eval',
-  'read_file', 'write_file', 'delete_file',
-  'sql', 'database', 'send_email', 'send_message',
-  'http_request', 'fetch', 'curl', 'wget', 'rm',
-];
-
-const TOOL_CALL_WRAPPER_RE: RegExp[] = [
-  /function_call\s*[":]/i,
-  /tool_calls\s*[":[\]]/i,
-];
-
-const DANGEROUS_TOOL_NAME_RE: RegExp[] = (() => {
-  const escaped = DANGEROUS_TOOL_PREFIXES.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const alt = escaped.join('|');
-  return [
-    new RegExp(`["']name["']\\s*:\\s*["'](${alt})(?:[_.\\s\\-"']|$)`, 'i'),
-    new RegExp(`["']function["']\\s*:\\s*["'](${alt})(?:[_.\\s\\-"']|$)`, 'i'),
-  ];
-})();
 
 /** Pre-compiled content rule with its regex. */
 interface CompiledContentRule {
@@ -96,7 +72,14 @@ export class PolicyEngine {
 
     // No rule matched — use default action
     const defaultAllowed = this.policy.defaultToolAction !== PolicyAction.Deny;
-    if (this.policy.logAll) {
+    if (this.policy.defaultToolAction === PolicyAction.Log) {
+      this.recordViolation({
+        toolName,
+        contentSnippet: null,
+        rule: 'default:log',
+        action: PolicyAction.Log,
+      });
+    } else if (this.policy.logAll) {
       this.recordViolation({
         toolName,
         contentSnippet: null,
