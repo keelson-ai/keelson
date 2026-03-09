@@ -6,7 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 
 import type { Command } from 'commander';
 
-import { VERDICT_ICONS, writeReport } from './utils.js';
+import { DEFAULT_OUTPUT_DIR, VERDICT_ICONS, openStore, writeReport, writeScanOutput } from './utils.js';
 import { OpenAIAdapter, ProberAdapter, createAdapter } from '../adapters/index.js';
 import { parseCampaignConfig } from '../campaign/config.js';
 import { runCampaign } from '../campaign/runner.js';
@@ -24,6 +24,7 @@ import {
 } from '../strategies/index.js';
 import type { Adapter, AdapterConfig, Finding, MutatedProbe, MutationType, ProbeTemplate } from '../types/index.js';
 import { Verdict } from '../types/index.js';
+import { generateCampaignId } from '../utils/id.js';
 import { truncate } from '../utils.js';
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -95,6 +96,8 @@ export function registerAdvancedCommands(program: Command): void {
     .option('--model <model>', 'Model name for requests', 'default')
     .option('--fail-on-vuln', 'Exit with code 1 if vulnerabilities found', false)
     .option('--fail-threshold <rate>', 'Vulnerability rate threshold (0.0-1.0)', '0.0')
+    .option('--no-store', 'Disable persisting results to local Store')
+    .option('--output-dir <dir>', 'Directory for scan output files', DEFAULT_OUTPUT_DIR)
     .action(async (configPath: string, opts) => {
       const config = await parseCampaignConfig(configPath);
 
@@ -158,6 +161,41 @@ export function registerAdvancedCommands(program: Command): void {
         await mkdir(opts.output.replace(/[^/]+$/, ''), { recursive: true }).catch(() => {});
         await writeFile(opts.output, JSON.stringify(result, null, 2), 'utf-8');
         console.log(`\nReport saved: ${opts.output}`);
+      }
+
+      const store = openStore(opts);
+      if (store) {
+        store.saveCampaign({
+          campaignId: generateCampaignId(),
+          config: {
+            name: config.campaign.name,
+            trialsPerProbe: config.campaign.trialsPerProbe,
+            confidenceLevel: config.campaign.confidenceLevel,
+            category: config.campaign.category ?? null,
+            probeIds: config.campaign.probeIds ?? [],
+          },
+          target: {
+            url: config.target.url,
+            apiKey: config.target.apiKey ?? '',
+            model: config.target.model ?? 'default',
+            name: config.target.url,
+          },
+          findings: result.findings.map((f) => ({
+            templateId: f.probeId,
+            templateName: f.probeName,
+            severity: f.severity,
+            category: f.category,
+            owasp: f.owaspId,
+            trials: f.trials,
+            successRate: f.successRate,
+            ciLower: f.ciLower,
+            ciUpper: f.ciUpper,
+            verdict: f.verdict,
+          })),
+          startedAt: result.startedAt,
+          finishedAt: result.completedAt ?? new Date().toISOString(),
+        });
+        store.close();
       }
 
       if (opts.failOnVuln) {
@@ -357,6 +395,27 @@ export function registerAdvancedCommands(program: Command): void {
           await targetAdapter.close?.();
           await proberAdapter.close?.();
         }
+
+        const store = openStore(opts);
+        if (store) {
+          for (const chain of chains) {
+            store.saveProbeChain({
+              chainId: chain.chainId,
+              profileId: profile.profileId,
+              name: chain.name,
+              capabilities: chain.capabilities,
+              steps: chain.steps.map((s, i) => ({
+                index: i,
+                prompt: s.prompt,
+                isFollowup: i > 0,
+              })),
+              severity: chain.severity,
+              category: chain.category,
+              owasp: chain.owaspId,
+            });
+          }
+          store.close();
+        }
         return;
       }
 
@@ -434,6 +493,8 @@ export function registerAdvancedCommands(program: Command): void {
     .option('--output <path>', 'Report output path')
     .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
     .option('--adapter-type <type>', 'Adapter type', 'crewai')
+    .option('--no-store', 'Disable persisting results to local Store')
+    .option('--output-dir <dir>', 'Directory for scan output files', DEFAULT_OUTPUT_DIR)
     .action(async (opts) => {
       const adapterConfig = buildAdapterConfig({
         target: opts.target,
@@ -468,6 +529,14 @@ export function registerAdvancedCommands(program: Command): void {
       const { printScanSummary } = await import('./utils.js');
       printScanSummary(result);
 
+      const store = openStore(opts);
+      if (store) {
+        store.saveScan(result);
+        store.close();
+      }
+
+      await writeScanOutput(result, opts.format ?? 'json', opts.outputDir);
+
       if (opts.output) {
         await writeReport(result, opts.format, opts.output);
       }
@@ -487,6 +556,8 @@ export function registerAdvancedCommands(program: Command): void {
     .option('--adapter-type <type>', 'Adapter type', 'langchain')
     .option('--input-key <key>', 'Input key for the chain', 'input')
     .option('--output-key <key>', 'Output key for the chain', 'output')
+    .option('--no-store', 'Disable persisting results to local Store')
+    .option('--output-dir <dir>', 'Directory for scan output files', DEFAULT_OUTPUT_DIR)
     .action(async (opts) => {
       const adapterConfig: AdapterConfig = {
         type: opts.adapterType,
@@ -522,6 +593,14 @@ export function registerAdvancedCommands(program: Command): void {
 
       const { printScanSummary } = await import('./utils.js');
       printScanSummary(result);
+
+      const store = openStore(opts);
+      if (store) {
+        store.saveScan(result);
+        store.close();
+      }
+
+      await writeScanOutput(result, opts.format ?? 'json', opts.outputDir);
 
       if (opts.output) {
         await writeReport(result, opts.format, opts.output);
