@@ -7,6 +7,7 @@ import { colorSeverity, printScanSummary, writeReport } from './utils.js';
 import { loadProbes } from '../core/index.js';
 import type { ProbeTemplate, ScanResult } from '../types/index.js';
 import { SEVERITY_ORDER } from '../types/index.js';
+import { getErrorMessage } from '../utils.js';
 
 function formatProbeRow(probe: ProbeTemplate): string {
   const id = chalk.bold(probe.id.padEnd(8));
@@ -85,9 +86,13 @@ export function registerOpsCommands(program: Command): void {
 
       let result: ScanResult;
       try {
-        result = JSON.parse(resultData) as ScanResult;
-      } catch {
-        console.error(chalk.red('Error: invalid JSON in input file'));
+        const parsed = JSON.parse(resultData);
+        if (!parsed.scanId || !parsed.target || !Array.isArray(parsed.findings)) {
+          throw new Error('missing required fields: scanId, target, findings');
+        }
+        result = parsed as ScanResult;
+      } catch (err) {
+        console.error(chalk.red(`Error: invalid scan result JSON — ${getErrorMessage(err)}`));
         process.exit(1);
       }
 
@@ -115,9 +120,8 @@ export function registerOpsCommands(program: Command): void {
       try {
         probes = await loadProbes(opts.dir);
       } catch (err) {
-        console.error(chalk.red(`Error loading probes: ${err instanceof Error ? err.message : String(err)}`));
+        console.error(chalk.red(`Error loading probes: ${getErrorMessage(err)}`));
         process.exit(1);
-        return; // unreachable but satisfies TS
       }
 
       // Additional validation checks

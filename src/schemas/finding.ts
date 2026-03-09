@@ -7,6 +7,14 @@ export const evidenceItemSchema = z.object({
   response_time_ms: z.number().int().min(0).default(0),
 });
 
+const leakageSignalSchema = z.object({
+  step_index: z.number().int().min(0),
+  signal_type: z.string(),
+  severity: z.string(),
+  description: z.string(),
+  confidence: z.number().min(0).max(1),
+});
+
 export const findingSchema = z.object({
   probe_id: z.string().min(1),
   probe_name: z.string().min(1),
@@ -24,6 +32,7 @@ export const findingSchema = z.object({
     }),
   ),
   evidence: z.array(evidenceItemSchema).default([]),
+  leakage_signals: z.array(leakageSignalSchema).default([]),
   timestamp: z.string(),
 });
 

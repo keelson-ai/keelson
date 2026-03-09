@@ -5,6 +5,7 @@ import { parse as parseYaml } from 'yaml';
 
 import { parseProbe } from '../schemas/probe.js';
 import type { ProbeTemplate } from '../types/index.js';
+import { getErrorMessage } from '../utils.js';
 
 export async function loadProbes(dir?: string): Promise<ProbeTemplate[]> {
   const probesDir = dir ?? join(process.cwd(), 'probes');
@@ -26,8 +27,7 @@ export async function loadProbe(filePath: string): Promise<ProbeTemplate> {
   try {
     return parseProbe(raw, filePath);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Invalid probe at ${filePath}: ${message}`, { cause: error });
+    throw new Error(`Invalid probe at ${filePath}: ${getErrorMessage(error)}`, { cause: error });
   }
 }
 

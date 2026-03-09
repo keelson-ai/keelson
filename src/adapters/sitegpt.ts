@@ -44,8 +44,6 @@ export class SiteGPTAdapter extends BaseAdapter {
   }
 
   private async sendApi(message: string): Promise<AdapterResponse> {
-    const start = performance.now();
-
     const payload: Record<string, unknown> = {
       message,
       from: 'USER',
@@ -54,11 +52,14 @@ export class SiteGPTAdapter extends BaseAdapter {
       payload.threadId = this.threadId;
     }
 
-    const { data } = await this.client.post(`/chatbots/${this.chatbotId}/message`, payload);
-    const latencyMs = Math.round(performance.now() - start);
+    const { data, latencyMs } = await this.timedPost<Record<string, unknown>>(
+      `/chatbots/${this.chatbotId}/message`,
+      payload,
+    );
 
-    this.threadId = data.data?.threadId ?? this.threadId;
-    const content: string = data.data?.message?.answer?.text ?? '';
+    const inner = data.data as { threadId?: string; message?: { answer?: { text?: string } } } | undefined;
+    this.threadId = inner?.threadId ?? this.threadId;
+    const content: string = inner?.message?.answer?.text ?? '';
     return { content, raw: data, latencyMs };
   }
 

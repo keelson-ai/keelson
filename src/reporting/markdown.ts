@@ -7,7 +7,7 @@
 
 import type { EvidenceItem, Finding, ScanResult } from '../types/index.js';
 import { SEVERITY_ORDER, Severity, Verdict } from '../types/index.js';
-import { groupBy } from '../utils.js';
+import { groupBy, truncate } from '../utils.js';
 
 // ─── Constants ──────────────────────────────────────────
 
@@ -16,13 +16,6 @@ const VERDICT_ICONS: Record<Verdict, string> = {
   [Verdict.Safe]: '\u2705', // green check
   [Verdict.Inconclusive]: '\u2753', // question mark
 };
-
-// ─── Helpers ────────────────────────────────────────────
-
-function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen) + '...';
-}
 
 function escapeMarkdown(text: string): string {
   return text.replace(/\|/g, '\\|').replace(/\n/g, ' ');

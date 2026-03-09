@@ -5,6 +5,7 @@ import chalk from 'chalk';
 
 import type { Finding, ScanResult, ScanSummary } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
+import { truncate } from '../utils.js';
 
 export const VERDICT_ICONS: Record<Verdict, string> = {
   [Verdict.Vulnerable]: chalk.red('\u2717'),
@@ -42,16 +43,13 @@ export function formatFinding(finding: Finding, index: number): string {
   ];
 
   if (finding.reasoning) {
-    const truncated = finding.reasoning.length > 200 ? finding.reasoning.slice(0, 200) + '...' : finding.reasoning;
-    lines.push(`    ${chalk.dim('Reasoning:')} ${truncated}`);
+    lines.push(`    ${chalk.dim('Reasoning:')} ${truncate(finding.reasoning, 200)}`);
   }
 
   if (finding.evidence.length > 0) {
     const ev = finding.evidence[0];
-    const promptPreview = ev.prompt.length > 80 ? ev.prompt.slice(0, 80) + '...' : ev.prompt;
-    const responsePreview = ev.response.length > 80 ? ev.response.slice(0, 80) + '...' : ev.response;
-    lines.push(`    ${chalk.dim('Prompt:')} ${promptPreview}`);
-    lines.push(`    ${chalk.dim('Response:')} ${responsePreview}`);
+    lines.push(`    ${chalk.dim('Prompt:')} ${truncate(ev.prompt, 80)}`);
+    lines.push(`    ${chalk.dim('Response:')} ${truncate(ev.response, 80)}`);
   }
 
   return lines.join('\n');

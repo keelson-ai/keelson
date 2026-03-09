@@ -13,11 +13,9 @@ export class CrewAIAdapter extends BaseAdapter {
     const lastUser = messages.filter((m) => m.role === 'user').pop();
     const userInput = lastUser?.content ?? '';
 
-    const start = performance.now();
-    const { data } = await this.client.post('/kickoff', {
+    const { data, latencyMs } = await this.timedPost<Record<string, string>>('/kickoff', {
       input: userInput,
     });
-    const latencyMs = Math.round(performance.now() - start);
 
     const content: string = data.result ?? data.raw ?? '';
     return { content, raw: data, latencyMs };

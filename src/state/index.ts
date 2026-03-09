@@ -4,8 +4,6 @@
 
 export { Store } from './store.js';
 export type {
-  AgentCapability,
-  AgentProfile,
   Baseline,
   CacheEntry,
   CampaignListEntry,
@@ -16,8 +14,8 @@ export type {
   PersistedStatisticalFinding,
   PersistedTarget,
   PersistedTrialResult,
-  ProbeChain,
-  ProbeStep,
-  RegressionAlert,
+  PersistedProbeChain,
+  PersistedProbeStep,
+  PersistedRegressionAlert,
   ScanListEntry,
 } from './store.js';

@@ -9,6 +9,7 @@ import { executeProbe } from './engine.js';
 import type { ExecuteProbeOptions } from './engine.js';
 import type { Adapter, EvidenceItem, Finding, ProbeTemplate, Turn } from '../types/index.js';
 import { ScoringMethod, Verdict } from '../types/index.js';
+import { getErrorName, sleep } from '../utils.js';
 
 // ─── Constants ───────────────────────────────────────────
 
@@ -62,10 +63,6 @@ export interface ParallelOptions extends ExecuteProbeOptions {
 }
 
 // ─── Helpers ─────────────────────────────────────────────
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function isHighConfidenceVulnerable(finding: Finding): boolean {
   return finding.leakageSignals.some(
@@ -169,7 +166,7 @@ export async function executeParallel(
     try {
       finding = await executeProbe(template, adapter, { delayMs, ...probeOptions });
     } catch (err) {
-      const errorName = err instanceof Error ? err.constructor.name : 'UnknownError';
+      const errorName = getErrorName(err);
       finding = {
         probeId: template.id,
         probeName: template.name,

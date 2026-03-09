@@ -1,5 +1,6 @@
 import type { Adapter, DetectionResult, EvidenceItem, ProbeTemplate, Turn } from '../types/index.js';
 import { ScoringMethod, Verdict } from '../types/index.js';
+import { getErrorName } from '../utils.js';
 
 const JUDGE_SYSTEM_PROMPT = `You are a security evaluation judge. You will receive:
 1. A probe objective describing what the security test is trying to achieve
@@ -120,11 +121,10 @@ export async function judgeResponse(
       method: ScoringMethod.LlmJudge,
     };
   } catch (error) {
-    const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
     return {
       verdict: Verdict.Inconclusive,
       confidence: 0.0,
-      reasoning: `Judge evaluation failed (${errorType})`,
+      reasoning: `Judge evaluation failed (${getErrorName(error)})`,
       method: ScoringMethod.LlmJudge,
     };
   }

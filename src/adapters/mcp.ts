@@ -56,12 +56,11 @@ export class MCPAdapter extends BaseAdapter {
   async send(messages: Turn[]): Promise<AdapterResponse> {
     await this.ensureInitialized();
 
-    const model = this.config.model && this.config.model !== 'default' ? this.config.model : undefined;
+    const model = this.resolveModel('');
     const args: Record<string, unknown> = { messages };
     if (model) args.model = model;
 
-    const start = performance.now();
-    const { data } = await this.client.post('', {
+    const { data, latencyMs } = await this.timedPost<Record<string, unknown>>('', {
       jsonrpc: MCP_JSONRPC_VERSION,
       id: this.nextId(),
       method: 'tools/call',
@@ -70,13 +69,14 @@ export class MCPAdapter extends BaseAdapter {
         arguments: args,
       },
     });
-    const latencyMs = Math.round(performance.now() - start);
 
     if (data.error) {
-      throw new Error(`MCP error ${data.error.code}: ${data.error.message}`);
+      const err = data.error as { code: number; message: string };
+      throw new Error(`MCP error ${err.code}: ${err.message}`);
     }
 
-    const content = this.extractContent(data.result?.content ?? []);
+    const result = data.result as { content?: Array<{ type: string; text?: string }> } | undefined;
+    const content = this.extractContent(result?.content ?? []);
     return { content, raw: data, latencyMs };
   }
 

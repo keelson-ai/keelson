@@ -12,6 +12,19 @@ export abstract class BaseAdapter implements Adapter {
   protected client: AxiosInstance;
   protected config: AdapterConfig;
 
+  /** Resolve the effective model name, falling back to the given default. */
+  protected resolveModel(defaultModel: string): string {
+    const m = this.config.model;
+    return m && m !== 'default' ? m : defaultModel;
+  }
+
+  /** POST to the given path and return data + latency in ms. */
+  protected async timedPost<T = unknown>(path: string, payload: unknown): Promise<{ data: T; latencyMs: number }> {
+    const start = performance.now();
+    const { data } = await this.client.post<T>(path, payload);
+    return { data, latencyMs: Math.round(performance.now() - start) };
+  }
+
   constructor(config: AdapterConfig) {
     this.config = config;
     this.client = axios.create({

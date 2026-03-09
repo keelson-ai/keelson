@@ -19,7 +19,7 @@ export class AnthropicAdapter extends BaseAdapter {
   }
 
   async send(messages: Turn[]): Promise<AdapterResponse> {
-    const model = this.config.model && this.config.model !== 'default' ? this.config.model : 'claude-sonnet-4-6';
+    const model = this.resolveModel('claude-sonnet-4-6');
 
     // Extract system messages into top-level parameter
     const systemParts: string[] = [];
@@ -43,12 +43,8 @@ export class AnthropicAdapter extends BaseAdapter {
       payload.system = systemParts.join('\n\n');
     }
 
-    const start = performance.now();
-    const { data } = await this.client.post('', payload);
-    const latencyMs = Math.round(performance.now() - start);
-
-    // Extract text from content blocks
-    const content = this.extractContent(data.content ?? []);
+    const { data, latencyMs } = await this.timedPost('', payload);
+    const content = this.extractContent((data as { content?: Array<{ type: string; text?: string }> }).content ?? []);
     return { content, raw: data, latencyMs };
   }
 

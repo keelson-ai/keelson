@@ -65,13 +65,13 @@ export interface PolicyDecision {
 
 export const toolRuleSchema = z.object({
   pattern: z.string(),
-  action: z.nativeEnum(PolicyAction).default(PolicyAction.Deny),
+  action: z.enum([PolicyAction.Allow, PolicyAction.Deny, PolicyAction.Log]).default(PolicyAction.Deny),
   reason: z.string().default(''),
 });
 
 export const contentRuleSchema = z.object({
   pattern: z.string(),
-  action: z.nativeEnum(PolicyAction).default(PolicyAction.Deny),
+  action: z.enum([PolicyAction.Allow, PolicyAction.Deny, PolicyAction.Log]).default(PolicyAction.Deny),
   reason: z.string().default(''),
   check_input: z.boolean().default(true),
   check_output: z.boolean().default(true),
@@ -82,7 +82,7 @@ export const policyFileSchema = z.object({
   content: z.array(contentRuleSchema).default([]),
   defaults: z
     .object({
-      tool_action: z.nativeEnum(PolicyAction).default(PolicyAction.Allow),
+      tool_action: z.enum([PolicyAction.Allow, PolicyAction.Deny, PolicyAction.Log]).default(PolicyAction.Allow),
       log_all: z.boolean().default(false),
     })
     .default({ tool_action: PolicyAction.Allow, log_all: false }),
