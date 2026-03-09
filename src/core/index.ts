@@ -19,3 +19,21 @@ export type { ConversationMemo } from './memo.js';
 export { StreamingObserver } from './observer.js';
 export { classifyTarget, selectProbes, adaptPlan, AgentType, Priority } from './strategist.js';
 export type { ReconResponse, TargetProfile, CategoryPlan, ProbePlan } from './strategist.js';
+export {
+  VERIFICATION_REFUSAL_SIGNALS,
+  executeSequential,
+  executeParallel,
+  verifyFindings,
+  applyVerifiedFindings,
+} from './execution.js';
+export type { FindingCallback, SequentialOptions, ParallelOptions } from './execution.js';
+export { runPipeline, saveCheckpoint, loadCheckpoint, defaultPipelineConfig, CHECKPOINT_VERSION } from './pipeline.js';
+export type { PipelineConfig, ScanCheckpointData } from './pipeline.js';
+export {
+  runSmartScan,
+  groupIntoSessions,
+  reorderByMemo,
+  effectivenessScore,
+  SESSION_MAX_TURNS,
+} from './smart-scan.js';
+export type { SmartScanOptions, OnFinding, OnPhase } from './smart-scan.js';

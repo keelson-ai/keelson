@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 
+import { registerAdvancedCommands } from './advanced-commands.js';
 import { registerOpsCommands } from './ops-commands.js';
 import { registerScanCommands } from './scan-commands.js';
 
@@ -8,5 +9,6 @@ const program = new Command().name('keelson').description('AI Agent Security Sca
 
 registerScanCommands(program);
 registerOpsCommands(program);
+registerAdvancedCommands(program);
 
 program.parse();
