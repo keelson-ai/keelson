@@ -17,7 +17,7 @@ import type {
   ScanResult,
   StatisticalFinding,
 } from '../../src/types/index.js';
-import { Severity, ScoringMethod, Verdict } from '../../src/types/index.js';
+import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
 
 // ─── Test helpers ───────────────────────────────────────
 
