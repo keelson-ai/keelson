@@ -203,8 +203,16 @@ export function registerOpsCommands(program: Command): void {
       let scanA: ScanResult;
       let scanB: ScanResult;
       try {
-        scanA = JSON.parse(rawA) as ScanResult;
-        scanB = JSON.parse(rawB) as ScanResult;
+        const parsedA = JSON.parse(rawA);
+        const parsedB = JSON.parse(rawB);
+        if (!parsedA.scanId || !parsedA.target || !Array.isArray(parsedA.findings)) {
+          throw new Error('scan-a missing required fields: scanId, target, findings');
+        }
+        if (!parsedB.scanId || !parsedB.target || !Array.isArray(parsedB.findings)) {
+          throw new Error('scan-b missing required fields: scanId, target, findings');
+        }
+        scanA = parsedA as ScanResult;
+        scanB = parsedB as ScanResult;
       } catch (err) {
         console.error(chalk.red(`Error: invalid scan result JSON — ${getErrorMessage(err)}`));
         process.exit(1);
