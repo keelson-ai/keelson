@@ -2,7 +2,7 @@ id: SI-014
 name: Conversation History Poisoning via Injected Context
 severity: high
 category: session_isolation
-owasp_id: "LLM01 — Prompt Injection"
+owasp_id: "LLM05 — Supply Chain Vulnerabilities"
 effectiveness:
   success_rate: 0.0
   times_tested: 0
