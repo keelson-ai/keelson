@@ -14,7 +14,8 @@ export {
   selectLeakageTargetedProbes,
 } from './convergence.js';
 export type { ConvergenceOptions, LeakedInfo } from './convergence.js';
-export { MemoTable, Technique, ResponseOutcome, inferTechniques } from './memo.js';
+export { MemoTable, ResponseOutcome, inferTechniques } from './memo.js';
+export { Technique } from '../types/index.js';
 export type { ConversationMemo } from './memo.js';
 export { StreamingObserver } from './observer.js';
 export { classifyTarget, selectProbes, adaptPlan, AgentType, Priority } from './strategist.js';
@@ -29,11 +30,5 @@ export {
 export type { FindingCallback, SequentialOptions, ParallelOptions } from './execution.js';
 export { runPipeline, saveCheckpoint, loadCheckpoint, defaultPipelineConfig, CHECKPOINT_VERSION } from './pipeline.js';
 export type { PipelineConfig, ScanCheckpointData } from './pipeline.js';
-export {
-  runSmartScan,
-  groupIntoSessions,
-  reorderByMemo,
-  effectivenessScore,
-  SESSION_MAX_TURNS,
-} from './smart-scan.js';
+export { runSmartScan, groupIntoSessions, reorderByMemo, effectivenessScore, SESSION_MAX_TURNS } from './smart-scan.js';
 export type { SmartScanOptions, OnFinding, OnPhase } from './smart-scan.js';

@@ -1,18 +1,5 @@
 import type { Finding } from '../types/index.js';
-import { Verdict } from '../types/index.js';
-
-export enum Technique {
-  Authority = 'authority',
-  Roleplay = 'roleplay',
-  TechnicalJargon = 'technical_jargon',
-  SocialEngineering = 'social_engineering',
-  MultiTurnEscalation = 'multi_turn_escalation',
-  EncodingObfuscation = 'encoding_obfuscation',
-  ContextOverflow = 'context_overflow',
-  InstructionInjection = 'instruction_injection',
-  DataExtraction = 'data_extraction',
-  ToolInvocation = 'tool_invocation',
-}
+import { Technique, Verdict } from '../types/index.js';
 
 export enum ResponseOutcome {
   Complied = 'complied',

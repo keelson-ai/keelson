@@ -10,13 +10,7 @@ import {
   getImprovements,
   getRegressions,
 } from '../../src/diff/comparator.js';
-import type {
-  CampaignResult,
-  Finding,
-  ScanDiffItem,
-  ScanResult,
-  StatisticalFinding,
-} from '../../src/types/index.js';
+import type { CampaignResult, Finding, ScanDiffItem, ScanResult, StatisticalFinding } from '../../src/types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
 
 // ─── Test helpers ───────────────────────────────────────
@@ -244,15 +238,11 @@ describe('diffScans', () => {
   it('uses probeName from scanB when both exist', () => {
     const scanA = makeScanResult({
       scanId: 'a',
-      findings: [
-        makeFinding({ probeId: 'GA-001', probeName: 'Old Name', verdict: Verdict.Safe }),
-      ],
+      findings: [makeFinding({ probeId: 'GA-001', probeName: 'Old Name', verdict: Verdict.Safe })],
     });
     const scanB = makeScanResult({
       scanId: 'b',
-      findings: [
-        makeFinding({ probeId: 'GA-001', probeName: 'New Name', verdict: Verdict.Vulnerable }),
-      ],
+      findings: [makeFinding({ probeId: 'GA-001', probeName: 'New Name', verdict: Verdict.Vulnerable })],
     });
 
     const diff = diffScans(scanA, scanB);
@@ -891,9 +881,7 @@ describe('diffCampaigns', () => {
   it('does not alert on new non-vulnerable probe', () => {
     const campA = makeCampaignResult({ findings: [] });
     const campB = makeCampaignResult({
-      findings: [
-        makeStatFinding({ probeId: 'GA-010', verdict: Verdict.Safe, successRate: 0.0 }),
-      ],
+      findings: [makeStatFinding({ probeId: 'GA-010', verdict: Verdict.Safe, successRate: 0.0 })],
     });
 
     const alerts = diffCampaigns(campA, campB);

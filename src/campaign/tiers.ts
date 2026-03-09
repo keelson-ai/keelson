@@ -2,7 +2,7 @@
  * Tier presets — pre-configured campaign settings for common scan profiles.
  */
 
-import type { CampaignConfig } from './config.js';
+import type { CampaignFileConfig } from './config.js';
 
 export const TIER_NAMES = ['fast', 'deep', 'continuous'] as const;
 export type TierName = (typeof TIER_NAMES)[number];
@@ -52,7 +52,7 @@ export function getTierPreset(tier: TierName): TierPreset {
   return preset;
 }
 
-export function applyTier(config: CampaignConfig, tier: TierName): CampaignConfig {
+export function applyTier(config: CampaignFileConfig, tier: TierName): CampaignFileConfig {
   const preset = getTierPreset(tier);
 
   return {

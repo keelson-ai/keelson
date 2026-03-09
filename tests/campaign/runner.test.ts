@@ -56,10 +56,12 @@ function makeConfig(overrides: Partial<CampaignConfig> = {}): CampaignConfig {
 
 // Mock loadProbes to return controlled templates
 vi.mock('../../src/core/templates.js', () => ({
-  loadProbes: vi.fn().mockImplementation(async () => [
-    makeProbe(),
-    makeProbe({ id: 'GA-002', name: 'Second Probe', category: 'goal_adherence' }),
-  ]),
+  loadProbes: vi
+    .fn()
+    .mockImplementation(async () => [
+      makeProbe(),
+      makeProbe({ id: 'GA-002', name: 'Second Probe', category: 'goal_adherence' }),
+    ]),
 }));
 
 // ─── Wilson CI Tests ────────────────────────────────────

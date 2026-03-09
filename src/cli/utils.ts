@@ -133,13 +133,12 @@ export async function writeReport(result: ScanResult, format: string, output: st
   // Try to use reporting formatters if available
   if (format !== 'json') {
     try {
-      // Dynamic import — reporting module may not exist yet (Track 4).
-      // Use a variable to prevent TypeScript from resolving the module at compile time.
       const reportingPath = '../reporting/index.js';
       const reporting = (await import(/* webpackIgnore: true */ reportingPath)) as {
-        formatReport: (result: ScanResult, format: string) => Promise<string>;
+        generateReport: (result: ScanResult, format: string) => string | object;
       };
-      const formatted = await reporting.formatReport(result, format);
+      const reportOutput = reporting.generateReport(result, format);
+      const formatted = typeof reportOutput === 'string' ? reportOutput : JSON.stringify(reportOutput, null, 2);
       await writeFile(output, formatted, 'utf-8');
       console.log(chalk.green(`Report saved: ${output}`));
       return;

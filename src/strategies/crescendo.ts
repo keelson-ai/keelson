@@ -1,7 +1,8 @@
-import { delay } from './types.js';
+import { buildStrategyFinding } from './types.js';
 import type { CrescendoOptions, CrescendoResult, CrescendoStep } from './types.js';
-import type { Adapter, EvidenceItem, Finding, ProbeTemplate, Turn, Verdict } from '../types/index.js';
-import { ScoringMethod } from '../types/index.js';
+import type { Adapter, EvidenceItem, ProbeTemplate, Turn } from '../types/index.js';
+import { Verdict } from '../types/index.js';
+import { sleep } from '../utils.js';
 
 /**
  * Crescendo — Multi-turn gradual escalation strategy.
@@ -46,13 +47,13 @@ export async function runCrescendo(template: ProbeTemplate, options: CrescendoOp
       ];
       const evalResult = await evaluate(template, evidence);
 
-      if (evalResult.verdict === ('VULNERABLE' as Verdict)) {
+      if (evalResult.verdict === Verdict.Vulnerable) {
         return buildResult(template, steps, turn + 1, maxTurns, true, evalResult);
       }
     }
 
     if (turn < plannedPrompts.length - 1 && delayMs > 0) {
-      await delay(delayMs);
+      await sleep(delayMs);
     }
   }
 
@@ -63,14 +64,7 @@ export async function runCrescendo(template: ProbeTemplate, options: CrescendoOp
   ];
   const finalEval = await evaluate(template, evidence);
 
-  return buildResult(
-    template,
-    steps,
-    steps.length,
-    maxTurns,
-    finalEval.verdict === ('VULNERABLE' as Verdict),
-    finalEval,
-  );
+  return buildResult(template, steps, steps.length, maxTurns, finalEval.verdict === Verdict.Vulnerable, finalEval);
 }
 
 async function planEscalation(prober: Adapter, objective: string, numTurns: number): Promise<string[]> {
@@ -154,29 +148,6 @@ function buildResult(
   success: boolean,
   evalResult: { verdict: Verdict; confidence: number; reasoning: string },
 ): CrescendoResult {
-  const finding: Finding = {
-    probeId: template.id,
-    probeName: template.name,
-    severity: template.severity,
-    category: template.category,
-    owaspId: template.owaspId,
-    verdict: evalResult.verdict,
-    confidence: evalResult.confidence,
-    reasoning: evalResult.reasoning,
-    scoringMethod: ScoringMethod.Combined,
-    conversation: steps.flatMap((s) => [
-      { role: 'user' as const, content: s.prompt },
-      { role: 'assistant' as const, content: s.response },
-    ]),
-    evidence: steps.map((s, i) => ({
-      stepIndex: i,
-      prompt: s.prompt,
-      response: s.response,
-      responseTimeMs: 0,
-    })),
-    leakageSignals: [],
-    timestamp: new Date().toISOString(),
-  };
-
+  const finding = buildStrategyFinding(template, steps, evalResult);
   return { templateId: template.id, turnsUsed, maxTurns, success, finding, escalationPath: steps };
 }

@@ -9,6 +9,7 @@ import type {
   ProbeTemplate,
   Turn,
 } from '../types/index.js';
+import { sleep } from '../utils.js';
 
 const MIN_REMAINING_FOR_EARLY_TERM = 2;
 const DEFAULT_DELAY_MS = 1000;
@@ -22,10 +23,6 @@ export interface ExecuteProbeOptions {
 
 export interface Observer {
   observe(evidence: EvidenceItem[]): LeakageSignal[];
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function countRemainingUserTurns(turns: Turn[], fromIndex: number): number {

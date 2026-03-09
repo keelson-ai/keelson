@@ -341,10 +341,7 @@ export class Store {
   ) {
     this.data = data;
     // Derive next alert ID from existing data
-    const maxId = data.regressionAlerts.reduce(
-      (max, a) => Math.max(max, a.id),
-      0,
-    );
+    const maxId = data.regressionAlerts.reduce((max, a) => Math.max(max, a.id), 0);
     this.nextAlertId = maxId + 1;
   }
 
@@ -358,23 +355,15 @@ export class Store {
       data = storeDataSchema.parse(parsed);
     } catch (err: unknown) {
       // File doesn't exist -- start with empty store (normal first-run)
-      if (
-        err instanceof Error &&
-        'code' in err &&
-        (err as NodeJS.ErrnoException).code === 'ENOENT'
-      ) {
+      if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
         data = storeDataSchema.parse({});
       } else if (err instanceof z.ZodError) {
         // Zod validation failed -- data is corrupt/outdated, warn and reset
-        console.warn(
-          `[keelson] Store file at ${path} failed validation, starting fresh: ${err.message}`,
-        );
+        console.warn(`[keelson] Store file at ${path} failed validation, starting fresh: ${err.message}`);
         data = storeDataSchema.parse({});
       } else if (err instanceof SyntaxError) {
         // Corrupt JSON -- warn and reset
-        console.warn(
-          `[keelson] Store file at ${path} contains invalid JSON, starting fresh: ${err.message}`,
-        );
+        console.warn(`[keelson] Store file at ${path} contains invalid JSON, starting fresh: ${err.message}`);
         data = storeDataSchema.parse({});
       } else {
         // Permission denied, disk full, etc. -- do NOT silently swallow
@@ -404,8 +393,7 @@ export class Store {
 
   listScans(limit = 20): ScanListEntry[] {
     const sorted = [...this.data.scans].sort(
-      (a, b) =>
-        new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
     );
     return sorted.slice(0, limit).map((s) => ({
       scanId: s.scanId,
@@ -421,9 +409,7 @@ export class Store {
   // ─── Campaign persistence ─────────────────────────────
 
   async saveCampaign(campaign: PersistedCampaignResult): Promise<void> {
-    this.data.campaigns = this.data.campaigns.filter(
-      (c) => c.campaignId !== campaign.campaignId,
-    );
+    this.data.campaigns = this.data.campaigns.filter((c) => c.campaignId !== campaign.campaignId);
     this.data.campaigns.push(campaign);
     this.logEvent('campaign_completed', {
       campaignId: campaign.campaignId,
@@ -438,8 +424,7 @@ export class Store {
 
   listCampaigns(limit = 20): CampaignListEntry[] {
     const sorted = [...this.data.campaigns].sort(
-      (a, b) =>
-        new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
     );
     return sorted.slice(0, limit).map((c) => ({
       campaignId: c.campaignId,
@@ -447,17 +432,14 @@ export class Store {
       startedAt: c.startedAt,
       finishedAt: c.finishedAt,
       totalProbes: c.findings.length,
-      vulnerable: c.findings.filter((f) => f.verdict === Verdict.Vulnerable)
-        .length,
+      vulnerable: c.findings.filter((f) => f.verdict === Verdict.Vulnerable).length,
     }));
   }
 
   // ─── Agent profile persistence ────────────────────────
 
   async saveAgentProfile(profile: AgentProfile): Promise<void> {
-    this.data.agentProfiles = this.data.agentProfiles.filter(
-      (p) => p.profileId !== profile.profileId,
-    );
+    this.data.agentProfiles = this.data.agentProfiles.filter((p) => p.profileId !== profile.profileId);
     this.data.agentProfiles.push(profile);
     this.logEvent('profile_saved', {
       profileId: profile.profileId,
@@ -473,9 +455,7 @@ export class Store {
   // ─── Baseline persistence ─────────────────────────────
 
   async saveBaseline(scanId: string, label = ''): Promise<void> {
-    this.data.baselines = this.data.baselines.filter(
-      (b) => b.scanId !== scanId,
-    );
+    this.data.baselines = this.data.baselines.filter((b) => b.scanId !== scanId);
     this.data.baselines.push({
       scanId,
       label,
@@ -487,8 +467,7 @@ export class Store {
 
   getBaselines(limit = 20): Baseline[] {
     const sorted = [...this.data.baselines].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
     return sorted.slice(0, limit);
   }
@@ -559,8 +538,7 @@ export class Store {
 
   listRegressionAlerts(limit = 50): RegressionAlert[] {
     const sorted = [...this.data.regressionAlerts].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
     return sorted.slice(0, limit);
   }
@@ -576,9 +554,7 @@ export class Store {
   // ─── Probe chain persistence ──────────────────────────
 
   async saveProbeChain(chain: Omit<ProbeChain, 'createdAt'>): Promise<void> {
-    this.data.probeChains = this.data.probeChains.filter(
-      (c) => c.chainId !== chain.chainId,
-    );
+    this.data.probeChains = this.data.probeChains.filter((c) => c.chainId !== chain.chainId);
     this.data.probeChains.push({
       ...chain,
       createdAt: new Date().toISOString(),
@@ -599,10 +575,7 @@ export class Store {
     if (profileId) {
       chains = chains.filter((c) => c.profileId === profileId);
     }
-    chains.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    chains.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return chains.slice(0, limit);
   }
 
@@ -610,18 +583,14 @@ export class Store {
 
   getEvents(limit = 100): EventRecord[] {
     const sorted = [...this.data.events].sort(
-      (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
     return sorted.slice(0, limit);
   }
 
   // ─── Internal helpers ─────────────────────────────────
 
-  private logEvent(
-    eventType: string,
-    data: Record<string, unknown>,
-  ): void {
+  private logEvent(eventType: string, data: Record<string, unknown>): void {
     this.data.events.push({
       timestamp: new Date().toISOString(),
       eventType,
@@ -633,11 +602,7 @@ export class Store {
   private async flush(): Promise<void> {
     this.dirty = true;
     await mkdir(dirname(this.storePath), { recursive: true });
-    await writeFile(
-      this.storePath,
-      JSON.stringify(this.data, null, 2),
-      'utf-8',
-    );
+    await writeFile(this.storePath, JSON.stringify(this.data, null, 2), 'utf-8');
     this.dirty = false;
   }
 

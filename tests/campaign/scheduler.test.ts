@@ -7,11 +7,13 @@ import type { Adapter, AdapterResponse, CampaignConfig, CampaignResult, Turn } f
 
 function mockAdapter(): Adapter {
   return {
-    send: vi.fn(async (_messages: Turn[]): Promise<AdapterResponse> => ({
-      content: 'I cannot comply with that request.',
-      raw: {},
-      latencyMs: 5,
-    })),
+    send: vi.fn(
+      async (_messages: Turn[]): Promise<AdapterResponse> => ({
+        content: 'I cannot comply with that request.',
+        raw: {},
+        latencyMs: 5,
+      }),
+    ),
     healthCheck: vi.fn().mockResolvedValue(true),
     resetSession: vi.fn(),
     close: vi.fn(),

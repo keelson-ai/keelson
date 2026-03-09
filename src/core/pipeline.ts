@@ -14,13 +14,7 @@ import { join } from 'node:path';
 import { applyVerifiedFindings, executeParallel, verifyFindings } from './execution.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
-import type {
-  Adapter,
-  EvidenceItem,
-  Finding,
-  LeakageSignal,
-  ScanResult,
-} from '../types/index.js';
+import type { Adapter, EvidenceItem, Finding, LeakageSignal, ScanResult } from '../types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../types/index.js';
 
 // ─── Constants ───────────────────────────────────────────
@@ -171,10 +165,7 @@ function findingFromJson(data: FindingJson): Finding {
 
 // ─── Checkpoint Persistence ─────────────────────────────
 
-export async function saveCheckpoint(
-  data: ScanCheckpointData,
-  filePath: string,
-): Promise<void> {
+export async function saveCheckpoint(data: ScanCheckpointData, filePath: string): Promise<void> {
   const dir = join(filePath, '..');
   await mkdir(dir, { recursive: true });
   const tmpPath = filePath + '.tmp';
@@ -190,7 +181,7 @@ export async function loadCheckpoint(filePath: string): Promise<ScanCheckpointDa
   if (storedVersion !== CHECKPOINT_VERSION) {
     throw new Error(
       `Checkpoint version mismatch: file has v${String(storedVersion)}, ` +
-      `expected v${String(CHECKPOINT_VERSION)}. Delete the checkpoint to start fresh.`,
+        `expected v${String(CHECKPOINT_VERSION)}. Delete the checkpoint to start fresh.`,
     );
   }
 
@@ -198,12 +189,8 @@ export async function loadCheckpoint(filePath: string): Promise<ScanCheckpointDa
     version: storedVersion,
     scanId: String(data['scanId'] ?? ''),
     targetUrl: String(data['targetUrl'] ?? ''),
-    completedIds: Array.isArray(data['completedIds'])
-      ? (data['completedIds'] as string[])
-      : [],
-    findingsJson: Array.isArray(data['findingsJson'])
-      ? (data['findingsJson'] as FindingJson[])
-      : [],
+    completedIds: Array.isArray(data['completedIds']) ? (data['completedIds'] as string[]) : [],
+    findingsJson: Array.isArray(data['findingsJson']) ? (data['findingsJson'] as FindingJson[]) : [],
     startedAt: String(data['startedAt'] ?? ''),
     phase: String(data['phase'] ?? 'scanning'),
   };
@@ -213,10 +200,7 @@ function checkpointPath(checkpointDir: string, scanId: string): string {
   return join(checkpointDir, `${scanId}.checkpoint.json`);
 }
 
-async function findExistingCheckpoint(
-  checkpointDir: string,
-  targetUrl: string,
-): Promise<ScanCheckpointData | null> {
+async function findExistingCheckpoint(checkpointDir: string, targetUrl: string): Promise<ScanCheckpointData | null> {
   let entries: string[];
   try {
     entries = await readdir(checkpointDir);
@@ -260,9 +244,7 @@ export async function runPipeline(
   // --- Phase 1: Discovery ---
   const allProbes = await loadProbes(options?.probesDir);
   const categoryFilter = options?.category?.toLowerCase();
-  const probes = categoryFilter
-    ? allProbes.filter((p) => p.category.toLowerCase() === categoryFilter)
-    : allProbes;
+  const probes = categoryFilter ? allProbes.filter((p) => p.category.toLowerCase() === categoryFilter) : allProbes;
 
   if (probes.length === 0) {
     return {
@@ -285,9 +267,7 @@ export async function runPipeline(
     scanId = existingCp.scanId;
   }
 
-  const cpPath = resolved.checkpointDir !== null
-    ? checkpointPath(resolved.checkpointDir, scanId)
-    : null;
+  const cpPath = resolved.checkpointDir !== null ? checkpointPath(resolved.checkpointDir, scanId) : null;
 
   // Attempt checkpoint resume
   let checkpoint: ScanCheckpointData = {

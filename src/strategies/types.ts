@@ -1,4 +1,5 @@
 import type { Adapter, EvidenceItem, Finding, ProbeTemplate, Verdict } from '../types/index.js';
+import { ScoringMethod, Severity, Technique } from '../types/index.js';
 
 // ─── Evaluation callback (injected from core engine, Track 2) ────
 
@@ -106,16 +107,6 @@ export interface BranchingOptions {
 
 // ─── Probe Tree types ────────────────────────────────────────────
 
-export enum Technique {
-  InstructionInjection = 'instruction_injection',
-  Authority = 'authority',
-  Roleplay = 'roleplay',
-  TechnicalJargon = 'technical_jargon',
-  SocialEngineering = 'social_engineering',
-  DataExtraction = 'data_extraction',
-  EncodingObfuscation = 'encoding_obfuscation',
-}
-
 export interface TreeBranch {
   prompt: string;
   technique: Technique;
@@ -131,7 +122,7 @@ export interface ProbeTree {
   id: string;
   name: string;
   category: string;
-  severity: string;
+  severity: Severity;
   owasp: string;
   objective: string;
   rootPrompt: string;
@@ -172,8 +163,43 @@ export interface MutationHistory {
   success: boolean;
 }
 
-// ─── Shared utilities ───────────────────────────────────────────
+// ─── Shared strategy helpers ────────────────────────────────────
 
-export function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+export interface StrategyStep {
+  prompt: string;
+  response: string;
+}
+
+/**
+ * Build a Finding from strategy execution steps.
+ * Shared by PAIR, Crescendo, and Probe Tree strategies.
+ */
+export function buildStrategyFinding(
+  source: { id: string; name: string; severity: Severity; category: string; owaspId: string },
+  steps: StrategyStep[],
+  evalResult: { verdict: Verdict; confidence: number; reasoning: string },
+): Finding {
+  return {
+    probeId: source.id,
+    probeName: source.name,
+    severity: source.severity,
+    category: source.category,
+    owaspId: source.owaspId,
+    verdict: evalResult.verdict,
+    confidence: evalResult.confidence,
+    reasoning: evalResult.reasoning,
+    scoringMethod: ScoringMethod.Combined,
+    conversation: steps.flatMap((s) => [
+      { role: 'user' as const, content: s.prompt },
+      { role: 'assistant' as const, content: s.response },
+    ]),
+    evidence: steps.map((s, i) => ({
+      stepIndex: i,
+      prompt: s.prompt,
+      response: s.response,
+      responseTimeMs: 0,
+    })),
+    leakageSignals: [],
+    timestamp: new Date().toISOString(),
+  };
 }

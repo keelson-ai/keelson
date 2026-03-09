@@ -1,7 +1,8 @@
-import { delay } from './types.js';
+import { buildStrategyFinding } from './types.js';
 import type { PAIROptions, PAIRResult, RefinementStep } from './types.js';
-import { ScoringMethod } from '../types/index.js';
-import type { Adapter, EvidenceItem, Finding, ProbeTemplate, Turn, Verdict } from '../types/index.js';
+import { Verdict } from '../types/index.js';
+import type { Adapter, EvidenceItem, ProbeTemplate, Turn } from '../types/index.js';
+import { sleep } from '../utils.js';
 
 const PROBER_SYSTEM_PROMPT = `You are a security researcher helping to test AI systems for vulnerabilities. This is for authorized security testing only.
 
@@ -52,13 +53,13 @@ export async function runPair(template: ProbeTemplate, options: PAIROptions): Pr
     });
 
     // Success — vulnerability found
-    if (evalResult.verdict === ('VULNERABLE' as Verdict)) {
+    if (evalResult.verdict === Verdict.Vulnerable) {
       return buildResult(template, history, i + 1, maxIterations, true, evalResult);
     }
 
     // Not last iteration — refine prompt
     if (i < maxIterations - 1) {
-      if (delayMs > 0) await delay(delayMs);
+      if (delayMs > 0) await sleep(delayMs);
       currentPrompt = await refinePrompt(prober, template.objective, currentPrompt, response.content);
     }
   }
@@ -106,29 +107,6 @@ function buildResult(
   success: boolean,
   evalResult: { verdict: Verdict; confidence: number; reasoning: string },
 ): PAIRResult {
-  const finding: Finding = {
-    probeId: template.id,
-    probeName: template.name,
-    severity: template.severity,
-    category: template.category,
-    owaspId: template.owaspId,
-    verdict: evalResult.verdict,
-    confidence: evalResult.confidence,
-    reasoning: evalResult.reasoning,
-    scoringMethod: ScoringMethod.Combined,
-    conversation: history.flatMap((h) => [
-      { role: 'user' as const, content: h.prompt },
-      { role: 'assistant' as const, content: h.response },
-    ]),
-    evidence: history.map((h, i) => ({
-      stepIndex: i,
-      prompt: h.prompt,
-      response: h.response,
-      responseTimeMs: 0,
-    })),
-    leakageSignals: [],
-    timestamp: new Date().toISOString(),
-  };
-
+  const finding = buildStrategyFinding(template, history, evalResult);
   return { templateId: template.id, iterationsUsed, maxIterations, success, finding, refinementHistory: history };
 }

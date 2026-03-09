@@ -69,6 +69,19 @@ export enum ScoringMethod {
   Combined = 'combined',
 }
 
+export enum Technique {
+  Authority = 'authority',
+  Roleplay = 'roleplay',
+  TechnicalJargon = 'technical_jargon',
+  SocialEngineering = 'social_engineering',
+  MultiTurnEscalation = 'multi_turn_escalation',
+  EncodingObfuscation = 'encoding_obfuscation',
+  ContextOverflow = 'context_overflow',
+  InstructionInjection = 'instruction_injection',
+  DataExtraction = 'data_extraction',
+  ToolInvocation = 'tool_invocation',
+}
+
 export enum ResponseClass {
   Refusal = 'refusal',
   Partial = 'partial',
@@ -182,13 +195,7 @@ export interface ScanResult {
 
 // ─── Diff / Comparison Interfaces ───────────────────────
 
-export type ChangeType =
-  | 'regression'
-  | 'improvement'
-  | 'new'
-  | 'removed'
-  | 'rate_increase'
-  | 'new_vulnerable';
+export type ChangeType = 'regression' | 'improvement' | 'new' | 'removed' | 'rate_increase' | 'new_vulnerable';
 
 export interface ScanDiffItem {
   probeId: string;

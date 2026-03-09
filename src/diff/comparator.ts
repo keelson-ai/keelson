@@ -57,9 +57,7 @@ function sortedUnion<T>(a: Map<string, T>, b: Map<string, T>): string[] {
 
 function sortAlertsBySeverity(alerts: RegressionAlert[]): RegressionAlert[] {
   return alerts.sort(
-    (a, b) =>
-      (ALERT_SEVERITY_ORDER[a.alertSeverity] ?? 4) -
-      (ALERT_SEVERITY_ORDER[b.alertSeverity] ?? 4),
+    (a, b) => (ALERT_SEVERITY_ORDER[a.alertSeverity] ?? 4) - (ALERT_SEVERITY_ORDER[b.alertSeverity] ?? 4),
   );
 }
 
@@ -184,9 +182,7 @@ export function formatDiffReport(diff: ScanDiff): string {
   if (newItems.length > 0) {
     lines.push('### New Probes\n');
     for (const item of newItems) {
-      lines.push(
-        `- **${item.probeId}**: ${item.probeName} \u2014 ${formatVerdict(item.newVerdict)}`,
-      );
+      lines.push(`- **${item.probeId}**: ${item.probeName} \u2014 ${formatVerdict(item.newVerdict)}`);
     }
     lines.push('');
   }
@@ -194,9 +190,7 @@ export function formatDiffReport(diff: ScanDiff): string {
   if (removedItems.length > 0) {
     lines.push('### Removed Probes\n');
     for (const item of removedItems) {
-      lines.push(
-        `- **${item.probeId}**: ${item.probeName} \u2014 was ${formatVerdict(item.oldVerdict)}`,
-      );
+      lines.push(`- **${item.probeId}**: ${item.probeName} \u2014 was ${formatVerdict(item.oldVerdict)}`);
     }
     lines.push('');
   }
@@ -221,10 +215,7 @@ export function formatDiffReport(diff: ScanDiff): string {
  * - Medium: INCONCLUSIVE -> VULNERABLE
  * - Low: minor behavioral changes (e.g., SAFE -> INCONCLUSIVE)
  */
-export function classifyAlertSeverity(
-  item: ScanDiffItem,
-  probeSeverity: Severity | null = null,
-): AlertSeverity {
+export function classifyAlertSeverity(item: ScanDiffItem, probeSeverity: Severity | null = null): AlertSeverity {
   if (item.changeType === 'new' && item.newVerdict === Verdict.Vulnerable) {
     return 'high';
   }
@@ -248,10 +239,7 @@ export function classifyAlertSeverity(
  *
  * Returns the standard ScanDiff plus a list of RegressionAlert objects.
  */
-export function enhancedDiffScans(
-  scanA: ScanResult,
-  scanB: ScanResult,
-): { diff: ScanDiff; alerts: RegressionAlert[] } {
+export function enhancedDiffScans(scanA: ScanResult, scanB: ScanResult): { diff: ScanDiff; alerts: RegressionAlert[] } {
   const diff = diffScans(scanA, scanB);
   const alerts: RegressionAlert[] = [];
 
@@ -283,9 +271,7 @@ export function enhancedDiffScans(
       probeId: item.probeId,
       alertSeverity: alertSev,
       changeType: item.changeType,
-      description:
-        `${item.probeName}: ` +
-        `${formatVerdict(item.oldVerdict)} \u2192 ${formatVerdict(item.newVerdict)}`,
+      description: `${item.probeName}: ` + `${formatVerdict(item.oldVerdict)} \u2192 ${formatVerdict(item.newVerdict)}`,
       oldVerdict: item.oldVerdict,
       newVerdict: item.newVerdict,
       probeSeverity: probeSev,
@@ -304,10 +290,7 @@ export function enhancedDiffScans(
  *
  * Detects rate increases between campaigns (e.g., probe that went from 10% to 60%).
  */
-export function diffCampaigns(
-  campaignA: CampaignResult,
-  campaignB: CampaignResult,
-): RegressionAlert[] {
+export function diffCampaigns(campaignA: CampaignResult, campaignB: CampaignResult): RegressionAlert[] {
   const alerts: RegressionAlert[] = [];
 
   const aMap = buildStatFindingMap(campaignA.findings);
@@ -337,9 +320,7 @@ export function diffCampaigns(
           probeId: id,
           alertSeverity: 'medium',
           changeType: 'regression',
-          description:
-            `${fb.probeName}: became statistically vulnerable ` +
-            `(${formatRate(fb.successRate)} rate)`,
+          description: `${fb.probeName}: became statistically vulnerable ` + `(${formatRate(fb.successRate)} rate)`,
           oldVerdict: fa.verdict,
           newVerdict: fb.verdict,
           probeSeverity: fb.severity,
@@ -364,8 +345,7 @@ export function diffCampaigns(
           probeId: id,
           alertSeverity: 'high',
           changeType: 'new_vulnerable',
-          description:
-            `${fb.probeName}: new vulnerable probe (${formatRate(fb.successRate)} rate)`,
+          description: `${fb.probeName}: new vulnerable probe (${formatRate(fb.successRate)} rate)`,
           oldVerdict: null,
           newVerdict: fb.verdict,
           probeSeverity: fb.severity,
