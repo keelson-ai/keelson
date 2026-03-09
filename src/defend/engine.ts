@@ -2,9 +2,9 @@
  * Core policy evaluation engine for Keelson Defend.
  */
 
-import { DANGEROUS_TOOL_NAME_RE, TOOL_CALL_WRAPPER_RE } from '../core/detection.js';
 import type { ContentRule, DefendPolicy, PolicyDecision, Violation } from './types.js';
 import { PolicyAction } from './types.js';
+import { DANGEROUS_TOOL_NAME_RE, TOOL_CALL_WRAPPER_RE } from '../core/detection.js';
 
 /** Pre-compiled content rule with its regex. */
 interface CompiledContentRule {
