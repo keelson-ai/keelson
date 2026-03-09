@@ -9,9 +9,7 @@ import {
   writeReport,
 } from './utils.js';
 import { createAdapter } from '../adapters/index.js';
-import { executeProbe } from '../core/engine.js';
-import { scan } from '../core/scanner.js';
-import { loadProbes } from '../core/templates.js';
+import { executeProbe, loadProbes, scan } from '../core/index.js';
 import type { AdapterConfig, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
@@ -82,7 +80,7 @@ export function registerScanCommands(program: Command): void {
           },
         });
       } finally {
-        await adapter.close();
+        await adapter.close?.();
       }
 
       // Print detailed findings for vulnerabilities
@@ -149,7 +147,7 @@ export function registerScanCommands(program: Command): void {
           },
         });
       } finally {
-        await adapter.close();
+        await adapter.close?.();
       }
 
       printScanSummary(result);
@@ -230,7 +228,7 @@ export function registerScanCommands(program: Command): void {
           }
         }
       } finally {
-        await adapter.close();
+        await adapter.close?.();
       }
 
       // Use the last pass result as the final result
@@ -293,7 +291,7 @@ export function registerScanCommands(program: Command): void {
           },
         });
       } finally {
-        await adapter.close();
+        await adapter.close?.();
       }
 
       console.log(`Verdict: ${VERDICT_LABELS[finding.verdict]}`);

@@ -60,10 +60,8 @@ export async function executeProbe(
     if (template.newSession && stepIdx > 0) {
       messages.length = 0;
       userTurnCount = 0;
-      // Segment evidence across sessions: save prior session evidence to allEvidence,
-      // then reset for the new session. Detection evaluates per-session evidence only.
-      allEvidence.push(...evidence);
-      evidence.length = 0;
+      evidence.length = 0; // reset per-session evidence; allEvidence keeps accumulating
+      adapter.resetSession?.(); // notify adapter to reset server-side session state
     }
 
     // Non-user turns injected into context without sending
@@ -82,12 +80,14 @@ export async function executeProbe(
     const responseText = response.content;
     messages.push({ role: 'assistant', content: responseText });
 
-    evidence.push({
+    const evidenceItem: EvidenceItem = {
       stepIndex: stepIdx,
       prompt: step.content,
       response: responseText,
       responseTimeMs,
-    });
+    };
+    evidence.push(evidenceItem);
+    allEvidence.push(evidenceItem);
 
     onTurn?.(stepIdx, step.content, responseText);
 
@@ -101,15 +101,12 @@ export async function executeProbe(
     }
   }
 
-  // Collect final session's evidence
-  allEvidence.push(...evidence);
-
-  const leakageSignals = observer?.observe(evidence) ?? [];
-  const patternResult = patternDetect(template, evidence, leakageSignals);
+  const leakageSignals = observer?.observe(allEvidence) ?? [];
+  const patternResult = patternDetect(template, allEvidence, leakageSignals);
 
   let detection: DetectionResult;
   if (judge) {
-    const judgeResult = await judgeResponse(template, evidence, judge);
+    const judgeResult = await judgeResponse(template, allEvidence, judge);
     detection = combinedDetect(patternResult, judgeResult);
   } else {
     detection = patternResult;

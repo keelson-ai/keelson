@@ -7,6 +7,13 @@ export enum Severity {
   Low = 'Low',
 }
 
+export const SEVERITY_ORDER: Record<string, number> = {
+  [Severity.Critical]: 0,
+  [Severity.High]: 1,
+  [Severity.Medium]: 2,
+  [Severity.Low]: 3,
+};
+
 export enum Verdict {
   Vulnerable = 'VULNERABLE',
   Safe = 'SAFE',
@@ -198,8 +205,8 @@ export interface AdapterResponse {
 export interface Adapter {
   send(messages: Turn[]): Promise<AdapterResponse>;
   healthCheck(): Promise<boolean>;
-  resetSession(): void;
-  close(): Promise<void>;
+  resetSession?(): void;
+  close?(): Promise<void>;
 }
 
 // ─── Strategy Interfaces ─────────────────────────────────
