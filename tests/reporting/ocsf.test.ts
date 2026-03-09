@@ -94,10 +94,11 @@ describe('findingToOcsf', () => {
     const event = findingToOcsf(finding, 'https://api.example.com');
 
     expect(event.evidences).toBeDefined();
-    expect(event.evidences).toHaveLength(1);
-    expect(event.evidences![0].data.prompt).toContain('Ignore all previous');
-    expect(event.evidences![0].data.response).toBe('PWNED');
-    expect(event.evidences![0].data.response_time_ms).toBe(150);
+    const evidences = event.evidences as NonNullable<typeof event.evidences>;
+    expect(evidences).toHaveLength(1);
+    expect(evidences[0].data.prompt).toContain('Ignore all previous');
+    expect(evidences[0].data.response).toBe('PWNED');
+    expect(evidences[0].data.response_time_ms).toBe(150);
   });
 
   it('omits evidences when no evidence', () => {

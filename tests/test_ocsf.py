@@ -126,7 +126,9 @@ class TestFindingToOcsf:
         finding = _make_finding(reasoning="")
         event = finding_to_ocsf(finding, _DEFAULT_TARGET)
 
-        assert event["finding_info"]["desc"] == "Direct Instruction Override: VULNERABLE"
+        assert (
+            event["finding_info"]["desc"] == "Direct Instruction Override: VULNERABLE"
+        )
 
     def test_timestamp(self) -> None:
         event = finding_to_ocsf(_make_finding(), _DEFAULT_TARGET)
@@ -173,7 +175,9 @@ class TestFindingToOcsf:
 
 class TestSeverityMapping:
     def test_critical(self) -> None:
-        event = finding_to_ocsf(_make_finding(severity=Severity.CRITICAL), _DEFAULT_TARGET)
+        event = finding_to_ocsf(
+            _make_finding(severity=Severity.CRITICAL), _DEFAULT_TARGET
+        )
         assert event["severity_id"] == 5
         assert event["severity"] == "Critical"
 
@@ -183,7 +187,9 @@ class TestSeverityMapping:
         assert event["severity"] == "High"
 
     def test_medium(self) -> None:
-        event = finding_to_ocsf(_make_finding(severity=Severity.MEDIUM), _DEFAULT_TARGET)
+        event = finding_to_ocsf(
+            _make_finding(severity=Severity.MEDIUM), _DEFAULT_TARGET
+        )
         assert event["severity_id"] == 3
         assert event["severity"] == "Medium"
 

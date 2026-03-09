@@ -105,11 +105,11 @@ export class CachingAdapter implements Adapter {
   }
 
   resetSession(): void {
-    this.inner.resetSession();
+    this.inner.resetSession?.();
   }
 
   async close(): Promise<void> {
-    await this.inner.close();
+    await this.inner.close?.();
   }
 
   clear(): void {

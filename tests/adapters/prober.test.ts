@@ -23,10 +23,11 @@ describe('ProberAdapter', () => {
 
     await prober.send([{ role: 'user', content: 'Generate a probe' }]);
 
-    expect(inner.lastMessages).toHaveLength(2);
-    expect(inner.lastMessages![0].role).toBe('system');
-    expect(inner.lastMessages![0].content).toContain('security researcher');
-    expect(inner.lastMessages![1].role).toBe('user');
+    const msgs = inner.lastMessages as Turn[];
+    expect(msgs).toHaveLength(2);
+    expect(msgs[0].role).toBe('system');
+    expect(msgs[0].content).toContain('security researcher');
+    expect(msgs[1].role).toBe('user');
   });
 
   it('uses custom system prompt', async () => {
@@ -35,7 +36,8 @@ describe('ProberAdapter', () => {
 
     await prober.send([{ role: 'user', content: 'test' }]);
 
-    expect(inner.lastMessages![0].content).toBe('Custom system prompt');
+    const msgs = inner.lastMessages as Turn[];
+    expect(msgs[0].content).toBe('Custom system prompt');
   });
 
   it('preserves all original messages', async () => {
@@ -51,10 +53,11 @@ describe('ProberAdapter', () => {
     await prober.send(messages);
 
     // System prompt + 3 original messages
-    expect(inner.lastMessages).toHaveLength(4);
-    expect(inner.lastMessages![1]).toEqual(messages[0]);
-    expect(inner.lastMessages![2]).toEqual(messages[1]);
-    expect(inner.lastMessages![3]).toEqual(messages[2]);
+    const msgs = inner.lastMessages as Turn[];
+    expect(msgs).toHaveLength(4);
+    expect(msgs[1]).toEqual(messages[0]);
+    expect(msgs[2]).toEqual(messages[1]);
+    expect(msgs[3]).toEqual(messages[2]);
   });
 
   it('returns inner adapter response', async () => {
