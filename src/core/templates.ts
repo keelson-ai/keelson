@@ -1,5 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { dirname, extname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { parse as parseYaml } from 'yaml';
 
@@ -7,8 +8,10 @@ import { parseProbe } from '../schemas/probe.js';
 import type { ProbeTemplate } from '../types/index.js';
 import { getErrorMessage } from '../utils.js';
 
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
 export async function loadProbes(dir?: string): Promise<ProbeTemplate[]> {
-  const probesDir = dir ?? join(process.cwd(), 'probes');
+  const probesDir = dir ?? join(packageRoot, 'probes');
   const yamlFiles = await findYamlFiles(probesDir);
   const probes: ProbeTemplate[] = [];
 
