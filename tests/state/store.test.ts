@@ -327,7 +327,9 @@ describe('Store', () => {
       store.saveBaseline('scan-a', 'first');
       // Small delay to ensure distinct timestamps
       const start = Date.now();
-      while (Date.now() - start < 5) { /* busy wait for distinct timestamp */ }
+      while (Date.now() - start < 5) {
+        /* busy wait for distinct timestamp */
+      }
       store.saveBaseline('scan-b', 'second');
 
       const baselines = store.getBaselines();
@@ -339,13 +341,7 @@ describe('Store', () => {
   describe('cache persistence', () => {
     it('saves and retrieves cache entries', () => {
       const store = Store.open(dbPath);
-      store.saveCacheEntry(
-        'key-001',
-        [{ role: 'user', content: 'hello' }],
-        'gpt-4',
-        'Hello! How can I help?',
-        150,
-      );
+      store.saveCacheEntry('key-001', [{ role: 'user', content: 'hello' }], 'gpt-4', 'Hello! How can I help?', 150);
 
       const entry = store.getCacheEntry('key-001');
       expect(entry).toBeDefined();
@@ -504,7 +500,9 @@ describe('Store', () => {
       store.saveScan(makeScan({ scanId: 'scan-a' }));
       // Small delay to ensure distinct timestamps
       const start = Date.now();
-      while (Date.now() - start < 5) { /* busy wait for distinct timestamp */ }
+      while (Date.now() - start < 5) {
+        /* busy wait for distinct timestamp */
+      }
       store.saveBaseline('scan-a', 'v1');
 
       const events = store.getEvents();

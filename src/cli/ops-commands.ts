@@ -211,29 +211,49 @@ export function registerOpsCommands(program: Command): void {
       // Resolve scan A
       if (opts.scanA) {
         scanA = store.getScan(opts.scanA);
-        if (!scanA) { console.error(chalk.red(`Scan not found: ${opts.scanA}`)); store.close(); process.exit(1); }
+        if (!scanA) {
+          console.error(chalk.red(`Scan not found: ${opts.scanA}`));
+          store.close();
+          process.exit(1);
+        }
       } else if (opts.fileA) {
         const outputDir = join(homedir(), '.keelson', 'output');
         const raw = await readFile(join(outputDir, opts.fileA), 'utf-8');
         scanA = assertScanResult(JSON.parse(raw), 'file-a');
       } else if (opts.baseline) {
         const baselines = store.getBaselines(1);
-        if (baselines.length === 0) { console.error(chalk.red('No baseline set')); store.close(); process.exit(1); }
+        if (baselines.length === 0) {
+          console.error(chalk.red('No baseline set'));
+          store.close();
+          process.exit(1);
+        }
         scanA = store.getScan(baselines[0].scanId);
-        if (!scanA) { console.error(chalk.red(`Baseline scan not found: ${baselines[0].scanId}`)); store.close(); process.exit(1); }
+        if (!scanA) {
+          console.error(chalk.red(`Baseline scan not found: ${baselines[0].scanId}`));
+          store.close();
+          process.exit(1);
+        }
       }
 
       // Resolve scan B
       if (opts.scanB) {
         scanB = store.getScan(opts.scanB);
-        if (!scanB) { console.error(chalk.red(`Scan not found: ${opts.scanB}`)); store.close(); process.exit(1); }
+        if (!scanB) {
+          console.error(chalk.red(`Scan not found: ${opts.scanB}`));
+          store.close();
+          process.exit(1);
+        }
       } else if (opts.fileB) {
         const outputDir = join(homedir(), '.keelson', 'output');
         const raw = await readFile(join(outputDir, opts.fileB), 'utf-8');
         scanB = assertScanResult(JSON.parse(raw), 'file-b');
       } else if (opts.latest) {
         const recent = store.listScans(2);
-        if (recent.length === 0) { console.error(chalk.red('No scans in store')); store.close(); process.exit(1); }
+        if (recent.length === 0) {
+          console.error(chalk.red('No scans in store'));
+          store.close();
+          process.exit(1);
+        }
         scanB = store.getScan(recent[0].scanId);
         if (opts.previous && recent.length >= 2) {
           scanA = store.getScan(recent[1].scanId);
@@ -243,7 +263,11 @@ export function registerOpsCommands(program: Command): void {
       store.close();
 
       if (!scanA || !scanB) {
-        console.error(chalk.red('Error: could not resolve both scans. Use --scan-a/--scan-b, --file-a/--file-b, or --latest --previous/--baseline'));
+        console.error(
+          chalk.red(
+            'Error: could not resolve both scans. Use --scan-a/--scan-b, --file-a/--file-b, or --latest --previous/--baseline',
+          ),
+        );
         process.exit(1);
       }
 
@@ -256,17 +280,25 @@ export function registerOpsCommands(program: Command): void {
         if (alerts.length > 0) {
           console.log(chalk.bold('\nRegression Alerts'));
           for (const alert of alerts) {
-            const color = alert.alertSeverity === 'critical' || alert.alertSeverity === 'high' ? chalk.red
-              : alert.alertSeverity === 'medium' ? chalk.yellow : chalk.dim;
+            const color =
+              alert.alertSeverity === 'critical' || alert.alertSeverity === 'high'
+                ? chalk.red
+                : alert.alertSeverity === 'medium'
+                  ? chalk.yellow
+                  : chalk.dim;
             console.log(`  ${color(`[${alert.alertSeverity.toUpperCase()}]`)} ${alert.description}`);
           }
         }
 
         if (opts.output) {
-          const alertSection = alerts.length > 0
-            ? '\n### Regression Alerts\n\n' +
-              alerts.map((a: RegressionAlert) => `- **[${a.alertSeverity.toUpperCase()}]** ${a.description}`).join('\n') + '\n'
-            : '';
+          const alertSection =
+            alerts.length > 0
+              ? '\n### Regression Alerts\n\n' +
+                alerts
+                  .map((a: RegressionAlert) => `- **[${a.alertSeverity.toUpperCase()}]** ${a.description}`)
+                  .join('\n') +
+                '\n'
+              : '';
           await writeFile(opts.output, report + alertSection, 'utf-8');
           console.log(`\nReport saved: ${opts.output}`);
         }
@@ -321,9 +353,7 @@ export function registerOpsCommands(program: Command): void {
 
   // ─── Baseline commands ───────────────────────────────────
 
-  const baselineCmd = program
-    .command('baseline')
-    .description('Manage scan baselines for regression comparison');
+  const baselineCmd = program.command('baseline').description('Manage scan baselines for regression comparison');
 
   baselineCmd
     .command('set')
@@ -388,8 +418,12 @@ export function registerOpsCommands(program: Command): void {
       console.log(chalk.bold('\nRegression Alerts'));
       console.log(chalk.dim('─'.repeat(90)));
       for (const a of filtered) {
-        const color = a.alertSeverity === 'critical' || a.alertSeverity === 'high' ? chalk.red
-          : a.alertSeverity === 'medium' ? chalk.yellow : chalk.dim;
+        const color =
+          a.alertSeverity === 'critical' || a.alertSeverity === 'high'
+            ? chalk.red
+            : a.alertSeverity === 'medium'
+              ? chalk.yellow
+              : chalk.dim;
         const ack = a.acknowledged ? chalk.dim(' [ack]') : '';
         console.log(`  ${chalk.dim(`#${a.id}`)} ${color(`[${a.alertSeverity.toUpperCase()}]`)} ${a.description}${ack}`);
       }
@@ -413,9 +447,7 @@ export function registerOpsCommands(program: Command): void {
 
   // ─── Store commands ──────────────────────────────────────
 
-  const storeCmd = program
-    .command('store')
-    .description('Manage the persistent store');
+  const storeCmd = program.command('store').description('Manage the persistent store');
 
   storeCmd
     .command('path')

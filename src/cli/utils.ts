@@ -19,11 +19,7 @@ export function openStore(opts: { noStore?: boolean }): Store | null {
 export const DEFAULT_OUTPUT_DIR = join(homedir(), '.keelson', 'output');
 
 /** Write scan result to output directory. Returns the file path written. */
-export async function writeScanOutput(
-  result: ScanResult,
-  format: string,
-  outputDir: string,
-): Promise<string> {
+export async function writeScanOutput(result: ScanResult, format: string, outputDir: string): Promise<string> {
   await mkdir(outputDir, { recursive: true });
   const ext = format === 'markdown' ? 'md' : format;
   const filePath = join(outputDir, `${result.scanId}.${ext}`);
