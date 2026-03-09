@@ -1,16 +1,19 @@
 import type { Command } from 'commander';
 
 import {
+  DEFAULT_OUTPUT_DIR,
   VERDICT_LABELS,
   checkFailGates,
   colorSeverity,
   formatFinding,
+  openStore,
   printScanSummary,
-  writeReport,
+  writeScanOutput,
 } from './utils.js';
 import { createAdapter } from '../adapters/index.js';
 import { executeProbe, loadProbes, scan } from '../core/index.js';
-import type { Adapter, AdapterConfig, Finding, ScanResult } from '../types/index.js';
+import type { Store } from '../state/index.js';
+import type { AdapterConfig, Finding, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 import { truncate } from '../utils.js';
 
@@ -36,13 +39,14 @@ interface ScanCommandOpts {
   model?: string;
   adapterType?: string;
   delay?: string;
-  output?: string;
+  outputDir?: string;
   format?: string;
   failOnVuln?: boolean;
   failThreshold?: string;
   category?: string;
   concurrency?: string;
   maxPasses?: string;
+  noStore?: boolean;
 }
 
 function printHeader(title: string, opts: ScanCommandOpts, extra?: Record<string, string>): void {
@@ -57,34 +61,41 @@ function printHeader(title: string, opts: ScanCommandOpts, extra?: Record<string
 
 async function finalizeScan(
   result: ScanResult,
-  adapter: Adapter,
+  store: Store | null,
   opts: ScanCommandOpts,
   showVulnDetails = true,
 ): Promise<void> {
-  await adapter.close?.();
-
-  if (showVulnDetails) {
-    const vulnFindings = result.findings.filter((f) => f.verdict === Verdict.Vulnerable);
-    if (vulnFindings.length > 0) {
-      console.log('\nVulnerabilities Found:');
-      vulnFindings.forEach((f, i) => console.log(formatFinding(f, i)));
+  try {
+    if (store) {
+      store.saveScan(result);
     }
-  }
 
-  printScanSummary(result);
+    if (showVulnDetails) {
+      const vulnFindings = result.findings.filter((f) => f.verdict === Verdict.Vulnerable);
+      if (vulnFindings.length > 0) {
+        console.log('\nVulnerabilities Found:');
+        vulnFindings.forEach((f, i) => console.log(formatFinding(f, i)));
+      }
+    }
 
-  if (opts.output) {
-    await writeReport(result, opts.format ?? 'json', opts.output);
-  }
+    printScanSummary(result);
 
-  const exitCode = checkFailGates(
-    result.summary.vulnerable,
-    result.summary.total,
-    opts.failOnVuln ?? false,
-    parseFloat(opts.failThreshold ?? '0.0'),
-  );
-  if (exitCode !== 0) {
-    process.exit(exitCode);
+    const outputDir = opts.outputDir ?? DEFAULT_OUTPUT_DIR;
+    const filePath = await writeScanOutput(result, opts.format ?? 'json', outputDir);
+    console.log(`Scan ID: ${result.scanId}`);
+    console.log(`Output:  ${filePath}`);
+
+    const exitCode = checkFailGates(
+      result.summary.vulnerable,
+      result.summary.total,
+      opts.failOnVuln ?? false,
+      parseFloat(opts.failThreshold ?? '0.0'),
+    );
+    if (exitCode !== 0) {
+      process.exit(exitCode);
+    }
+  } finally {
+    store?.close();
   }
 }
 
@@ -106,7 +117,8 @@ function addCommonScanOptions(cmd: ReturnType<Command['command']>, delayDefault 
     .option('--api-key <key>', 'API key for authentication')
     .option('--model <model>', 'Model name for requests', 'default')
     .option('--delay <ms>', 'Milliseconds between requests', delayDefault)
-    .option('--output <path>', 'Report output path')
+    .option('--output-dir <dir>', 'Output directory (default: ~/.keelson/output/)')
+    .option('--no-store', 'Skip saving to persistent store')
     .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
     .option('--adapter-type <type>', 'Adapter type', 'openai')
     .option('--fail-on-vuln', 'Exit with code 1 if vulnerabilities found', false)
@@ -121,6 +133,7 @@ export function registerScanCommands(program: Command): void {
     .option('--concurrency <n>', 'Max concurrent probes', '1')
     .action(async (opts: ScanCommandOpts) => {
       const adapter = createAdapter(buildAdapterConfig(opts));
+      const store = openStore(opts);
       const categories = opts.category ? [opts.category] : undefined;
       const delayMs = parseInt(opts.delay ?? '1500', 10);
       const concurrency = parseInt(opts.concurrency ?? '1', 10);
@@ -140,7 +153,7 @@ export function registerScanCommands(program: Command): void {
         await adapter.close?.();
       }
 
-      await finalizeScan(result, adapter, opts);
+      await finalizeScan(result, store, opts);
     });
 
   addCommonScanOptions(
@@ -148,6 +161,7 @@ export function registerScanCommands(program: Command): void {
     '2000',
   ).action(async (opts: ScanCommandOpts) => {
     const adapter = createAdapter(buildAdapterConfig(opts));
+    const store = openStore(opts);
 
     printHeader('Keelson Smart Scan', opts);
 
@@ -162,7 +176,7 @@ export function registerScanCommands(program: Command): void {
       await adapter.close?.();
     }
 
-    await finalizeScan(result, adapter, opts, false);
+    await finalizeScan(result, store, opts, false);
   });
 
   addCommonScanOptions(
@@ -172,6 +186,7 @@ export function registerScanCommands(program: Command): void {
     .option('--max-passes <n>', 'Maximum convergence passes', '4')
     .action(async (opts: ScanCommandOpts) => {
       const adapter = createAdapter(buildAdapterConfig(opts));
+      const store = openStore(opts);
       const maxPasses = parseInt(opts.maxPasses ?? '4', 10);
 
       const extra: Record<string, string> = { 'Max passes': String(maxPasses) };
@@ -206,7 +221,7 @@ export function registerScanCommands(program: Command): void {
       }
 
       const result = allResults[allResults.length - 1];
-      await finalizeScan(result, adapter, opts, false);
+      await finalizeScan(result, store, opts, false);
     });
 
   const testCmd = program

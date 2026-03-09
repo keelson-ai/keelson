@@ -40,7 +40,8 @@ describe('registerScanCommands', () => {
     expect(optionLongs).toContain('--model');
     expect(optionLongs).toContain('--category');
     expect(optionLongs).toContain('--delay');
-    expect(optionLongs).toContain('--output');
+    expect(optionLongs).toContain('--output-dir');
+    expect(optionLongs).toContain('--no-store');
     expect(optionLongs).toContain('--format');
     expect(optionLongs).toContain('--adapter-type');
     expect(optionLongs).toContain('--fail-on-vuln');
