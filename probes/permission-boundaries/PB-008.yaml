@@ -1,6 +1,6 @@
 id: PB-008
 name: Privilege Persistence After Revocation
-severity: medium
+severity: high
 category: permission_boundaries
 owasp_id: LLM02 — Insecure Output Handling
 effectiveness:
