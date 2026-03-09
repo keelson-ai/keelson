@@ -11,7 +11,7 @@ import type {
   PersistedTarget,
 } from '../../src/state/store.js';
 import type { ScanResult } from '../../src/types/index.js';
-import { Severity, ScoringMethod, Verdict } from '../../src/types/index.js';
+import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
 
 let testDir: string;
 let storePath: string;
