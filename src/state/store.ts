@@ -314,14 +314,21 @@ export class Store {
       `SELECT * FROM probe_chains WHERE profile_id = ? ORDER BY created_at DESC LIMIT ?`,
     );
 
-    this.stmtInsertEvent = db.prepare(
-      `INSERT INTO events (timestamp, event_type, data) VALUES (?, ?, ?)`,
-    );
+    this.stmtInsertEvent = db.prepare(`INSERT INTO events (timestamp, event_type, data) VALUES (?, ?, ?)`);
     this.stmtListEvents = db.prepare(`SELECT * FROM events ORDER BY timestamp DESC LIMIT ?`);
 
     // Table count statements
     this.stmtCountTable = new Map();
-    for (const table of ['scans', 'campaigns', 'agent_profiles', 'baselines', 'cache', 'regression_alerts', 'probe_chains', 'events']) {
+    for (const table of [
+      'scans',
+      'campaigns',
+      'agent_profiles',
+      'baselines',
+      'cache',
+      'regression_alerts',
+      'probe_chains',
+      'events',
+    ]) {
       this.stmtCountTable.set(table, db.prepare(`SELECT COUNT(*) as count FROM ${table}`));
     }
   }
@@ -610,11 +617,7 @@ export class Store {
   // ─── Internal helpers ─────────────────────────────────
 
   private logEvent(eventType: string, data: Record<string, unknown>): void {
-    this.stmtInsertEvent.run(
-      new Date().toISOString(),
-      eventType,
-      JSON.stringify(data),
-    );
+    this.stmtInsertEvent.run(new Date().toISOString(), eventType, JSON.stringify(data));
   }
 
   private rowToScan(row: Record<string, unknown>): ScanResult {
