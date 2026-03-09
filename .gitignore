@@ -8,26 +8,20 @@
 
 /reports
 
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
 # Python
 __pycache__/
-*.py[cod]
-*.egg-info/
-dist/
-build/
-.eggs/
-*.egg
-.pytest_cache/
-.ruff_cache/
+*.pyc
+*.pyo
 
-# Virtual environments
-.venv/
-venv/
+# Logs
+*.log
 
 # Keelson state
 ~/.keelson/
 .worktrees/
 .claude/worktrees/
-
-# Build artifacts
-mdpdf.log
-*.log
