@@ -55,6 +55,18 @@ export function formatFinding(finding: Finding, index: number): string {
   return lines.join('\n');
 }
 
+/**
+ * Validate that a parsed JSON object has the required ScanResult fields.
+ * Throws with a descriptive message if validation fails.
+ */
+export function assertScanResult(parsed: unknown, label: string): ScanResult {
+  const obj = parsed as Record<string, unknown>;
+  if (!obj.scanId || !obj.target || !Array.isArray(obj.findings)) {
+    throw new Error(`${label} missing required fields: scanId, target, findings`);
+  }
+  return obj as unknown as ScanResult;
+}
+
 export function printScanSummary(result: ScanResult): void {
   const { summary } = result;
 

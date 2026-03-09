@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 
-import { colorSeverity, printScanSummary, writeReport } from './utils.js';
+import { assertScanResult, colorSeverity, printScanSummary, writeReport } from './utils.js';
 import { loadProbes } from '../core/index.js';
 import { diffScans, enhancedDiffScans, formatDiffReport } from '../diff/index.js';
 import type { ProbeTemplate, RegressionAlert, ScanResult } from '../types/index.js';
@@ -87,11 +87,7 @@ export function registerOpsCommands(program: Command): void {
 
       let result: ScanResult;
       try {
-        const parsed = JSON.parse(resultData);
-        if (!parsed.scanId || !parsed.target || !Array.isArray(parsed.findings)) {
-          throw new Error('missing required fields: scanId, target, findings');
-        }
-        result = parsed as ScanResult;
+        result = assertScanResult(JSON.parse(resultData), 'scan result');
       } catch (err) {
         console.error(chalk.red(`Error: invalid scan result JSON — ${getErrorMessage(err)}`));
         process.exit(1);
@@ -203,16 +199,8 @@ export function registerOpsCommands(program: Command): void {
       let scanA: ScanResult;
       let scanB: ScanResult;
       try {
-        const parsedA = JSON.parse(rawA);
-        const parsedB = JSON.parse(rawB);
-        if (!parsedA.scanId || !parsedA.target || !Array.isArray(parsedA.findings)) {
-          throw new Error('scan-a missing required fields: scanId, target, findings');
-        }
-        if (!parsedB.scanId || !parsedB.target || !Array.isArray(parsedB.findings)) {
-          throw new Error('scan-b missing required fields: scanId, target, findings');
-        }
-        scanA = parsedA as ScanResult;
-        scanB = parsedB as ScanResult;
+        scanA = assertScanResult(JSON.parse(rawA), 'scan-a');
+        scanB = assertScanResult(JSON.parse(rawB), 'scan-b');
       } catch (err) {
         console.error(chalk.red(`Error: invalid scan result JSON — ${getErrorMessage(err)}`));
         process.exit(1);
