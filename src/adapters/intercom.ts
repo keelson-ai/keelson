@@ -33,6 +33,7 @@ interface IntercomConversation {
 export class IntercomAdapter extends BaseAdapter {
   private contactId: string | null = null;
   private conversationId: string | null = null;
+  private knownPartsCount = 0;
   private readonly pollIntervalMs: number;
   private readonly maxPollAttempts: number;
 
@@ -73,8 +74,11 @@ export class IntercomAdapter extends BaseAdapter {
       await this.replyToConversation(message);
     }
 
+    // Snapshot current part count so we only match new replies
+    const partsBeforeSend = this.knownPartsCount;
+
     // Poll for Fin's response
-    const content = await this.pollForReply();
+    const content = await this.pollForReply(partsBeforeSend);
     const latencyMs = Math.round(performance.now() - start);
 
     return { content, raw: { conversationId: this.conversationId, contactId: this.contactId }, latencyMs };
@@ -110,7 +114,7 @@ export class IntercomAdapter extends BaseAdapter {
     });
   }
 
-  private async pollForReply(): Promise<string> {
+  private async pollForReply(partsBeforeSend: number): Promise<string> {
     for (let attempt = 0; attempt < this.maxPollAttempts; attempt++) {
       await new Promise((r) => setTimeout(r, this.pollIntervalMs));
 
@@ -120,17 +124,20 @@ export class IntercomAdapter extends BaseAdapter {
 
       const parts = data.conversation_parts?.conversation_parts ?? [];
 
-      // Find the latest bot/admin reply (Fin responds as bot or admin)
-      const botReply = [...parts]
-        .reverse()
-        .find(
-          (p) =>
-            (p.author.type === 'bot' || p.author.type === 'admin') &&
-            p.part_type === 'comment' &&
-            p.body,
-        );
+      // Only look at parts added after the last known count
+      const newParts = parts.slice(partsBeforeSend);
+
+      // Find the first new bot/admin reply
+      const botReply = newParts.find(
+        (p) =>
+          (p.author.type === 'bot' || p.author.type === 'admin') &&
+          p.part_type === 'comment' &&
+          p.body,
+      );
 
       if (botReply) {
+        // Update known count so the next send() skips all current parts
+        this.knownPartsCount = parts.length;
         // Strip HTML tags from Intercom's response
         return botReply.body.replace(/<[^>]*>/g, '').trim();
       }
@@ -153,6 +160,7 @@ export class IntercomAdapter extends BaseAdapter {
 
   override resetSession(): void {
     this.conversationId = null;
+    this.knownPartsCount = 0;
     // Keep the same contact across resets to avoid creating too many leads
   }
 
