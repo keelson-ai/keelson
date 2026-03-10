@@ -13,6 +13,7 @@ import {
 import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { createAdapter } from '../adapters/index.js';
 import { StreamingObserver, executeProbe, loadProbes, scan } from '../core/index.js';
+import { errorFinding, sanitizeErrorMessage } from '../core/scan-helpers.js';
 import type { Store } from '../state/index.js';
 import type { ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
@@ -240,6 +241,8 @@ export function registerScanCommands(program: Command): void {
           observer,
           ...logger.buildProbeCallbacks(),
         });
+      } catch (err: unknown) {
+        finding = errorFinding(template, sanitizeErrorMessage(err));
       } finally {
         await adapter.close?.();
       }
