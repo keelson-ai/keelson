@@ -20,6 +20,7 @@ export type { PatternDetails } from './detection.js';
 export interface TurnCompleteInfo {
   probeId: string;
   stepIndex: number;
+  userTurnIndex: number;
   totalTurns: number;
   prompt: string;
   response: string;
@@ -119,6 +120,7 @@ export async function executeProbe(
     onTurnComplete?.({
       probeId: template.id,
       stepIndex: stepIdx,
+      userTurnIndex: userTurnCount - 1,
       totalTurns: totalUserTurns,
       prompt: step.content,
       response: responseText,
@@ -138,7 +140,11 @@ export async function executeProbe(
   }
 
   const leakageSignals = observer?.observe(allEvidence) ?? [];
-  const { result: patternResult, details: patternDetails } = patternDetectWithDetails(template, allEvidence, leakageSignals);
+  const { result: patternResult, details: patternDetails } = patternDetectWithDetails(
+    template,
+    allEvidence,
+    leakageSignals,
+  );
   onDetection?.(patternResult, patternDetails);
 
   let detection: DetectionResult;

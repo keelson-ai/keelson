@@ -1,11 +1,13 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 const CLI = resolve(import.meta.dirname, '../../dist/cli/index.js');
+const hasBuild = existsSync(CLI);
 
-describe('CLI verbosity flags', () => {
+describe.runIf(hasBuild)('CLI verbosity flags', () => {
   it('--help shows -v option', () => {
     const out = execFileSync('node', [CLI, '--help'], { encoding: 'utf-8' });
     expect(out).toContain('-v, --verbose');
