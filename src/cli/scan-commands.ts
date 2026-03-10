@@ -15,7 +15,7 @@ import { createAdapter } from '../adapters/index.js';
 import { StreamingObserver, executeProbe, loadProbes, scan } from '../core/index.js';
 import { errorFinding, sanitizeErrorMessage } from '../core/scan-helpers.js';
 import type { Store } from '../state/index.js';
-import type { ScanResult } from '../types/index.js';
+import type { Adapter, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
 // ─── Shared helpers ─────────────────────────────────────
@@ -43,6 +43,26 @@ interface ScanCommandOpts {
   browserHeadless?: boolean;
   // HubSpot-specific
   hubspotPreInteraction?: string;
+  // LLM Judge
+  judgeProvider?: string;
+  judgeModel?: string;
+  judgeApiKey?: string;
+  // Payload size limit
+  maxPayloadLength?: string;
+}
+
+function buildJudge(opts: ScanCommandOpts): Adapter | undefined {
+  if (!opts.judgeProvider) return undefined;
+  if (!opts.judgeApiKey) {
+    process.stderr.write('Warning: --judge-provider set but --judge-api-key missing; judge disabled\n');
+    return undefined;
+  }
+  return createAdapter({
+    type: opts.judgeProvider,
+    baseUrl: '', // adapters resolve their own base URL from type
+    apiKey: opts.judgeApiKey,
+    model: opts.judgeModel ?? 'default',
+  });
 }
 
 function printHeader(logger: Logger, title: string, opts: ScanCommandOpts, extra?: Record<string, string>): void {
@@ -117,7 +137,11 @@ function addCommonScanOptions(cmd: ReturnType<Command['command']>, delayDefault 
     .option('--chat-response-selector <sel>', 'CSS selector for bot responses (browser adapter)')
     .option('--browser-headless', 'Run browser in headless mode (default: true)', true)
     .option('--no-browser-headless', 'Run browser in headed mode (visible)')
-    .option('--hubspot-pre-interaction <js>', 'JS snippet to run before HubSpot chat interaction');
+    .option('--hubspot-pre-interaction <js>', 'JS snippet to run before HubSpot chat interaction')
+    .option('--judge-provider <type>', 'LLM judge adapter type (e.g., openai, anthropic)')
+    .option('--judge-model <model>', 'LLM judge model name')
+    .option('--judge-api-key <key>', 'API key for LLM judge')
+    .option('--max-payload-length <chars>', 'Skip probes exceeding this character limit');
 }
 
 // ─── Commands ───────────────────────────────────────────
@@ -141,6 +165,8 @@ export function registerScanCommands(program: Command): void {
       const categories = opts.category ? [opts.category] : undefined;
       const delayMs = parseInt(opts.delay ?? '1500', 10);
       const concurrency = parseInt(opts.concurrency ?? '1', 10);
+      const judge = buildJudge(opts);
+      const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
 
       printHeader(logger, 'Keelson Security Scan', opts, opts.category ? { Category: opts.category } : undefined);
 
@@ -152,6 +178,8 @@ export function registerScanCommands(program: Command): void {
           concurrency,
           reorder: concurrency <= 1,
           observer,
+          judge,
+          maxPayloadLength,
           onFinding: (finding, current, total) => logger.finding(finding, current, total),
         });
       } finally {

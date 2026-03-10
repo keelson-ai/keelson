@@ -303,6 +303,8 @@ export interface AdapterConfig {
   browserResponseStabilityMs?: number;
   // HubSpot-specific
   hubspotPreInteraction?: string;
+  // Payload size limit (browser widgets often have character limits)
+  maxPayloadLength?: number;
 }
 
 export interface AdapterResponse {

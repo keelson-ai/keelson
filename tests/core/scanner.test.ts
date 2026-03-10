@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { scan } from '../../src/core/scanner.js';
 import * as templates from '../../src/core/templates.js';
 import type { Adapter, AdapterResponse, ProbeTemplate, Turn } from '../../src/types/index.js';
-import { Severity } from '../../src/types/index.js';
+import { Severity, Verdict } from '../../src/types/index.js';
 
 function makeProbe(id: string, category: string, severity: Severity): ProbeTemplate {
   return {
@@ -179,6 +179,41 @@ describe('scan', () => {
 
     const result = await scan('http://target', adapter, { concurrency: 1, reorder: true, delayMs: 0 });
     expect(result.findings).toHaveLength(4);
+  });
+
+  it('skips probes exceeding maxPayloadLength', async () => {
+    const longProbe: ProbeTemplate = {
+      ...makeProbe('GA-099', 'goal_adherence', Severity.High),
+      turns: [{ role: 'user', content: 'x'.repeat(500) }],
+    };
+    vi.spyOn(templates, 'loadProbes').mockResolvedValue([...testProbes, longProbe]);
+    const adapter = mockAdapter();
+
+    const result = await scan('http://target', adapter, { delayMs: 0, maxPayloadLength: 100 });
+
+    // GA-099 (500 chars) should be skipped; the 4 testProbes (~15 chars each) should run
+    const skipped = result.findings.find((f) => f.probeId === 'GA-099');
+    expect(skipped).toBeDefined();
+    expect(skipped!.verdict).toBe(Verdict.Inconclusive);
+    expect(skipped!.reasoning).toContain('Skipped');
+    expect(skipped!.reasoning).toContain('exceeds limit');
+
+    // Adapter should not have been called for the skipped probe
+    expect(adapter.send).toHaveBeenCalledTimes(4);
+  });
+
+  it('runs all probes when maxPayloadLength is not set', async () => {
+    const longProbe: ProbeTemplate = {
+      ...makeProbe('GA-099', 'goal_adherence', Severity.High),
+      turns: [{ role: 'user', content: 'x'.repeat(500) }],
+    };
+    vi.spyOn(templates, 'loadProbes').mockResolvedValue([...testProbes, longProbe]);
+    const adapter = mockAdapter();
+
+    const result = await scan('http://target', adapter, { delayMs: 0 });
+
+    expect(result.findings).toHaveLength(5);
+    expect(adapter.send).toHaveBeenCalledTimes(5);
   });
 
   it('produces correct summary counts', async () => {
