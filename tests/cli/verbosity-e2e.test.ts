@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -24,9 +24,9 @@ describe.runIf(hasBuild)('CLI verbosity flags', () => {
   });
 
   it('list command works with -v flag', () => {
-    const out = execFileSync('node', [CLI, '-v', 'list', '--category', 'goal_adherence'], {
+    const { stderr } = spawnSync('node', [CLI, '-v', 'list', '--category', 'goal_adherence'], {
       encoding: 'utf-8',
     });
-    expect(out).toContain('GA-001');
+    expect(stderr).toContain('GA-001');
   });
 });
