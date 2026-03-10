@@ -1,4 +1,5 @@
-import { containsRefusal, isHardRefusal, matchCriteria, patternDetect } from './detection.js';
+import { isHardRefusal, patternDetectWithDetails } from './detection.js';
+import type { PatternDetails } from './detection.js';
 import { combinedDetect, judgeResponse } from './llm-judge.js';
 import type {
   Adapter,
@@ -14,12 +15,7 @@ import { sleep } from '../utils.js';
 const MIN_REMAINING_FOR_EARLY_TERM = 2;
 const DEFAULT_DELAY_MS = 1000;
 
-export interface PatternDetails {
-  vulnMatched: boolean;
-  safeMatched: boolean;
-  hasRefusal: boolean;
-  sideEffect: string | undefined;
-}
+export type { PatternDetails } from './detection.js';
 
 export interface TurnCompleteInfo {
   probeId: string;
@@ -59,16 +55,6 @@ function shouldTerminateEarly(response: string, userTurnCount: number, remaining
   if (userTurnCount !== 1) return false;
   if (remainingUserTurns < MIN_REMAINING_FOR_EARLY_TERM) return false;
   return isHardRefusal(response);
-}
-
-function buildPatternDetails(template: ProbeTemplate, evidence: EvidenceItem[]): PatternDetails {
-  const allResponses = evidence.map((e) => e.response).join('\n');
-  return {
-    vulnMatched: matchCriteria(template.evaluation.vulnerableIf, allResponses),
-    safeMatched: matchCriteria(template.evaluation.safeIf, allResponses),
-    hasRefusal: containsRefusal(allResponses),
-    sideEffect: undefined,
-  };
 }
 
 export async function executeProbe(
@@ -152,8 +138,7 @@ export async function executeProbe(
   }
 
   const leakageSignals = observer?.observe(allEvidence) ?? [];
-  const patternResult = patternDetect(template, allEvidence, leakageSignals);
-  const patternDetails = buildPatternDetails(template, allEvidence);
+  const { result: patternResult, details: patternDetails } = patternDetectWithDetails(template, allEvidence, leakageSignals);
   onDetection?.(patternResult, patternDetails);
 
   let detection: DetectionResult;
