@@ -41,6 +41,8 @@ interface ScanCommandOpts {
   chatSubmitSelector?: string;
   chatResponseSelector?: string;
   browserHeadless?: boolean;
+  // HubSpot-specific
+  hubspotPreInteraction?: string;
 }
 
 function printHeader(logger: Logger, title: string, opts: ScanCommandOpts, extra?: Record<string, string>): void {
@@ -114,7 +116,8 @@ function addCommonScanOptions(cmd: ReturnType<Command['command']>, delayDefault 
     .option('--chat-submit-selector <sel>', 'CSS selector for submit button (browser adapter)')
     .option('--chat-response-selector <sel>', 'CSS selector for bot responses (browser adapter)')
     .option('--browser-headless', 'Run browser in headless mode (default: true)', true)
-    .option('--no-browser-headless', 'Run browser in headed mode (visible)');
+    .option('--no-browser-headless', 'Run browser in headed mode (visible)')
+    .option('--hubspot-pre-interaction <js>', 'JS snippet to run before HubSpot chat interaction');
 }
 
 // ─── Commands ───────────────────────────────────────────
