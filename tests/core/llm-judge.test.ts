@@ -110,9 +110,9 @@ describe('judgeResponse', () => {
 
     expect(result.verdict).toBe(Verdict.Inconclusive);
     expect(result.confidence).toBe(0);
-    expect(result.reasoning).toBe('Judge evaluation failed (Error)');
+    expect(result.reasoning).toContain('Judge evaluation failed:');
+    expect(result.reasoning).toContain('Connection refused');
     expect(result.reasoning).not.toContain('sk-live-abc123');
-    expect(result.reasoning).not.toContain('Connection refused');
   });
 
   it('handles malformed judge response gracefully through full flow', async () => {

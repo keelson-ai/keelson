@@ -5,6 +5,12 @@ import { registerAdvancedCommands } from './advanced-commands.js';
 import { registerOpsCommands } from './ops-commands.js';
 import { registerScanCommands } from './scan-commands.js';
 
+process.on('unhandledRejection', (reason: unknown) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  process.stderr.write(`\nUnhandled rejection: ${message}\n`);
+  process.exit(1);
+});
+
 function increaseVerbosity(_dummyValue: string, previous: number): number {
   return previous + 1;
 }

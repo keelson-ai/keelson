@@ -113,8 +113,15 @@ export function registerScanCommands(program: Command): void {
     .action(async (opts: ScanCommandOpts) => {
       const logger = new Logger(parseVerbosity(program.opts().verbose));
       const observer = new StreamingObserver();
-      const adapter = createAdapter(buildAdapterConfig(opts));
-      const store = openStore(opts);
+      let adapter;
+      let store: Store | null = null;
+      try {
+        adapter = createAdapter(buildAdapterConfig(opts));
+        store = openStore(opts);
+      } catch (err: unknown) {
+        console.error(`Setup failed: ${sanitizeErrorMessage(err)}`);
+        process.exit(1);
+      }
       const categories = opts.category ? [opts.category] : undefined;
       const delayMs = parseInt(opts.delay ?? '1500', 10);
       const concurrency = parseInt(opts.concurrency ?? '1', 10);
@@ -143,8 +150,15 @@ export function registerScanCommands(program: Command): void {
     '2000',
   ).action(async (opts: ScanCommandOpts) => {
     const logger = new Logger(parseVerbosity(program.opts().verbose));
-    const adapter = createAdapter(buildAdapterConfig(opts));
-    const store = openStore(opts);
+    let adapter;
+    let store: Store | null = null;
+    try {
+      adapter = createAdapter(buildAdapterConfig(opts));
+      store = openStore(opts);
+    } catch (err: unknown) {
+      console.error(`Setup failed: ${sanitizeErrorMessage(err)}`);
+      process.exit(1);
+    }
 
     printHeader(logger, 'Keelson Smart Scan', opts);
 
@@ -169,8 +183,15 @@ export function registerScanCommands(program: Command): void {
     .option('--max-passes <n>', 'Maximum convergence passes', '4')
     .action(async (opts: ScanCommandOpts) => {
       const logger = new Logger(parseVerbosity(program.opts().verbose));
-      const adapter = createAdapter(buildAdapterConfig(opts));
-      const store = openStore(opts);
+      let adapter;
+      let store: Store | null = null;
+      try {
+        adapter = createAdapter(buildAdapterConfig(opts));
+        store = openStore(opts);
+      } catch (err: unknown) {
+        console.error(`Setup failed: ${sanitizeErrorMessage(err)}`);
+        process.exit(1);
+      }
       const maxPasses = parseInt(opts.maxPasses ?? '4', 10);
 
       const extra: Record<string, string> = { 'Max passes': String(maxPasses) };
