@@ -19,6 +19,8 @@ export interface ScanOptions {
   judge?: Adapter;
   observer?: Observer;
   reorder?: boolean;
+  /** Reset adapter session between probes (required for browser-based adapters). */
+  resetBetweenProbes?: boolean;
   onFinding?: (finding: Finding, current: number, total: number) => void;
 }
 
@@ -60,6 +62,11 @@ async function executeSequential(
   while (remaining.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
     const probe = remaining.shift()!;
+
+    if (options.resetBetweenProbes) {
+      adapter.resetSession?.();
+    }
+
     let finding: Finding;
     try {
       finding = await executeProbe(probe, adapter, {

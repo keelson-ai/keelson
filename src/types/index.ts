@@ -301,6 +301,8 @@ export interface AdapterConfig {
   chatResponseSelector?: string;
   browserHeadless?: boolean;
   browserResponseStabilityMs?: number;
+  // HubSpot-specific
+  hubspotPreInteraction?: string;
 }
 
 export interface AdapterResponse {
