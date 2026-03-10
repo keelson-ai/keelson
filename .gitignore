@@ -6,8 +6,6 @@
 .claude/settings.local.json
 .claude/rules/no-vendor-references.md
 
-/reports
-
 # Node
 node_modules/
 dist/
@@ -26,3 +24,6 @@ __pycache__/
 ~/.keelson/
 .worktrees/
 .claude/worktrees/
+
+targets/
+reports/
