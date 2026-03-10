@@ -27,7 +27,6 @@ export class HubSpotAdapter extends BaseAdapter {
   private page: any = null;
   private hsFrame: any = null;
   private initialized = false;
-  private lastConversationText = '';
 
   private readonly headless: boolean;
   private readonly responseStabilityMs: number;
@@ -96,7 +95,6 @@ export class HubSpotAdapter extends BaseAdapter {
       });
 
     // Snapshot initial conversation text
-    this.lastConversationText = await this.getConversationText();
 
     this.initialized = true;
   }
@@ -129,8 +127,6 @@ export class HubSpotAdapter extends BaseAdapter {
     // Wait for bot response
     const content = await this.waitForReply(beforeText, message);
     const latencyMs = Math.round(performance.now() - start);
-
-    this.lastConversationText = await this.getConversationText();
 
     return { content, raw: { method: 'hubspot-iframe' }, latencyMs };
   }
@@ -356,7 +352,6 @@ export class HubSpotAdapter extends BaseAdapter {
     this.page = null;
     this.hsFrame = null;
     this.initialized = false;
-    this.lastConversationText = '';
 
     if (oldBrowser) {
       void (oldBrowser as { close: () => Promise<void> }).close();
