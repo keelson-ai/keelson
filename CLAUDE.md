@@ -63,6 +63,7 @@ keelson/
 - **Testing:** Vitest + nock
 - **Build:** tsc (plain compilation)
 - **Package manager:** pnpm
+- **Dependency versioning:** Strict pinned versions (no `^` or `~` prefixes) in `package.json`
 
 ## Probe Playbook Format
 
