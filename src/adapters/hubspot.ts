@@ -110,16 +110,17 @@ export class HubSpotAdapter extends BaseAdapter {
     // Snapshot conversation text before sending
     const beforeText = await this.getConversationText();
 
-    // Wait for the send button to be enabled (critical for multi-turn: button is
-    // disabled while the bot is still responding from a previous turn)
-    await this.waitForSendReady();
-
     // Type into the textbox
     const textbox = await this.findTextbox();
     await textbox.click({ force: true });
     await this.page.waitForTimeout(300);
     await textbox.fill(message);
     await this.page.waitForTimeout(300);
+
+    // Wait for the send button to be enabled (critical for multi-turn: button is
+    // disabled while the bot is still responding from a previous turn, and also
+    // disabled when the textbox is empty — so we must fill first)
+    await this.waitForSendReady();
 
     // Send the message
     await this.clickSend();
@@ -217,21 +218,19 @@ export class HubSpotAdapter extends BaseAdapter {
   /**
    * Extract the last bot reply from HubSpot conversation innerText.
    *
+   * Strategy: find the user's sent message in the raw lines, then collect
+   * all bot-attributed content that follows (between the next botName header
+   * and the end or next user message).
+   *
    * HubSpot innerText structure:
    *   BotName                          ← bot name header (standalone line)
-   *   <welcome message lines>
-   *   <user message lines>
+   *   <welcome message lines>          ← NO timestamp after welcome
+   *   <user message text>
    *   HH:MM AM/PM                      ← timestamp after user message
-   *   Let us know your email...         ← HubSpot CTA (optional, skip)
+   *   Let us know your email...         ← HubSpot CTA (optional)
    *   BotName                          ← bot name header before bot reply
    *   <bot response line 1>
    *   HH:MM AM/PM                      ← timestamp after each bot message bubble
-   *   <bot response line 2>
-   *   HH:MM AM/PM
-   *
-   * Strategy: detect the bot name from line 1, then parse message blocks.
-   * Bot messages are preceded by the bot name. User messages are not.
-   * We find the user's sent message, then collect the next bot-attributed block.
    */
   private extractLastBotReply(convText: string, sentMessage: string): string | null {
     const lines = convText
@@ -243,98 +242,42 @@ export class HubSpotAdapter extends BaseAdapter {
     // The very first line is the bot's display name
     const botName = lines[0];
 
-    // Parse the conversation into attributed message blocks
-    const blocks = this.parseMessageBlocks(lines, botName);
-
-    // Find the last user block that matches the sent message
-    let lastUserIdx = -1;
-    const sentNorm = sentMessage.replace(/\s+/g, ' ').trim().substring(0, 80);
-    for (let i = blocks.length - 1; i >= 0; i--) {
-      if (blocks[i].author === 'user') {
-        const blockNorm = blocks[i].text.replace(/\s+/g, ' ').trim().substring(0, 80);
-        if (blockNorm.includes(sentNorm) || sentNorm.includes(blockNorm)) {
-          lastUserIdx = i;
-          break;
-        }
-      }
-    }
-
-    if (lastUserIdx === -1) return null;
-
-    // Collect all bot blocks after the matched user message
-    const replyParts: string[] = [];
-    for (let i = lastUserIdx + 1; i < blocks.length; i++) {
-      if (blocks[i].author === 'bot') {
-        replyParts.push(blocks[i].text);
-      } else {
-        // Stop at the next user message
+    // Find the user's sent message in the raw lines (fuzzy match on first 80 chars)
+    const sentNorm = sentMessage.replace(/\s+/g, ' ').trim().substring(0, 80).toLowerCase();
+    let userLineIdx = -1;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (TIMESTAMP_RE_LINE.test(lines[i]) || lines[i] === botName) continue;
+      const lineNorm = lines[i].replace(/\s+/g, ' ').trim().substring(0, 80).toLowerCase();
+      if (lineNorm.includes(sentNorm) || sentNorm.includes(lineNorm)) {
+        userLineIdx = i;
         break;
       }
     }
 
-    return replyParts.join('\n').trim() || null;
-  }
+    if (userLineIdx === -1) return null;
 
-  /**
-   * Parse HubSpot innerText lines into attributed message blocks.
-   *
-   * Rules:
-   * - A line matching the botName exactly starts a new bot block
-   * - A timestamp line ends the current accumulating content
-   * - Lines between a botName header and the next timestamp are bot content
-   * - Lines between a timestamp (after bot content) and the next timestamp are user content
-   * - HubSpot CTA lines ("Let us know your email...") are skipped
-   */
-  private parseMessageBlocks(lines: string[], botName: string): Array<{ author: 'bot' | 'user'; text: string }> {
-    const blocks: Array<{ author: 'bot' | 'user'; text: string }> = [];
-    let currentAuthor: 'bot' | 'user' = 'bot'; // First block is typically bot welcome
-    let currentLines: string[] = [];
+    // Scan forward from the user message line: skip the user's timestamp,
+    // skip CTA lines, then collect bot content (after botName header)
+    const replyLines: string[] = [];
+    let inBotReply = false;
 
-    for (let i = 1; i < lines.length; i++) {
-      // skip first line (botName header already consumed)
+    for (let i = userLineIdx + 1; i < lines.length; i++) {
       const line = lines[i];
 
-      if (TIMESTAMP_RE_LINE.test(line)) {
-        // Timestamp = end of current content chunk
-        if (currentLines.length > 0) {
-          const text = currentLines.join('\n').trim();
-          if (text && !HUBSPOT_CTA_RE.test(text)) {
-            blocks.push({ author: currentAuthor, text });
-          }
-          currentLines = [];
-        }
-        // After a bot block's timestamp, next content is user (until we see botName again)
-        if (currentAuthor === 'bot') {
-          currentAuthor = 'user';
-        }
-        continue;
-      }
-
       if (line === botName) {
-        // Flush any pending user content
-        if (currentLines.length > 0) {
-          const text = currentLines.join('\n').trim();
-          if (text && !HUBSPOT_CTA_RE.test(text)) {
-            blocks.push({ author: currentAuthor, text });
-          }
-          currentLines = [];
-        }
-        currentAuthor = 'bot';
+        inBotReply = true;
         continue;
       }
 
-      currentLines.push(line);
+      if (!inBotReply) continue; // skip user timestamp, CTA, etc.
+
+      if (TIMESTAMP_RE_LINE.test(line)) continue; // skip bot timestamps
+      if (HUBSPOT_CTA_RE.test(line)) continue;
+
+      replyLines.push(line);
     }
 
-    // Flush remaining
-    if (currentLines.length > 0) {
-      const text = currentLines.join('\n').trim();
-      if (text && !HUBSPOT_CTA_RE.test(text)) {
-        blocks.push({ author: currentAuthor, text });
-      }
-    }
-
-    return blocks;
+    return replyLines.join('\n').trim() || null;
   }
 
   override async healthCheck(): Promise<boolean> {
