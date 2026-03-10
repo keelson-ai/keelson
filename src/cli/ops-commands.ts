@@ -12,6 +12,7 @@ import {
   withStore,
   writeReport,
 } from './utils.js';
+import { Logger, parseVerbosity } from './verbosity.js';
 import { loadProbes } from '../core/index.js';
 import { diffScans, enhancedDiffScans, formatDiffReport } from '../diff/index.js';
 import { Store } from '../state/index.js';
@@ -34,6 +35,7 @@ export function registerOpsCommands(program: Command): void {
     .description('List all available probes')
     .option('--category <category>', 'Filter by category')
     .action(async (opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const probes = await loadProbes();
 
       let filtered = probes;
@@ -49,22 +51,22 @@ export function registerOpsCommands(program: Command): void {
         return a.id.localeCompare(b.id);
       });
 
-      console.log(chalk.bold('\nAvailable Security Probes'));
-      console.log(chalk.dim('─'.repeat(110)));
+      logger.info(chalk.bold('\nAvailable Security Probes'));
+      logger.info(chalk.dim('─'.repeat(110)));
 
       // Header
       const header =
         `  ${'ID'.padEnd(8)} ${'Name'.padEnd(40)} ` +
         `${'Severity'.padEnd(20)} ${'Category'.padEnd(25)} ${'Steps'.padStart(5)}`;
-      console.log(chalk.dim(header));
-      console.log(chalk.dim('─'.repeat(110)));
+      logger.info(chalk.dim(header));
+      logger.info(chalk.dim('─'.repeat(110)));
 
       for (const probe of filtered) {
-        console.log(formatProbeRow(probe));
+        logger.info(formatProbeRow(probe));
       }
 
-      console.log(chalk.dim('─'.repeat(110)));
-      console.log(`  Total: ${filtered.length} probes`);
+      logger.info(chalk.dim('─'.repeat(110)));
+      logger.info(`  Total: ${filtered.length} probes`);
 
       // Category summary
       const categories = new Map<string, number>();
@@ -72,9 +74,9 @@ export function registerOpsCommands(program: Command): void {
         categories.set(p.category, (categories.get(p.category) ?? 0) + 1);
       }
       if (categories.size > 1) {
-        console.log(chalk.bold('\n  Categories:'));
+        logger.info(chalk.bold('\n  Categories:'));
         for (const [cat, count] of [...categories.entries()].sort()) {
-          console.log(`    ${cat}: ${count}`);
+          logger.info(`    ${cat}: ${count}`);
         }
       }
     });
@@ -87,6 +89,7 @@ export function registerOpsCommands(program: Command): void {
     .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
     .option('--output <path>', 'Output file path')
     .action(async (opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       let result: ScanResult;
 
       if (opts.scanId) {
@@ -117,11 +120,12 @@ export function registerOpsCommands(program: Command): void {
         process.exit(1);
       }
 
-      printScanSummary(result);
+      printScanSummary(result, logger);
 
       if (opts.output) {
         await writeReport(result, opts.format, opts.output);
       } else {
+        // Machine-readable JSON to stdout — intentional console.log
         console.log(JSON.stringify(result, null, 2));
       }
     });
@@ -131,8 +135,9 @@ export function registerOpsCommands(program: Command): void {
     .description('Validate probe YAML files')
     .option('--dir <directory>', 'Probes directory to validate')
     .action(async (opts) => {
-      console.log(chalk.bold('\nValidating probe playbooks...'));
-      console.log();
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
+      logger.info(chalk.bold('\nValidating probe playbooks...'));
+      logger.info('');
 
       let probes: ProbeTemplate[];
       const errors: Array<{ file: string; error: string }> = [];
@@ -175,24 +180,24 @@ export function registerOpsCommands(program: Command): void {
       }
 
       if (errors.length > 0) {
-        console.log(chalk.red(`Found ${errors.length} validation error(s):\n`));
+        logger.info(chalk.red(`Found ${errors.length} validation error(s):\n`));
         for (const { file, error } of errors) {
-          console.log(`  ${chalk.red('\u2717')} ${file}`);
-          console.log(`    ${error}`);
+          logger.info(`  ${chalk.red('\u2717')} ${file}`);
+          logger.info(`    ${error}`);
         }
         process.exit(1);
       }
 
-      console.log(chalk.green(`\u2713 All ${probes.length} probes are valid`));
+      logger.info(chalk.green(`\u2713 All ${probes.length} probes are valid`));
 
       // Show summary by category
       const categories = new Map<string, number>();
       for (const p of probes) {
         categories.set(p.category, (categories.get(p.category) ?? 0) + 1);
       }
-      console.log();
+      logger.info('');
       for (const [cat, count] of [...categories.entries()].sort()) {
-        console.log(`  ${cat}: ${count} probes`);
+        logger.info(`  ${cat}: ${count} probes`);
       }
     });
 
@@ -209,6 +214,7 @@ export function registerOpsCommands(program: Command): void {
     .option('--enhanced', 'Include severity-classified regression alerts', false)
     .option('--output <path>', 'Write diff report to file')
     .action(async (opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const store = Store.open();
 
       let scanA: ScanResult | undefined;
@@ -293,10 +299,10 @@ export function registerOpsCommands(program: Command): void {
       if (opts.enhanced) {
         const { diff, alerts } = enhancedDiffScans(scanA, scanB);
         const report = formatDiffReport(diff);
-        console.log(report);
+        logger.info(report);
 
         if (alerts.length > 0) {
-          console.log(chalk.bold('\nRegression Alerts'));
+          logger.info(chalk.bold('\nRegression Alerts'));
           for (const alert of alerts) {
             const color =
               alert.alertSeverity === 'critical' || alert.alertSeverity === 'high'
@@ -304,7 +310,7 @@ export function registerOpsCommands(program: Command): void {
                 : alert.alertSeverity === 'medium'
                   ? chalk.yellow
                   : chalk.dim;
-            console.log(`  ${color(`[${alert.alertSeverity.toUpperCase()}]`)} ${alert.description}`);
+            logger.info(`  ${color(`[${alert.alertSeverity.toUpperCase()}]`)} ${alert.description}`);
           }
         }
 
@@ -318,16 +324,16 @@ export function registerOpsCommands(program: Command): void {
                 '\n'
               : '';
           await writeFile(opts.output, report + alertSection, 'utf-8');
-          console.log(`\nReport saved: ${opts.output}`);
+          logger.info(`\nReport saved: ${opts.output}`);
         }
       } else {
         const diff = diffScans(scanA, scanB);
         const report = formatDiffReport(diff);
-        console.log(report);
+        logger.info(report);
 
         if (opts.output) {
           await writeFile(opts.output, report, 'utf-8');
-          console.log(`\nReport saved: ${opts.output}`);
+          logger.info(`\nReport saved: ${opts.output}`);
         }
       }
     });
@@ -339,32 +345,33 @@ export function registerOpsCommands(program: Command): void {
     .description('List recent scans with date, target, and vulnerability counts')
     .option('--limit <n>', 'Max results to show', '20')
     .action((opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const scans = withStore((store) => store.listScans(parseInt(opts.limit, 10)));
 
       if (scans.length === 0) {
-        console.log('\nNo scans found. Run `keelson scan` to get started.');
+        logger.info('\nNo scans found. Run `keelson scan` to get started.');
         return;
       }
 
-      console.log(chalk.bold('\nScan History'));
-      console.log(chalk.dim('─'.repeat(100)));
+      logger.info(chalk.bold('\nScan History'));
+      logger.info(chalk.dim('─'.repeat(100)));
       const header =
         `  ${'ID'.padEnd(30)} ${'Target'.padEnd(30)} ` +
         `${'Date'.padEnd(20)} ${'Total'.padStart(5)} ${'Vuln'.padStart(5)} ${'Safe'.padStart(5)}`;
-      console.log(chalk.dim(header));
-      console.log(chalk.dim('─'.repeat(100)));
+      logger.info(chalk.dim(header));
+      logger.info(chalk.dim('─'.repeat(100)));
 
       for (const s of scans) {
         const date = new Date(s.startedAt).toISOString().slice(0, 16).replace('T', ' ');
         const target = s.target.slice(0, 30).padEnd(30);
         const vuln = s.vulnerable > 0 ? chalk.red(String(s.vulnerable).padStart(5)) : String(s.vulnerable).padStart(5);
-        console.log(
+        logger.info(
           `  ${s.scanId.padEnd(30)} ${target} ${date.padEnd(20)} ${String(s.total).padStart(5)} ${vuln} ${String(s.safe).padStart(5)}`,
         );
       }
 
-      console.log(chalk.dim('─'.repeat(100)));
-      console.log(`  ${scans.length} scan(s)`);
+      logger.info(chalk.dim('─'.repeat(100)));
+      logger.info(`  ${scans.length} scan(s)`);
     });
 
   // ─── Baseline commands ───────────────────────────────────
@@ -377,6 +384,7 @@ export function registerOpsCommands(program: Command): void {
     .argument('<scan-id>', 'Scan ID to set as baseline')
     .option('--label <label>', 'Optional label for this baseline', '')
     .action((scanId: string, opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const scan = withStore((store) => {
         const s = store.getScan(scanId);
         if (!s) {
@@ -387,7 +395,7 @@ export function registerOpsCommands(program: Command): void {
         return s;
       });
       if (scan) {
-        console.log(`Baseline set: ${scanId}${opts.label ? ` (${opts.label})` : ''}`);
+        logger.info(`Baseline set: ${scanId}${opts.label ? ` (${opts.label})` : ''}`);
       }
     });
 
@@ -396,19 +404,20 @@ export function registerOpsCommands(program: Command): void {
     .description('Show all saved baselines')
     .option('--limit <n>', 'Max results', '20')
     .action((opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const baselines = withStore((store) => store.getBaselines(parseInt(opts.limit, 10)));
 
       if (baselines.length === 0) {
-        console.log('\nNo baselines set. Use `keelson baseline set <scan-id>` after a scan.');
+        logger.info('\nNo baselines set. Use `keelson baseline set <scan-id>` after a scan.');
         return;
       }
 
-      console.log(chalk.bold('\nBaselines'));
-      console.log(chalk.dim('─'.repeat(70)));
+      logger.info(chalk.bold('\nBaselines'));
+      logger.info(chalk.dim('─'.repeat(70)));
       for (const b of baselines) {
         const date = new Date(b.createdAt).toISOString().slice(0, 16).replace('T', ' ');
         const label = b.label ? chalk.dim(` (${b.label})`) : '';
-        console.log(`  ${b.scanId}  ${date}${label}`);
+        logger.info(`  ${b.scanId}  ${date}${label}`);
       }
     });
 
@@ -420,17 +429,18 @@ export function registerOpsCommands(program: Command): void {
     .option('--all', 'Show acknowledged alerts too', false)
     .option('--limit <n>', 'Max results', '50')
     .action((opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const alerts = withStore((store) => store.listRegressionAlerts(parseInt(opts.limit, 10)));
 
       const filtered = opts.all ? alerts : alerts.filter((a) => !a.acknowledged);
 
       if (filtered.length === 0) {
-        console.log('\nNo regression alerts.');
+        logger.info('\nNo regression alerts.');
         return;
       }
 
-      console.log(chalk.bold('\nRegression Alerts'));
-      console.log(chalk.dim('─'.repeat(90)));
+      logger.info(chalk.bold('\nRegression Alerts'));
+      logger.info(chalk.dim('─'.repeat(90)));
       for (const a of filtered) {
         const color =
           a.alertSeverity === 'critical' || a.alertSeverity === 'high'
@@ -439,7 +449,7 @@ export function registerOpsCommands(program: Command): void {
               ? chalk.yellow
               : chalk.dim;
         const ack = a.acknowledged ? chalk.dim(' [ack]') : '';
-        console.log(`  ${chalk.dim(`#${a.id}`)} ${color(`[${a.alertSeverity.toUpperCase()}]`)} ${a.description}${ack}`);
+        logger.info(`  ${chalk.dim(`#${a.id}`)} ${color(`[${a.alertSeverity.toUpperCase()}]`)} ${a.description}${ack}`);
       }
     });
 
@@ -448,13 +458,14 @@ export function registerOpsCommands(program: Command): void {
     .description('Acknowledge a regression alert')
     .argument('<alert-id>', 'Alert ID to acknowledge')
     .action((alertIdStr: string) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const alertId = parseInt(alertIdStr, 10);
       if (isNaN(alertId)) {
         console.error(chalk.red('Invalid alert ID'));
         process.exit(1);
       }
       withStore((store) => store.acknowledgeAlert(alertId));
-      console.log(`Alert #${alertId} acknowledged.`);
+      logger.info(`Alert #${alertId} acknowledged.`);
     });
 
   // ─── Store commands ──────────────────────────────────────
@@ -465,29 +476,31 @@ export function registerOpsCommands(program: Command): void {
     .command('path')
     .description('Print the store database path')
     .action(() => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const dbPath = withStore((store) => store.dbPath);
-      console.log(dbPath);
+      logger.info(dbPath);
     });
 
   storeCmd
     .command('info')
     .description('Show store location, size, and row counts per table')
     .action(() => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const { dbPath, stats } = withStore((store) => ({
         dbPath: store.dbPath,
         stats: store.getStats(),
       }));
 
-      console.log(chalk.bold('\nKeelson Store'));
-      console.log(chalk.dim('─'.repeat(40)));
-      console.log(`  Path:       ${dbPath}`);
-      console.log(`  Scans:      ${stats.scans}`);
-      console.log(`  Campaigns:  ${stats.campaigns}`);
-      console.log(`  Profiles:   ${stats.agent_profiles}`);
-      console.log(`  Baselines:  ${stats.baselines}`);
-      console.log(`  Cache:      ${stats.cache}`);
-      console.log(`  Alerts:     ${stats.regression_alerts}`);
-      console.log(`  Chains:     ${stats.probe_chains}`);
-      console.log(`  Events:     ${stats.events}`);
+      logger.info(chalk.bold('\nKeelson Store'));
+      logger.info(chalk.dim('─'.repeat(40)));
+      logger.info(`  Path:       ${dbPath}`);
+      logger.info(`  Scans:      ${stats.scans}`);
+      logger.info(`  Campaigns:  ${stats.campaigns}`);
+      logger.info(`  Profiles:   ${stats.agent_profiles}`);
+      logger.info(`  Baselines:  ${stats.baselines}`);
+      logger.info(`  Cache:      ${stats.cache}`);
+      logger.info(`  Alerts:     ${stats.regression_alerts}`);
+      logger.info(`  Chains:     ${stats.probe_chains}`);
+      logger.info(`  Events:     ${stats.events}`);
     });
 }

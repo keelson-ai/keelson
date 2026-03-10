@@ -35,20 +35,21 @@ interface ScanCommandOpts {
   noStore?: boolean;
 }
 
-function printHeader(title: string, opts: ScanCommandOpts, extra?: Record<string, string>): void {
-  console.log(`\n${title}`);
-  console.log(`Target: ${opts.target}`);
-  console.log(`Model: ${opts.model}`);
+function printHeader(logger: Logger, title: string, opts: ScanCommandOpts, extra?: Record<string, string>): void {
+  logger.info(`\n${title}`);
+  logger.info(`Target: ${opts.target}`);
+  logger.info(`Model: ${opts.model}`);
   for (const [key, value] of Object.entries(extra ?? {})) {
-    console.log(`${key}: ${value}`);
+    logger.info(`${key}: ${value}`);
   }
-  console.log();
+  logger.info('');
 }
 
 async function finalizeScan(
   result: ScanResult,
   store: Store | null,
   opts: ScanCommandOpts,
+  logger: Logger,
   showVulnDetails = true,
 ): Promise<void> {
   try {
@@ -59,23 +60,24 @@ async function finalizeScan(
     if (showVulnDetails) {
       const vulnFindings = result.findings.filter((f) => f.verdict === Verdict.Vulnerable);
       if (vulnFindings.length > 0) {
-        console.log('\nVulnerabilities Found:');
-        vulnFindings.forEach((f, i) => console.log(formatFinding(f, i)));
+        logger.info('\nVulnerabilities Found:');
+        vulnFindings.forEach((f, i) => logger.info(formatFinding(f, i)));
       }
     }
 
-    printScanSummary(result);
+    printScanSummary(result, logger);
 
     const outputDir = opts.outputDir ?? DEFAULT_OUTPUT_DIR;
     const filePath = await writeScanOutput(result, opts.format ?? 'json', outputDir);
-    console.log(`Scan ID: ${result.scanId}`);
-    console.log(`Output:  ${filePath}`);
+    logger.info(`Scan ID: ${result.scanId}`);
+    logger.info(`Output:  ${filePath}`);
 
     const exitCode = checkFailGates(
       result.summary.vulnerable,
       result.summary.total,
       opts.failOnVuln ?? false,
       parseFloat(opts.failThreshold ?? '0.0'),
+      logger,
     );
     if (exitCode !== 0) {
       process.exit(exitCode);
@@ -116,7 +118,7 @@ export function registerScanCommands(program: Command): void {
       const delayMs = parseInt(opts.delay ?? '1500', 10);
       const concurrency = parseInt(opts.concurrency ?? '1', 10);
 
-      printHeader('Keelson Security Scan', opts, opts.category ? { Category: opts.category } : undefined);
+      printHeader(logger, 'Keelson Security Scan', opts, opts.category ? { Category: opts.category } : undefined);
 
       let result: ScanResult;
       try {
@@ -132,7 +134,7 @@ export function registerScanCommands(program: Command): void {
         await adapter.close?.();
       }
 
-      await finalizeScan(result, store, opts);
+      await finalizeScan(result, store, opts, logger);
     });
 
   addCommonScanOptions(
@@ -143,7 +145,7 @@ export function registerScanCommands(program: Command): void {
     const adapter = createAdapter(buildAdapterConfig(opts));
     const store = openStore(opts);
 
-    printHeader('Keelson Smart Scan', opts);
+    printHeader(logger, 'Keelson Smart Scan', opts);
 
     let result: ScanResult;
     try {
@@ -156,7 +158,7 @@ export function registerScanCommands(program: Command): void {
       await adapter.close?.();
     }
 
-    await finalizeScan(result, store, opts, false);
+    await finalizeScan(result, store, opts, logger, false);
   });
 
   addCommonScanOptions(
@@ -172,12 +174,12 @@ export function registerScanCommands(program: Command): void {
 
       const extra: Record<string, string> = { 'Max passes': String(maxPasses) };
       if (opts.category) extra['Initial category'] = opts.category;
-      printHeader('Keelson Convergence Scan', opts, extra);
+      printHeader(logger, 'Keelson Convergence Scan', opts, extra);
 
       const allResults: ScanResult[] = [];
       try {
         for (let pass = 1; pass <= maxPasses; pass++) {
-          console.log(`  PASS ${pass}  Running probes...`);
+          logger.info(`  PASS ${pass}  Running probes...`);
 
           const categories = opts.category ? [opts.category] : undefined;
           const passResult = await scan(opts.target, adapter, {
@@ -188,10 +190,10 @@ export function registerScanCommands(program: Command): void {
           });
 
           allResults.push(passResult);
-          console.log(`  PASS ${pass}  Complete: ${passResult.summary.vulnerable} vulnerabilities found`);
+          logger.info(`  PASS ${pass}  Complete: ${passResult.summary.vulnerable} vulnerabilities found`);
 
           if (passResult.summary.vulnerable === 0 && pass > 1) {
-            console.log('  Converged: no new vulnerabilities in this pass.');
+            logger.info('  Converged: no new vulnerabilities in this pass.');
             break;
           }
         }
@@ -200,7 +202,7 @@ export function registerScanCommands(program: Command): void {
       }
 
       const result = allResults[allResults.length - 1];
-      await finalizeScan(result, store, opts, false);
+      await finalizeScan(result, store, opts, logger, false);
     });
 
   program
@@ -225,9 +227,9 @@ export function registerScanCommands(program: Command): void {
         process.exit(1);
       }
 
-      console.log(`\n${template.id}: ${template.name}`);
-      console.log(`Severity: ${colorSeverity(template.severity)} | Category: ${template.category}`);
-      console.log();
+      logger.info(`\n${template.id}: ${template.name}`);
+      logger.info(`Severity: ${colorSeverity(template.severity)} | Category: ${template.category}`);
+      logger.info('');
 
       const totalTurns = template.turns.filter((t) => t.role === 'user').length;
       logger.probeStart(template.id, template.name, totalTurns);
@@ -236,21 +238,7 @@ export function registerScanCommands(program: Command): void {
       try {
         finding = await executeProbe(template, adapter, {
           observer,
-          onTurnComplete: (info) => {
-            logger.turn(
-              info.probeId,
-              info.userTurnIndex,
-              info.totalTurns,
-              info.prompt,
-              info.response,
-              info.responseTimeMs,
-            );
-            logger.rawResponse(info.raw);
-          },
-          onEarlyTermination: (reason) => logger.turnSignal(reason),
-          onDetection: (result, details) => logger.detection(result, details),
-          onJudgeResult: (result) => logger.judgeResult(result),
-          onCombinedResult: (result) => logger.combinedResult(result),
+          ...logger.buildProbeCallbacks(),
         });
       } finally {
         await adapter.close?.();

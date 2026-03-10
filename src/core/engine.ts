@@ -31,7 +31,6 @@ export interface TurnCompleteInfo {
 export interface ExecuteProbeOptions {
   delayMs?: number;
   judge?: Adapter;
-  onTurn?: (stepIndex: number, prompt: string, response: string) => void;
   onTurnComplete?: (info: TurnCompleteInfo) => void;
   onEarlyTermination?: (reason: string) => void;
   onDetection?: (result: DetectionResult, details: PatternDetails) => void;
@@ -66,7 +65,6 @@ export async function executeProbe(
   const {
     delayMs = DEFAULT_DELAY_MS,
     judge,
-    onTurn,
     onTurnComplete,
     onEarlyTermination,
     onDetection,
@@ -86,7 +84,6 @@ export async function executeProbe(
 
     if (template.newSession && stepIdx > 0) {
       messages.length = 0;
-      userTurnCount = 0;
       evidence.length = 0; // reset per-session evidence; allEvidence keeps accumulating
       adapter.resetSession?.(); // notify adapter to reset server-side session state
     }
@@ -116,7 +113,6 @@ export async function executeProbe(
     evidence.push(evidenceItem);
     allEvidence.push(evidenceItem);
 
-    onTurn?.(stepIdx, step.content, responseText);
     onTurnComplete?.({
       probeId: template.id,
       stepIndex: stepIdx,
