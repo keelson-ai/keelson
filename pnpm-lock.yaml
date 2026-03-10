@@ -23,9 +23,6 @@ importers:
       ink:
         specifier: 6.8.0
         version: 6.8.0(@types/react@19.2.14)(react@19.2.4)
-      playwright:
-        specifier: 1.58.2
-        version: 1.58.2
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -75,6 +72,10 @@ importers:
       vitest:
         specifier: 4.0.18
         version: 4.0.18(@types/node@25.3.5)(yaml@2.8.2)
+    optionalDependencies:
+      playwright:
+        specifier: 1.58.2
+        version: 1.58.2
 
 packages:
 
@@ -2741,13 +2742,15 @@ snapshots:
 
   picomatch@4.0.3: {}
 
-  playwright-core@1.58.2: {}
+  playwright-core@1.58.2:
+    optional: true
 
   playwright@1.58.2:
     dependencies:
       playwright-core: 1.58.2
     optionalDependencies:
       fsevents: 2.3.2
+    optional: true
 
   postcss@8.5.8:
     dependencies:
