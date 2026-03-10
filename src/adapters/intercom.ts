@@ -118,9 +118,7 @@ export class IntercomAdapter extends BaseAdapter {
     for (let attempt = 0; attempt < this.maxPollAttempts; attempt++) {
       await new Promise((r) => setTimeout(r, this.pollIntervalMs));
 
-      const { data } = await this.client.get<IntercomConversation>(
-        `/conversations/${this.conversationId}`,
-      );
+      const { data } = await this.client.get<IntercomConversation>(`/conversations/${this.conversationId}`);
 
       const parts = data.conversation_parts?.conversation_parts ?? [];
 
@@ -129,10 +127,7 @@ export class IntercomAdapter extends BaseAdapter {
 
       // Find the first new bot/admin reply
       const botReply = newParts.find(
-        (p) =>
-          (p.author.type === 'bot' || p.author.type === 'admin') &&
-          p.part_type === 'comment' &&
-          p.body,
+        (p) => (p.author.type === 'bot' || p.author.type === 'admin') && p.part_type === 'comment' && p.body,
       );
 
       if (botReply) {
@@ -145,7 +140,7 @@ export class IntercomAdapter extends BaseAdapter {
 
     throw new Error(
       `Intercom: no bot reply after ${this.maxPollAttempts} poll attempts ` +
-        `(${this.maxPollAttempts * this.pollIntervalMs / 1000}s)`,
+        `(${(this.maxPollAttempts * this.pollIntervalMs) / 1000}s)`,
     );
   }
 

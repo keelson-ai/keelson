@@ -163,8 +163,7 @@ export class BrowserAdapter extends BaseAdapter {
 
     if (!this.detectedInputSelector) {
       throw new Error(
-        'Browser adapter: could not auto-detect chat input. ' +
-          'Provide --chat-input-selector explicitly.',
+        'Browser adapter: could not auto-detect chat input. ' + 'Provide --chat-input-selector explicitly.',
       );
     }
   }
