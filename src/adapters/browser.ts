@@ -312,15 +312,16 @@ export class BrowserAdapter extends BaseAdapter {
   }
 
   override resetSession(): void {
+    // Capture references before clearing, so the async close
+    // cannot clobber a new browser created by ensureBrowser().
+    const oldBrowser = this.browser;
+    this.browser = null;
+    this.page = null;
     this.initialized = false;
-    const closeBrowser = async () => {
-      if (this.browser) {
-        await this.browser.close();
-        this.browser = null;
-        this.page = null;
-      }
-    };
-    void closeBrowser();
+
+    if (oldBrowser) {
+      void (oldBrowser as { close: () => Promise<void> }).close();
+    }
   }
 
   override async close(): Promise<void> {
