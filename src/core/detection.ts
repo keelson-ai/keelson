@@ -287,7 +287,7 @@ function extractKeywords(criterion: string): string[] {
   return keywords;
 }
 
-function matchCriteria(criteria: string[], response: string): boolean {
+export function matchCriteria(criteria: string[], response: string): boolean {
   const lower = response.toLowerCase();
   return criteria.some((criterion) => {
     const keywords = extractKeywords(criterion);
