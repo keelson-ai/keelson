@@ -2,7 +2,6 @@ import type { Command } from 'commander';
 
 import {
   DEFAULT_OUTPUT_DIR,
-  VERDICT_LABELS,
   buildAdapterConfig,
   checkFailGates,
   colorSeverity,
@@ -11,12 +10,12 @@ import {
   printScanSummary,
   writeScanOutput,
 } from './utils.js';
+import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { createAdapter } from '../adapters/index.js';
-import { executeProbe, loadProbes, scan } from '../core/index.js';
+import { StreamingObserver, executeProbe, loadProbes, scan } from '../core/index.js';
 import type { Store } from '../state/index.js';
-import type { Finding, ScanResult } from '../types/index.js';
+import type { ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
-import { truncate } from '../utils.js';
 
 // ─── Shared helpers ─────────────────────────────────────
 
@@ -36,20 +35,21 @@ interface ScanCommandOpts {
   noStore?: boolean;
 }
 
-function printHeader(title: string, opts: ScanCommandOpts, extra?: Record<string, string>): void {
-  console.log(`\n${title}`);
-  console.log(`Target: ${opts.target}`);
-  console.log(`Model: ${opts.model}`);
+function printHeader(logger: Logger, title: string, opts: ScanCommandOpts, extra?: Record<string, string>): void {
+  logger.info(`\n${title}`);
+  logger.info(`Target: ${opts.target}`);
+  logger.info(`Model: ${opts.model}`);
   for (const [key, value] of Object.entries(extra ?? {})) {
-    console.log(`${key}: ${value}`);
+    logger.info(`${key}: ${value}`);
   }
-  console.log();
+  logger.info('');
 }
 
 async function finalizeScan(
   result: ScanResult,
   store: Store | null,
   opts: ScanCommandOpts,
+  logger: Logger,
   showVulnDetails = true,
 ): Promise<void> {
   try {
@@ -60,23 +60,24 @@ async function finalizeScan(
     if (showVulnDetails) {
       const vulnFindings = result.findings.filter((f) => f.verdict === Verdict.Vulnerable);
       if (vulnFindings.length > 0) {
-        console.log('\nVulnerabilities Found:');
-        vulnFindings.forEach((f, i) => console.log(formatFinding(f, i)));
+        logger.info('\nVulnerabilities Found:');
+        vulnFindings.forEach((f, i) => logger.info(formatFinding(f, i)));
       }
     }
 
-    printScanSummary(result);
+    printScanSummary(result, logger);
 
     const outputDir = opts.outputDir ?? DEFAULT_OUTPUT_DIR;
     const filePath = await writeScanOutput(result, opts.format ?? 'json', outputDir);
-    console.log(`Scan ID: ${result.scanId}`);
-    console.log(`Output:  ${filePath}`);
+    logger.info(`Scan ID: ${result.scanId}`);
+    logger.info(`Output:  ${filePath}`);
 
     const exitCode = checkFailGates(
       result.summary.vulnerable,
       result.summary.total,
       opts.failOnVuln ?? false,
       parseFloat(opts.failThreshold ?? '0.0'),
+      logger,
     );
     if (exitCode !== 0) {
       process.exit(exitCode);
@@ -84,16 +85,6 @@ async function finalizeScan(
   } finally {
     store?.close();
   }
-}
-
-function defaultFindingLogger(finding: Finding, current: number, total: number): void {
-  const progress = `[${current}/${total}]`;
-  const icon = finding.verdict === Verdict.Vulnerable ? '\u2717' : finding.verdict === Verdict.Safe ? '\u2713' : '?';
-  console.log(`  ${progress} ${icon} ${finding.probeId}: ${finding.probeName} — ${finding.verdict}`);
-}
-
-function briefFindingLogger(finding: Finding, current: number, total: number): void {
-  console.log(`  [${current}/${total}] ${finding.probeId}: ${finding.verdict}`);
 }
 
 // ─── Shared CLI options ─────────────────────────────────
@@ -119,13 +110,15 @@ export function registerScanCommands(program: Command): void {
     .option('--category <category>', 'Filter by category')
     .option('--concurrency <n>', 'Max concurrent probes', '1')
     .action(async (opts: ScanCommandOpts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
+      const observer = new StreamingObserver();
       const adapter = createAdapter(buildAdapterConfig(opts));
       const store = openStore(opts);
       const categories = opts.category ? [opts.category] : undefined;
       const delayMs = parseInt(opts.delay ?? '1500', 10);
       const concurrency = parseInt(opts.concurrency ?? '1', 10);
 
-      printHeader('Keelson Security Scan', opts, opts.category ? { Category: opts.category } : undefined);
+      printHeader(logger, 'Keelson Security Scan', opts, opts.category ? { Category: opts.category } : undefined);
 
       let result: ScanResult;
       try {
@@ -134,36 +127,38 @@ export function registerScanCommands(program: Command): void {
           delayMs,
           concurrency,
           reorder: concurrency <= 1,
-          onFinding: defaultFindingLogger,
+          observer,
+          onFinding: (finding, current, total) => logger.finding(finding, current, total),
         });
       } finally {
         await adapter.close?.();
       }
 
-      await finalizeScan(result, store, opts);
+      await finalizeScan(result, store, opts, logger);
     });
 
   addCommonScanOptions(
     program.command('smart-scan').description('Adaptive scan: recon, classify, select relevant probes, execute'),
     '2000',
   ).action(async (opts: ScanCommandOpts) => {
+    const logger = new Logger(parseVerbosity(program.opts().verbose));
     const adapter = createAdapter(buildAdapterConfig(opts));
     const store = openStore(opts);
 
-    printHeader('Keelson Smart Scan', opts);
+    printHeader(logger, 'Keelson Smart Scan', opts);
 
     let result: ScanResult;
     try {
       result = await scan(opts.target, adapter, {
         delayMs: parseInt(opts.delay ?? '2000', 10),
         reorder: true,
-        onFinding: briefFindingLogger,
+        onFinding: (finding, current, total) => logger.finding(finding, current, total),
       });
     } finally {
       await adapter.close?.();
     }
 
-    await finalizeScan(result, store, opts, false);
+    await finalizeScan(result, store, opts, logger, false);
   });
 
   addCommonScanOptions(
@@ -172,34 +167,33 @@ export function registerScanCommands(program: Command): void {
     .option('--category <category>', 'Initial category filter')
     .option('--max-passes <n>', 'Maximum convergence passes', '4')
     .action(async (opts: ScanCommandOpts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const adapter = createAdapter(buildAdapterConfig(opts));
       const store = openStore(opts);
       const maxPasses = parseInt(opts.maxPasses ?? '4', 10);
 
       const extra: Record<string, string> = { 'Max passes': String(maxPasses) };
       if (opts.category) extra['Initial category'] = opts.category;
-      printHeader('Keelson Convergence Scan', opts, extra);
+      printHeader(logger, 'Keelson Convergence Scan', opts, extra);
 
       const allResults: ScanResult[] = [];
       try {
         for (let pass = 1; pass <= maxPasses; pass++) {
-          console.log(`  PASS ${pass}  Running probes...`);
+          logger.info(`  PASS ${pass}  Running probes...`);
 
           const categories = opts.category ? [opts.category] : undefined;
           const passResult = await scan(opts.target, adapter, {
             categories,
             delayMs: parseInt(opts.delay ?? '1500', 10),
             reorder: true,
-            onFinding: (finding, current, total) => {
-              console.log(`    [${current}/${total}] ${finding.probeId}: ${finding.verdict}`);
-            },
+            onFinding: (finding, current, total) => logger.finding(finding, current, total),
           });
 
           allResults.push(passResult);
-          console.log(`  PASS ${pass}  Complete: ${passResult.summary.vulnerable} vulnerabilities found`);
+          logger.info(`  PASS ${pass}  Complete: ${passResult.summary.vulnerable} vulnerabilities found`);
 
           if (passResult.summary.vulnerable === 0 && pass > 1) {
-            console.log('  Converged: no new vulnerabilities in this pass.');
+            logger.info('  Converged: no new vulnerabilities in this pass.');
             break;
           }
         }
@@ -208,7 +202,7 @@ export function registerScanCommands(program: Command): void {
       }
 
       const result = allResults[allResults.length - 1];
-      await finalizeScan(result, store, opts, false);
+      await finalizeScan(result, store, opts, logger, false);
     });
 
   program
@@ -220,6 +214,10 @@ export function registerScanCommands(program: Command): void {
     .option('--model <model>', 'Model name for requests', 'default')
     .option('--adapter-type <type>', 'Adapter type', 'openai')
     .action(async (opts: ScanCommandOpts & { probeId: string }) => {
+      // probe is a debugging command — default to Conversations so turns + reasoning show without -v
+      const verbosity = parseVerbosity(program.opts().verbose);
+      const logger = new Logger(Math.max(verbosity, Verbosity.Conversations) as Verbosity);
+      const observer = new StreamingObserver();
       const adapter = createAdapter(buildAdapterConfig(opts));
 
       const probes = await loadProbes();
@@ -229,26 +227,24 @@ export function registerScanCommands(program: Command): void {
         process.exit(1);
       }
 
-      console.log(`\n${template.id}: ${template.name}`);
-      console.log(`Severity: ${colorSeverity(template.severity)} | Category: ${template.category}`);
-      console.log();
+      logger.info(`\n${template.id}: ${template.name}`);
+      logger.info(`Severity: ${colorSeverity(template.severity)} | Category: ${template.category}`);
+      logger.info('');
+
+      const totalTurns = template.turns.filter((t) => t.role === 'user').length;
+      logger.probeStart(template.id, template.name, totalTurns);
 
       let finding;
       try {
         finding = await executeProbe(template, adapter, {
-          onTurn: (stepIndex, prompt, response) => {
-            console.log(`  Step ${stepIndex}:`);
-            console.log(`  Prompt: ${truncate(prompt, 150)}`);
-            console.log(`  Response: ${truncate(response, 200)}`);
-            console.log();
-          },
+          observer,
+          ...logger.buildProbeCallbacks(),
         });
       } finally {
         await adapter.close?.();
       }
 
-      console.log(`Verdict: ${VERDICT_LABELS[finding.verdict]}`);
-      console.log(`Confidence: ${Math.round(finding.confidence * 100)}%`);
-      console.log(`Reasoning: ${finding.reasoning}`);
+      logger.leakageSignals(finding.leakageSignals);
+      logger.finding(finding, 1, 1);
     });
 }
