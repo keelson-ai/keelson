@@ -34,6 +34,13 @@ interface ScanCommandOpts {
   concurrency?: string;
   maxPasses?: string;
   noStore?: boolean;
+  // SiteGPT-specific
+  chatbotId?: string;
+  // Browser-specific
+  chatInputSelector?: string;
+  chatSubmitSelector?: string;
+  chatResponseSelector?: string;
+  browserHeadless?: boolean;
 }
 
 function printHeader(title: string, opts: ScanCommandOpts, extra?: Record<string, string>): void {
@@ -109,7 +116,13 @@ function addCommonScanOptions(cmd: ReturnType<Command['command']>, delayDefault 
     .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
     .option('--adapter-type <type>', 'Adapter type', 'openai')
     .option('--fail-on-vuln', 'Exit with code 1 if vulnerabilities found', false)
-    .option('--fail-threshold <rate>', 'Vulnerability rate threshold (0.0-1.0)', '0.0');
+    .option('--fail-threshold <rate>', 'Vulnerability rate threshold (0.0-1.0)', '0.0')
+    .option('--chatbot-id <id>', 'Chatbot ID (SiteGPT adapter)')
+    .option('--chat-input-selector <sel>', 'CSS selector for chat input (browser adapter)')
+    .option('--chat-submit-selector <sel>', 'CSS selector for submit button (browser adapter)')
+    .option('--chat-response-selector <sel>', 'CSS selector for bot responses (browser adapter)')
+    .option('--browser-headless', 'Run browser in headless mode (default: true)', true)
+    .option('--no-browser-headless', 'Run browser in headed mode (visible)');
 }
 
 // ─── Commands ───────────────────────────────────────────

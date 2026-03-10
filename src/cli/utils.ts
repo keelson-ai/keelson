@@ -15,12 +15,24 @@ export function buildAdapterConfig(opts: {
   apiKey?: string;
   model?: string;
   adapterType?: string;
+  chatbotId?: string;
+  chatInputSelector?: string;
+  chatSubmitSelector?: string;
+  chatResponseSelector?: string;
+  browserHeadless?: boolean;
 }): AdapterConfig {
   return {
     type: opts.adapterType ?? 'openai',
     baseUrl: opts.target,
     apiKey: opts.apiKey,
     model: opts.model,
+    // SiteGPT-specific
+    chatbotId: opts.chatbotId,
+    // Browser-specific
+    chatInputSelector: opts.chatInputSelector,
+    chatSubmitSelector: opts.chatSubmitSelector,
+    chatResponseSelector: opts.chatResponseSelector,
+    browserHeadless: opts.browserHeadless,
   };
 }
 

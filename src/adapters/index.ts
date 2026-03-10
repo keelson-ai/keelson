@@ -1,7 +1,9 @@
 import { A2AAdapter } from './a2a.js';
 import { AnthropicAdapter } from './anthropic.js';
+import { BrowserAdapter } from './browser.js';
 import { CrewAIAdapter } from './crewai.js';
 import { GenericHTTPAdapter } from './http.js';
+import { IntercomAdapter } from './intercom.js';
 import { LangChainAdapter } from './langchain.js';
 import { LangGraphAdapter } from './langgraph.js';
 import { MCPAdapter } from './mcp.js';
@@ -21,6 +23,8 @@ export { A2AAdapter } from './a2a.js';
 export { CrewAIAdapter } from './crewai.js';
 export { LangChainAdapter } from './langchain.js';
 export { SiteGPTAdapter } from './sitegpt.js';
+export { IntercomAdapter } from './intercom.js';
+export { BrowserAdapter } from './browser.js';
 
 type AdapterConstructor = new (config: AdapterConfig) => Adapter;
 
@@ -34,6 +38,8 @@ const ADAPTER_MAP: Record<string, AdapterConstructor> = {
   crewai: CrewAIAdapter,
   langchain: LangChainAdapter,
   sitegpt: SiteGPTAdapter,
+  intercom: IntercomAdapter,
+  browser: BrowserAdapter,
 };
 
 export function createAdapter(config: AdapterConfig): Adapter {
