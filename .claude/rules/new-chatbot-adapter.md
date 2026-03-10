@@ -29,6 +29,12 @@ Check `src/adapters/index.ts` for the `ADAPTER_MAP` to see what already exists b
    - Use `nock` to mock HTTP endpoints
    - Test happy path, error handling, and multi-turn conversation
 
+5. **Update `README.md`**
+   - Add a row to the **Adapters** table with: adapter name, `--adapter <flag>`, protocol, and use case
+   - Add a usage example in the code block below the table showing the CLI invocation
+   - Update the adapter count in the introductory paragraph and the "How It Works" diagram (e.g., "9 Adapters" → "10 Adapters")
+   - Update the project structure section if the adapter count mentioned there changes
+
 ## Adapter Template
 
 ```typescript
