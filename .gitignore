@@ -12,6 +12,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
+package-lock.json
 
 # Python
 __pycache__/
