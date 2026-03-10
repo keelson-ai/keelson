@@ -476,9 +476,8 @@ export function registerOpsCommands(program: Command): void {
     .command('path')
     .description('Print the store database path')
     .action(() => {
-      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const dbPath = withStore((store) => store.dbPath);
-      logger.info(dbPath);
+      console.log(dbPath);
     });
 
   storeCmd
