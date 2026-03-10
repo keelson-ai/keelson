@@ -45,7 +45,10 @@ describe('engine verbosity callbacks', () => {
         { role: 'user', content: 'Turn 2' },
       ],
     });
-    const rawObjects = [{ model: 'gpt-4', id: 'r1' }, { model: 'gpt-4', id: 'r2' }];
+    const rawObjects = [
+      { model: 'gpt-4', id: 'r1' },
+      { model: 'gpt-4', id: 'r2' },
+    ];
     const adapter = mockAdapter(['Response 1', 'Response 2'], rawObjects);
     const onTurnComplete = vi.fn();
 
@@ -56,6 +59,7 @@ describe('engine verbosity callbacks', () => {
     const firstCall = onTurnComplete.mock.calls[0][0];
     expect(firstCall.probeId).toBe('GA-001');
     expect(firstCall.stepIndex).toBe(0);
+    expect(firstCall.userTurnIndex).toBe(0);
     expect(firstCall.totalTurns).toBe(2);
     expect(firstCall.prompt).toBe('Turn 1');
     expect(firstCall.response).toBe('Response 1');
@@ -64,6 +68,7 @@ describe('engine verbosity callbacks', () => {
 
     const secondCall = onTurnComplete.mock.calls[1][0];
     expect(secondCall.stepIndex).toBe(1);
+    expect(secondCall.userTurnIndex).toBe(1);
     expect(secondCall.totalTurns).toBe(2);
     expect(secondCall.prompt).toBe('Turn 2');
     expect(secondCall.response).toBe('Response 2');
@@ -155,6 +160,33 @@ describe('engine verbosity callbacks', () => {
     await executeProbe(makeTemplate(), adapter, { delayMs: 0, onEarlyTermination });
 
     expect(onEarlyTermination).not.toHaveBeenCalled();
+  });
+
+  it('userTurnIndex is correct for mixed-role templates', async () => {
+    const template = makeTemplate({
+      turns: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'Turn 1' },
+        { role: 'assistant', content: 'Injected assistant context' },
+        { role: 'user', content: 'Turn 2' },
+      ],
+    });
+    const adapter = mockAdapter(['Response 1', 'Response 2']);
+    const onTurnComplete = vi.fn();
+
+    await executeProbe(template, adapter, { delayMs: 0, onTurnComplete });
+
+    expect(onTurnComplete).toHaveBeenCalledTimes(2);
+
+    const first = onTurnComplete.mock.calls[0][0];
+    expect(first.stepIndex).toBe(1); // template index (system=0, user=1)
+    expect(first.userTurnIndex).toBe(0); // first user turn
+    expect(first.totalTurns).toBe(2);
+
+    const second = onTurnComplete.mock.calls[1][0];
+    expect(second.stepIndex).toBe(3); // template index (assistant=2, user=3)
+    expect(second.userTurnIndex).toBe(1); // second user turn
+    expect(second.totalTurns).toBe(2);
   });
 
   it('onDetection details reflect safe response', async () => {

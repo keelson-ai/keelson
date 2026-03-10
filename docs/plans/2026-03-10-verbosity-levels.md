@@ -12,16 +12,16 @@
 
 ## File Structure
 
-| Action | Path | Responsibility |
-|--------|------|----------------|
-| Create | `src/cli/verbosity.ts` | Verbosity enum, parse helper, Logger class |
-| Create | `tests/cli/verbosity.test.ts` | Tests for parsing + Logger output |
-| Modify | `src/core/engine.ts` | Extended `onTurn` callback with richer data; new `onDetection` callback |
-| Modify | `src/core/detection.ts` | Return intermediate match details alongside DetectionResult |
-| Modify | `src/cli/scan-commands.ts` | Wire `-v` flags, create Logger, pass to callbacks |
-| Modify | `src/cli/advanced-commands.ts` | Wire `-v` flags to evolve/chain/campaign commands |
-| Modify | `src/cli/index.ts` | Add global `-v` option |
-| Create | `tests/core/engine-verbosity.test.ts` | Tests for extended callbacks |
+| Action | Path                                  | Responsibility                                                          |
+|--------|---------------------------------------|-------------------------------------------------------------------------|
+| Create | `src/cli/verbosity.ts`                | Verbosity enum, parse helper, Logger class                              |
+| Create | `tests/cli/verbosity.test.ts`         | Tests for parsing + Logger output                                       |
+| Modify | `src/core/engine.ts`                  | Extended `onTurn` callback with richer data; new `onDetection` callback |
+| Modify | `src/core/detection.ts`               | Return intermediate match details alongside DetectionResult             |
+| Modify | `src/cli/scan-commands.ts`            | Wire `-v` flags, create Logger, pass to callbacks                       |
+| Modify | `src/cli/advanced-commands.ts`        | Wire `-v` flags to evolve/chain/campaign commands                       |
+| Modify | `src/cli/index.ts`                    | Add global `-v` option                                                  |
+| Create | `tests/core/engine-verbosity.test.ts` | Tests for extended callbacks                                            |
 
 ---
 
@@ -30,6 +30,7 @@
 ### Task 1: Verbosity enum and parser
 
 **Files:**
+
 - Create: `src/cli/verbosity.ts`
 - Create: `tests/cli/verbosity.test.ts`
 
@@ -111,6 +112,7 @@ git commit -m "feat: add Verbosity enum and parseVerbosity helper"
 ### Task 2: Logger class
 
 **Files:**
+
 - Modify: `src/cli/verbosity.ts`
 - Modify: `tests/cli/verbosity.test.ts`
 
@@ -403,6 +405,7 @@ git commit -m "feat: add Logger class with verbosity-gated output methods"
 ### Task 3: Extend engine callbacks for richer turn data
 
 **Files:**
+
 - Modify: `src/core/engine.ts`
 - Create: `tests/core/engine-verbosity.test.ts`
 
@@ -610,6 +613,7 @@ git commit -m "feat: extend engine callbacks with onTurnComplete, onDetection, o
 ### Task 4: Export pattern details from detection module
 
 **Files:**
+
 - Modify: `src/core/detection.ts`
 
 - [ ] **Step 1: Add PatternDetails interface and patternDetectWithDetails function**
@@ -699,6 +703,7 @@ git commit -m "feat: add patternDetectWithDetails exposing intermediate match re
 ### Task 5: Add global -v flag and wire Logger into scan commands
 
 **Files:**
+
 - Modify: `src/cli/index.ts`
 - Modify: `src/cli/scan-commands.ts`
 
@@ -829,6 +834,7 @@ git commit -m "feat: wire -v verbosity flag into scan and probe commands"
 ### Task 6: Wire verbosity into advanced commands
 
 **Files:**
+
 - Modify: `src/cli/advanced-commands.ts`
 
 - [ ] **Step 1: Add Logger to evolve, chain, and campaign commands**
@@ -854,6 +860,7 @@ git commit -m "feat: wire verbosity into advanced commands (evolve, chain, campa
 ### Task 7: End-to-end CLI verbosity test
 
 **Files:**
+
 - Create: `tests/cli/verbosity-e2e.test.ts`
 
 - [ ] **Step 1: Write integration test that runs CLI with -vv**
@@ -902,11 +909,13 @@ git commit -m "test: add e2e tests for CLI verbosity flags"
 ### Task 8: Export Logger from cli barrel and update core/index.ts
 
 **Files:**
+
 - Modify: `src/core/index.ts` — export `patternDetectWithDetails` and `PatternDetails`
 
 - [ ] **Step 1: Update exports**
 
 Add to `src/core/index.ts`:
+
 ```ts
 export { patternDetectWithDetails } from './detection.js';
 export type { PatternDetails, PatternDetectResult } from './detection.js';

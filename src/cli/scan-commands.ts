@@ -10,7 +10,7 @@ import {
   printScanSummary,
   writeScanOutput,
 } from './utils.js';
-import { Logger, parseVerbosity } from './verbosity.js';
+import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { createAdapter } from '../adapters/index.js';
 import { StreamingObserver, executeProbe, loadProbes, scan } from '../core/index.js';
 import type { Store } from '../state/index.js';
@@ -212,7 +212,9 @@ export function registerScanCommands(program: Command): void {
     .option('--model <model>', 'Model name for requests', 'default')
     .option('--adapter-type <type>', 'Adapter type', 'openai')
     .action(async (opts: ScanCommandOpts & { probeId: string }) => {
-      const logger = new Logger(parseVerbosity(program.opts().verbose));
+      // probe is a debugging command — default to Conversations so turns + reasoning show without -v
+      const verbosity = parseVerbosity(program.opts().verbose);
+      const logger = new Logger(Math.max(verbosity, Verbosity.Conversations) as Verbosity);
       const observer = new StreamingObserver();
       const adapter = createAdapter(buildAdapterConfig(opts));
 
@@ -235,7 +237,14 @@ export function registerScanCommands(program: Command): void {
         finding = await executeProbe(template, adapter, {
           observer,
           onTurnComplete: (info) => {
-            logger.turn(info.probeId, info.stepIndex, info.totalTurns, info.prompt, info.response, info.responseTimeMs);
+            logger.turn(
+              info.probeId,
+              info.userTurnIndex,
+              info.totalTurns,
+              info.prompt,
+              info.response,
+              info.responseTimeMs,
+            );
             logger.rawResponse(info.raw);
           },
           onEarlyTermination: (reason) => logger.turnSignal(reason),

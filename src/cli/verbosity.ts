@@ -6,11 +6,11 @@ import type { DetectionResult, Finding, LeakageSignal, Verdict } from '../types/
 export type { PatternDetails } from '../core/detection.js';
 
 export enum Verbosity {
-  Silent = 0,        // default: one-line verdict
-  Verdicts = 1,      // -v: verdict + reasoning + timing
+  Silent = 0, // default: one-line verdict
+  Verdicts = 1, // -v: verdict + reasoning + timing
   Conversations = 2, // -vv: real-time conversation per turn
-  Detection = 3,     // -vvv: real-time + detection breakdown
-  Debug = 4,         // -vvvv: raw HTTP, session state, keyword matches
+  Detection = 3, // -vvv: real-time + detection breakdown
+  Debug = 4, // -vvvv: raw HTTP, session state, keyword matches
 }
 
 /**
@@ -53,16 +53,27 @@ export class Logger {
     }
   }
 
-  turn(probeId: string, stepIndex: number, totalTurns: number, prompt: string, response: string, timeMs: number): void {
+  turn(
+    probeId: string,
+    userTurnIndex: number,
+    totalTurns: number,
+    prompt: string,
+    response: string,
+    timeMs: number,
+  ): void {
     if (this.level < Verbosity.Conversations) return;
-    write(chalk.dim(`  ── turn ${stepIndex + 1}/${totalTurns} (${timeMs}ms) ──\n`));
+    write(chalk.dim(`  ── turn ${userTurnIndex + 1}/${totalTurns} (${timeMs}ms) ──\n`));
     write(chalk.cyan('  → ') + prompt + '\n');
     write(chalk.magenta('  ← ') + response + '\n');
   }
 
   probeStart(probeId: string, probeName: string, totalTurns: number): void {
     if (this.level < Verbosity.Conversations) return;
-    write(chalk.bold(`\n▶ ${probeId} — ${probeName}`) + chalk.dim(` (${totalTurns} turn${totalTurns === 1 ? '' : 's'})`) + '\n');
+    write(
+      chalk.bold(`\n▶ ${probeId} — ${probeName}`) +
+        chalk.dim(` (${totalTurns} turn${totalTurns === 1 ? '' : 's'})`) +
+        '\n',
+    );
   }
 
   turnSignal(message: string): void {

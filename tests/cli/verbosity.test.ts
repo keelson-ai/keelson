@@ -220,7 +220,13 @@ describe('Logger', () => {
     it('prints signals at Detection (level 3)', () => {
       const logger = new Logger(Verbosity.Detection);
       const signals: LeakageSignal[] = [
-        { stepIndex: 0, signalType: 'system_prompt_leak', severity: 'high', description: 'Leaked system prompt', confidence: 0.85 },
+        {
+          stepIndex: 0,
+          signalType: 'system_prompt_leak',
+          severity: 'high',
+          description: 'Leaked system prompt',
+          confidence: 0.85,
+        },
       ];
       logger.leakageSignals(signals);
       const out = output();

@@ -368,7 +368,14 @@ export function registerAdvancedCommands(program: Command): void {
           const finding = await executeProbe(variant, targetAdapter, {
             delayMs: 500,
             onTurnComplete: (info) => {
-              logger.turn(info.probeId, info.stepIndex, info.totalTurns, info.prompt, info.response, info.responseTimeMs);
+              logger.turn(
+                info.probeId,
+                info.userTurnIndex,
+                info.totalTurns,
+                info.prompt,
+                info.response,
+                info.responseTimeMs,
+              );
             },
             onDetection: (result, details) => {
               logger.detection(result, details);
