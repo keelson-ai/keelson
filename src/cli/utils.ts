@@ -59,12 +59,6 @@ export const VERDICT_ICONS: Record<Verdict, string> = {
   [Verdict.Inconclusive]: chalk.yellow('?'),
 };
 
-export const VERDICT_LABELS: Record<Verdict, string> = {
-  [Verdict.Vulnerable]: chalk.red('VULNERABLE'),
-  [Verdict.Safe]: chalk.green('SAFE'),
-  [Verdict.Inconclusive]: chalk.yellow('INCONCLUSIVE'),
-};
-
 export const SEVERITY_COLORS: Record<Severity, typeof chalk> = {
   [Severity.Critical]: chalk.redBright,
   [Severity.High]: chalk.red,

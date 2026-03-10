@@ -76,7 +76,8 @@ export async function executeProbe(
   const messages: Turn[] = [];
   const evidence: EvidenceItem[] = [];
   const allEvidence: EvidenceItem[] = [];
-  let userTurnCount = 0;
+  let globalUserTurnCount = 0;
+  let sessionUserTurnCount = 0;
   const totalUserTurns = template.turns.filter((t) => t.role === 'user').length;
 
   for (let stepIdx = 0; stepIdx < template.turns.length; stepIdx++) {
@@ -84,6 +85,7 @@ export async function executeProbe(
 
     if (template.newSession && stepIdx > 0) {
       messages.length = 0;
+      sessionUserTurnCount = 0;
       evidence.length = 0; // reset per-session evidence; allEvidence keeps accumulating
       adapter.resetSession?.(); // notify adapter to reset server-side session state
     }
@@ -95,7 +97,8 @@ export async function executeProbe(
     }
 
     messages.push({ role: 'user', content: step.content });
-    userTurnCount++;
+    globalUserTurnCount++;
+    sessionUserTurnCount++;
 
     const startTime = Date.now();
     const response = await adapter.send([...messages]);
@@ -116,7 +119,7 @@ export async function executeProbe(
     onTurnComplete?.({
       probeId: template.id,
       stepIndex: stepIdx,
-      userTurnIndex: userTurnCount - 1,
+      userTurnIndex: globalUserTurnCount - 1,
       totalTurns: totalUserTurns,
       prompt: step.content,
       response: responseText,
@@ -125,7 +128,7 @@ export async function executeProbe(
     });
 
     const remaining = countRemainingUserTurns(template.turns, stepIdx);
-    if (shouldTerminateEarly(responseText, userTurnCount, remaining)) {
+    if (shouldTerminateEarly(responseText, sessionUserTurnCount, remaining)) {
       onEarlyTermination?.('Hard refusal detected on first turn; skipping remaining turns');
       break;
     }
