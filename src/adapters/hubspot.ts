@@ -112,6 +112,10 @@ export class HubSpotAdapter extends BaseAdapter {
     // Snapshot conversation text before sending
     const beforeText = await this.getConversationText();
 
+    // Wait for the send button to be enabled (critical for multi-turn: button is
+    // disabled while the bot is still responding from a previous turn)
+    await this.waitForSendReady();
+
     // Type into the textbox
     const textbox = await this.findTextbox();
     await textbox.click({ force: true });
@@ -120,12 +124,7 @@ export class HubSpotAdapter extends BaseAdapter {
     await this.page.waitForTimeout(300);
 
     // Send the message
-    const sendBtn = await this.hsFrame.$('button[aria-label="send message"], button[data-test-id="send-button"]');
-    if (sendBtn) {
-      await sendBtn.click({ force: true });
-    } else {
-      await this.hsFrame.press('[role="textbox"]', 'Enter');
-    }
+    await this.clickSend();
 
     // Wait for bot response
     const content = await this.waitForReply(beforeText, message);
@@ -134,6 +133,35 @@ export class HubSpotAdapter extends BaseAdapter {
     this.lastConversationText = await this.getConversationText();
 
     return { content, raw: { method: 'hubspot-iframe' }, latencyMs };
+  }
+
+  private async waitForSendReady(): Promise<void> {
+    const timeout = 30_000;
+    const deadline = Date.now() + timeout;
+    const btnSelectors = 'button[aria-label="send message"], button[data-test-id="send-button"]';
+
+    while (Date.now() < deadline) {
+      const btn = await this.hsFrame.$(btnSelectors);
+      if (btn) {
+        const disabled = await btn.getAttribute('disabled');
+        const ariaDisabled = await btn.getAttribute('aria-disabled');
+        if (disabled === null && ariaDisabled !== 'true') return;
+      } else {
+        // No explicit send button — widget uses Enter key, always ready
+        return;
+      }
+      await this.page.waitForTimeout(500);
+    }
+    // Don't block — proceed and let the send attempt fail naturally if still disabled
+  }
+
+  private async clickSend(): Promise<void> {
+    const sendBtn = await this.hsFrame.$('button[aria-label="send message"], button[data-test-id="send-button"]');
+    if (sendBtn) {
+      await sendBtn.click({ force: true });
+    } else {
+      await this.hsFrame.press('[role="textbox"]', 'Enter');
+    }
   }
 
   private async findTextbox(): Promise<any> {

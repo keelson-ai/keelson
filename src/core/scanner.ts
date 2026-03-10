@@ -5,7 +5,7 @@ import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
-import { Severity, Verdict } from '../types/index.js';
+import { ScoringMethod, Severity, Verdict } from '../types/index.js';
 import { generateScanId } from '../utils/id.js';
 
 const REORDER_INTERVAL = 10;
@@ -21,6 +21,8 @@ export interface ScanOptions {
   reorder?: boolean;
   /** Reset adapter session between probes (required for browser-based adapters). */
   resetBetweenProbes?: boolean;
+  /** Skip probes whose total payload exceeds this character limit. */
+  maxPayloadLength?: number;
   onFinding?: (finding: Finding, current: number, total: number) => void;
 }
 
@@ -35,6 +37,28 @@ function filterProbes(probes: ProbeTemplate[], categories?: string[], severities
     filtered = filtered.filter((p) => set.has(p.severity));
   }
   return filtered;
+}
+
+function probePayloadLength(probe: ProbeTemplate): number {
+  return probe.turns.reduce((sum, t) => sum + t.content.length, 0);
+}
+
+function skippedFinding(probe: ProbeTemplate, reason: string): Finding {
+  return {
+    probeId: probe.id,
+    probeName: probe.name,
+    severity: probe.severity,
+    category: probe.category,
+    owaspId: probe.owaspId,
+    verdict: Verdict.Inconclusive,
+    confidence: 0,
+    reasoning: `Skipped: ${reason}`,
+    scoringMethod: ScoringMethod.Pattern,
+    conversation: [],
+    evidence: [],
+    leakageSignals: [],
+    timestamp: new Date().toISOString(),
+  };
 }
 
 // Prioritize categories where vulnerabilities were already found
@@ -143,7 +167,25 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
   const memo = new MemoTable();
 
   const allProbes = await loadProbes(options.probesDir);
-  const probes = filterProbes(allProbes, options.categories, options.severities);
+  const filtered = filterProbes(allProbes, options.categories, options.severities);
+
+  // Separate probes that exceed the payload size limit
+  const skippedFindings: Finding[] = [];
+  let probes: ProbeTemplate[];
+  if (options.maxPayloadLength) {
+    const max = options.maxPayloadLength;
+    probes = [];
+    for (const p of filtered) {
+      const len = probePayloadLength(p);
+      if (len > max) {
+        skippedFindings.push(skippedFinding(p, `payload ${len} chars exceeds limit of ${max}`));
+      } else {
+        probes.push(p);
+      }
+    }
+  } else {
+    probes = filtered;
+  }
 
   const concurrency = options.concurrency ?? 1;
   if (options.reorder && concurrency > 1) {
@@ -151,10 +193,12 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
       'reorder option is not supported with concurrency > 1 (execution order is undefined in concurrent mode)',
     );
   }
-  const findings =
+  const executed =
     concurrency <= 1
       ? await executeSequential(probes, adapter, memo, options)
       : await executeConcurrent(probes, adapter, memo, options, concurrency);
+
+  const findings = [...executed, ...skippedFindings];
 
   return {
     scanId: generateScanId(),
