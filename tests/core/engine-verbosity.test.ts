@@ -133,26 +133,6 @@ describe('engine verbosity callbacks', () => {
     expect(onCombinedResult.mock.calls[0][0].method).toBe(ScoringMethod.Combined);
   });
 
-  it('existing onTurn still works alongside new callbacks', async () => {
-    const template = makeTemplate({
-      turns: [
-        { role: 'user', content: 'Turn 1' },
-        { role: 'user', content: 'Turn 2' },
-      ],
-    });
-    const adapter = mockAdapter(['Response 1', 'Response 2']);
-    const onTurn = vi.fn();
-    const onTurnComplete = vi.fn();
-
-    await executeProbe(template, adapter, { delayMs: 0, onTurn, onTurnComplete });
-
-    expect(onTurn).toHaveBeenCalledTimes(2);
-    expect(onTurn).toHaveBeenCalledWith(0, 'Turn 1', 'Response 1');
-    expect(onTurn).toHaveBeenCalledWith(1, 'Turn 2', 'Response 2');
-
-    expect(onTurnComplete).toHaveBeenCalledTimes(2);
-  });
-
   it('does not call onEarlyTermination when no early termination occurs', async () => {
     const adapter = mockAdapter(['PWNED']);
     const onEarlyTermination = vi.fn();

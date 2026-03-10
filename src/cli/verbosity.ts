@@ -53,14 +53,7 @@ export class Logger {
     }
   }
 
-  turn(
-    probeId: string,
-    userTurnIndex: number,
-    totalTurns: number,
-    prompt: string,
-    response: string,
-    timeMs: number,
-  ): void {
+  turn(userTurnIndex: number, totalTurns: number, prompt: string, response: string, timeMs: number): void {
     if (this.level < Verbosity.Conversations) return;
     write(chalk.dim(`  ── turn ${userTurnIndex + 1}/${totalTurns} (${timeMs}ms) ──\n`));
     write(chalk.cyan('  → ') + prompt + '\n');
@@ -117,8 +110,46 @@ export class Logger {
     write(JSON.stringify(raw, null, 2) + '\n');
   }
 
+  /** Always-visible info line (headers, summaries). */
+  info(message: string): void {
+    write(message + '\n');
+  }
+
+  /** Step progress at Conversations level. */
+  step(icon: string, message: string): void {
+    if (this.level < Verbosity.Conversations) return;
+    write(`  ${icon} ${message}\n`);
+  }
+
   debug(message: string): void {
     if (this.level < Verbosity.Debug) return;
     write(chalk.dim(`  [debug] ${message}\n`));
+  }
+
+  /** Build a standard set of engine callbacks wired to this logger. */
+  buildProbeCallbacks(): {
+    onTurnComplete: (info: {
+      userTurnIndex: number;
+      totalTurns: number;
+      prompt: string;
+      response: string;
+      responseTimeMs: number;
+      raw: unknown;
+    }) => void;
+    onEarlyTermination: (reason: string) => void;
+    onDetection: (result: DetectionResult, details: PatternDetails) => void;
+    onJudgeResult: (result: DetectionResult) => void;
+    onCombinedResult: (result: DetectionResult) => void;
+  } {
+    return {
+      onTurnComplete: (info) => {
+        this.turn(info.userTurnIndex, info.totalTurns, info.prompt, info.response, info.responseTimeMs);
+        this.rawResponse(info.raw);
+      },
+      onEarlyTermination: (reason) => this.turnSignal(reason),
+      onDetection: (result, details) => this.detection(result, details),
+      onJudgeResult: (result) => this.judgeResult(result),
+      onCombinedResult: (result) => this.combinedResult(result),
+    };
   }
 }

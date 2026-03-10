@@ -123,7 +123,7 @@ describe('Logger', () => {
   describe('turn()', () => {
     it('prints turn content at Conversations (level 2)', () => {
       const logger = new Logger(Verbosity.Conversations);
-      logger.turn('GA-001', 0, 3, 'Hello agent', 'I cannot do that', 150);
+      logger.turn(0, 3, 'Hello agent', 'I cannot do that', 150);
       const out = output();
       expect(out).toContain('Hello agent');
       expect(out).toContain('I cannot do that');
@@ -132,7 +132,7 @@ describe('Logger', () => {
 
     it('is a no-op at Verdicts (level 1)', () => {
       const logger = new Logger(Verbosity.Verdicts);
-      logger.turn('GA-001', 0, 1, 'Hello', 'World', 100);
+      logger.turn(0, 1, 'Hello', 'World', 100);
       expect(spy).not.toHaveBeenCalled();
     });
   });

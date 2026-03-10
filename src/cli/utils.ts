@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 
 import chalk from 'chalk';
 
+import type { Logger } from './verbosity.js';
 import { Store } from '../state/index.js';
 import type { AdapterConfig, Finding, ScanResult, ScanSummary } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
@@ -112,42 +113,42 @@ export function assertScanResult(parsed: unknown, label: string): ScanResult {
   return obj as unknown as ScanResult;
 }
 
-export function printScanSummary(result: ScanResult): void {
+export function printScanSummary(result: ScanResult, logger: Logger): void {
   const { summary } = result;
 
-  console.log(chalk.bold('\nScan Summary'));
-  console.log(chalk.dim('─'.repeat(50)));
-  console.log(`  Target:  ${result.target}`);
-  console.log(`  Scan ID: ${result.scanId}`);
-  console.log(`  Total:   ${summary.total}`);
-  console.log(
+  logger.info(chalk.bold('\nScan Summary'));
+  logger.info(chalk.dim('─'.repeat(50)));
+  logger.info(`  Target:  ${result.target}`);
+  logger.info(`  Scan ID: ${result.scanId}`);
+  logger.info(`  Total:   ${summary.total}`);
+  logger.info(
     `  ${chalk.red(`Vulnerable: ${summary.vulnerable}`)}  ` +
       `${chalk.green(`Safe: ${summary.safe}`)}  ` +
       `${chalk.yellow(`Inconclusive: ${summary.inconclusive}`)}`,
   );
 
-  printSeverityBreakdown(summary);
-  printCategoryBreakdown(summary);
+  printSeverityBreakdown(summary, logger);
+  printCategoryBreakdown(summary, logger);
 }
 
-function printSeverityBreakdown(summary: ScanSummary): void {
+function printSeverityBreakdown(summary: ScanSummary, logger: Logger): void {
   const entries = Object.entries(summary.bySeverity).filter(([, count]) => count > 0);
   if (entries.length === 0) return;
 
-  console.log(chalk.bold('\n  Vulnerabilities by Severity'));
+  logger.info(chalk.bold('\n  Vulnerabilities by Severity'));
   for (const [sev, count] of entries) {
     const colorFn = SEVERITY_COLORS[sev as Severity];
-    console.log(`    ${colorFn(sev)}: ${count}`);
+    logger.info(`    ${colorFn(sev)}: ${count}`);
   }
 }
 
-function printCategoryBreakdown(summary: ScanSummary): void {
+function printCategoryBreakdown(summary: ScanSummary, logger: Logger): void {
   const entries = Object.entries(summary.byCategory).filter(([, count]) => count > 0);
   if (entries.length === 0) return;
 
-  console.log(chalk.bold('\n  Vulnerabilities by Category'));
+  logger.info(chalk.bold('\n  Vulnerabilities by Category'));
   for (const [cat, count] of entries) {
-    console.log(`    ${cat}: ${chalk.red(String(count))}`);
+    logger.info(`    ${cat}: ${chalk.red(String(count))}`);
   }
 }
 
@@ -161,13 +162,14 @@ export function checkFailGates(
   totalCount: number,
   failOnVuln: boolean,
   threshold: number,
+  logger: Logger,
 ): number {
   if (!failOnVuln) return 0;
   if (totalCount === 0) return 0;
 
   const vulnRate = vulnerableCount / totalCount;
   if (vulnRate > threshold) {
-    console.log(
+    logger.info(
       chalk.red(
         `\nFail gate triggered: vulnerability rate ${(vulnRate * 100).toFixed(1)}% exceeds threshold ${(threshold * 100).toFixed(1)}%`,
       ),
@@ -195,15 +197,13 @@ export async function writeReport(result: ScanResult, format: string, output: st
       const reportOutput = reporting.generateReport(result, format);
       const formatted = typeof reportOutput === 'string' ? reportOutput : JSON.stringify(reportOutput, null, 2);
       await writeFile(output, formatted, 'utf-8');
-      console.log(chalk.green(`Report saved: ${output}`));
       return;
     } catch {
       // Reporting module not available — fall back to JSON
-      console.log(chalk.yellow(`Warning: '${format}' formatter not available, falling back to JSON`));
+      process.stderr.write(chalk.yellow(`Warning: '${format}' formatter not available, falling back to JSON\n`));
     }
   }
 
   // Default: write JSON
   await writeFile(output, JSON.stringify(result, null, 2), 'utf-8');
-  console.log(chalk.green(`Report saved: ${output}`));
 }
