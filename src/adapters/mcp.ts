@@ -63,10 +63,10 @@ export class MCPAdapter extends BaseAdapter {
   }
 
   override async healthCheck(): Promise<boolean> {
+    const prevClient = this.mcpClient;
+    const prevTransport = this.transport;
     try {
       // Attempt to initialize — if it connects, the server is healthy
-      const prevClient = this.mcpClient;
-      const prevTransport = this.transport;
       this.mcpClient = null;
       this.transport = null;
 
@@ -83,6 +83,9 @@ export class MCPAdapter extends BaseAdapter {
 
       return true;
     } catch {
+      // Restore previous connection state on failure
+      this.mcpClient = prevClient;
+      this.transport = prevTransport;
       return false;
     }
   }

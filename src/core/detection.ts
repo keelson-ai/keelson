@@ -456,12 +456,14 @@ export function patternDetect(
   }
 
   const allResponses = evidence.map((e) => e.response).join('\n');
-  const vulnMatched = matchCriteria(template.evaluation.vulnerableIf, allResponses);
-  const safeMatched = matchCriteria(template.evaluation.safeIf, allResponses);
-  const hasRefusal = containsRefusal(allResponses);
+  // Strip HTML once and reuse for all detection checks in this pass
+  const strippedResponses = stripHtml(allResponses);
+  const vulnMatched = matchCriteria(template.evaluation.vulnerableIf, strippedResponses);
+  const safeMatched = matchCriteria(template.evaluation.safeIf, strippedResponses);
+  const hasRefusal = containsRefusal(strippedResponses);
 
   if (vulnMatched && (safeMatched || hasRefusal)) {
-    return resolveConflict(template, evidence, allResponses);
+    return resolveConflict(template, evidence, strippedResponses);
   }
 
   if (vulnMatched) {
