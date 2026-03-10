@@ -19,6 +19,7 @@ import { OpenAIAdapter, ProberAdapter, createAdapter } from '../adapters/index.j
 import { parseCampaignConfig } from '../campaign/config.js';
 import { runCampaign } from '../campaign/runner.js';
 import { executeProbe, loadProbes } from '../core/index.js';
+import { logger } from '../core/logger.js';
 import { executeChain, synthesizeChainsLlm } from '../prober/index.js';
 import type { AgentProfile } from '../prober/index.js';
 import {
@@ -113,9 +114,9 @@ function registerTestCommand(
     const adapter = createAdapter(adapterConfig);
     const { scan } = await import('../core/index.js');
 
-    console.log(`\n${header}`);
-    console.log(`Target: ${opts.target}`);
-    console.log();
+    logger.info(`\n${header}`);
+    logger.info(`Target: ${opts.target}`);
+    logger.info('');
 
     const categories = opts.category ? [opts.category] : undefined;
     const delayMs = parseInt(opts.delay, 10);
@@ -127,7 +128,7 @@ function registerTestCommand(
         delayMs,
         onFinding: (finding, current, total) => {
           const icon = VERDICT_ICONS[finding.verdict];
-          console.log(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
+          logger.info(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
         },
       });
     } finally {
@@ -179,14 +180,14 @@ export function registerAdvancedCommands(program: Command): void {
       });
       const adapter = createAdapter(adapterConfig);
 
-      console.log('\nKeelson Statistical Campaign');
-      console.log(`Config: ${config.campaign.name}`);
-      console.log(`Target: ${config.target.url}`);
-      console.log(`Trials/probe: ${config.campaign.trialsPerProbe}`);
+      logger.info('\nKeelson Statistical Campaign');
+      logger.info(`Config: ${config.campaign.name}`);
+      logger.info(`Target: ${config.target.url}`);
+      logger.info(`Trials/probe: ${config.campaign.trialsPerProbe}`);
       if (config.concurrency && config.concurrency.maxWorkers > 1) {
-        console.log(`Concurrency: ${config.concurrency.maxWorkers}`);
+        logger.info(`Concurrency: ${config.concurrency.maxWorkers}`);
       }
-      console.log();
+      logger.info('');
 
       let result;
       try {
@@ -212,7 +213,7 @@ export function registerAdvancedCommands(program: Command): void {
           {
             onFinding: (finding, current, total) => {
               const icon = VERDICT_ICONS[finding.verdict];
-              console.log(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
+              logger.info(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
             },
           },
         );
@@ -221,16 +222,16 @@ export function registerAdvancedCommands(program: Command): void {
       }
 
       const vulnCount = result.findings.filter((f) => f.verdict === Verdict.Vulnerable).length;
-      console.log('\nCampaign Results');
-      console.log(`  Probes tested: ${result.findings.length}`);
-      console.log(`  Vulnerable: ${vulnCount}`);
-      console.log(`  Total trials: ${result.findings.reduce((sum, f) => sum + f.trials.length, 0)}`);
+      logger.info('\nCampaign Results');
+      logger.info(`  Probes tested: ${result.findings.length}`);
+      logger.info(`  Vulnerable: ${vulnCount}`);
+      logger.info(`  Total trials: ${result.findings.reduce((sum, f) => sum + f.trials.length, 0)}`);
 
       if (opts.output) {
         // Campaign results are not a ScanResult, write as JSON
         await mkdir(dirname(opts.output), { recursive: true }).catch(() => {});
         await writeFile(opts.output, JSON.stringify(result, null, 2), 'utf-8');
-        console.log(`\nReport saved: ${opts.output}`);
+        logger.info(`\nReport saved: ${opts.output}`);
       }
 
       const store = openStore(opts);
@@ -272,7 +273,7 @@ export function registerAdvancedCommands(program: Command): void {
         const total = result.findings.length;
         const threshold = parseFloat(opts.failThreshold);
         if (total > 0 && vulnCount / total > threshold) {
-          console.log(
+          logger.info(
             `\nFail gate triggered: vulnerability rate ${((vulnCount / total) * 100).toFixed(1)}% exceeds threshold ${(threshold * 100).toFixed(1)}%`,
           );
           process.exit(1);
@@ -296,7 +297,7 @@ export function registerAdvancedCommands(program: Command): void {
       const probes = await loadProbes();
       const template = probes.find((p) => p.id === opts.probeId);
       if (!template) {
-        console.error(`Probe ${opts.probeId} not found`);
+        logger.error(`Probe ${opts.probeId} not found`);
         process.exit(1);
       }
 
@@ -320,10 +321,10 @@ export function registerAdvancedCommands(program: Command): void {
 
       const numMutations = parseInt(opts.mutations, 10);
 
-      console.log(`\nKeelson Evolve: ${opts.probeId}`);
-      console.log(`Target: ${opts.target}`);
-      console.log(`Mutations: ${numMutations}`);
-      console.log();
+      logger.info(`\nKeelson Evolve: ${opts.probeId}`);
+      logger.info(`Target: ${opts.target}`);
+      logger.info(`Mutations: ${numMutations}`);
+      logger.info('');
 
       const originalPrompt = template.turns[0].content;
       const history: Array<{ type: string; success: boolean }> = [];
@@ -364,7 +365,7 @@ export function registerAdvancedCommands(program: Command): void {
           results.push({ mutated, finding });
 
           const icon = VERDICT_ICONS[finding.verdict];
-          console.log(`  [${i + 1}/${numMutations}] ${mt}: ${icon}`);
+          logger.info(`  [${i + 1}/${numMutations}] ${mt}: ${icon}`);
         }
       } finally {
         await targetAdapter.close?.();
@@ -374,9 +375,9 @@ export function registerAdvancedCommands(program: Command): void {
       }
 
       const vulnCount = results.filter((r) => r.finding.verdict === Verdict.Vulnerable).length;
-      console.log('\nEvolve Results');
-      console.log(`  Mutations tried: ${results.length}`);
-      console.log(`  Bypasses found: ${vulnCount}`);
+      logger.info('\nEvolve Results');
+      logger.info(`  Mutations tried: ${results.length}`);
+      logger.info(`  Bypasses found: ${vulnCount}`);
     });
 
   // ─── chain ─────────────────────────────────────────────
@@ -398,7 +399,7 @@ export function registerAdvancedCommands(program: Command): void {
       const probes = await loadProbes();
       const template = probes.find((p) => p.id === opts.probeId);
       if (!template) {
-        console.error(`Probe ${opts.probeId} not found`);
+        logger.error(`Probe ${opts.probeId} not found`);
         process.exit(1);
       }
 
@@ -411,7 +412,7 @@ export function registerAdvancedCommands(program: Command): void {
       const targetAdapter = createAdapter(adapterConfig);
 
       if (!opts.proberUrl) {
-        console.error('Error: --prober-url is required for chain command');
+        logger.error('Error: --prober-url is required for chain command');
         process.exit(1);
       }
 
@@ -435,31 +436,31 @@ export function registerAdvancedCommands(program: Command): void {
           createdAt: new Date().toISOString(),
         };
 
-        console.log(`Generating ${count} LLM chains...`);
+        logger.info(`Generating ${count} LLM chains...`);
         const chains = await synthesizeChainsLlm(proberAdapter, profile, count);
 
         if (chains.length === 0) {
-          console.log('No chains generated.');
+          logger.info('No chains generated.');
           await targetAdapter.close?.();
           await proberAdapter.close?.();
           return;
         }
 
-        console.log(`Generated ${chains.length} chains. Executing...\n`);
+        logger.info(`Generated ${chains.length} chains. Executing...\n`);
         const delayMs = parseInt(opts.delay, 10);
 
         try {
           for (const chain of chains) {
-            console.log(`Chain: ${chain.name} (${chain.severity})`);
+            logger.info(`Chain: ${chain.name} (${chain.severity})`);
             const result = await executeChain(chain, targetAdapter, { delayMs });
 
             for (const entry of result.results) {
               const status = entry.continued ? '\u2713' : '\u2717';
-              console.log(`  ${status} ${truncate(entry.step.prompt, 80)}`);
+              logger.info(`  ${status} ${truncate(entry.step.prompt, 80)}`);
             }
 
             const completedSteps = result.results.filter((r) => r.continued).length;
-            console.log(`  \u2192 ${completedSteps}/${chain.steps.length} steps succeeded\n`);
+            logger.info(`  \u2192 ${completedSteps}/${chain.steps.length} steps succeeded\n`);
           }
         } finally {
           await targetAdapter.close?.();
@@ -493,11 +494,11 @@ export function registerAdvancedCommands(program: Command): void {
       const delayMs = parseInt(opts.delay, 10);
       const strategy = opts.strategy as 'pair' | 'crescendo';
 
-      console.log(`\nKeelson Chain: ${opts.probeId}`);
-      console.log(`Target: ${opts.target}`);
-      console.log(`Strategy: ${strategy}`);
-      console.log(`Max iterations: ${maxIter}`);
-      console.log();
+      logger.info(`\nKeelson Chain: ${opts.probeId}`);
+      logger.info(`Target: ${opts.target}`);
+      logger.info(`Strategy: ${strategy}`);
+      logger.info(`Max iterations: ${maxIter}`);
+      logger.info('');
 
       // Simple evaluate function using pattern detection
       const { patternDetect } = await import('../core/index.js');
@@ -520,12 +521,12 @@ export function registerAdvancedCommands(program: Command): void {
           });
 
           for (const step of result.escalationPath) {
-            console.log(`  [Turn ${step.turn}] ${truncate(step.prompt, 80)}`);
+            logger.info(`  [Turn ${step.turn}] ${truncate(step.prompt, 80)}`);
           }
 
           const icon = VERDICT_ICONS[result.finding.verdict];
-          console.log(`\nChain Result: ${icon} (${result.turnsUsed}/${result.maxTurns} turns)`);
-          console.log(`  Success: ${result.success}`);
+          logger.info(`\nChain Result: ${icon} (${result.turnsUsed}/${result.maxTurns} turns)`);
+          logger.info(`  Success: ${result.success}`);
         } else {
           // Default: PAIR
           const result = await runPair(template, {
@@ -538,12 +539,12 @@ export function registerAdvancedCommands(program: Command): void {
 
           for (const step of result.refinementHistory) {
             const icon = VERDICT_ICONS[step.verdict as Verdict];
-            console.log(`  [Iteration ${step.iteration}] ${icon}`);
+            logger.info(`  [Iteration ${step.iteration}] ${icon}`);
           }
 
           const icon = VERDICT_ICONS[result.finding.verdict];
-          console.log(`\nChain Result: ${icon} (${result.iterationsUsed}/${result.maxIterations} iterations)`);
-          console.log(`  Success: ${result.success}`);
+          logger.info(`\nChain Result: ${icon} (${result.iterationsUsed}/${result.maxIterations} iterations)`);
+          logger.info(`  Success: ${result.success}`);
         }
       } finally {
         await targetAdapter.close?.();
@@ -593,10 +594,10 @@ export function registerAdvancedCommands(program: Command): void {
 
       const count = parseInt(opts.count, 10);
 
-      console.log('\nKeelson Probe Generator');
-      console.log(`Prober: ${opts.proberUrl}`);
-      console.log(`Count per category: ${count}`);
-      console.log();
+      logger.info('\nKeelson Probe Generator');
+      logger.info(`Prober: ${opts.proberUrl}`);
+      logger.info(`Count per category: ${count}`);
+      logger.info('');
 
       // Generate probes using the prober adapter
       const existingProbes = await loadProbes();
@@ -606,7 +607,7 @@ export function registerAdvancedCommands(program: Command): void {
 
       try {
         for (const category of categories) {
-          console.log(`  Generating ${count} probes for ${category}...`);
+          logger.info(`  Generating ${count} probes for ${category}...`);
           const catProbes = existingProbes.filter((p) => p.category === category);
           const maxId = catProbes.reduce((max, p) => {
             const num = parseInt(p.id.split('-')[1], 10);
@@ -644,10 +645,10 @@ export function registerAdvancedCommands(program: Command): void {
       }
 
       // Display results
-      console.log(`\nGenerated ${generated.length} Probe Templates`);
-      console.log(`${'ID'.padEnd(10)} ${'Name'.padEnd(40)} ${'Category'.padEnd(25)} Steps`);
+      logger.info(`\nGenerated ${generated.length} Probe Templates`);
+      logger.info(`${'ID'.padEnd(10)} ${'Name'.padEnd(40)} ${'Category'.padEnd(25)} Steps`);
       for (const t of generated) {
-        console.log(
+        logger.info(
           `${t.id.padEnd(10)} ${t.name.slice(0, 40).padEnd(40)} ${t.category.slice(0, 25).padEnd(25)} ${t.turns.length}`,
         );
       }
@@ -657,7 +658,7 @@ export function registerAdvancedCommands(program: Command): void {
         for (const t of generated) {
           const filePath = `${opts.output}/${t.id}.md`;
           await writeFile(filePath, templateToMarkdown(t), 'utf-8');
-          console.log(`  Saved: ${filePath}`);
+          logger.info(`  Saved: ${filePath}`);
         }
       }
     });

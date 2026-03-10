@@ -78,6 +78,9 @@ importers:
       '@types/node':
         specifier: 25.3.5
         version: 25.3.5
+      '@types/nunjucks':
+        specifier: ^3.2.6
+        version: 3.2.6
       '@types/react':
         specifier: 19.2.14
         version: 19.2.14
@@ -530,6 +533,9 @@ packages:
 
   '@types/node@25.3.5':
     resolution: {integrity: sha512-oX8xrhvpiyRCQkG1MFchB09f+cXftgIXb3a7UUa4Y3wpmZPw5tyZGTLWhlESOLq1Rq6oDlc8npVU2/9xiCuXMA==}
+
+  '@types/nunjucks@3.2.6':
+    resolution: {integrity: sha512-pHiGtf83na1nCzliuAdq8GowYiXvH5l931xZ0YEHaLMNFgynpEqx+IPStlu7UaDkehfvl01e4x/9Tpwhy7Ue3w==}
 
   '@types/react@19.2.14':
     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
@@ -2593,6 +2599,8 @@ snapshots:
   '@types/node@25.3.5':
     dependencies:
       undici-types: 7.18.2
+
+  '@types/nunjucks@3.2.6': {}
 
   '@types/react@19.2.14':
     dependencies:

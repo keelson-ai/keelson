@@ -1,8 +1,27 @@
-import nock from 'nock';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { MCPAdapter } from '../../src/adapters/mcp.js';
 import type { AdapterConfig } from '../../src/types/index.js';
+
+// Mock the MCP SDK before importing the adapter
+const mockConnect = vi.fn().mockResolvedValue(undefined);
+const mockCallTool = vi.fn();
+const mockClose = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+  Client: class MockClient {
+    connect = mockConnect;
+    callTool = mockCallTool;
+    close = mockClose;
+  },
+}));
+
+vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+  StreamableHTTPClientTransport: class MockTransport {},
+}));
+
+// Import after mocking
+const { MCPAdapter } = await import('../../src/adapters/mcp.js');
 
 const BASE = 'https://mcp.example.com';
 
@@ -11,89 +30,59 @@ function makeConfig(overrides: Partial<AdapterConfig> = {}): AdapterConfig {
 }
 
 describe('MCPAdapter', () => {
-  beforeEach(() => nock.cleanAll());
-  afterEach(() => nock.cleanAll());
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-  function mockInitialize(): void {
-    // Initialize request
-    nock(BASE)
-      .post('/', (body: Record<string, unknown>) => body.method === 'initialize')
-      .reply(200, {
-        jsonrpc: '2.0',
-        id: 1,
-        result: { protocolVersion: '2025-03-26', capabilities: {} },
-      });
-
-    // Initialized notification
-    nock(BASE)
-      .post('/', (body: Record<string, unknown>) => body.method === 'notifications/initialized')
-      .reply(200, {});
-  }
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
 
   it('initializes and sends tools/call', async () => {
-    mockInitialize();
-
-    nock(BASE)
-      .post('/', (body: Record<string, unknown>) => body.method === 'tools/call')
-      .reply(200, {
-        jsonrpc: '2.0',
-        id: 3,
-        result: {
-          content: [{ type: 'text', text: 'MCP response' }],
-        },
-      });
+    mockCallTool.mockResolvedValue({
+      content: [{ type: 'text', text: 'MCP response' }],
+    });
 
     const adapter = new MCPAdapter(makeConfig());
     const result = await adapter.send([{ role: 'user', content: 'test' }]);
+
     expect(result.content).toBe('MCP response');
+    expect(mockConnect).toHaveBeenCalledTimes(1);
+    expect(mockCallTool).toHaveBeenCalledWith({
+      name: 'chat',
+      arguments: { messages: [{ role: 'user', content: 'test' }] },
+    });
   });
 
   it('only initializes once', async () => {
-    mockInitialize();
-
-    // Two tools/call requests
-    nock(BASE)
-      .post('/', (body: Record<string, unknown>) => body.method === 'tools/call')
-      .twice()
-      .reply(200, {
-        jsonrpc: '2.0',
-        id: 3,
-        result: { content: [{ type: 'text', text: 'ok' }] },
-      });
+    mockCallTool.mockResolvedValue({
+      content: [{ type: 'text', text: 'ok' }],
+    });
 
     const adapter = new MCPAdapter(makeConfig());
     await adapter.send([{ role: 'user', content: 'msg1' }]);
     await adapter.send([{ role: 'user', content: 'msg2' }]);
+
+    // connect should only be called once
+    expect(mockConnect).toHaveBeenCalledTimes(1);
+    expect(mockCallTool).toHaveBeenCalledTimes(2);
   });
 
   it('uses custom tool name', async () => {
-    mockInitialize();
-
-    nock(BASE)
-      .post('/', (body: Record<string, unknown>) => {
-        const params = body.params as { name: string };
-        return body.method === 'tools/call' && params.name === 'ask';
-      })
-      .reply(200, {
-        jsonrpc: '2.0',
-        id: 3,
-        result: { content: [{ type: 'text', text: 'ok' }] },
-      });
+    mockCallTool.mockResolvedValue({
+      content: [{ type: 'text', text: 'ok' }],
+    });
 
     const adapter = new MCPAdapter(makeConfig({ toolName: 'ask' }));
     await adapter.send([{ role: 'user', content: 'test' }]);
+
+    expect(mockCallTool).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'ask' }),
+    );
   });
 
-  it('throws on JSON-RPC error', async () => {
-    mockInitialize();
-
-    nock(BASE)
-      .post('/', (body: Record<string, unknown>) => body.method === 'tools/call')
-      .reply(200, {
-        jsonrpc: '2.0',
-        id: 3,
-        error: { code: -32600, message: 'Invalid request' },
-      });
+  it('throws on callTool error', async () => {
+    mockCallTool.mockRejectedValue(new Error('MCP error -32600: Invalid request'));
 
     const adapter = new MCPAdapter(makeConfig());
     await expect(adapter.send([{ role: 'user', content: 'test' }])).rejects.toThrow(
@@ -102,21 +91,13 @@ describe('MCPAdapter', () => {
   });
 
   it('extracts multiple text blocks', async () => {
-    mockInitialize();
-
-    nock(BASE)
-      .post('/', (body: Record<string, unknown>) => body.method === 'tools/call')
-      .reply(200, {
-        jsonrpc: '2.0',
-        id: 3,
-        result: {
-          content: [
-            { type: 'text', text: 'Part 1. ' },
-            { type: 'image', data: 'xxx' },
-            { type: 'text', text: 'Part 2.' },
-          ],
-        },
-      });
+    mockCallTool.mockResolvedValue({
+      content: [
+        { type: 'text', text: 'Part 1. ' },
+        { type: 'image', data: 'xxx' },
+        { type: 'text', text: 'Part 2.' },
+      ],
+    });
 
     const adapter = new MCPAdapter(makeConfig());
     const result = await adapter.send([{ role: 'user', content: 'test' }]);
@@ -124,15 +105,13 @@ describe('MCPAdapter', () => {
   });
 
   it('healthCheck returns true when initialization succeeds', async () => {
-    // Health check does initialize + revert
-    mockInitialize();
-
     const adapter = new MCPAdapter(makeConfig());
     expect(await adapter.healthCheck()).toBe(true);
+    expect(mockConnect).toHaveBeenCalled();
   });
 
   it('healthCheck returns false on failure', async () => {
-    nock(BASE).post('/').reply(500);
+    mockConnect.mockRejectedValueOnce(new Error('connection refused'));
 
     const adapter = new MCPAdapter(makeConfig({ retryAttempts: 0 }));
     expect(await adapter.healthCheck()).toBe(false);

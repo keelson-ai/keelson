@@ -1,5 +1,8 @@
+import PQueue from 'p-queue';
+
 import { executeProbe } from './engine.js';
 import type { Observer } from './engine.js';
+import { scannerLogger } from './logger.js';
 import { MemoTable } from './memo.js';
 import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { summarize } from './summarize.js';
@@ -98,36 +101,31 @@ async function executeConcurrent(
   concurrency: number,
 ): Promise<Finding[]> {
   const findings: Finding[] = new Array(probes.length);
-  let nextIdx = 0;
   let completed = 0;
 
-  async function worker(): Promise<void> {
-    while (nextIdx < probes.length) {
-      const idx = nextIdx++;
+  const queue = new PQueue({ concurrency });
+
+  const tasks = probes.map((probe, idx) =>
+    queue.add(async () => {
       let finding: Finding;
       try {
-        finding = await executeProbe(probes[idx], adapter, {
+        finding = await executeProbe(probe, adapter, {
           delayMs: options.delayMs,
           judge: options.judge,
           observer: options.observer,
         });
       } catch (err: unknown) {
-        finding = errorFinding(probes[idx], sanitizeErrorMessage(err));
+        finding = errorFinding(probe, sanitizeErrorMessage(err));
       }
       findings[idx] = finding;
       memo.record(finding);
-      // Note: `completed++` is safe here despite concurrent workers because
-      // JavaScript is single-threaded. Each `await` yields to the event loop,
-      // but the increment itself is atomic. The ORDER of onFinding callbacks
-      // may be non-deterministic across workers, but the counter is accurate.
       completed++;
       options.onFinding?.(finding, completed, probes.length);
-    }
-  }
+      scannerLogger.debug({ probeId: probe.id, verdict: finding.verdict, completed }, 'Scan probe complete');
+    }),
+  );
 
-  const workers = Array.from({ length: Math.min(concurrency, probes.length) }, () => worker());
-  await Promise.allSettled(workers);
-
+  await Promise.all(tasks);
   return findings;
 }
 
