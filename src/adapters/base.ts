@@ -32,12 +32,28 @@ export abstract class BaseAdapter implements Adapter {
     return pRetry(fn, {
       retries,
       minTimeout: baseDelay,
-      onFailedAttempt: (context: RetryContext) => {
+      onFailedAttempt: async (context: RetryContext) => {
         const axiosError = context.error as AxiosError;
         const status = axiosError.response?.status;
         if (status && !RETRYABLE_STATUS.has(status)) {
           throw new AbortError(context.error.message); // abort on non-retryable status
         }
+
+        // Honor Retry-After header from 429 responses
+        const retryAfterHeader = axiosError.response?.headers?.['retry-after'] as string | undefined;
+        if (retryAfterHeader) {
+          const seconds = Number(retryAfterHeader);
+          if (!isNaN(seconds) && seconds > 0) {
+            const delayMs = seconds * 1000;
+            adapterLogger.debug(
+              { attempt: context.attemptNumber, retriesLeft: context.retriesLeft, status, retryAfterMs: delayMs },
+              'Honoring Retry-After header',
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+            return;
+          }
+        }
+
         adapterLogger.debug(
           { attempt: context.attemptNumber, retriesLeft: context.retriesLeft, status },
           'Retrying request',

@@ -127,8 +127,6 @@ export async function executeParallel(
 
   const queue = new PQueue({
     concurrency: maxConcurrent,
-    interval: delayMs,
-    intervalCap: 1,
   });
 
   const findings: Finding[] = [];
