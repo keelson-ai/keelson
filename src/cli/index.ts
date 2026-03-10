@@ -5,7 +5,15 @@ import { registerAdvancedCommands } from './advanced-commands.js';
 import { registerOpsCommands } from './ops-commands.js';
 import { registerScanCommands } from './scan-commands.js';
 
-const program = new Command().name('keelson').description('AI Agent Security Scanner').version('0.5.0');
+function increaseVerbosity(_dummyValue: string, previous: number): number {
+  return previous + 1;
+}
+
+const program = new Command()
+  .name('keelson')
+  .description('AI Agent Security Scanner')
+  .version('1.0.0')
+  .option('-v, --verbose', 'Increase verbosity (-v, -vv, -vvv, -vvvv)', increaseVerbosity, 0);
 
 registerScanCommands(program);
 registerOpsCommands(program);
