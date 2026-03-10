@@ -68,7 +68,7 @@ export class BrowserAdapter extends BaseAdapter {
     // Allow chat widgets to initialize
     await this.page.waitForTimeout(3000);
 
-    if (!this.detectedInputSelector) {
+    if (!this.detectedInputSelector || !this.detectedResponseSelector) {
       await this.autoDetectSelectors();
     }
 
@@ -130,28 +130,34 @@ export class BrowserAdapter extends BaseAdapter {
       return;
     }
 
-    // Try each candidate
-    for (const sel of inputCandidates) {
-      const el = await this.page.$(sel);
-      if (el) {
-        this.detectedInputSelector = sel;
-        break;
+    // Try each candidate, skipping selectors already provided by the user
+    if (!this.detectedInputSelector) {
+      for (const sel of inputCandidates) {
+        const el = await this.page.$(sel);
+        if (el) {
+          this.detectedInputSelector = sel;
+          break;
+        }
       }
     }
 
-    for (const sel of submitCandidates) {
-      const el = await this.page.$(sel);
-      if (el) {
-        this.detectedSubmitSelector = sel;
-        break;
+    if (!this.detectedSubmitSelector) {
+      for (const sel of submitCandidates) {
+        const el = await this.page.$(sel);
+        if (el) {
+          this.detectedSubmitSelector = sel;
+          break;
+        }
       }
     }
 
-    for (const sel of responseCandidates) {
-      const el = await this.page.$(sel);
-      if (el) {
-        this.detectedResponseSelector = sel;
-        break;
+    if (!this.detectedResponseSelector) {
+      for (const sel of responseCandidates) {
+        const el = await this.page.$(sel);
+        if (el) {
+          this.detectedResponseSelector = sel;
+          break;
+        }
       }
     }
 
