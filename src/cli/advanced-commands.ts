@@ -15,6 +15,7 @@ import {
   writeReport,
   writeScanOutput,
 } from './utils.js';
+import { Logger, parseVerbosity } from './verbosity.js';
 import { OpenAIAdapter, ProberAdapter, createAdapter } from '../adapters/index.js';
 import { parseCampaignConfig } from '../campaign/config.js';
 import { runCampaign } from '../campaign/runner.js';
@@ -101,6 +102,9 @@ function registerTestCommand(
   extraOptions?.(cmd);
 
   cmd.action(async (opts) => {
+    const verbosity = parseVerbosity(program.opts().verbose);
+    const logger = new Logger(verbosity);
+
     const adapterConfig: AdapterConfig = {
       ...buildAdapterConfig({
         target: opts.target,
@@ -126,8 +130,7 @@ function registerTestCommand(
         categories,
         delayMs,
         onFinding: (finding, current, total) => {
-          const icon = VERDICT_ICONS[finding.verdict];
-          console.log(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
+          logger.finding(finding, current, total);
         },
       });
     } finally {
@@ -211,6 +214,7 @@ export function registerAdvancedCommands(program: Command): void {
           },
           {
             onFinding: (finding, current, total) => {
+              // StatisticalFinding doesn't have all Finding fields; log verdict directly
               const icon = VERDICT_ICONS[finding.verdict];
               console.log(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
             },
@@ -293,6 +297,9 @@ export function registerAdvancedCommands(program: Command): void {
     .option('--mutations <n>', 'Number of mutations to try', '5')
     .option('--adapter-type <type>', 'Adapter type', 'openai')
     .action(async (opts) => {
+      const verbosity = parseVerbosity(program.opts().verbose);
+      const logger = new Logger(verbosity);
+
       const probes = await loadProbes();
       const template = probes.find((p) => p.id === opts.probeId);
       if (!template) {
@@ -360,11 +367,22 @@ export function registerAdvancedCommands(program: Command): void {
 
           const finding = await executeProbe(variant, targetAdapter, {
             delayMs: 500,
+            onTurnComplete: (info) => {
+              logger.turn(info.probeId, info.stepIndex, info.totalTurns, info.prompt, info.response, info.responseTimeMs);
+            },
+            onDetection: (result, details) => {
+              logger.detection(result, details);
+            },
+            onJudgeResult: (result) => {
+              logger.judgeResult(result);
+            },
+            onCombinedResult: (result) => {
+              logger.combinedResult(result);
+            },
           });
           results.push({ mutated, finding });
 
-          const icon = VERDICT_ICONS[finding.verdict];
-          console.log(`  [${i + 1}/${numMutations}] ${mt}: ${icon}`);
+          logger.finding(finding, i + 1, numMutations);
         }
       } finally {
         await targetAdapter.close?.();
