@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, feat/node-migration]
+    branches: [main]
   pull_request:
-    branches: [main, feat/node-migration]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
