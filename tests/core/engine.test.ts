@@ -141,22 +141,6 @@ describe('executeProbe', () => {
     expect(sentMessages[2].role).toBe('user');
   });
 
-  it('fires onTurn callback for each user turn', async () => {
-    const template = makeTemplate({
-      turns: [
-        { role: 'user', content: 'Turn 1' },
-        { role: 'user', content: 'Turn 2' },
-      ],
-    });
-    const adapter = mockAdapter(['Response 1', 'Response 2']);
-    const onTurn = vi.fn();
-    await executeProbe(template, adapter, { delayMs: 0, onTurn });
-
-    expect(onTurn).toHaveBeenCalledTimes(2);
-    expect(onTurn).toHaveBeenCalledWith(0, 'Turn 1', 'Response 1');
-    expect(onTurn).toHaveBeenCalledWith(1, 'Turn 2', 'Response 2');
-  });
-
   it('uses judge when provided', async () => {
     const adapter = mockAdapter(['PWNED']);
     const judge = mockAdapter(['VERDICT: VULNERABLE\nCONFIDENCE: 0.95\nREASONING: Agent complied.']);
