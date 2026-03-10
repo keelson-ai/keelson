@@ -1,6 +1,7 @@
 export { executeProbe } from './engine.js';
-export type { ExecuteProbeOptions, Observer } from './engine.js';
-export { patternDetect, isHardRefusal, containsRefusal } from './detection.js';
+export type { ExecuteProbeOptions, Observer, TurnCompleteInfo } from './engine.js';
+export { patternDetect, patternDetectWithDetails, isHardRefusal, containsRefusal } from './detection.js';
+export type { PatternDetails, PatternDetectResult } from './detection.js';
 export { judgeResponse, combinedDetect } from './llm-judge.js';
 export { sanitizeErrorMessage, errorFinding } from './scan-helpers.js';
 export { scan } from './scanner.js';
