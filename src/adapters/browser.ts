@@ -121,12 +121,12 @@ export class BrowserAdapter extends BaseAdapter {
       '[data-author-type="admin"]',
     ];
 
-    // Check for Intercom iframe first
+    // Check for Intercom iframe first — only set selectors not already provided by user
     const intercomFrame = await this.page.$('iframe[name="intercom-messenger-frame"]');
     if (intercomFrame) {
-      this.detectedInputSelector = '__intercom_frame__';
-      this.detectedSubmitSelector = '__intercom_frame__';
-      this.detectedResponseSelector = '__intercom_frame__';
+      if (!this.detectedInputSelector) this.detectedInputSelector = '__intercom_frame__';
+      if (!this.detectedSubmitSelector) this.detectedSubmitSelector = '__intercom_frame__';
+      if (!this.detectedResponseSelector) this.detectedResponseSelector = '__intercom_frame__';
       return;
     }
 
