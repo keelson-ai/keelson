@@ -13,6 +13,7 @@ import {
 } from './utils.js';
 import { createAdapter } from '../adapters/index.js';
 import { executeProbe, loadProbes, scan } from '../core/index.js';
+import { logger } from '../core/logger.js';
 import type { Store } from '../state/index.js';
 import type { Finding, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
@@ -37,13 +38,13 @@ interface ScanCommandOpts {
 }
 
 function printHeader(title: string, opts: ScanCommandOpts, extra?: Record<string, string>): void {
-  console.log(`\n${title}`);
-  console.log(`Target: ${opts.target}`);
-  console.log(`Model: ${opts.model}`);
+  logger.info(`\n${title}`);
+  logger.info(`Target: ${opts.target}`);
+  logger.info(`Model: ${opts.model}`);
   for (const [key, value] of Object.entries(extra ?? {})) {
-    console.log(`${key}: ${value}`);
+    logger.info(`${key}: ${value}`);
   }
-  console.log();
+  logger.info('');
 }
 
 async function finalizeScan(
@@ -60,8 +61,8 @@ async function finalizeScan(
     if (showVulnDetails) {
       const vulnFindings = result.findings.filter((f) => f.verdict === Verdict.Vulnerable);
       if (vulnFindings.length > 0) {
-        console.log('\nVulnerabilities Found:');
-        vulnFindings.forEach((f, i) => console.log(formatFinding(f, i)));
+        logger.info('\nVulnerabilities Found:');
+        vulnFindings.forEach((f, i) => logger.info(formatFinding(f, i)));
       }
     }
 
@@ -69,8 +70,8 @@ async function finalizeScan(
 
     const outputDir = opts.outputDir ?? DEFAULT_OUTPUT_DIR;
     const filePath = await writeScanOutput(result, opts.format ?? 'json', outputDir);
-    console.log(`Scan ID: ${result.scanId}`);
-    console.log(`Output:  ${filePath}`);
+    logger.info(`Scan ID: ${result.scanId}`);
+    logger.info(`Output:  ${filePath}`);
 
     const exitCode = checkFailGates(
       result.summary.vulnerable,
@@ -89,11 +90,11 @@ async function finalizeScan(
 function defaultFindingLogger(finding: Finding, current: number, total: number): void {
   const progress = `[${current}/${total}]`;
   const icon = finding.verdict === Verdict.Vulnerable ? '\u2717' : finding.verdict === Verdict.Safe ? '\u2713' : '?';
-  console.log(`  ${progress} ${icon} ${finding.probeId}: ${finding.probeName} — ${finding.verdict}`);
+  logger.info(`  ${progress} ${icon} ${finding.probeId}: ${finding.probeName} — ${finding.verdict}`);
 }
 
 function briefFindingLogger(finding: Finding, current: number, total: number): void {
-  console.log(`  [${current}/${total}] ${finding.probeId}: ${finding.verdict}`);
+  logger.info(`  [${current}/${total}] ${finding.probeId}: ${finding.verdict}`);
 }
 
 // ─── Shared CLI options ─────────────────────────────────
@@ -183,7 +184,7 @@ export function registerScanCommands(program: Command): void {
       const allResults: ScanResult[] = [];
       try {
         for (let pass = 1; pass <= maxPasses; pass++) {
-          console.log(`  PASS ${pass}  Running probes...`);
+          logger.info(`  PASS ${pass}  Running probes...`);
 
           const categories = opts.category ? [opts.category] : undefined;
           const passResult = await scan(opts.target, adapter, {
@@ -191,15 +192,15 @@ export function registerScanCommands(program: Command): void {
             delayMs: parseInt(opts.delay ?? '1500', 10),
             reorder: true,
             onFinding: (finding, current, total) => {
-              console.log(`    [${current}/${total}] ${finding.probeId}: ${finding.verdict}`);
+              logger.info(`    [${current}/${total}] ${finding.probeId}: ${finding.verdict}`);
             },
           });
 
           allResults.push(passResult);
-          console.log(`  PASS ${pass}  Complete: ${passResult.summary.vulnerable} vulnerabilities found`);
+          logger.info(`  PASS ${pass}  Complete: ${passResult.summary.vulnerable} vulnerabilities found`);
 
           if (passResult.summary.vulnerable === 0 && pass > 1) {
-            console.log('  Converged: no new vulnerabilities in this pass.');
+            logger.info('  Converged: no new vulnerabilities in this pass.');
             break;
           }
         }
@@ -225,30 +226,30 @@ export function registerScanCommands(program: Command): void {
       const probes = await loadProbes();
       const template = probes.find((p) => p.id === opts.probeId);
       if (!template) {
-        console.error(`Probe ${opts.probeId} not found`);
+        logger.error(`Probe ${opts.probeId} not found`);
         process.exit(1);
       }
 
-      console.log(`\n${template.id}: ${template.name}`);
-      console.log(`Severity: ${colorSeverity(template.severity)} | Category: ${template.category}`);
-      console.log();
+      logger.info(`\n${template.id}: ${template.name}`);
+      logger.info(`Severity: ${colorSeverity(template.severity)} | Category: ${template.category}`);
+      logger.info('');
 
       let finding;
       try {
         finding = await executeProbe(template, adapter, {
           onTurn: (stepIndex, prompt, response) => {
-            console.log(`  Step ${stepIndex}:`);
-            console.log(`  Prompt: ${truncate(prompt, 150)}`);
-            console.log(`  Response: ${truncate(response, 200)}`);
-            console.log();
+            logger.info(`  Step ${stepIndex}:`);
+            logger.info(`  Prompt: ${truncate(prompt, 150)}`);
+            logger.info(`  Response: ${truncate(response, 200)}`);
+            logger.info('');
           },
         });
       } finally {
         await adapter.close?.();
       }
 
-      console.log(`Verdict: ${VERDICT_LABELS[finding.verdict]}`);
-      console.log(`Confidence: ${Math.round(finding.confidence * 100)}%`);
-      console.log(`Reasoning: ${finding.reasoning}`);
+      logger.info(`Verdict: ${VERDICT_LABELS[finding.verdict]}`);
+      logger.info(`Confidence: ${Math.round(finding.confidence * 100)}%`);
+      logger.info(`Reasoning: ${finding.reasoning}`);
     });
 }

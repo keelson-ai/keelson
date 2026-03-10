@@ -53,8 +53,8 @@ describe('CachingAdapter', () => {
   });
 
   it('evicts expired entries', async () => {
-    // TTL of 0 seconds = instant expiry
-    cache = new CachingAdapter(mockAdapter, 10_000, 0);
+    // TTL of 0.001 seconds (1ms) = near-instant expiry
+    cache = new CachingAdapter(mockAdapter, 10_000, 0.001);
 
     await cache.send([{ role: 'user', content: 'hello' }]);
 
