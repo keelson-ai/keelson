@@ -770,7 +770,7 @@ export function registerAdvancedCommands(program: Command): void {
 
       const proberAdapter = createAdapter({
         type: 'openai',
-        baseUrl: opts.proberUrl ?? '',
+        baseUrl: opts.proberUrl ?? 'https://api.openai.com/v1/chat/completions',
         apiKey: opts.proberKey,
         model: opts.proberModel,
       });
