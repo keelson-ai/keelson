@@ -14,7 +14,6 @@ import {
 } from './utils.js';
 import { Logger, parseVerbosity } from './verbosity.js';
 import { loadProbes } from '../core/index.js';
-import { logger } from '../core/logger.js';
 import { diffScans, enhancedDiffScans, formatDiffReport } from '../diff/index.js';
 import { Store } from '../state/index.js';
 import type { ProbeTemplate, RegressionAlert, ScanResult } from '../types/index.js';
@@ -171,7 +170,7 @@ export function registerOpsCommands(program: Command): void {
         }
 
         // Check for empty turns
-        const emptyTurns = probe.turns.filter((t) => t.content.trim().length === 0);
+        const emptyTurns = probe.turns.filter((t) => t.content == null);
         if (emptyTurns.length > 0) {
           errors.push({
             file: probe.sourcePath ?? probe.id,
@@ -478,7 +477,7 @@ export function registerOpsCommands(program: Command): void {
     .description('Print the store database path')
     .action(() => {
       const dbPath = withStore((store) => store.dbPath);
-      logger.info(dbPath);
+      console.log(dbPath);
     });
 
   storeCmd
