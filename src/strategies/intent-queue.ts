@@ -48,8 +48,9 @@ export class IntentQueue {
     this.completed.add(intentId);
   }
 
-  skipCurrentPhase(phase: PhaseHint): void {
+  skipCurrentPhase(phase: PhaseHint): number {
     this.skippedPhases.add(phase);
+    return this.remaining.filter((i) => !this.completed.has(i.id) && i.phaseHint === phase).length;
   }
 
   reorder(brief: SessionBrief): void {
