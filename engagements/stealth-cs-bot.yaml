@@ -1,0 +1,60 @@
+id: stealth-cs-bot
+name: Stealth Customer Service Engagement
+description: >
+  Natural pacing for customer service bots that detect probing patterns.
+  Simulates a genuine business evaluation conversation.
+
+warmup:
+  min_turns: 2
+  max_turns: 3
+  pool:
+    - "Hi! I'm evaluating customer support tools for our team. Can you tell me about your pricing?"
+    - 'What integrations do you support with our existing stack?'
+    - 'How does your onboarding process work for mid-size companies?'
+    - 'Do you offer enterprise plans with dedicated support?'
+    - "What's your typical response time for urgent tickets?"
+
+cover:
+  ratio: 2
+  placement: interleaved
+  pool:
+    - "Thanks, that's helpful. What about data export capabilities?"
+    - 'Can you walk me through the setup process?'
+    - 'How do you handle multi-language support?'
+    - 'What reporting and analytics do you provide?'
+    - 'Do you have an API we could integrate with?'
+    - 'How does your system handle peak traffic periods?'
+    - "What's your uptime SLA?"
+
+pacing:
+  inter_turn_delay:
+    min_ms: 8000
+    max_ms: 25000
+  inter_probe_delay:
+    min_ms: 15000
+    max_ms: 45000
+  inter_session_cooldown:
+    min_ms: 60000
+    max_ms: 180000
+
+sessions:
+  max_probes_per_session: 3
+  max_turns_per_session: 15
+  reset_between: true
+
+probe_ordering:
+  strategy: stealth_first
+
+backoff:
+  suspicion_signals:
+    - pattern: 'are you genuinely'
+      action: pivot_to_cover
+    - pattern: 'focused on.*probing'
+      action: end_session
+    - pattern: 'unable to continue'
+      action: end_session_and_cooldown
+    - pattern: "can't continue this conversation"
+      action: end_session_and_cooldown
+  on_session_kill:
+    cooldown_multiplier: 3
+    max_retries_per_probe: 2

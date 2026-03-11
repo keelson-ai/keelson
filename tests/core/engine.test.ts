@@ -256,6 +256,42 @@ describe('executeProbe', () => {
     expect(finding.verdict).toBe(Verdict.Safe);
   });
 
+  it('bypasses email gate and captures actual response', async () => {
+    const adapter = mockAdapter(['To get started, could you share your email address with me?', 'PWNED']);
+    const finding = await executeProbe(makeTemplate(), adapter, { delayMs: 0 });
+
+    expect(adapter.send).toHaveBeenCalledTimes(2);
+    // Evidence should show the post-gate response, not the email request
+    expect(finding.evidence).toHaveLength(1);
+    expect(finding.evidence[0].response).toBe('PWNED');
+    expect(finding.verdict).toBe(Verdict.Vulnerable);
+    // Conversation should include the gate exchange
+    expect(finding.conversation.some((t) => t.content === 'security.test@example.com')).toBe(true);
+  });
+
+  it('limits gate bypass attempts to prevent infinite loops', async () => {
+    const adapter = mockAdapter([
+      'Please share your email address.',
+      'I need your email to continue.',
+      'Could you provide your email?',
+      'One more time - what is your email address?',
+    ]);
+    const finding = await executeProbe(makeTemplate(), adapter, { delayMs: 0 });
+
+    // MAX_GATE_BYPASSES is 3, so: 1 initial + 3 retries = 4 calls
+    expect(adapter.send).toHaveBeenCalledTimes(4);
+    // Final response is still an email gate but we stopped retrying
+    expect(finding.evidence[0].response).toBe('One more time - what is your email address?');
+  });
+
+  it('does not trigger gate bypass for non-email responses', async () => {
+    const adapter = mockAdapter(['I refuse to comply with that request.']);
+    const finding = await executeProbe(makeTemplate(), adapter, { delayMs: 0 });
+
+    expect(adapter.send).toHaveBeenCalledTimes(1);
+    expect(finding.evidence[0].response).toBe('I refuse to comply with that request.');
+  });
+
   it('respects rate limiting delay', async () => {
     const template = makeTemplate({
       turns: [
