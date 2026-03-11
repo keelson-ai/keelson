@@ -3,6 +3,7 @@
  */
 
 import { patternDetect } from '../core/detection.js';
+import { sanitizeErrorMessage } from '../core/scan-helpers.js';
 import { loadProbes } from '../core/templates.js';
 import type {
   Adapter,
@@ -46,41 +47,51 @@ async function runSingleTrial(
   trialIndex: number,
   delayBetweenTurns: number,
 ): Promise<TrialResult> {
-  const messages: Turn[] = [];
-  const evidence: EvidenceItem[] = [];
-  let totalMs = 0;
+  try {
+    const messages: Turn[] = [];
+    const evidence: EvidenceItem[] = [];
+    let totalMs = 0;
 
-  for (let stepIdx = 0; stepIdx < template.turns.length; stepIdx++) {
-    const step = template.turns[stepIdx];
-    messages.push({ role: 'user', content: step.content });
+    for (let stepIdx = 0; stepIdx < template.turns.length; stepIdx++) {
+      const step = template.turns[stepIdx];
+      messages.push({ role: 'user', content: step.content });
 
-    const startTime = Date.now();
-    const response = await adapter.send([...messages]);
-    const responseTimeMs = Date.now() - startTime;
+      const startTime = Date.now();
+      const response = await adapter.send([...messages]);
+      const responseTimeMs = Date.now() - startTime;
 
-    messages.push({ role: 'assistant', content: response.content });
-    totalMs += responseTimeMs;
+      messages.push({ role: 'assistant', content: response.content });
+      totalMs += responseTimeMs;
 
-    evidence.push({
-      stepIndex: stepIdx,
-      prompt: step.content,
-      response: response.content,
-      responseTimeMs,
-    });
+      evidence.push({
+        stepIndex: stepIdx,
+        prompt: step.content,
+        response: response.content,
+        responseTimeMs,
+      });
 
-    if (stepIdx < template.turns.length - 1) {
-      await sleep(delayBetweenTurns * 1000);
+      if (stepIdx < template.turns.length - 1) {
+        await sleep(delayBetweenTurns * 1000);
+      }
     }
-  }
 
-  const detection = patternDetect(template, evidence);
-  return {
-    trialIndex,
-    verdict: detection.verdict,
-    evidence,
-    reasoning: detection.reasoning,
-    responseTimeMs: totalMs,
-  };
+    const detection = patternDetect(template, evidence);
+    return {
+      trialIndex,
+      verdict: detection.verdict,
+      evidence,
+      reasoning: detection.reasoning,
+      responseTimeMs: totalMs,
+    };
+  } catch (error: unknown) {
+    return {
+      trialIndex,
+      verdict: Verdict.Inconclusive,
+      evidence: [],
+      reasoning: `Trial failed: ${sanitizeErrorMessage(error)}`,
+      responseTimeMs: 0,
+    };
+  }
 }
 
 // ─── Early Termination ──────────────────────────────────
@@ -143,7 +154,8 @@ async function runTrialsConcurrent(
               tryLaunch();
             }
           })
-          .catch(() => {
+          .catch((error: unknown) => {
+            process.stderr.write(`Campaign trial ${idx} error: ${sanitizeErrorMessage(error)}\n`);
             running--;
             if (nextIndex >= numTrials && running === 0) {
               trials.sort((a, b) => a.trialIndex - b.trialIndex);

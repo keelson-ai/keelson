@@ -1,4 +1,4 @@
-import { BaseAdapter } from './base.js';
+import { PlaywrightBaseAdapter } from './playwright-base.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -18,61 +18,25 @@ import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
  *   - chatSubmitSelector: CSS selector for the submit button (auto-detected if omitted)
  *   - chatResponseSelector: CSS selector for bot response messages (auto-detected if omitted)
  *   - browserHeadless: run headless (default: true)
+ *   - browserPreInteraction: JS snippet to run in page before chat interaction
  */
-export class BrowserAdapter extends BaseAdapter {
-  private browser: any = null;
-  private page: any = null;
-  private initialized = false;
-
+export class BrowserAdapter extends PlaywrightBaseAdapter {
   private detectedInputSelector: string;
   private detectedSubmitSelector: string;
   private detectedResponseSelector: string;
-  private readonly headless: boolean;
-  private readonly responseStabilityMs: number;
 
   constructor(config: AdapterConfig) {
-    super({ ...config, baseUrl: config.baseUrl });
+    super(config);
 
     this.detectedInputSelector = config.chatInputSelector ?? '';
     this.detectedSubmitSelector = config.chatSubmitSelector ?? '';
     this.detectedResponseSelector = config.chatResponseSelector ?? '';
-    this.headless = config.browserHeadless !== false;
-    this.responseStabilityMs = config.browserResponseStabilityMs ?? 2000;
   }
 
-  private async loadPlaywright(): Promise<any> {
-    try {
-      // Dynamic import to keep playwright as an optional peer dependency
-      const moduleName = 'playwright';
-      return await import(/* webpackIgnore: true */ moduleName);
-    } catch {
-      throw new Error(
-        'Browser adapter requires playwright. Install it:\n' +
-          '  pnpm add playwright && npx playwright install chromium',
-      );
-    }
-  }
-
-  private async ensureBrowser(): Promise<void> {
-    if (this.initialized) return;
-
-    const pw = await this.loadPlaywright();
-    this.browser = await pw.chromium.launch({ headless: this.headless });
-    const context = await this.browser.newContext({
-      userAgent:
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    });
-    this.page = await context.newPage();
-
-    await this.page.goto(this.config.baseUrl, { waitUntil: 'networkidle', timeout: 60_000 });
-    // Allow chat widgets to initialize
-    await this.page.waitForTimeout(3000);
-
+  protected override async onBrowserReady(): Promise<void> {
     if (!this.detectedInputSelector || !this.detectedResponseSelector) {
       await this.autoDetectSelectors();
     }
-
-    this.initialized = true;
   }
 
   private async autoDetectSelectors(): Promise<void> {
@@ -169,7 +133,7 @@ export class BrowserAdapter extends BaseAdapter {
   }
 
   async send(messages: Turn[]): Promise<AdapterResponse> {
-    await this.ensureBrowser();
+    await this.ensureBrowserCore();
 
     const lastUser = messages.filter((m) => m.role === 'user').pop();
     const message = lastUser?.content ?? '';
@@ -305,36 +269,5 @@ export class BrowserAdapter extends BaseAdapter {
     }
 
     throw new Error(`Browser adapter: no reply within ${timeout / 1000}s`);
-  }
-
-  override async healthCheck(): Promise<boolean> {
-    try {
-      await this.ensureBrowser();
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  override resetSession(): void {
-    // Capture references before clearing, so the async close
-    // cannot clobber a new browser created by ensureBrowser().
-    const oldBrowser = this.browser;
-    this.browser = null;
-    this.page = null;
-    this.initialized = false;
-
-    if (oldBrowser) {
-      void (oldBrowser as { close: () => Promise<void> }).close();
-    }
-  }
-
-  override async close(): Promise<void> {
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
-      this.page = null;
-      this.initialized = false;
-    }
   }
 }

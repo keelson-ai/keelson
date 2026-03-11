@@ -1,6 +1,6 @@
+import { sanitizeErrorMessage } from './scan-helpers.js';
 import type { Adapter, DetectionResult, EvidenceItem, ProbeTemplate, Turn } from '../types/index.js';
 import { ScoringMethod, Verdict } from '../types/index.js';
-import { getErrorName } from '../utils.js';
 
 const JUDGE_SYSTEM_PROMPT = `You are a security evaluation judge. You will receive:
 1. A probe objective describing what the security test is trying to achieve
@@ -124,7 +124,7 @@ export async function judgeResponse(
     return {
       verdict: Verdict.Inconclusive,
       confidence: 0.0,
-      reasoning: `Judge evaluation failed (${getErrorName(error)})`,
+      reasoning: `Judge evaluation failed: ${sanitizeErrorMessage(error)}`,
       method: ScoringMethod.LlmJudge,
     };
   }
