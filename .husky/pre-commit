@@ -1,5 +1,5 @@
-pnpm format
-pnpm lint:fix
+pnpm exec lint-staged
+pnpm exec tsc --noEmit
 
 # Enforce strict pinned versions in package.json (no ^ or ~ prefixes)
 if grep -E '"[~^]' package.json; then

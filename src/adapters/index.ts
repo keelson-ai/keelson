@@ -3,6 +3,7 @@ import { AnthropicAdapter } from './anthropic.js';
 import { BrowserAdapter } from './browser.js';
 import { CrewAIAdapter } from './crewai.js';
 import { GenericHTTPAdapter } from './http.js';
+import { HubSpotAdapter } from './hubspot.js';
 import { IntercomAdapter } from './intercom.js';
 import { LangChainAdapter } from './langchain.js';
 import { LangGraphAdapter } from './langgraph.js';
@@ -24,6 +25,7 @@ export { CrewAIAdapter } from './crewai.js';
 export { LangChainAdapter } from './langchain.js';
 export { SiteGPTAdapter } from './sitegpt.js';
 export { IntercomAdapter } from './intercom.js';
+export { HubSpotAdapter } from './hubspot.js';
 export { BrowserAdapter } from './browser.js';
 
 type AdapterConstructor = new (config: AdapterConfig) => Adapter;
@@ -39,6 +41,7 @@ const ADAPTER_MAP: Record<string, AdapterConstructor> = {
   langchain: LangChainAdapter,
   sitegpt: SiteGPTAdapter,
   intercom: IntercomAdapter,
+  hubspot: HubSpotAdapter,
   browser: BrowserAdapter,
 };
 

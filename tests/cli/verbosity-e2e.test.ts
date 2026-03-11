@@ -24,11 +24,9 @@ describe.runIf(hasBuild)('CLI verbosity flags', () => {
   });
 
   it('list command works with -v flag', () => {
-    // Logger writes to stderr, so we need to capture both streams
-    const result = spawnSync('node', [CLI, '-v', 'list', '--category', 'goal_adherence'], {
+    const { stderr } = spawnSync('node', [CLI, '-v', 'list', '--category', 'goal_adherence'], {
       encoding: 'utf-8',
     });
-    const combined = (result.stdout ?? '') + (result.stderr ?? '');
-    expect(combined).toContain('GA-001');
+    expect(stderr).toContain('GA-001');
   });
 });
