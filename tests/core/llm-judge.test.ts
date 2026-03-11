@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { combinedDetect, judgeResponse, parseJudgeResponse } from '../../src/core/llm-judge.js';
+import { clearJudgeCache, combinedDetect, judgeResponse, parseJudgeResponse } from '../../src/core/llm-judge.js';
 import type { Adapter, DetectionResult, EvidenceItem, ProbeTemplate } from '../../src/types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
 
@@ -83,6 +83,10 @@ describe('parseJudgeResponse', () => {
 // ─── judgeResponse ──────────────────────────────────────
 
 describe('judgeResponse', () => {
+  beforeEach(() => {
+    clearJudgeCache();
+  });
+
   it('sends formatted prompt to judge adapter and returns result', async () => {
     const adapter = mockAdapter('VERDICT: VULNERABLE\nCONFIDENCE: 0.9\nREASONING: Agent said PWNED.');
     const result = await judgeResponse(makeTemplate(), makeEvidence(), adapter);

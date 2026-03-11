@@ -1,16 +1,17 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+
 import { BaseAdapter } from './base.js';
+import { adapterLogger } from '../core/logger.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
-const MCP_JSONRPC_VERSION = '2.0';
-const MCP_PROTOCOL_VERSION = '2025-03-26';
-
 /**
- * MCP (Model Context Protocol) adapter. Communicates via JSON-RPC 2.0 over HTTP.
- * Performs protocol initialization handshake, then invokes tools/call.
+ * MCP (Model Context Protocol) adapter using the official SDK.
+ * Replaces manual JSON-RPC 2.0 handling with SDK-managed protocol negotiation.
  */
 export class MCPAdapter extends BaseAdapter {
-  private initialized = false;
-  private requestId = 0;
+  private mcpClient: Client | null = null;
+  private transport: StreamableHTTPClientTransport | null = null;
   private readonly toolName: string;
 
   constructor(config: AdapterConfig) {
@@ -25,32 +26,13 @@ export class MCPAdapter extends BaseAdapter {
     this.toolName = config.toolName ?? 'chat';
   }
 
-  private nextId(): number {
-    return ++this.requestId;
-  }
-
   private async ensureInitialized(): Promise<void> {
-    if (this.initialized) return;
+    if (this.mcpClient) return;
 
-    // Step 1: Initialize handshake
-    await this.client.post('', {
-      jsonrpc: MCP_JSONRPC_VERSION,
-      id: this.nextId(),
-      method: 'initialize',
-      params: {
-        protocolVersion: MCP_PROTOCOL_VERSION,
-        capabilities: {},
-        clientInfo: { name: 'keelson', version: '0.5.0' },
-      },
-    });
-
-    // Step 2: Send initialized notification (no id)
-    await this.client.post('', {
-      jsonrpc: MCP_JSONRPC_VERSION,
-      method: 'notifications/initialized',
-    });
-
-    this.initialized = true;
+    this.mcpClient = new Client({ name: 'keelson', version: '1.0.0' });
+    this.transport = new StreamableHTTPClientTransport(new URL(this.config.baseUrl));
+    await this.mcpClient.connect(this.transport);
+    adapterLogger.debug({ url: this.config.baseUrl }, 'MCP client connected');
   }
 
   async send(messages: Turn[]): Promise<AdapterResponse> {
@@ -60,24 +42,17 @@ export class MCPAdapter extends BaseAdapter {
     const args: Record<string, unknown> = { messages };
     if (model) args.model = model;
 
-    const { data, latencyMs } = await this.timedPost<Record<string, unknown>>('', {
-      jsonrpc: MCP_JSONRPC_VERSION,
-      id: this.nextId(),
-      method: 'tools/call',
-      params: {
-        name: this.toolName,
-        arguments: args,
-      },
+    const start = performance.now();
+    // mcpClient is guaranteed non-null after ensureInitialized()
+    const client = this.mcpClient as Client;
+    const result = await client.callTool({
+      name: this.toolName,
+      arguments: args,
     });
+    const latencyMs = Math.round(performance.now() - start);
 
-    if (data.error) {
-      const err = data.error as { code: number; message: string };
-      throw new Error(`MCP error ${err.code}: ${err.message}`);
-    }
-
-    const result = data.result as { content?: Array<{ type: string; text?: string }> } | undefined;
-    const content = this.extractContent(result?.content ?? []);
-    return { content, raw: data, latencyMs };
+    const content = this.extractContent((result.content as Array<{ type: string; text?: string }>) ?? []);
+    return { content, raw: result, latencyMs };
   }
 
   private extractContent(blocks: Array<{ type: string; text?: string }>): string {
@@ -88,17 +63,38 @@ export class MCPAdapter extends BaseAdapter {
   }
 
   override async healthCheck(): Promise<boolean> {
+    const prevClient = this.mcpClient;
+    const prevTransport = this.transport;
     try {
-      const prevInitialized = this.initialized;
-      const prevRequestId = this.requestId;
-      this.initialized = false;
+      // Attempt to initialize — if it connects, the server is healthy
+      this.mcpClient = null;
+      this.transport = null;
+
       await this.ensureInitialized();
-      // Revert state so health check is non-destructive
-      this.initialized = prevInitialized;
-      this.requestId = prevRequestId;
+
+      // Revert to previous state if it was already initialized
+      // ensureInitialized() mutates this.mcpClient, but TS can't track it
+      const newClient = this.mcpClient as Client | null;
+      if (prevClient) {
+        this.mcpClient = prevClient;
+        this.transport = prevTransport;
+        await newClient?.close();
+      }
+
       return true;
     } catch {
+      // Restore previous connection state on failure
+      this.mcpClient = prevClient;
+      this.transport = prevTransport;
       return false;
+    }
+  }
+
+  override async close(): Promise<void> {
+    if (this.mcpClient) {
+      await this.mcpClient.close();
+      this.mcpClient = null;
+      this.transport = null;
     }
   }
 }

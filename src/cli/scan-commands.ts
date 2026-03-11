@@ -285,7 +285,7 @@ export function registerScanCommands(program: Command): void {
       const probes = await loadProbes();
       const template = probes.find((p) => p.id === opts.probeId);
       if (!template) {
-        console.error(`Probe ${opts.probeId} not found`);
+        logger.error(`Probe ${opts.probeId} not found`);
         process.exit(1);
       }
 

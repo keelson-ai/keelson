@@ -1,12 +1,11 @@
-import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, type AxiosInstance } from 'axios';
+import pRetry, { AbortError, type RetryContext } from 'p-retry';
+import { ProxyAgent } from 'proxy-agent';
 
+import { adapterLogger } from '../core/logger.js';
 import type { Adapter, AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
 
 const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
-
-interface RetryableConfig extends InternalAxiosRequestConfig {
-  __retryCount?: number;
-}
 
 export abstract class BaseAdapter implements Adapter {
   protected client: AxiosInstance;
@@ -25,8 +24,50 @@ export abstract class BaseAdapter implements Adapter {
     return { data, latencyMs: Math.round(performance.now() - start) };
   }
 
+  /** Wrap an async operation with p-retry for transient failures. */
+  protected async withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    const retries = this.config.retryAttempts ?? 3;
+    const baseDelay = this.config.retryDelay ?? 1000;
+
+    return pRetry(fn, {
+      retries,
+      minTimeout: baseDelay,
+      onFailedAttempt: async (context: RetryContext) => {
+        const axiosError = context.error as AxiosError;
+        const status = axiosError.response?.status;
+        if (status && !RETRYABLE_STATUS.has(status)) {
+          throw new AbortError(context.error.message); // abort on non-retryable status
+        }
+
+        // Honor Retry-After header from 429 responses
+        const retryAfterHeader = axiosError.response?.headers?.['retry-after'] as string | undefined;
+        if (retryAfterHeader) {
+          const seconds = Number(retryAfterHeader);
+          if (!isNaN(seconds) && seconds > 0) {
+            const delayMs = seconds * 1000;
+            adapterLogger.debug(
+              { attempt: context.attemptNumber, retriesLeft: context.retriesLeft, status, retryAfterMs: delayMs },
+              'Honoring Retry-After header',
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+            return;
+          }
+        }
+
+        adapterLogger.debug(
+          { attempt: context.attemptNumber, retriesLeft: context.retriesLeft, status },
+          'Retrying request',
+        );
+      },
+    });
+  }
+
   constructor(config: AdapterConfig) {
     this.config = config;
+
+    const proxyUrl = process.env.KEELSON_PROXY_URL;
+    const hasProxy = proxyUrl || process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
+
     this.client = axios.create({
       baseURL: config.baseUrl,
       timeout: config.timeout ?? 30_000,
@@ -34,35 +75,12 @@ export abstract class BaseAdapter implements Adapter {
         'Content-Type': 'application/json',
         ...config.headers,
       },
-    });
-
-    this.setupRetryInterceptor();
-  }
-
-  private setupRetryInterceptor(): void {
-    const maxRetries = this.config.retryAttempts ?? 3;
-    const baseDelay = this.config.retryDelay ?? 1000;
-
-    this.client.interceptors.response.use(undefined, async (error: AxiosError) => {
-      const config = error.config as RetryableConfig | undefined;
-      if (!config) throw error;
-
-      const attempt = config.__retryCount ?? 0;
-
-      if (attempt >= maxRetries || !error.response || !RETRYABLE_STATUS.has(error.response.status)) {
-        throw error;
-      }
-
-      config.__retryCount = attempt + 1;
-
-      const retryAfter = error.response.headers['retry-after'];
-      const delay =
-        typeof retryAfter === 'string' && /^\d+$/.test(retryAfter)
-          ? parseInt(retryAfter, 10) * 1000
-          : baseDelay * Math.pow(2, attempt);
-
-      await new Promise((r) => setTimeout(r, delay));
-      return this.client.request(config);
+      ...(hasProxy
+        ? {
+            httpAgent: new ProxyAgent(),
+            httpsAgent: new ProxyAgent(),
+          }
+        : {}),
     });
   }
 

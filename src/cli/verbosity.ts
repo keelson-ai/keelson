@@ -121,6 +121,10 @@ export class Logger {
     write(`  ${icon} ${message}\n`);
   }
 
+  error(message: string): void {
+    write(chalk.red(message) + '\n');
+  }
+
   debug(message: string): void {
     if (this.level < Verbosity.Debug) return;
     write(chalk.dim(`  [debug] ${message}\n`));

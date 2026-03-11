@@ -97,7 +97,7 @@ export function registerOpsCommands(program: Command): void {
         const scan = store.getScan(opts.scanId);
         store.close();
         if (!scan) {
-          console.error(chalk.red(`Scan not found: ${opts.scanId}`));
+          logger.error(chalk.red(`Scan not found: ${opts.scanId}`));
           process.exit(1);
         }
         result = scan;
@@ -106,17 +106,17 @@ export function registerOpsCommands(program: Command): void {
         try {
           resultData = await readFile(opts.input, 'utf-8');
         } catch {
-          console.error(chalk.red(`Error: cannot read file ${opts.input}`));
+          logger.error(chalk.red(`Error: cannot read file ${opts.input}`));
           process.exit(1);
         }
         try {
           result = assertScanResult(JSON.parse(resultData), 'scan result');
         } catch (err) {
-          console.error(chalk.red(`Error: invalid scan result JSON — ${getErrorMessage(err)}`));
+          logger.error(chalk.red(`Error: invalid scan result JSON — ${getErrorMessage(err)}`));
           process.exit(1);
         }
       } else {
-        console.error(chalk.red('Error: provide --scan-id or --input'));
+        logger.error(chalk.red('Error: provide --scan-id or --input'));
         process.exit(1);
       }
 
@@ -145,7 +145,7 @@ export function registerOpsCommands(program: Command): void {
       try {
         probes = await loadProbes(opts.dir);
       } catch (err) {
-        console.error(chalk.red(`Error loading probes: ${getErrorMessage(err)}`));
+        logger.error(chalk.red(`Error loading probes: ${getErrorMessage(err)}`));
         process.exit(1);
       }
 
@@ -224,7 +224,7 @@ export function registerOpsCommands(program: Command): void {
       if (opts.scanA) {
         scanA = store.getScan(opts.scanA);
         if (!scanA) {
-          console.error(chalk.red(`Scan not found: ${opts.scanA}`));
+          logger.error(chalk.red(`Scan not found: ${opts.scanA}`));
           store.close();
           process.exit(1);
         }
@@ -234,20 +234,20 @@ export function registerOpsCommands(program: Command): void {
           const raw = await readFile(join(outputDir, opts.fileA), 'utf-8');
           scanA = assertScanResult(JSON.parse(raw), 'file-a');
         } catch {
-          console.error(chalk.red(`Error: cannot read file ${opts.fileA} from ${outputDir}`));
+          logger.error(chalk.red(`Error: cannot read file ${opts.fileA} from ${outputDir}`));
           store.close();
           process.exit(1);
         }
       } else if (opts.baseline) {
         const baselines = store.getBaselines(1);
         if (baselines.length === 0) {
-          console.error(chalk.red('No baseline set'));
+          logger.error(chalk.red('No baseline set'));
           store.close();
           process.exit(1);
         }
         scanA = store.getScan(baselines[0].scanId);
         if (!scanA) {
-          console.error(chalk.red(`Baseline scan not found: ${baselines[0].scanId}`));
+          logger.error(chalk.red(`Baseline scan not found: ${baselines[0].scanId}`));
           store.close();
           process.exit(1);
         }
@@ -257,7 +257,7 @@ export function registerOpsCommands(program: Command): void {
       if (opts.scanB) {
         scanB = store.getScan(opts.scanB);
         if (!scanB) {
-          console.error(chalk.red(`Scan not found: ${opts.scanB}`));
+          logger.error(chalk.red(`Scan not found: ${opts.scanB}`));
           store.close();
           process.exit(1);
         }
@@ -267,14 +267,14 @@ export function registerOpsCommands(program: Command): void {
           const raw = await readFile(join(outputDir, opts.fileB), 'utf-8');
           scanB = assertScanResult(JSON.parse(raw), 'file-b');
         } catch {
-          console.error(chalk.red(`Error: cannot read file ${opts.fileB} from ${outputDir}`));
+          logger.error(chalk.red(`Error: cannot read file ${opts.fileB} from ${outputDir}`));
           store.close();
           process.exit(1);
         }
       } else if (opts.latest) {
         const recent = store.listScans(2);
         if (recent.length === 0) {
-          console.error(chalk.red('No scans in store'));
+          logger.error(chalk.red('No scans in store'));
           store.close();
           process.exit(1);
         }
@@ -287,7 +287,7 @@ export function registerOpsCommands(program: Command): void {
       store.close();
 
       if (!scanA || !scanB) {
-        console.error(
+        logger.error(
           chalk.red(
             'Error: could not resolve both scans. Use --scan-a/--scan-b, --file-a/--file-b, or --latest --previous/--baseline',
           ),
@@ -388,7 +388,7 @@ export function registerOpsCommands(program: Command): void {
       const scan = withStore((store) => {
         const s = store.getScan(scanId);
         if (!s) {
-          console.error(chalk.red(`Scan not found: ${scanId}`));
+          logger.error(chalk.red(`Scan not found: ${scanId}`));
           process.exit(1);
         }
         store.saveBaseline(scanId, opts.label);
@@ -461,7 +461,7 @@ export function registerOpsCommands(program: Command): void {
       const logger = new Logger(parseVerbosity(program.opts().verbose));
       const alertId = parseInt(alertIdStr, 10);
       if (isNaN(alertId)) {
-        console.error(chalk.red('Invalid alert ID'));
+        logger.error(chalk.red('Invalid alert ID'));
         process.exit(1);
       }
       withStore((store) => store.acknowledgeAlert(alertId));
