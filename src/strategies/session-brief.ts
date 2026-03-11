@@ -25,6 +25,7 @@ export function updateBrief(
   prompt: string,
   response: string,
   evalResult: { verdict: Verdict; confidence: number; reasoning: string },
+  intentId?: string,
 ): void {
   brief.turnsUsed++;
   const responseClass = classifyResponse(response);
@@ -38,10 +39,15 @@ export function updateBrief(
     }
   }
 
+  // Track disclosed information
+  if (evalResult.verdict === Verdict.Vulnerable && evalResult.reasoning) {
+    brief.disclosedInfo.push(evalResult.reasoning.slice(0, 200));
+  }
+
   // Track refusals and successful framings
   if (responseClass === 'refusal') {
     brief.refusalPatterns.push({
-      intent: '',
+      intent: intentId ?? '',
       framing: prompt,
       refusalWording: response.slice(0, 200),
       turnNumber: brief.turnsUsed,

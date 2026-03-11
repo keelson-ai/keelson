@@ -94,10 +94,11 @@ Respond with ONLY a JSON object matching this schema:
   const response = await prober.send(messages);
 
   try {
-    // Extract JSON from response (may have markdown fences)
-    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON found');
-    return JSON.parse(jsonMatch[0]) as TargetDossier;
+    // Extract JSON — try code fence first, then fall back to greedy match
+    const fenceMatch = response.content.match(/```(?:json)?\s*\n(\{[\s\S]*?\})\s*\n```/);
+    const rawJson = fenceMatch?.[1] ?? response.content.match(/\{[\s\S]*\}/)?.[0];
+    if (!rawJson) throw new Error('No JSON found');
+    return JSON.parse(rawJson) as TargetDossier;
   } catch {
     return buildFallbackDossier(input);
   }

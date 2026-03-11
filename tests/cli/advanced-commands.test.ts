@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { registerAdvancedCommands } from '../../src/cli/advanced-commands.js';
 
 describe('registerAdvancedCommands', () => {
-  it('registers campaign, evolve, chain, test-crew, test-chain, and generate commands', () => {
+  it('registers campaign, evolve, chain, test-crew, test-chain, generate, and erode commands', () => {
     const program = new Command();
     registerAdvancedCommands(program);
 
@@ -15,13 +15,14 @@ describe('registerAdvancedCommands', () => {
     expect(commandNames).toContain('test-crew');
     expect(commandNames).toContain('test-chain');
     expect(commandNames).toContain('generate');
+    expect(commandNames).toContain('erode');
   });
 
-  it('registers exactly 6 commands', () => {
+  it('registers exactly 7 commands', () => {
     const program = new Command();
     registerAdvancedCommands(program);
 
-    expect(program.commands).toHaveLength(6);
+    expect(program.commands).toHaveLength(7);
   });
 
   it('campaign command accepts a config-path argument', () => {
