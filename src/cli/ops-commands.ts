@@ -169,12 +169,12 @@ export function registerOpsCommands(program: Command): void {
           });
         }
 
-        // Check for empty turns
-        const emptyTurns = probe.turns.filter((t) => t.content == null);
-        if (emptyTurns.length > 0) {
+        // Check for turns with missing content (empty string is allowed for error-probing scenarios like SI-008)
+        const missingContent = probe.turns.filter((t) => t.content == null);
+        if (missingContent.length > 0) {
           errors.push({
             file: probe.sourcePath ?? probe.id,
-            error: `Contains ${emptyTurns.length} empty turn(s)`,
+            error: `Contains ${missingContent.length} turn(s) with missing content`,
           });
         }
       }

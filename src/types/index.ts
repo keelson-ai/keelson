@@ -301,6 +301,10 @@ export interface AdapterConfig {
   chatResponseSelector?: string;
   browserHeadless?: boolean;
   browserResponseStabilityMs?: number;
+  /** JS snippet to run in page before chat interaction (e.g. dismiss cookie banner) */
+  browserPreInteraction?: string;
+  // Payload size limit (browser widgets often have character limits)
+  maxPayloadLength?: number;
 }
 
 export interface AdapterResponse {
