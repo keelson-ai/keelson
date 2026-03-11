@@ -1,2 +1,9 @@
 pnpm format
 pnpm lint:fix
+
+# Enforce strict pinned versions in package.json (no ^ or ~ prefixes)
+if grep -E '"[~^]' package.json; then
+  echo "ERROR: package.json contains non-pinned dependency versions (^ or ~)."
+  echo "All versions must be strictly pinned. Remove ^ or ~ prefixes."
+  exit 1
+fi
