@@ -122,7 +122,7 @@ export function determineContextBucket(brief: SessionBrief): ContextBucket {
 
   if (brief.successfulFramings.length >= 2) return 'post_trust_building';
 
-  return 'early_session';
+  return 'mid_session';
 }
 
 export function formatBriefForPrompt(brief: SessionBrief): string {

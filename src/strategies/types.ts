@@ -172,6 +172,7 @@ export type TargetPersonalityTag =
 
 export type ContextBucket =
   | 'early_session'
+  | 'mid_session'
   | 'post_trust_building'
   | 'post_disclosure'
   | 'post_refusal'

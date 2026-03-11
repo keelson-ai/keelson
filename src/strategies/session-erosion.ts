@@ -163,8 +163,11 @@ async function executeIntent(params: ExecuteIntentParams): Promise<IntentResult>
     // Update brief
     updateBrief(brief, prompt, response.content, evalResult, intent.id);
 
-    // Prober decides
-    const decision = await proberDecide(prober, intent, brief, response.content, evalResult, intentTurns, maxTurns);
+    // Skip prober LLM call if verdict already determined
+    const decision =
+      evalResult.verdict === Verdict.Vulnerable
+        ? ('complete' as ProberDecision)
+        : await proberDecide(prober, intent, brief, response.content, evalResult, intentTurns, maxTurns);
 
     onTurnComplete?.({
       intentId: intent.id,
@@ -177,7 +180,7 @@ async function executeIntent(params: ExecuteIntentParams): Promise<IntentResult>
       decision,
     });
 
-    if (decision === 'complete' || evalResult.verdict === Verdict.Vulnerable) break;
+    if (decision === 'complete') break;
     if (decision === 'move_on') break;
 
     // 'continue' or 'reframe' — keep going
