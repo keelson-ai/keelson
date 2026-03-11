@@ -12,6 +12,7 @@ import {
   withStore,
   writeReport,
 } from './utils.js';
+import { Logger, parseVerbosity } from './verbosity.js';
 import { loadProbes } from '../core/index.js';
 import { logger } from '../core/logger.js';
 import { diffScans, enhancedDiffScans, formatDiffReport } from '../diff/index.js';
@@ -35,6 +36,7 @@ export function registerOpsCommands(program: Command): void {
     .description('List all available probes')
     .option('--category <category>', 'Filter by category')
     .action(async (opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const probes = await loadProbes();
 
       let filtered = probes;
@@ -88,6 +90,7 @@ export function registerOpsCommands(program: Command): void {
     .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
     .option('--output <path>', 'Output file path')
     .action(async (opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       let result: ScanResult;
 
       if (opts.scanId) {
@@ -118,12 +121,13 @@ export function registerOpsCommands(program: Command): void {
         process.exit(1);
       }
 
-      printScanSummary(result);
+      printScanSummary(result, logger);
 
       if (opts.output) {
         await writeReport(result, opts.format, opts.output);
       } else {
-        logger.info(JSON.stringify(result, null, 2));
+        // Machine-readable JSON to stdout — intentional console.log
+        console.log(JSON.stringify(result, null, 2));
       }
     });
 
@@ -132,6 +136,7 @@ export function registerOpsCommands(program: Command): void {
     .description('Validate probe YAML files')
     .option('--dir <directory>', 'Probes directory to validate')
     .action(async (opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       logger.info(chalk.bold('\nValidating probe playbooks...'));
       logger.info('');
 
@@ -210,6 +215,7 @@ export function registerOpsCommands(program: Command): void {
     .option('--enhanced', 'Include severity-classified regression alerts', false)
     .option('--output <path>', 'Write diff report to file')
     .action(async (opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const store = Store.open();
 
       let scanA: ScanResult | undefined;
@@ -340,6 +346,7 @@ export function registerOpsCommands(program: Command): void {
     .description('List recent scans with date, target, and vulnerability counts')
     .option('--limit <n>', 'Max results to show', '20')
     .action((opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const scans = withStore((store) => store.listScans(parseInt(opts.limit, 10)));
 
       if (scans.length === 0) {
@@ -378,6 +385,7 @@ export function registerOpsCommands(program: Command): void {
     .argument('<scan-id>', 'Scan ID to set as baseline')
     .option('--label <label>', 'Optional label for this baseline', '')
     .action((scanId: string, opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const scan = withStore((store) => {
         const s = store.getScan(scanId);
         if (!s) {
@@ -397,6 +405,7 @@ export function registerOpsCommands(program: Command): void {
     .description('Show all saved baselines')
     .option('--limit <n>', 'Max results', '20')
     .action((opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const baselines = withStore((store) => store.getBaselines(parseInt(opts.limit, 10)));
 
       if (baselines.length === 0) {
@@ -421,6 +430,7 @@ export function registerOpsCommands(program: Command): void {
     .option('--all', 'Show acknowledged alerts too', false)
     .option('--limit <n>', 'Max results', '50')
     .action((opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const alerts = withStore((store) => store.listRegressionAlerts(parseInt(opts.limit, 10)));
 
       const filtered = opts.all ? alerts : alerts.filter((a) => !a.acknowledged);
@@ -449,6 +459,7 @@ export function registerOpsCommands(program: Command): void {
     .description('Acknowledge a regression alert')
     .argument('<alert-id>', 'Alert ID to acknowledge')
     .action((alertIdStr: string) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const alertId = parseInt(alertIdStr, 10);
       if (isNaN(alertId)) {
         logger.error(chalk.red('Invalid alert ID'));
@@ -474,6 +485,7 @@ export function registerOpsCommands(program: Command): void {
     .command('info')
     .description('Show store location, size, and row counts per table')
     .action(() => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const { dbPath, stats } = withStore((store) => ({
         dbPath: store.dbPath,
         stats: store.getStats(),

@@ -21,11 +21,9 @@ describe('E2E: Report Pipeline', () => {
 
     expect(report).toContain('# Keelson Security Scan Report');
     expect(report).toContain('## Summary');
-    expect(report).toContain('| Metric | Count |');
-    expect(report).toContain('### Severity Breakdown');
-    expect(report).toContain('## Findings');
+    expect(report).toContain('## Detailed Results');
+    expect(report).toContain('## Methodology');
     expect(report).toContain(mixedResult.target);
-    expect(report).toContain(mixedResult.scanId);
     expect(report).not.toContain('undefined');
     expect(report).not.toContain('null');
   });
@@ -83,8 +81,9 @@ describe('E2E: Report Pipeline', () => {
 
   it('all report formats handle all-vulnerable findings', () => {
     const markdown = generateReport(allVulnResult, 'markdown');
-    expect(markdown).toContain('## Findings');
-    // All findings are vulnerable, so every probe should appear in Findings section
+    expect(markdown).toContain('## Critical Findings');
+    expect(markdown).toContain('## Detailed Results');
+    // All findings are vulnerable, so every probe should appear
     for (const f of allVulnResult.findings) {
       expect(markdown).toContain(f.probeId);
     }

@@ -15,11 +15,11 @@ import {
   writeReport,
   writeScanOutput,
 } from './utils.js';
+import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { OpenAIAdapter, ProberAdapter, createAdapter } from '../adapters/index.js';
 import { parseCampaignConfig } from '../campaign/config.js';
 import { runCampaign } from '../campaign/runner.js';
 import { executeProbe, loadProbes } from '../core/index.js';
-import { logger } from '../core/logger.js';
 import { executeChain, synthesizeChainsLlm } from '../prober/index.js';
 import type { AgentProfile } from '../prober/index.js';
 import {
@@ -102,6 +102,9 @@ function registerTestCommand(
   extraOptions?.(cmd);
 
   cmd.action(async (opts) => {
+    const verbosity = parseVerbosity(program.opts().verbose);
+    const logger = new Logger(verbosity);
+
     const adapterConfig: AdapterConfig = {
       ...buildAdapterConfig({
         target: opts.target,
@@ -127,8 +130,7 @@ function registerTestCommand(
         categories,
         delayMs,
         onFinding: (finding, current, total) => {
-          const icon = VERDICT_ICONS[finding.verdict];
-          logger.info(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
+          logger.finding(finding, current, total);
         },
       });
     } finally {
@@ -136,7 +138,7 @@ function registerTestCommand(
     }
 
     const { printScanSummary } = await import('./utils.js');
-    printScanSummary(result);
+    printScanSummary(result, logger);
 
     const store = openStore(opts);
     if (store) {
@@ -170,6 +172,8 @@ export function registerAdvancedCommands(program: Command): void {
     .option('--no-store', 'Disable persisting results to local Store')
     .option('--output-dir <dir>', 'Directory for scan output files', DEFAULT_OUTPUT_DIR)
     .action(async (configPath: string, opts) => {
+      const verbosity = parseVerbosity(program.opts().verbose);
+      const logger = new Logger(verbosity);
       const config = await parseCampaignConfig(configPath);
 
       const adapterConfig = buildAdapterConfig({
@@ -214,6 +218,10 @@ export function registerAdvancedCommands(program: Command): void {
             onFinding: (finding, current, total) => {
               const icon = VERDICT_ICONS[finding.verdict];
               logger.info(`  [${current}/${total}] ${icon} ${finding.probeId}: ${finding.verdict}`);
+              if (verbosity >= Verbosity.Verdicts) {
+                const pct = Math.round((finding.successRate ?? 0) * 100);
+                logger.info(`    success rate: ${pct}% | trials: ${finding.trials.length}`);
+              }
             },
           },
         );
@@ -294,6 +302,9 @@ export function registerAdvancedCommands(program: Command): void {
     .option('--mutations <n>', 'Number of mutations to try', '5')
     .option('--adapter-type <type>', 'Adapter type', 'openai')
     .action(async (opts) => {
+      const verbosity = parseVerbosity(program.opts().verbose);
+      const logger = new Logger(verbosity);
+
       const probes = await loadProbes();
       const template = probes.find((p) => p.id === opts.probeId);
       if (!template) {
@@ -361,11 +372,11 @@ export function registerAdvancedCommands(program: Command): void {
 
           const finding = await executeProbe(variant, targetAdapter, {
             delayMs: 500,
+            ...logger.buildProbeCallbacks(),
           });
           results.push({ mutated, finding });
 
-          const icon = VERDICT_ICONS[finding.verdict];
-          logger.info(`  [${i + 1}/${numMutations}] ${mt}: ${icon}`);
+          logger.finding(finding, i + 1, numMutations);
         }
       } finally {
         await targetAdapter.close?.();
@@ -396,6 +407,9 @@ export function registerAdvancedCommands(program: Command): void {
     .option('--delay <ms>', 'Milliseconds between requests', '1500')
     .option('--llm-chains <count>', 'Generate and execute LLM-synthesized probe chains')
     .action(async (opts) => {
+      const verbosity = parseVerbosity(program.opts().verbose);
+      const logger = new Logger(verbosity);
+
       const probes = await loadProbes();
       const template = probes.find((p) => p.id === opts.probeId);
       if (!template) {
@@ -456,7 +470,7 @@ export function registerAdvancedCommands(program: Command): void {
 
             for (const entry of result.results) {
               const status = entry.continued ? '\u2713' : '\u2717';
-              logger.info(`  ${status} ${truncate(entry.step.prompt, 80)}`);
+              logger.step(status, truncate(entry.step.prompt, 80));
             }
 
             const completedSteps = result.results.filter((r) => r.continued).length;
@@ -521,12 +535,14 @@ export function registerAdvancedCommands(program: Command): void {
           });
 
           for (const step of result.escalationPath) {
-            logger.info(`  [Turn ${step.turn}] ${truncate(step.prompt, 80)}`);
+            logger.step('', `[Turn ${step.turn}] ${truncate(step.prompt, 80)}`);
+            logger.debug(`[Turn ${step.turn}] ${step.prompt}`);
           }
 
           const icon = VERDICT_ICONS[result.finding.verdict];
           logger.info(`\nChain Result: ${icon} (${result.turnsUsed}/${result.maxTurns} turns)`);
           logger.info(`  Success: ${result.success}`);
+          logger.finding(result.finding, 1, 1);
         } else {
           // Default: PAIR
           const result = await runPair(template, {
@@ -539,12 +555,14 @@ export function registerAdvancedCommands(program: Command): void {
 
           for (const step of result.refinementHistory) {
             const icon = VERDICT_ICONS[step.verdict as Verdict];
-            logger.info(`  [Iteration ${step.iteration}] ${icon}`);
+            logger.step(icon, `[Iteration ${step.iteration}]`);
+            logger.debug(`[Iteration ${step.iteration}] verdict=${step.verdict}`);
           }
 
           const icon = VERDICT_ICONS[result.finding.verdict];
           logger.info(`\nChain Result: ${icon} (${result.iterationsUsed}/${result.maxIterations} iterations)`);
           logger.info(`  Success: ${result.success}`);
+          logger.finding(result.finding, 1, 1);
         }
       } finally {
         await targetAdapter.close?.();
@@ -586,6 +604,7 @@ export function registerAdvancedCommands(program: Command): void {
     .option('--count <n>', 'Number of probes to generate per category', '3')
     .option('--output <dir>', 'Directory to save generated playbooks')
     .action(async (opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
       const proberAdapter = new OpenAIAdapter({
         type: 'openai',
         baseUrl: opts.proberUrl,

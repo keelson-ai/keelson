@@ -16,7 +16,8 @@
     "lint:fix": "eslint src/ tests/ --fix",
     "format": "prettier --write src/ tests/",
     "format:check": "prettier --check src/ tests/",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=22"
@@ -43,6 +44,9 @@
     "yaml": "2.8.2",
     "zod": "4.3.6"
   },
+  "optionalDependencies": {
+    "playwright": "1.58.2"
+  },
   "devDependencies": {
     "@eslint/js": "9.39.4",
     "@types/better-sqlite3": "^7.6.13",
@@ -52,6 +56,7 @@
     "eslint": "9.39.4",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import-x": "4.16.1",
+    "husky": "9.1.7",
     "ink-testing-library": "^4.0.0",
     "nock": "14.0.11",
     "prettier": "3.8.1",
