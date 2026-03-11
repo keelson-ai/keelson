@@ -21,7 +21,7 @@ export function buildAdapterConfig(opts: {
   chatSubmitSelector?: string;
   chatResponseSelector?: string;
   browserHeadless?: boolean;
-  hubspotPreInteraction?: string;
+  browserPreInteraction?: string;
 }): AdapterConfig {
   return {
     type: opts.adapterType ?? 'openai',
@@ -35,8 +35,7 @@ export function buildAdapterConfig(opts: {
     chatSubmitSelector: opts.chatSubmitSelector,
     chatResponseSelector: opts.chatResponseSelector,
     browserHeadless: opts.browserHeadless,
-    // HubSpot-specific
-    hubspotPreInteraction: opts.hubspotPreInteraction,
+    browserPreInteraction: opts.browserPreInteraction,
   };
 }
 

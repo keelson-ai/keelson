@@ -193,6 +193,11 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
       'reorder option is not supported with concurrency > 1 (execution order is undefined in concurrent mode)',
     );
   }
+  if (options.resetBetweenProbes && concurrency > 1) {
+    throw new Error(
+      'resetBetweenProbes is not supported with concurrency > 1 (browser session reset requires sequential execution)',
+    );
+  }
   const executed =
     concurrency <= 1
       ? await executeSequential(probes, adapter, memo, options)
