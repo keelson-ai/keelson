@@ -13,8 +13,9 @@ import {
 import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { createAdapter } from '../adapters/index.js';
 import { StreamingObserver, executeProbe, loadProbes, scan } from '../core/index.js';
+import { errorFinding, sanitizeErrorMessage } from '../core/scan-helpers.js';
 import type { Store } from '../state/index.js';
-import type { ScanResult } from '../types/index.js';
+import type { Adapter, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
 // ─── Shared helpers ─────────────────────────────────────
@@ -40,6 +41,37 @@ interface ScanCommandOpts {
   chatSubmitSelector?: string;
   chatResponseSelector?: string;
   browserHeadless?: boolean;
+  // Browser pre-interaction
+  browserPreInteraction?: string;
+  // LLM Judge
+  judgeProvider?: string;
+  judgeModel?: string;
+  judgeApiKey?: string;
+  // Payload size limit
+  maxPayloadLength?: string;
+}
+
+function buildJudge(opts: ScanCommandOpts): Adapter | undefined {
+  if (!opts.judgeProvider) return undefined;
+  if (!opts.judgeApiKey) {
+    process.stderr.write('Warning: --judge-provider set but --judge-api-key missing; judge disabled\n');
+    return undefined;
+  }
+  return createAdapter({
+    type: opts.judgeProvider,
+    baseUrl: '', // adapters resolve their own base URL from type
+    apiKey: opts.judgeApiKey,
+    model: opts.judgeModel ?? 'default',
+  });
+}
+
+function setupScan(opts: ScanCommandOpts): { adapter: Adapter; store: Store | null } {
+  try {
+    return { adapter: createAdapter(buildAdapterConfig(opts)), store: openStore(opts) };
+  } catch (err: unknown) {
+    console.error(`Setup failed: ${sanitizeErrorMessage(err)}`);
+    process.exit(1);
+  }
 }
 
 function printHeader(logger: Logger, title: string, opts: ScanCommandOpts, extra?: Record<string, string>): void {
@@ -113,7 +145,15 @@ function addCommonScanOptions(cmd: ReturnType<Command['command']>, delayDefault 
     .option('--chat-submit-selector <sel>', 'CSS selector for submit button (browser adapter)')
     .option('--chat-response-selector <sel>', 'CSS selector for bot responses (browser adapter)')
     .option('--browser-headless', 'Run browser in headless mode (default: true)', true)
-    .option('--no-browser-headless', 'Run browser in headed mode (visible)');
+    .option('--no-browser-headless', 'Run browser in headed mode (visible)')
+    .option(
+      '--browser-pre-interaction <js>',
+      'JS snippet to run in page before chat interaction (e.g. dismiss cookie banner)',
+    )
+    .option('--judge-provider <type>', 'LLM judge adapter type (e.g., openai, anthropic)')
+    .option('--judge-model <model>', 'LLM judge model name')
+    .option('--judge-api-key <key>', 'API key for LLM judge')
+    .option('--max-payload-length <chars>', 'Skip probes exceeding this character limit');
 }
 
 // ─── Commands ───────────────────────────────────────────
@@ -125,11 +165,12 @@ export function registerScanCommands(program: Command): void {
     .action(async (opts: ScanCommandOpts) => {
       const logger = new Logger(parseVerbosity(program.opts().verbose));
       const observer = new StreamingObserver();
-      const adapter = createAdapter(buildAdapterConfig(opts));
-      const store = openStore(opts);
+      const { adapter, store } = setupScan(opts);
       const categories = opts.category ? [opts.category] : undefined;
       const delayMs = parseInt(opts.delay ?? '1500', 10);
       const concurrency = parseInt(opts.concurrency ?? '1', 10);
+      const judge = buildJudge(opts);
+      const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
 
       printHeader(logger, 'Keelson Security Scan', opts, opts.category ? { Category: opts.category } : undefined);
 
@@ -141,6 +182,8 @@ export function registerScanCommands(program: Command): void {
           concurrency,
           reorder: concurrency <= 1,
           observer,
+          judge,
+          maxPayloadLength,
           onFinding: (finding, current, total) => logger.finding(finding, current, total),
         });
       } finally {
@@ -155,8 +198,9 @@ export function registerScanCommands(program: Command): void {
     '2000',
   ).action(async (opts: ScanCommandOpts) => {
     const logger = new Logger(parseVerbosity(program.opts().verbose));
-    const adapter = createAdapter(buildAdapterConfig(opts));
-    const store = openStore(opts);
+    const { adapter, store } = setupScan(opts);
+    const judge = buildJudge(opts);
+    const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
 
     printHeader(logger, 'Keelson Smart Scan', opts);
 
@@ -165,6 +209,8 @@ export function registerScanCommands(program: Command): void {
       result = await scan(opts.target, adapter, {
         delayMs: parseInt(opts.delay ?? '2000', 10),
         reorder: true,
+        judge,
+        maxPayloadLength,
         onFinding: (finding, current, total) => logger.finding(finding, current, total),
       });
     } finally {
@@ -181,8 +227,9 @@ export function registerScanCommands(program: Command): void {
     .option('--max-passes <n>', 'Maximum convergence passes', '4')
     .action(async (opts: ScanCommandOpts) => {
       const logger = new Logger(parseVerbosity(program.opts().verbose));
-      const adapter = createAdapter(buildAdapterConfig(opts));
-      const store = openStore(opts);
+      const { adapter, store } = setupScan(opts);
+      const judge = buildJudge(opts);
+      const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
       const maxPasses = parseInt(opts.maxPasses ?? '4', 10);
 
       const extra: Record<string, string> = { 'Max passes': String(maxPasses) };
@@ -199,6 +246,8 @@ export function registerScanCommands(program: Command): void {
             categories,
             delayMs: parseInt(opts.delay ?? '1500', 10),
             reorder: true,
+            judge,
+            maxPayloadLength,
             onFinding: (finding, current, total) => logger.finding(finding, current, total),
           });
 
@@ -253,6 +302,8 @@ export function registerScanCommands(program: Command): void {
           observer,
           ...logger.buildProbeCallbacks(),
         });
+      } catch (err: unknown) {
+        finding = errorFinding(template, sanitizeErrorMessage(err));
       } finally {
         await adapter.close?.();
       }
