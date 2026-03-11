@@ -123,10 +123,20 @@ async function executeIntent(params: ExecuteIntentParams): Promise<IntentResult>
   let lastConfidence = 0;
   let lastReasoning = '';
   const steps: Array<{ prompt: string; response: string }> = [];
+  const recentPrompts: string[] = [];
 
   while (intentTurns < maxTurns) {
     // Prober crafts prompt
     const prompt = await craftPrompt(prober, intent, brief, dossier, conversation);
+
+    // Loop detection: if last 2 prompts are very similar, force break
+    if (recentPrompts.length >= 1) {
+      const prev = recentPrompts[recentPrompts.length - 1];
+      if (isSimilarPrompt(prev, prompt)) {
+        break;
+      }
+    }
+    recentPrompts.push(prompt);
 
     // Send to target
     conversation.push({ role: 'user', content: prompt });
@@ -148,7 +158,7 @@ async function executeIntent(params: ExecuteIntentParams): Promise<IntentResult>
     lastReasoning = evalResult.reasoning;
 
     // Update brief
-    updateBrief(brief, prompt, response.content, evalResult);
+    updateBrief(brief, prompt, response.content, evalResult, intent.id);
 
     // Prober decides
     const decision = await proberDecide(prober, intent, brief, response.content, evalResult, intentTurns, maxTurns);
@@ -308,7 +318,13 @@ Output exactly one word: CONTINUE, REFRAME, COMPLETE, or MOVE_ON.`,
     MOVE_ON: 'move_on',
   };
 
-  return validDecisions[word] ?? 'continue';
+  const decision = validDecisions[word];
+  if (!decision) {
+    process.stderr.write(
+      `Warning: prober returned invalid decision "${result.content.trim()}", defaulting to continue\n`,
+    );
+  }
+  return decision ?? 'continue';
 }
 
 async function generateNarrative(
@@ -341,4 +357,14 @@ Write a 2-3 paragraph executive summary of the attack chain, key findings, and t
   } catch {
     return `Session completed: ${results.length} intents attempted, ${results.filter((r) => r.outcome === 'vulnerable').length} vulnerabilities found in ${brief.turnsUsed} turns.`;
   }
+}
+
+function isSimilarPrompt(a: string, b: string): boolean {
+  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (na === nb) return true;
+  const shorter = na.length < nb.length ? na : nb;
+  const longer = na.length >= nb.length ? na : nb;
+  return shorter.length > 20 && longer.includes(shorter);
 }

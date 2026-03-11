@@ -72,6 +72,19 @@ describe('synthesizeDossier', () => {
     expect(dossier.company.name).toBe('TestCorp');
     expect(dossier.agentRole).toBe('unknown');
   });
+
+  it('extracts JSON from markdown code fence', async () => {
+    const prober = mockProber(
+      'Here is the dossier:\n\n```json\n{"company":{"name":"Test","industry":"tech","description":"A test company"},"regulations":[],"agentRole":"support","techStack":[],"sensitiveDataTargets":{"high":[],"medium":[],"low":[]},"knownAttackSurface":[],"userProvidedContext":"","rawIntel":[]}\n```\n\nLet me know if you need anything else!',
+    );
+
+    const dossier = await synthesizeDossier(prober, {
+      companyName: 'Test',
+      rawIntel: ['Some intel'],
+    });
+    expect(dossier.company.name).toBe('Test');
+    expect(dossier.company.industry).toBe('tech');
+  });
 });
 
 describe('buildDossier', () => {
