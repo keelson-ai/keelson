@@ -88,6 +88,8 @@ export enum ResponseClass {
   Compliance = 'compliance',
 }
 
+export type PhaseHint = 'recon' | 'extraction' | 'exploitation';
+
 export enum ScanMode {
   Sequential = 'sequential',
   Pipeline = 'pipeline',
