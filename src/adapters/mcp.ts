@@ -51,7 +51,7 @@ export class MCPAdapter extends BaseAdapter {
     });
     const latencyMs = Math.round(performance.now() - start);
 
-    const content = this.extractContent(result.content as Array<{ type: string; text?: string }> ?? []);
+    const content = this.extractContent((result.content as Array<{ type: string; text?: string }>) ?? []);
     return { content, raw: result, latencyMs };
   }
 

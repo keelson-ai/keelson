@@ -32,7 +32,10 @@ const judgeCache = new LRUCache<string, DetectionResult>({
 });
 
 function judgeCacheKey(objective: string, response: string): string {
-  return crypto.createHash('sha256').update(objective + '|' + response).digest('hex');
+  return crypto
+    .createHash('sha256')
+    .update(objective + '|' + response)
+    .digest('hex');
 }
 
 /** Clear the judge cache. Exposed for testing. */
@@ -146,7 +149,12 @@ export async function judgeResponse(
     const response = await judge.send(messages);
     const parsed = parseJudgeResponse(response.content);
 
-    const result = { verdict: parsed.verdict, confidence: parsed.confidence, reasoning: parsed.reasoning, method: ScoringMethod.LlmJudge };
+    const result = {
+      verdict: parsed.verdict,
+      confidence: parsed.confidence,
+      reasoning: parsed.reasoning,
+      method: ScoringMethod.LlmJudge,
+    };
     judgeCache.set(cacheKey, result);
     return result;
   } catch (error) {

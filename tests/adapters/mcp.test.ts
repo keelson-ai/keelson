@@ -76,9 +76,7 @@ describe('MCPAdapter', () => {
     const adapter = new MCPAdapter(makeConfig({ toolName: 'ask' }));
     await adapter.send([{ role: 'user', content: 'test' }]);
 
-    expect(mockCallTool).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'ask' }),
-    );
+    expect(mockCallTool).toHaveBeenCalledWith(expect.objectContaining({ name: 'ask' }));
   });
 
   it('throws on callTool error', async () => {
