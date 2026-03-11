@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 
 import chalk from 'chalk';
 
-import { logger } from '../core/logger.js';
+import type { Logger } from './verbosity.js';
 import { Store } from '../state/index.js';
 import type { AdapterConfig, Finding, ScanResult, ScanSummary } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
@@ -16,12 +16,24 @@ export function buildAdapterConfig(opts: {
   apiKey?: string;
   model?: string;
   adapterType?: string;
+  chatbotId?: string;
+  chatInputSelector?: string;
+  chatSubmitSelector?: string;
+  chatResponseSelector?: string;
+  browserHeadless?: boolean;
 }): AdapterConfig {
   return {
     type: opts.adapterType ?? 'openai',
     baseUrl: opts.target,
     apiKey: opts.apiKey,
     model: opts.model,
+    // SiteGPT-specific
+    chatbotId: opts.chatbotId,
+    // Browser-specific
+    chatInputSelector: opts.chatInputSelector,
+    chatSubmitSelector: opts.chatSubmitSelector,
+    chatResponseSelector: opts.chatResponseSelector,
+    browserHeadless: opts.browserHeadless,
   };
 }
 
@@ -57,12 +69,6 @@ export const VERDICT_ICONS: Record<Verdict, string> = {
   [Verdict.Vulnerable]: chalk.red('\u2717'),
   [Verdict.Safe]: chalk.green('\u2713'),
   [Verdict.Inconclusive]: chalk.yellow('?'),
-};
-
-export const VERDICT_LABELS: Record<Verdict, string> = {
-  [Verdict.Vulnerable]: chalk.red('VULNERABLE'),
-  [Verdict.Safe]: chalk.green('SAFE'),
-  [Verdict.Inconclusive]: chalk.yellow('INCONCLUSIVE'),
 };
 
 export const SEVERITY_COLORS: Record<Severity, typeof chalk> = {
@@ -113,7 +119,7 @@ export function assertScanResult(parsed: unknown, label: string): ScanResult {
   return obj as unknown as ScanResult;
 }
 
-export function printScanSummary(result: ScanResult): void {
+export function printScanSummary(result: ScanResult, logger: Logger): void {
   const { summary } = result;
 
   logger.info(chalk.bold('\nScan Summary'));
@@ -127,11 +133,11 @@ export function printScanSummary(result: ScanResult): void {
       `${chalk.yellow(`Inconclusive: ${summary.inconclusive}`)}`,
   );
 
-  printSeverityBreakdown(summary);
-  printCategoryBreakdown(summary);
+  printSeverityBreakdown(summary, logger);
+  printCategoryBreakdown(summary, logger);
 }
 
-function printSeverityBreakdown(summary: ScanSummary): void {
+function printSeverityBreakdown(summary: ScanSummary, logger: Logger): void {
   const entries = Object.entries(summary.bySeverity).filter(([, count]) => count > 0);
   if (entries.length === 0) return;
 
@@ -142,7 +148,7 @@ function printSeverityBreakdown(summary: ScanSummary): void {
   }
 }
 
-function printCategoryBreakdown(summary: ScanSummary): void {
+function printCategoryBreakdown(summary: ScanSummary, logger: Logger): void {
   const entries = Object.entries(summary.byCategory).filter(([, count]) => count > 0);
   if (entries.length === 0) return;
 
@@ -162,6 +168,7 @@ export function checkFailGates(
   totalCount: number,
   failOnVuln: boolean,
   threshold: number,
+  logger: Logger,
 ): number {
   if (!failOnVuln) return 0;
   if (totalCount === 0) return 0;
@@ -196,15 +203,13 @@ export async function writeReport(result: ScanResult, format: string, output: st
       const reportOutput = reporting.generateReport(result, format);
       const formatted = typeof reportOutput === 'string' ? reportOutput : JSON.stringify(reportOutput, null, 2);
       await writeFile(output, formatted, 'utf-8');
-      logger.info(chalk.green(`Report saved: ${output}`));
       return;
     } catch {
       // Reporting module not available — fall back to JSON
-      logger.info(chalk.yellow(`Warning: '${format}' formatter not available, falling back to JSON`));
+      process.stderr.write(chalk.yellow(`Warning: '${format}' formatter not available, falling back to JSON\n`));
     }
   }
 
   // Default: write JSON
   await writeFile(output, JSON.stringify(result, null, 2), 'utf-8');
-  logger.info(chalk.green(`Report saved: ${output}`));
 }

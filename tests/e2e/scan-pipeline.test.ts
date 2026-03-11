@@ -99,7 +99,7 @@ describe('E2E: Scan Pipeline', () => {
 
     expect(markdown).toContain('# Keelson Security Scan Report');
     expect(markdown).toContain('## Summary');
-    expect(markdown).toContain('## Findings');
+    expect(markdown).toContain('## Detailed Results');
     expect(markdown).toContain('https://api.example.com/v1/chat');
     expect(markdown).not.toContain('undefined');
     expect(markdown).not.toContain('null');

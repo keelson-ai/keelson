@@ -1,4 +1,5 @@
-import { isHardRefusal, patternDetect } from './detection.js';
+import { isHardRefusal, patternDetectWithDetails } from './detection.js';
+import type { PatternDetails } from './detection.js';
 import { combinedDetect, judgeResponse } from './llm-judge.js';
 import type {
   Adapter,
@@ -14,10 +15,27 @@ import { sleep } from '../utils.js';
 const MIN_REMAINING_FOR_EARLY_TERM = 2;
 const DEFAULT_DELAY_MS = 1000;
 
+export type { PatternDetails } from './detection.js';
+
+export interface TurnCompleteInfo {
+  probeId: string;
+  stepIndex: number;
+  userTurnIndex: number;
+  totalTurns: number;
+  prompt: string;
+  response: string;
+  responseTimeMs: number;
+  raw: unknown;
+}
+
 export interface ExecuteProbeOptions {
   delayMs?: number;
   judge?: Adapter;
-  onTurn?: (stepIndex: number, prompt: string, response: string) => void;
+  onTurnComplete?: (info: TurnCompleteInfo) => void;
+  onEarlyTermination?: (reason: string) => void;
+  onDetection?: (result: DetectionResult, details: PatternDetails) => void;
+  onJudgeResult?: (result: DetectionResult) => void;
+  onCombinedResult?: (result: DetectionResult) => void;
   observer?: Observer;
 }
 
@@ -44,19 +62,30 @@ export async function executeProbe(
   adapter: Adapter,
   options: ExecuteProbeOptions = {},
 ): Promise<Finding> {
-  const { delayMs = DEFAULT_DELAY_MS, judge, onTurn, observer } = options;
+  const {
+    delayMs = DEFAULT_DELAY_MS,
+    judge,
+    onTurnComplete,
+    onEarlyTermination,
+    onDetection,
+    onJudgeResult,
+    onCombinedResult,
+    observer,
+  } = options;
 
   const messages: Turn[] = [];
   const evidence: EvidenceItem[] = [];
   const allEvidence: EvidenceItem[] = [];
-  let userTurnCount = 0;
+  let globalUserTurnCount = 0;
+  let sessionUserTurnCount = 0;
+  const totalUserTurns = template.turns.filter((t) => t.role === 'user').length;
 
   for (let stepIdx = 0; stepIdx < template.turns.length; stepIdx++) {
     const step = template.turns[stepIdx];
 
     if (template.newSession && stepIdx > 0) {
       messages.length = 0;
-      userTurnCount = 0;
+      sessionUserTurnCount = 0;
       evidence.length = 0; // reset per-session evidence; allEvidence keeps accumulating
       adapter.resetSession?.(); // notify adapter to reset server-side session state
     }
@@ -68,7 +97,8 @@ export async function executeProbe(
     }
 
     messages.push({ role: 'user', content: step.content });
-    userTurnCount++;
+    globalUserTurnCount++;
+    sessionUserTurnCount++;
 
     const startTime = Date.now();
     const response = await adapter.send([...messages]);
@@ -86,10 +116,20 @@ export async function executeProbe(
     evidence.push(evidenceItem);
     allEvidence.push(evidenceItem);
 
-    onTurn?.(stepIdx, step.content, responseText);
+    onTurnComplete?.({
+      probeId: template.id,
+      stepIndex: stepIdx,
+      userTurnIndex: globalUserTurnCount - 1,
+      totalTurns: totalUserTurns,
+      prompt: step.content,
+      response: responseText,
+      responseTimeMs,
+      raw: response.raw,
+    });
 
     const remaining = countRemainingUserTurns(template.turns, stepIdx);
-    if (shouldTerminateEarly(responseText, userTurnCount, remaining)) {
+    if (shouldTerminateEarly(responseText, sessionUserTurnCount, remaining)) {
+      onEarlyTermination?.('Hard refusal detected on first turn; skipping remaining turns');
       break;
     }
 
@@ -99,12 +139,19 @@ export async function executeProbe(
   }
 
   const leakageSignals = observer?.observe(allEvidence) ?? [];
-  const patternResult = patternDetect(template, allEvidence, leakageSignals);
+  const { result: patternResult, details: patternDetails } = patternDetectWithDetails(
+    template,
+    allEvidence,
+    leakageSignals,
+  );
+  onDetection?.(patternResult, patternDetails);
 
   let detection: DetectionResult;
   if (judge) {
     const judgeResult = await judgeResponse(template, allEvidence, judge);
+    onJudgeResult?.(judgeResult);
     detection = combinedDetect(patternResult, judgeResult);
+    onCombinedResult?.(detection);
   } else {
     detection = patternResult;
   }

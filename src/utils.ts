@@ -29,6 +29,11 @@ export function getErrorName(err: unknown): string {
   return err instanceof Error ? err.constructor.name : 'UnknownError';
 }
 
+/** Extract the YYYY-MM-DD date portion from an ISO 8601 timestamp. */
+export function extractDate(isoString: string): string {
+  return isoString.slice(0, 10);
+}
+
 /** Truncate a string to maxLen characters, appending '...' if truncated. */
 export function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;

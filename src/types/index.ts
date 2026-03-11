@@ -292,6 +292,15 @@ export interface AdapterConfig {
   // LangChain-specific
   inputKey?: string;
   outputKey?: string;
+  // Intercom-specific
+  intercomPollMs?: number;
+  intercomMaxPollAttempts?: number;
+  // Browser-specific
+  chatInputSelector?: string;
+  chatSubmitSelector?: string;
+  chatResponseSelector?: string;
+  browserHeadless?: boolean;
+  browserResponseStabilityMs?: number;
 }
 
 export interface AdapterResponse {
