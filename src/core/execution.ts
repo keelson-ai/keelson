@@ -5,8 +5,11 @@
  * post-scan verification to confirm or downgrade VULNERABLE findings.
  */
 
+import PQueue from 'p-queue';
+
 import { executeProbe } from './engine.js';
 import type { ExecuteProbeOptions } from './engine.js';
+import { scannerLogger } from './logger.js';
 import type { Adapter, EvidenceItem, Finding, ProbeTemplate, Turn } from '../types/index.js';
 import { ScoringMethod, Verdict } from '../types/index.js';
 import { getErrorName, sleep } from '../utils.js';
@@ -106,45 +109,11 @@ export async function executeSequential(
 // ─── Parallel Execution ──────────────────────────────────
 
 /**
- * Simple semaphore for concurrency control.
+ * Execute probes in parallel with PQueue-based concurrency control.
  *
- * Limits the number of concurrent async operations without
- * requiring external dependencies.
- */
-class Semaphore {
-  private current = 0;
-  private readonly waiting: Array<() => void> = [];
-
-  constructor(private readonly max: number) {}
-
-  async acquire(): Promise<void> {
-    if (this.current < this.max) {
-      this.current++;
-      return;
-    }
-    return new Promise<void>((resolve) => {
-      this.waiting.push(() => {
-        this.current++;
-        resolve();
-      });
-    });
-  }
-
-  release(): void {
-    this.current--;
-    const next = this.waiting.shift();
-    if (next) {
-      next();
-    }
-  }
-}
-
-/**
- * Execute probes in parallel with semaphore-based concurrency control.
- *
- * Uses Promise.all with a concurrency limiter to run up to `maxConcurrent`
- * probes simultaneously. Failed probes produce INCONCLUSIVE findings rather
- * than rejecting the entire batch.
+ * Uses PQueue to run up to `maxConcurrent` probes simultaneously with
+ * built-in rate limiting. Failed probes produce INCONCLUSIVE findings
+ * rather than rejecting the entire batch.
  */
 export async function executeParallel(
   templates: ProbeTemplate[],
@@ -156,42 +125,45 @@ export async function executeParallel(
   const { maxConcurrent = 5, onFinding, offset = 0, total, delayMs = 1000, ...probeOptions } = options;
   const resolvedTotal = total ?? templates.length + offset;
 
-  const semaphore = new Semaphore(maxConcurrent);
+  const queue = new PQueue({
+    concurrency: maxConcurrent,
+  });
+
   const findings: Finding[] = [];
   let completed = offset;
 
-  async function runOne(template: ProbeTemplate): Promise<void> {
-    await semaphore.acquire();
-    let finding: Finding;
-    try {
-      finding = await executeProbe(template, adapter, { delayMs, ...probeOptions });
-    } catch (err) {
-      const errorName = getErrorName(err);
-      finding = {
-        probeId: template.id,
-        probeName: template.name,
-        verdict: Verdict.Inconclusive,
-        severity: template.severity,
-        category: template.category,
-        owaspId: template.owaspId,
-        confidence: 0,
-        reasoning: `Error during execution: ${errorName}`,
-        scoringMethod: ScoringMethod.Pattern,
-        conversation: [],
-        evidence: [],
-        leakageSignals: [],
-        timestamp: new Date().toISOString(),
-      };
-    } finally {
-      semaphore.release();
-    }
+  const tasks = templates.map((template) =>
+    queue.add(async () => {
+      let finding: Finding;
+      try {
+        finding = await executeProbe(template, adapter, { delayMs, ...probeOptions });
+      } catch (err) {
+        const errorName = getErrorName(err);
+        finding = {
+          probeId: template.id,
+          probeName: template.name,
+          verdict: Verdict.Inconclusive,
+          severity: template.severity,
+          category: template.category,
+          owaspId: template.owaspId,
+          confidence: 0,
+          reasoning: `Error during execution: ${errorName}`,
+          scoringMethod: ScoringMethod.Pattern,
+          conversation: [],
+          evidence: [],
+          leakageSignals: [],
+          timestamp: new Date().toISOString(),
+        };
+      }
 
-    findings.push(finding);
-    completed++;
-    onFinding?.(finding, completed, resolvedTotal);
-  }
+      findings.push(finding);
+      completed++;
+      onFinding?.(finding, completed, resolvedTotal);
+      scannerLogger.debug({ probeId: template.id, verdict: finding.verdict }, 'Probe complete');
+    }),
+  );
 
-  await Promise.all(templates.map((t) => runOne(t)));
+  await Promise.all(tasks);
   return findings;
 }
 

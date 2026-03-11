@@ -8,13 +8,15 @@ const TEST_URL = 'http://test-target.example.com';
 
 class TestAdapter extends BaseAdapter {
   async send(messages: Turn[]): Promise<AdapterResponse> {
-    const start = performance.now();
-    const { data } = await this.client.post('/api/chat', { messages });
-    return {
-      content: data.response,
-      raw: data,
-      latencyMs: performance.now() - start,
-    };
+    return this.withRetry(async () => {
+      const start = performance.now();
+      const { data } = await this.client.post('/api/chat', { messages });
+      return {
+        content: data.response,
+        raw: data,
+        latencyMs: performance.now() - start,
+      };
+    });
   }
 }
 

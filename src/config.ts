@@ -23,6 +23,7 @@ export const appConfigSchema = z.object({
     category: z.string().optional(),
     probeIds: z.array(z.string()).optional(),
     probesDir: z.string().optional(),
+    probeVars: z.record(z.string(), z.string()).optional(),
   }),
   judge: z
     .object({
@@ -114,6 +115,22 @@ export function loadConfigFromEnv(): DeepPartial<AppConfig> {
     if (env.KEELSON_OUTPUT_FORMAT) output.format = env.KEELSON_OUTPUT_FORMAT;
     if (env.KEELSON_OUTPUT_DIR) output.dir = env.KEELSON_OUTPUT_DIR;
     result.output = output;
+  }
+
+  // Log level (also read directly by logger.ts, but track in config for visibility)
+  if (env.KEELSON_LOG_LEVEL) {
+    (result as Record<string, unknown>).logLevel = env.KEELSON_LOG_LEVEL;
+  }
+
+  // Probe variables
+  if (env.KEELSON_PROBE_VARS) {
+    const scan = (result as Record<string, Record<string, unknown>>).scan ?? {};
+    try {
+      scan.probeVars = JSON.parse(env.KEELSON_PROBE_VARS);
+    } catch {
+      // Invalid JSON, ignore
+    }
+    (result as Record<string, unknown>).scan = scan;
   }
 
   return result as DeepPartial<AppConfig>;

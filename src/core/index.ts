@@ -1,3 +1,4 @@
+export { logger, scannerLogger, detectionLogger, adapterLogger, judgeLogger } from './logger.js';
 export { executeProbe } from './engine.js';
 export type { ExecuteProbeOptions, Observer, TurnCompleteInfo } from './engine.js';
 export { patternDetect, patternDetectWithDetails, isHardRefusal, containsRefusal } from './detection.js';

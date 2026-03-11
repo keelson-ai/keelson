@@ -308,7 +308,7 @@ export function registerAdvancedCommands(program: Command): void {
       const probes = await loadProbes();
       const template = probes.find((p) => p.id === opts.probeId);
       if (!template) {
-        console.error(`Probe ${opts.probeId} not found`);
+        logger.error(`Probe ${opts.probeId} not found`);
         process.exit(1);
       }
 
@@ -413,7 +413,7 @@ export function registerAdvancedCommands(program: Command): void {
       const probes = await loadProbes();
       const template = probes.find((p) => p.id === opts.probeId);
       if (!template) {
-        console.error(`Probe ${opts.probeId} not found`);
+        logger.error(`Probe ${opts.probeId} not found`);
         process.exit(1);
       }
 
@@ -426,7 +426,7 @@ export function registerAdvancedCommands(program: Command): void {
       const targetAdapter = createAdapter(adapterConfig);
 
       if (!opts.proberUrl) {
-        console.error('Error: --prober-url is required for chain command');
+        logger.error('Error: --prober-url is required for chain command');
         process.exit(1);
       }
 
