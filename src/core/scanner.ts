@@ -1,5 +1,7 @@
 import PQueue from 'p-queue';
 
+import { EngagementController, loadEngagementProfile } from './engagement.js';
+import type { EngagementCallbacks } from './engagement.js';
 import { executeProbe } from './engine.js';
 import type { Observer } from './engine.js';
 import { scannerLogger } from './logger.js';
@@ -7,7 +9,7 @@ import { MemoTable } from './memo.js';
 import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
-import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
+import type { Adapter, EngagementProfile, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../types/index.js';
 import { generateScanId } from '../utils/id.js';
 
@@ -26,6 +28,16 @@ export interface ScanOptions {
   resetBetweenProbes?: boolean;
   /** Skip probes whose total payload exceeds this character limit. */
   maxPayloadLength?: number;
+  /** Engagement profile ID or path. When set, probes are executed through the engagement controller. */
+  engagement?: string;
+  /** Pre-loaded engagement profile (takes precedence over engagement string). */
+  engagementProfile?: EngagementProfile;
+  /** When true and a judge is provided, refused probes are retried with reframed prompts. */
+  reframeOnRefusal?: boolean;
+  /** When true and a judge is provided, follow-up turns are generated dynamically based on responses. */
+  adaptiveFollowUp?: boolean;
+  /** Maximum adaptive follow-up turns per probe (default: 6). */
+  maxAdaptiveTurns?: number;
   onFinding?: (finding: Finding, current: number, total: number) => void;
 }
 
@@ -100,6 +112,9 @@ async function executeSequential(
         delayMs: options.delayMs,
         judge: options.judge,
         observer: options.observer,
+        reframeOnRefusal: options.reframeOnRefusal,
+        adaptiveFollowUp: options.adaptiveFollowUp,
+        maxAdaptiveTurns: options.maxAdaptiveTurns,
       });
     } catch (err: unknown) {
       finding = errorFinding(probe, sanitizeErrorMessage(err));
@@ -185,6 +200,51 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
     probes = filtered;
   }
 
+  // Resolve engagement profile
+  const engagementProfile =
+    options.engagementProfile ?? (options.engagement ? await loadEngagementProfile(options.engagement) : undefined);
+
+  if (engagementProfile) {
+    // Execute through engagement controller (always sequential)
+    const controller = new EngagementController(engagementProfile, adapter);
+    const engagementCallbacks: EngagementCallbacks = {
+      onSessionStart: (idx, total) =>
+        scannerLogger.debug({ sessionIdx: idx, totalSessions: total }, 'Engagement session start'),
+      onSuspicion: (pattern, action) => scannerLogger.info({ pattern, action }, 'Suspicion signal detected'),
+      onFinding: (finding, current, total) => {
+        memo.record(finding);
+        options.onFinding?.(finding, current, total);
+      },
+    };
+
+    const executed = await controller.run(
+      probes,
+      (probe) =>
+        executeProbe(probe, adapter, {
+          delayMs: options.delayMs,
+          judge: options.judge,
+          observer: options.observer,
+          reframeOnRefusal: options.reframeOnRefusal,
+          adaptiveFollowUp: options.adaptiveFollowUp,
+          maxAdaptiveTurns: options.maxAdaptiveTurns,
+        }),
+      engagementCallbacks,
+    );
+
+    const findings = [...executed, ...skippedFindings];
+
+    return {
+      scanId: generateScanId(),
+      target,
+      startedAt,
+      completedAt: new Date().toISOString(),
+      findings,
+      summary: summarize(findings),
+      memo: memo.entries,
+      cumulativeDisclosure: memo.cumulativeDisclosure(),
+    };
+  }
+
   const concurrency = options.concurrency ?? 1;
   if (options.reorder && concurrency > 1) {
     throw new Error(
@@ -211,5 +271,6 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
     findings,
     summary: summarize(findings),
     memo: memo.entries,
+    cumulativeDisclosure: memo.cumulativeDisclosure(),
   };
 }

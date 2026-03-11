@@ -1,0 +1,42 @@
+id: aggressive
+name: Aggressive (No Cover)
+description: >
+  Fast execution with no warmup, no cover questions, and minimal delays.
+  Matches the default scan behavior before engagement profiles were added.
+
+warmup:
+  min_turns: 0
+  max_turns: 0
+  pool:
+    - '_'
+
+cover:
+  ratio: 0
+  placement: interleaved
+  pool:
+    - '_'
+
+pacing:
+  inter_turn_delay:
+    min_ms: 0
+    max_ms: 0
+  inter_probe_delay:
+    min_ms: 1000
+    max_ms: 1500
+  inter_session_cooldown:
+    min_ms: 0
+    max_ms: 0
+
+sessions:
+  max_probes_per_session: 999
+  max_turns_per_session: 999
+  reset_between: false
+
+probe_ordering:
+  strategy: as_loaded
+
+backoff:
+  suspicion_signals: []
+  on_session_kill:
+    cooldown_multiplier: 1
+    max_retries_per_probe: 0
