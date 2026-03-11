@@ -1,10 +1,15 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-describe('erode command', () => {
+const CLI = resolve(import.meta.dirname, '../../dist/cli/index.js');
+const hasBuild = existsSync(CLI);
+
+describe.runIf(hasBuild)('erode command', () => {
   it('shows help text', () => {
-    const result = spawnSync('node', ['dist/cli/index.js', 'erode', '--help'], {
+    const result = spawnSync('node', [CLI, 'erode', '--help'], {
       encoding: 'utf-8',
       timeout: 5000,
     });
