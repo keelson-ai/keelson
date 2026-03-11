@@ -26,3 +26,4 @@ __pycache__/
 .claude/worktrees/
 
 targets/
+docs/plans/
