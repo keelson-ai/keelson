@@ -1,5 +1,5 @@
-import { BaseAdapter } from './base.js';
-import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
+import { PlaywrightBaseAdapter } from './playwright-base.js';
+import type { AdapterResponse, Turn } from '../types/index.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -20,58 +20,12 @@ const HUBSPOT_CTA_RE = /let us know your email|want updates about/i;
  *   - baseUrl: the page URL containing the HubSpot chat widget
  *   - browserHeadless: run headless (default: true)
  *   - browserResponseStabilityMs: how long to wait for response stabilization (default: 2000)
- *   - hubspotPreInteraction: JS snippet to run before interacting (e.g. toggle marketing mode)
+ *   - browserPreInteraction: JS snippet to run before chat interaction (e.g. toggle marketing mode)
  */
-export class HubSpotAdapter extends BaseAdapter {
-  private browser: any = null;
-  private page: any = null;
+export class HubSpotAdapter extends PlaywrightBaseAdapter {
   private hsFrame: any = null;
-  private initialized = false;
 
-  private readonly headless: boolean;
-  private readonly responseStabilityMs: number;
-  private readonly preInteraction: string | undefined;
-
-  constructor(config: AdapterConfig) {
-    super({ ...config, baseUrl: config.baseUrl });
-    this.headless = config.browserHeadless !== false;
-    this.responseStabilityMs = config.browserResponseStabilityMs ?? 2000;
-    this.preInteraction = config.hubspotPreInteraction;
-  }
-
-  private async loadPlaywright(): Promise<any> {
-    try {
-      const moduleName = 'playwright';
-      return await import(/* webpackIgnore: true */ moduleName);
-    } catch {
-      throw new Error(
-        'HubSpot adapter requires playwright. Install it:\n' +
-          '  pnpm add playwright && npx playwright install chromium',
-      );
-    }
-  }
-
-  private async ensureBrowser(): Promise<void> {
-    if (this.initialized) return;
-
-    const pw = await this.loadPlaywright();
-    this.browser = await pw.chromium.launch({ headless: this.headless });
-    const context = await this.browser.newContext({
-      userAgent:
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    });
-    this.page = await context.newPage();
-
-    await this.page.goto(this.config.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    // Allow page scripts and widgets to initialize
-    await this.page.waitForTimeout(5000);
-
-    // Run pre-interaction hook if provided (e.g. toggle marketing mode)
-    if (this.preInteraction) {
-      await this.page.evaluate(this.preInteraction);
-      await this.page.waitForTimeout(3000);
-    }
-
+  protected override async onBrowserReady(): Promise<void> {
     // Find the HubSpot conversations iframe
     this.hsFrame = this.page.frame({ url: /hubspot/ });
     if (!this.hsFrame) {
@@ -93,14 +47,14 @@ export class HubSpotAdapter extends BaseAdapter {
       .catch(() => {
         throw new Error('HubSpot adapter: chat textbox not found in HubSpot iframe.');
       });
+  }
 
-    // Snapshot initial conversation text
-
-    this.initialized = true;
+  protected override onSessionReset(): void {
+    this.hsFrame = null;
   }
 
   async send(messages: Turn[]): Promise<AdapterResponse> {
-    await this.ensureBrowser();
+    await this.ensureBrowserCore();
 
     const lastUser = messages.filter((m) => m.role === 'user').pop();
     const message = lastUser?.content ?? '';
@@ -223,14 +177,14 @@ export class HubSpotAdapter extends BaseAdapter {
    * and the end or next user message).
    *
    * HubSpot innerText structure:
-   *   BotName                          ← bot name header (standalone line)
-   *   <welcome message lines>          ← NO timestamp after welcome
+   *   BotName                          <- bot name header (standalone line)
+   *   <welcome message lines>          <- NO timestamp after welcome
    *   <user message text>
-   *   HH:MM AM/PM                      ← timestamp after user message
-   *   Let us know your email...         ← HubSpot CTA (optional)
-   *   BotName                          ← bot name header before bot reply
+   *   HH:MM AM/PM                      <- timestamp after user message
+   *   Let us know your email...         <- HubSpot CTA (optional)
+   *   BotName                          <- bot name header before bot reply
    *   <bot response line 1>
-   *   HH:MM AM/PM                      ← timestamp after each bot message bubble
+   *   HH:MM AM/PM                      <- timestamp after each bot message bubble
    */
   private extractLastBotReply(convText: string, sentMessage: string): string | null {
     const lines = convText
@@ -278,36 +232,5 @@ export class HubSpotAdapter extends BaseAdapter {
     }
 
     return replyLines.join('\n').trim() || null;
-  }
-
-  override async healthCheck(): Promise<boolean> {
-    try {
-      await this.ensureBrowser();
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  override resetSession(): void {
-    const oldBrowser = this.browser;
-    this.browser = null;
-    this.page = null;
-    this.hsFrame = null;
-    this.initialized = false;
-
-    if (oldBrowser) {
-      void (oldBrowser as { close: () => Promise<void> }).close();
-    }
-  }
-
-  override async close(): Promise<void> {
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
-      this.page = null;
-      this.hsFrame = null;
-      this.initialized = false;
-    }
   }
 }

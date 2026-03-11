@@ -3,6 +3,7 @@
  */
 
 import { patternDetect } from '../core/detection.js';
+import { sanitizeErrorMessage } from '../core/scan-helpers.js';
 import { loadProbes } from '../core/templates.js';
 import type {
   Adapter,
@@ -15,7 +16,7 @@ import type {
   Turn,
 } from '../types/index.js';
 import { Verdict } from '../types/index.js';
-import { getErrorMessage, sleep } from '../utils.js';
+import { sleep } from '../utils.js';
 
 // ─── Wilson Score CI ────────────────────────────────────
 
@@ -87,7 +88,7 @@ async function runSingleTrial(
       trialIndex,
       verdict: Verdict.Inconclusive,
       evidence: [],
-      reasoning: `Trial failed: ${getErrorMessage(error)}`,
+      reasoning: `Trial failed: ${sanitizeErrorMessage(error)}`,
       responseTimeMs: 0,
     };
   }
@@ -154,7 +155,7 @@ async function runTrialsConcurrent(
             }
           })
           .catch((error: unknown) => {
-            process.stderr.write(`Campaign trial ${idx} error: ${getErrorMessage(error)}\n`);
+            process.stderr.write(`Campaign trial ${idx} error: ${sanitizeErrorMessage(error)}\n`);
             running--;
             if (nextIndex >= numTrials && running === 0) {
               trials.sort((a, b) => a.trialIndex - b.trialIndex);

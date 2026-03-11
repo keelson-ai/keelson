@@ -63,6 +63,7 @@ function makePatternDetails(overrides: Partial<PatternDetails> = {}): PatternDet
     vulnMatched: true,
     safeMatched: false,
     hasRefusal: false,
+    hasDeflection: false,
     sideEffect: undefined,
     ...overrides,
   };
