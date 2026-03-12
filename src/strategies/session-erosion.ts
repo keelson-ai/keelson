@@ -76,13 +76,13 @@ export async function runSessionErosion(options: SessionErosionOptions): Promise
     memo?.record(intentResult.finding);
     onIntentComplete?.(intentResult);
 
-    // Track consecutive refusals (safe + budget_exhausted both count as unproductive)
-    if (intentResult.outcome === 'safe' || intentResult.outcome === 'budget_exhausted') {
+    // Track consecutive refusals — only definitive safe outcomes count
+    if (intentResult.outcome === 'safe') {
       consecutiveRefusals++;
     } else if (intentResult.outcome === 'vulnerable') {
       consecutiveRefusals = 0;
     }
-    // inconclusive: don't reset, don't increment — neutral
+    // inconclusive + budget_exhausted: don't reset, don't increment — neutral
 
     // Weight store
     const bucket = determineContextBucket(brief);
@@ -166,8 +166,10 @@ async function executeIntent(params: ExecuteIntentParams): Promise<IntentResult>
     recentPrompts.push(prompt);
 
     // Send to target with compacted history plus the new user turn
-    conversation.push({ role: 'user', content: prompt });
+    // Build messagesToSend BEFORE pushing to conversation to avoid duplication
+    // when compactor returns the full (short) conversation unmodified.
     const messagesToSend = [...compacted, { role: 'user' as const, content: prompt }];
+    conversation.push({ role: 'user', content: prompt });
     const startTime = Date.now();
     let response: { content: string };
     try {

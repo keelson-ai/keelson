@@ -67,9 +67,9 @@ describe('MemoTable.cumulativeDisclosure', () => {
       }),
     );
     const result = memo.cumulativeDisclosure();
-    // tools + urls = 2 categories
+    // tools + urls = 2 categories → High (recalibrated for 4-field inventory)
     expect(result.filledCategories).toBeGreaterThanOrEqual(2);
-    expect(result.severity).toBe(Severity.Medium);
+    expect(result.severity).toBe(Severity.High);
   });
 
   it('escalates to High with 3+ disclosure categories', () => {
