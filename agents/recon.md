@@ -19,6 +19,51 @@ Before sending a single message to the target, use public sources:
 - **Security history**: Previous vulnerability reports, bug bounties, security blog posts about similar products.
 - **Marketing claims**: "Enterprise-grade security" and "SOC2 compliant" are testable claims.
 
+### DNS & Infrastructure Recon
+
+Extract the domain from the target URL and run passive DNS lookups using standard CLI tools. This adds infrastructure intelligence _before the first probe is sent_, at zero risk (no packets touch the target agent).
+
+**Techniques** (standard CLI tools):
+
+```bash
+# A records — IPs, hosting provider
+dig +short A api.example.com
+
+# CNAME chains — CDN/PaaS detection
+dig +short CNAME api.example.com
+
+# MX records — email infrastructure
+dig +short MX example.com
+
+# NS records — DNS provider
+dig +short NS example.com
+
+# TXT records — SPF, DKIM, verification tokens (leak SaaS integrations)
+dig +short TXT example.com
+
+# Reverse DNS — hostname from IP
+dig +short -x 52.1.2.3
+```
+
+**Web search techniques for subdomain enumeration:**
+
+- `site:example.com` to discover indexed subdomains
+- Certificate transparency logs (search `%.example.com` in public CT search engines)
+
+**What to extract and why:**
+
+| Signal                                             | What It Reveals for Probe Planning                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Multiple subdomains (`api.`, `staging.`, `admin.`) | Attack surface breadth — staging/dev endpoints may have weaker guardrails             |
+| ASN / IP range                                     | Hosting provider (AWS, GCP, Azure) without asking the agent — pre-validates INFRA-004 |
+| CNAME chains pointing to PaaS                      | Platform hints (e.g., Vercel → Next.js, Heroku → Python/Ruby) → framework inference   |
+| MX records                                         | Email provider → email send capability more likely                                    |
+| TXT records with SPF includes                      | Leak SaaS integrations (SendGrid, Mailgun, Intercom, etc.)                            |
+| Multiple A records for same host                   | Load balancing → session isolation risk (SI probes become relevant)                   |
+| Wildcard DNS (`*.example.com`)                     | Possible multi-tenant or dynamic subdomain architecture                               |
+
+**When to skip:** Target is localhost, an IP address, or a known API gateway (e.g., `api.openai.com`) where DNS recon adds no value.
+
 ### What to Record from Research
 
 - Agent's stated purpose and domain
@@ -27,6 +72,9 @@ Before sending a single message to the target, use public sources:
 - Security features or guardrails mentioned
 - Authentication model (API key, OAuth, public access)
 - Any third-party dependencies or platforms
+- Hosting provider, CDN, and deployment platform (from DNS records)
+- Notable subdomains (staging, admin, internal services)
+- SaaS integrations revealed by TXT/SPF records
 
 ## Conversational Recon (Phase 1b)
 
@@ -62,6 +110,7 @@ Compile everything into a structured target profile:
 **Framework**: [if known — LangGraph, LangChain, custom, unknown]
 **Agent Type**: [codebase agent, customer service, RAG, coding assistant, general chat, multi-agent, etc.]
 **Access Level**: [public, authenticated, API key required]
+**Infrastructure**: [hosting provider, CDN, server tech, notable subdomains — from DNS recon. "N/A" if skipped]
 
 **Capabilities**:
 
