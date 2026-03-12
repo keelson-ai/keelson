@@ -26,6 +26,22 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
   private detectedInputSelector: string;
   private detectedSubmitSelector: string;
   private detectedResponseSelector: string;
+  private chatFrame: any = null;
+
+  private static readonly RESPONSE_CANDIDATES = [
+    '[data-testid="bot-message"]',
+    '[data-testid="assistant-message"]',
+    '.bot-message',
+    '.assistant-message',
+    '.agent-message',
+    '[data-message-author="bot"]',
+    '[data-author-type="bot"]',
+    '[data-author-type="admin"]',
+    'div.group\\/message',
+    '.prose',
+    '.markdown',
+    '[class*="markdown"]',
+  ];
 
   constructor(config: AdapterConfig) {
     super(config);
@@ -36,17 +52,15 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
   }
 
   protected override async onBrowserReady(): Promise<void> {
+    this.chatFrame = null;
     if (!this.detectedInputSelector || !this.detectedResponseSelector) {
       await this.autoDetectSelectors();
     }
   }
 
   private async autoDetectSelectors(): Promise<void> {
-    // Common chat widget selectors to probe
     const inputCandidates = [
-      // Intercom Messenger
       'iframe[name="intercom-messenger-frame"]',
-      // Generic chat inputs
       '[data-testid="chat-input"]',
       'textarea[placeholder*="message"]',
       'textarea[placeholder*="Message"]',
@@ -76,17 +90,6 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
       '#chat-submit',
     ];
 
-    const responseCandidates = [
-      '[data-testid="bot-message"]',
-      '[data-testid="assistant-message"]',
-      '.bot-message',
-      '.assistant-message',
-      '.agent-message',
-      '[data-message-author="bot"]',
-      '[data-author-type="bot"]',
-      '[data-author-type="admin"]',
-    ];
-
     // Check for Intercom iframe first — only set selectors not already provided by user
     const intercomFrame = await this.page.$('iframe[name="intercom-messenger-frame"]');
     if (intercomFrame) {
@@ -96,34 +99,57 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
       return;
     }
 
-    // Try each candidate, skipping selectors already provided by the user
-    if (!this.detectedInputSelector) {
-      for (const sel of inputCandidates) {
-        const el = await this.page.$(sel);
-        if (el) {
-          this.detectedInputSelector = sel;
-          break;
-        }
+    const searchContexts: { ctx: any; isFrame: boolean }[] = [{ ctx: this.page, isFrame: false }];
+
+    // Collect candidate iframes (skip non-chat iframes)
+    const skipPatterns = ['stripe.com', 'google', 'analytics', 'recaptcha'];
+    for (const frame of this.page.frames()) {
+      const url = frame.url();
+      if (
+        url &&
+        url !== 'about:blank' &&
+        !skipPatterns.some((p) => url.includes(p)) &&
+        frame !== this.page.mainFrame()
+      ) {
+        searchContexts.push({ ctx: frame, isFrame: true });
       }
     }
 
-    if (!this.detectedSubmitSelector) {
-      for (const sel of submitCandidates) {
-        const el = await this.page.$(sel);
-        if (el) {
-          this.detectedSubmitSelector = sel;
-          break;
+    for (const { ctx, isFrame } of searchContexts) {
+      if (!this.detectedInputSelector) {
+        for (const sel of inputCandidates) {
+          if (sel.startsWith('iframe[')) continue; // skip iframe-matching selectors inside frames
+          const el = await ctx.$(sel).catch(() => null);
+          if (el) {
+            this.detectedInputSelector = sel;
+            if (isFrame) this.chatFrame = ctx;
+            break;
+          }
         }
       }
-    }
 
-    if (!this.detectedResponseSelector) {
-      for (const sel of responseCandidates) {
-        const el = await this.page.$(sel);
-        if (el) {
-          this.detectedResponseSelector = sel;
-          break;
+      if (this.detectedInputSelector && isFrame === !!this.chatFrame) {
+        if (!this.detectedSubmitSelector) {
+          for (const sel of submitCandidates) {
+            const el = await ctx.$(sel).catch(() => null);
+            if (el) {
+              this.detectedSubmitSelector = sel;
+              break;
+            }
+          }
         }
+
+        if (!this.detectedResponseSelector) {
+          for (const sel of BrowserAdapter.RESPONSE_CANDIDATES) {
+            const el = await ctx.$(sel).catch(() => null);
+            if (el) {
+              this.detectedResponseSelector = sel;
+              break;
+            }
+          }
+        }
+
+        break;
       }
     }
 
@@ -213,16 +239,20 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
     throw new Error(`Browser adapter: no Intercom reply within ${timeout / 1000}s`);
   }
 
+  private get widgetContext(): any {
+    return this.chatFrame ?? this.page;
+  }
+
   private async sendGenericWidget(message: string): Promise<string> {
-    // Get current response count
+    const ctx = this.widgetContext;
+
     let beforeCount = 0;
     if (this.detectedResponseSelector) {
-      const beforeMsgs = await this.page.$$(this.detectedResponseSelector);
+      const beforeMsgs = await ctx.$$(this.detectedResponseSelector);
       beforeCount = beforeMsgs.length;
     }
 
-    // Type message
-    const input = await this.page.$(this.detectedInputSelector);
+    const input = await ctx.$(this.detectedInputSelector);
     if (!input) {
       throw new Error(`Browser adapter: chat input not found at "${this.detectedInputSelector}"`);
     }
@@ -230,26 +260,43 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
     await input.click();
     await input.fill(message);
 
-    // Submit
     if (this.detectedSubmitSelector) {
-      const btn = await this.page.$(this.detectedSubmitSelector);
+      const btn = await ctx.$(this.detectedSubmitSelector);
       if (btn) {
         await btn.click();
       } else {
-        await this.page.keyboard.press('Enter');
+        await input.press('Enter');
       }
     } else {
-      await this.page.keyboard.press('Enter');
+      await input.press('Enter');
     }
 
-    // Wait for response using MutationObserver when we have a response selector
     if (this.detectedResponseSelector) {
       return this.waitForNewMessage(beforeCount);
     }
 
-    // No response selector — try to detect new content on the page
+    // Response container may only appear after the first message
     await this.page.waitForTimeout(3000);
+    await this.lateDetectResponseSelector(ctx);
+    if (this.detectedResponseSelector) {
+      return this.waitForNewMessage(0);
+    }
+
     return '[Browser adapter: response selector not configured — check page manually]';
+  }
+
+  /** Detect response selector post-interaction (some UIs only render it after the first message). */
+  private async lateDetectResponseSelector(ctx: any): Promise<void> {
+    for (const sel of BrowserAdapter.RESPONSE_CANDIDATES) {
+      const el = await ctx.$(sel).catch(() => null);
+      if (el) {
+        const text = await el.textContent().catch(() => '');
+        if (text && text.trim().length > 5) {
+          this.detectedResponseSelector = sel;
+          break;
+        }
+      }
+    }
   }
 
   /**
@@ -259,48 +306,43 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
   private async waitForNewMessage(beforeCount: number): Promise<string> {
     const timeout = this.config.timeout ?? 60_000;
     const selector = this.detectedResponseSelector;
+    const ctx = this.widgetContext;
 
-    // Use page.evaluate to install a MutationObserver that resolves
-    // when a new element matching the response selector appears.
     const content = await Promise.race([
-      this.page.evaluate(
+      ctx.evaluate(
         ({ sel, prevCount, stabilityMs }: { sel: string; prevCount: number; stabilityMs: number }) => {
           return new Promise<string>((resolve, reject) => {
-            // Check immediately — response might already be there
-            const existing = document.querySelectorAll(sel);
-            if (existing.length > prevCount) {
-              const last = existing[existing.length - 1];
-              if (last.textContent?.trim()) {
-                // Wait for stability then resolve
-                setTimeout(() => {
+            let stabilityTimer: ReturnType<typeof setTimeout> | null = null;
+            let lastText = '';
+
+            const checkStability = () => {
+              const msgs = document.querySelectorAll(sel);
+              if (msgs.length <= prevCount) return;
+
+              const last = msgs[msgs.length - 1];
+              const text = last.textContent?.trim() ?? '';
+              if (!text || /^loading\.{0,3}$/i.test(text) || text === '…' || text === '...') return;
+
+              if (text !== lastText) {
+                lastText = text;
+                if (stabilityTimer) clearTimeout(stabilityTimer);
+                stabilityTimer = setTimeout(() => {
                   const final = document.querySelectorAll(sel);
                   const finalEl = final[final.length - 1];
-                  resolve((finalEl?.textContent ?? last.textContent ?? '').trim());
-                }, stabilityMs);
-                return;
-              }
-            }
-
-            // Install MutationObserver on the document body
-            const observer = new MutationObserver(() => {
-              const msgs = document.querySelectorAll(sel);
-              if (msgs.length > prevCount) {
-                const last = msgs[msgs.length - 1];
-                const text = last.textContent?.trim();
-                if (text) {
-                  // Wait for streaming to stabilize
-                  setTimeout(() => {
-                    observer.disconnect();
+                  const finalText = (finalEl?.textContent ?? text).trim();
+                  if ((window as any).__keelsonObserver) {
+                    (window as any).__keelsonObserver.disconnect();
                     (window as any).__keelsonObserver = undefined;
-                    const final = document.querySelectorAll(sel);
-                    const finalEl = final[final.length - 1];
-                    resolve((finalEl?.textContent ?? text).trim());
-                  }, stabilityMs);
-                }
+                  }
+                  resolve(finalText);
+                }, stabilityMs);
               }
-            });
+            };
 
-            // Store ref so the timeout cleanup path can disconnect it
+            checkStability();
+
+            const observer = new MutationObserver(() => checkStability());
+
             (window as any).__keelsonObserver = observer;
             observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
@@ -309,13 +351,12 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
         },
         { sel: selector, prevCount: beforeCount, stabilityMs: Math.min(this.responseStabilityMs, 3000) },
       ),
-      // Timeout fallback
       new Promise<string>((_, reject) =>
         setTimeout(() => reject(new Error(`Browser adapter: no reply within ${timeout / 1000}s`)), timeout),
       ),
     ]).finally(() => {
-      // Disconnect any lingering MutationObserver from the page context
-      this.page
+      const cleanupCtx = this.chatFrame ?? this.page;
+      cleanupCtx
         ?.evaluate(() => {
           (window as any).__keelsonObserver?.disconnect();
         })

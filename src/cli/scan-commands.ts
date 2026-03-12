@@ -408,6 +408,13 @@ export function registerScanCommands(program: Command): void {
     .option('--api-key <key>', 'API key for authentication')
     .option('--model <model>', 'Model name for requests', 'default')
     .option('--adapter-type <type>', 'Adapter type', 'openai')
+    .option('--chatbot-id <id>', 'Chatbot ID (SiteGPT adapter)')
+    .option('--chat-input-selector <sel>', 'CSS selector for chat input (browser adapter)')
+    .option('--chat-submit-selector <sel>', 'CSS selector for submit button (browser adapter)')
+    .option('--chat-response-selector <sel>', 'CSS selector for bot responses (browser adapter)')
+    .option('--browser-headless', 'Run browser in headless mode (default: true)', true)
+    .option('--no-browser-headless', 'Run browser in headed mode (visible)')
+    .option('--browser-pre-interaction <js>', 'JS snippet to run in page before chat interaction')
     .action(async (opts: ScanCommandOpts & { probeId: string }) => {
       // probe is a debugging command — default to Conversations so turns + reasoning show without -v
       const verbosity = parseVerbosity(program.opts().verbose);
