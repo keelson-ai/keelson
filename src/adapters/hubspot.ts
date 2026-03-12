@@ -53,7 +53,7 @@ export class HubSpotAdapter extends PlaywrightBaseAdapter {
     this.hsFrame = null;
   }
 
-  async send(messages: Turn[]): Promise<AdapterResponse> {
+  protected async sendCore(messages: Turn[]): Promise<AdapterResponse> {
     await this.ensureBrowserCore();
 
     const lastUser = messages.filter((m) => m.role === 'user').pop();

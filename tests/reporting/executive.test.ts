@@ -5,41 +5,68 @@ import { generateExecutiveReport } from '../../src/reporting/executive.js';
 import { Severity, Verdict } from '../../src/types/index.js';
 
 describe('generateExecutiveReport', () => {
-  it('includes executive summary header', () => {
+  it('includes canonical header with scan metadata', () => {
     const result = makeResult();
     const report = generateExecutiveReport(result);
 
-    expect(report).toContain('# AI Agent Security Assessment Report');
+    expect(report).toContain('# Keelson Security Scan Report');
+    expect(report).toContain('**Date:** 2026-03-08');
+    expect(report).toContain('**Target:** https://api.example.com/v1/chat');
+    expect(report).toContain('**Scan ID:** scan-test-001');
+    expect(report).toContain('**Scanner:** Keelson AI Agent Security Scanner');
+  });
+
+  it('includes executive summary with key findings table', () => {
+    const result = makeResult();
+    const report = generateExecutiveReport(result);
+
     expect(report).toContain('## Executive Summary');
+    expect(report).toContain('### Key Findings');
+    expect(report).toContain('| Severity | Count | Summary |');
   });
 
-  it('includes scan metadata table with extracted date', () => {
+  it('key findings table lists vulnerable findings by severity', () => {
     const result = makeResult();
     const report = generateExecutiveReport(result);
 
-    expect(report).toContain('| **Target** | https://api.example.com/v1/chat |');
-    expect(report).toContain('| **Scan ID** | scan-test-001 |');
-    expect(report).toContain('| **Date** | 2026-03-08 |');
+    expect(report).toContain('| **Critical** | 1 |');
+    expect(report).toContain('| **High** | 2 |');
+    expect(report).toContain('| **Safe** | 1 |');
   });
 
-  it('computes risk score as percentage vulnerable', () => {
+  it('includes overall risk rating for critical vulnerabilities', () => {
     const result = makeResult();
     const report = generateExecutiveReport(result);
 
-    // 3/5 = 60%
-    expect(report).toContain('| **Risk Score** | 60.0% |');
-  });
-
-  it('generates risk assessment for critical vulnerabilities with em dash', () => {
-    const result = makeResult();
-    const report = generateExecutiveReport(result);
-
-    // Has critical findings, should say CRITICAL with em dash separator
-    expect(report).toContain('Overall Risk Level: CRITICAL** —');
+    expect(report).toContain('**Overall Risk Rating: CRITICAL**');
     expect(report).toContain('Immediate remediation is required');
   });
 
-  it('generates MODERATE risk assessment when no critical/high', () => {
+  it('generates HIGH risk rating when no critical but has high', () => {
+    const findings = [
+      makeFinding({
+        probeId: 'GA-001',
+        severity: Severity.High,
+        verdict: Verdict.Vulnerable,
+      }),
+      makeFinding({
+        probeId: 'GA-002',
+        severity: Severity.Low,
+        verdict: Verdict.Safe,
+      }),
+      makeFinding({
+        probeId: 'GA-003',
+        severity: Severity.Low,
+        verdict: Verdict.Safe,
+      }),
+    ];
+    const result = makeResult({ findings, summary: makeSummary(findings) });
+    const report = generateExecutiveReport(result);
+
+    expect(report).toContain('**Overall Risk Rating: HIGH**');
+  });
+
+  it('generates MEDIUM risk rating with only medium/low vulns and <=30%', () => {
     const findings = [
       makeFinding({
         probeId: 'GA-001',
@@ -65,10 +92,10 @@ describe('generateExecutiveReport', () => {
     const result = makeResult({ findings, summary: makeSummary(findings) });
     const report = generateExecutiveReport(result);
 
-    expect(report).toContain('MODERATE');
+    expect(report).toContain('**Overall Risk Rating: MEDIUM**');
   });
 
-  it('generates ELEVATED risk assessment when >30% vulnerable with no critical/high', () => {
+  it('generates MEDIUM-HIGH risk rating when >30% vulnerable with no critical/high', () => {
     const findings = [
       makeFinding({
         probeId: 'GA-001',
@@ -89,54 +116,84 @@ describe('generateExecutiveReport', () => {
     const result = makeResult({ findings, summary: makeSummary(findings) });
     const report = generateExecutiveReport(result);
 
-    expect(report).toContain('ELEVATED');
+    expect(report).toContain('**Overall Risk Rating: MEDIUM-HIGH**');
   });
 
-  it('includes severity breakdown table', () => {
+  it('generates LOW risk rating when no vulnerabilities', () => {
+    const findings = [
+      makeFinding({ probeId: 'GA-001', verdict: Verdict.Safe }),
+      makeFinding({ probeId: 'TS-001', verdict: Verdict.Safe }),
+    ];
+    const result = makeResult({ findings, summary: makeSummary(findings) });
+    const report = generateExecutiveReport(result);
+
+    expect(report).toContain('**Overall Risk Rating: LOW**');
+    expect(report).toContain('robust security controls');
+  });
+
+  it('includes numbered detailed findings for vulnerable probes', () => {
     const result = makeResult();
     const report = generateExecutiveReport(result);
 
-    expect(report).toContain('### Severity Breakdown');
-    expect(report).toContain('| **Critical** |');
-    expect(report).toContain('| **High** |');
-    expect(report).toContain('| **Total Vulnerable** |');
+    expect(report).toContain('## Detailed Findings');
+    expect(report).toContain('### FINDING 1:');
+    expect(report).toContain('**Severity: CRITICAL**');
+    expect(report).toContain('**Probe: GA-002**');
+    expect(report).toContain('**OWASP: LLM01**');
+    expect(report).toContain('**Description:**');
+    expect(report).toContain('**Evidence:**');
+    expect(report).toContain('**Verdict: VULNERABLE**');
   });
 
-  it('includes category breakdown', () => {
+  it('includes inconclusive findings in detailed findings', () => {
     const result = makeResult();
     const report = generateExecutiveReport(result);
 
-    expect(report).toContain('## Category Breakdown');
-    expect(report).toContain('Goal Adherence');
-    expect(report).toContain('Tool Safety');
-  });
-
-  it('includes confirmed vulnerabilities with PoC in probe/response format', () => {
-    const result = makeResult();
-    const report = generateExecutiveReport(result);
-
-    expect(report).toContain('## Confirmed Vulnerabilities');
-    expect(report).toContain('### GA-001: Direct Instruction Override — VULNERABLE');
-    expect(report).toContain('**Proof of Concept**');
-    expect(report).toContain('**Probe**: *"');
-    expect(report).toContain('**Response**: *"');
-  });
-
-  it('includes inconclusive findings table', () => {
-    const result = makeResult();
-    const report = generateExecutiveReport(result);
-
-    expect(report).toContain('## Inconclusive Findings');
+    expect(report).toContain('**Verdict: INCONCLUSIVE**');
     expect(report).toContain('MI-001');
   });
 
-  it('includes prioritized recommendations', () => {
+  it('includes safe findings table', () => {
+    const result = makeResult();
+    const report = generateExecutiveReport(result);
+
+    expect(report).toContain('## Safe Findings');
+    expect(report).toContain('| Probe | Result | Notes |');
+    expect(report).toContain('| **TS-001** Unauthorized Tool Invocation | **SAFE** |');
+  });
+
+  it('includes recommendations grouped by severity', () => {
     const result = makeResult();
     const report = generateExecutiveReport(result);
 
     expect(report).toContain('## Recommendations');
-    // Should have recommendations for Goal Adherence vulnerabilities
+    expect(report).toContain('### Critical Priority');
     expect(report).toContain('Harden system prompt boundaries');
+  });
+
+  it('shows leakage signals in vulnerable findings', () => {
+    const result = makeResult();
+    const report = generateExecutiveReport(result);
+
+    expect(report).toContain('**Leakage Signals:**');
+    expect(report).toContain('system_prompt_leak');
+  });
+
+  it('includes conclusion section', () => {
+    const result = makeResult();
+    const report = generateExecutiveReport(result);
+
+    expect(report).toContain('## Conclusion');
+    expect(report).toContain('vulnerabilities were identified');
+  });
+
+  it('includes footer with scan duration and probe count', () => {
+    const result = makeResult();
+    const report = generateExecutiveReport(result);
+
+    expect(report).toContain('*Report generated by Keelson AI Agent Security Scanner*');
+    expect(report).toContain('*Scan duration:');
+    expect(report).toContain('*Probes executed: 5*');
   });
 
   it('handles zero vulnerabilities', () => {
@@ -147,38 +204,17 @@ describe('generateExecutiveReport', () => {
     const result = makeResult({ findings, summary: makeSummary(findings) });
     const report = generateExecutiveReport(result);
 
-    expect(report).toContain('| **Risk Score** | 0.0% |');
-    expect(report).toContain('robust security controls');
-    expect(report).toContain('No confirmed vulnerabilities');
+    expect(report).toContain('**Overall Risk Rating: LOW**');
+    expect(report).toContain('No vulnerabilities or inconclusive findings were identified.');
+    expect(report).toContain('No vulnerabilities were confirmed. Continue regular security assessments');
   });
 
-  it('shows leakage signals in vulnerable findings', () => {
+  it('includes evidence in code block format', () => {
     const result = makeResult();
     const report = generateExecutiveReport(result);
 
-    expect(report).toContain('Leakage Signals Detected');
-    expect(report).toContain('system_prompt_leak');
-  });
-
-  it('includes methodology section', () => {
-    const result = makeResult();
-    const report = generateExecutiveReport(result);
-
-    expect(report).toContain('## Methodology');
-    expect(report).toContain('Keelson AI Agent Security Scanner');
-  });
-
-  it('includes footer', () => {
-    const result = makeResult();
-    const report = generateExecutiveReport(result);
-
-    expect(report).toContain('Report generated by Keelson');
-  });
-
-  it('uses severity and category on one line with pipe separators', () => {
-    const result = makeResult();
-    const report = generateExecutiveReport(result);
-
-    expect(report).toContain('**Severity**: High | **Category**: Goal Adherence | **OWASP**: LLM01');
+    expect(report).toContain('```\nProbe:');
+    expect(report).toContain('Response:');
+    expect(report).toContain('```');
   });
 });
