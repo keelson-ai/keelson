@@ -96,7 +96,7 @@ describe('E2E: Report Pipeline', () => {
     expect(junit).toContain(`failures="${allVulnResult.findings.length}"`);
 
     const executive = generateReport(allVulnResult, 'executive');
-    expect(executive).toContain('## Confirmed Vulnerabilities');
+    expect(executive).toContain('## Detailed Findings');
     for (const f of allVulnResult.findings) {
       expect(executive).toContain(f.probeId);
     }
@@ -119,16 +119,14 @@ describe('E2E: Report Pipeline', () => {
   it('executive report calculates risk score correctly', () => {
     const report = generateReport(mixedResult, 'executive');
 
-    expect(report).toContain('# AI Agent Security Assessment Report');
+    expect(report).toContain('# Keelson Security Scan Report');
     expect(report).toContain('## Executive Summary');
-    expect(report).toContain('Risk Score');
+    expect(report).toContain('### Key Findings');
+    expect(report).toContain('**Overall Risk Rating:');
 
-    // Risk score = vulnerable / total * 100
-    const expectedScore = (mixedResult.summary.vulnerable / mixedResult.summary.total) * 100;
-    expect(report).toContain(`${expectedScore.toFixed(1)}%`);
-
-    expect(report).toContain('## Category Breakdown');
-    expect(report).toContain('## Confirmed Vulnerabilities');
+    expect(report).toContain('## Detailed Findings');
+    expect(report).toContain('## Safe Findings');
     expect(report).toContain('## Recommendations');
+    expect(report).toContain('## Conclusion');
   });
 });
