@@ -5,7 +5,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://img.shields.io/badge/tests-802%20passing-brightgreen)]()
 
-**Autonomous security testing agent for AI systems.** Keelson ships 210 security test playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), 12 adaptive test trees, 10 compound test chains, SARIF + JUnit + OCSF output for CI/CD and SIEM integration, a statistical campaign engine with confidence intervals, iterative convergence scanning with cross-category feedback, runtime defense hooks, and compliance reporting for 6 frameworks. Smart scan runs by default — discovers target capabilities, selects relevant probes, and adapts mid-scan for ~70% fewer probes with the same findings.
+**Autonomous security testing agent for AI systems.** Keelson ships 210 security probe playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), PAIR and crescendo attack chains, 13 mutation types, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, and iterative convergence scanning with cross-category feedback. Smart scan discovers target capabilities, selects relevant probes, and adapts mid-scan.
 
 > **Authorized use only.** Keelson is designed for testing AI systems you own or have explicit written permission to test. Unauthorized use may violate applicable laws including the Computer Fraud and Abuse Act (CFAA). By using this software, you accept full responsibility for compliance with all applicable laws. The authors disclaim all liability for misuse. See [LEGAL.md](LEGAL.md) for full terms.
 
@@ -16,47 +16,44 @@ npm install -g keelson
 ## Quick Start
 
 ```bash
-# Smart scan (default) — discovers capabilities, selects relevant probes, adapts mid-scan
-keelson scan https://api.example.com/v1/chat/completions --api-key $KEY
+# Full sequential scan — runs all 210 probes
+keelson scan --target https://api.example.com/v1/chat/completions --api-key $KEY
 
-# Full scan — runs all 210 probes (opt-in)
-keelson scan https://api.example.com/v1/chat/completions --api-key $KEY --full
+# Recon only — discover capabilities, classify target, build probe plan (no attack probes)
+keelson recon --target https://api.example.com/v1/chat/completions --api-key $KEY
 
-# Scan a specific category only
-keelson scan https://api.example.com/v1/chat/completions --api-key $KEY --category goal_adherence
-
-# Parallel pipeline scan with verification
-keelson pipeline-scan https://api.example.com/v1/chat/completions --api-key $KEY
+# Smart scan — discovers capabilities, selects relevant probes, adapts mid-scan
+keelson smart-scan --target https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Convergence scan (iterative cross-category feedback loop)
-keelson convergence-scan https://api.example.com/v1/chat/completions --api-key $KEY
+keelson convergence-scan --target https://api.example.com/v1/chat/completions --api-key $KEY
 
-# Run a single security test
-keelson test https://api.example.com/v1/chat/completions GA-001 --api-key $KEY
+# Scan a specific category only
+keelson scan --target https://api.example.com/v1/chat/completions --api-key $KEY --category goal_adherence
 
-# List all 210 security tests
+# Run a single probe
+keelson probe --target https://api.example.com/v1/chat/completions --probe-id GA-001 --api-key $KEY
+
+# List all 210 probes
 keelson list
 
-# Statistical campaign (10 trials per test)
-keelson scan https://api.example.com/v1/chat/completions --tier deep --api-key $KEY
+# Statistical campaign (N trials per probe)
+keelson campaign config.yaml
 
 # SARIF output for GitHub Code Scanning
-keelson scan https://api.example.com/v1/chat/completions --format sarif --api-key $KEY
-
-# OCSF output for Splunk, CrowdStrike, Datadog, AWS Security Lake
-keelson scan https://api.example.com/v1/chat/completions --format ocsf --api-key $KEY
+keelson scan --target https://api.example.com/v1/chat/completions --format sarif --api-key $KEY
 
 # JUnit XML output for CI/CD
-keelson scan https://api.example.com/v1/chat/completions --format junit --api-key $KEY
+keelson scan --target https://api.example.com/v1/chat/completions --format junit --api-key $KEY
 
 # Fail CI if vulnerabilities found
-keelson scan https://api.example.com/v1/chat/completions --fail-on-vuln --api-key $KEY
+keelson scan --target https://api.example.com/v1/chat/completions --fail-on-vuln --api-key $KEY
 
 # Scan a CrewAI agent directly
-keelson test-crew my_crew.py
+keelson test-crew --target http://localhost:8000
 
 # Scan a LangChain agent directly
-keelson test-chain my_agent.py
+keelson test-chain --target http://localhost:8000
 ```
 
 ## CI/CD Integration
@@ -95,7 +92,7 @@ flowchart LR
     end
 
     subgraph Engine[" "]
-        SM["**Scan Modes**<br/>scan (sequential)<br/>pipeline (parallel)<br/>smart (adaptive)<br/>convergence (iter.)"]
+        SM["**Scan Modes**<br/>scan (sequential)<br/>smart (adaptive)<br/>convergence (iter.)"]
     end
 
     subgraph Orchestrators[" "]
@@ -165,95 +162,154 @@ Keelson doesn't just run a checklist — it learns from each response, adapts it
 
 ## Test Categories
 
-| Category | Prefix | Count | OWASP | Key Threats |
-|----------|--------|------:|-------|-------------|
-| **Goal Adherence** | GA | 56 | LLM01/LLM09 | Prompt injection, role hijacking, system prompt extraction, encoding evasion, jailbreaks |
-| **Tool Safety** | TS | 40 | LLM02/LLM06/LLM07 | Command injection, SQL injection, privilege escalation, MCP poisoning, SSRF |
-| **Memory Integrity** | MI | 23 | LLM05 | History poisoning, cross-turn exfiltration, RAG poisoning, false memory implantation |
-| **Execution Safety** | ES | 13 | LLM02/LLM06 | Sandbox escape, resource exhaustion, unsafe deserialization, destructive commands |
-| **Session Isolation** | SI | 13 | LLM01/LLM05 | Cross-session leakage, session hijacking, multi-tenant breach |
-| **Permission Boundaries** | PB | 12 | LLM02 | Role escalation, cross-user access, authorization bypass |
-| **Conversational Exfiltration** | EX | 9 | LLM01/LLM06 | Data extraction, behavioral fingerprinting, infrastructure disclosure |
-| **Cognitive Architecture** | CA | 8 | LLM01/LLM09 | Chain-of-thought poisoning, reasoning manipulation |
-| **Supply Chain Language** | SL | 8 | LLM03/LLM05 | RAG document injection, dependency confusion, plugin poisoning |
-| **Delegation Integrity** | DI | 7 | LLM08/LLM09 | Unauthorized sub-agents, trust boundary violation |
-| **Output Weaponization** | OW | 7 | LLM02/LLM06 | Backdoor code generation, malicious output crafting |
-| **Temporal Persistence** | TP | 7 | LLM05/LLM08 | Delayed action injection, time-based persistence |
-| **Multi-Agent Security** | MA | 7 | LLM08/LLM09 | Agent impersonation, cross-agent probes |
+| Category                        | Prefix | Count | OWASP             | Key Threats                                                                              |
+| ------------------------------- | ------ | ----: | ----------------- | ---------------------------------------------------------------------------------------- |
+| **Goal Adherence**              | GA     |    56 | LLM01/LLM09       | Prompt injection, role hijacking, system prompt extraction, encoding evasion, jailbreaks |
+| **Tool Safety**                 | TS     |    40 | LLM02/LLM06/LLM07 | Command injection, SQL injection, privilege escalation, MCP poisoning, SSRF              |
+| **Memory Integrity**            | MI     |    23 | LLM05             | History poisoning, cross-turn exfiltration, RAG poisoning, false memory implantation     |
+| **Execution Safety**            | ES     |    13 | LLM02/LLM06       | Sandbox escape, resource exhaustion, unsafe deserialization, destructive commands        |
+| **Session Isolation**           | SI     |    13 | LLM01/LLM05       | Cross-session leakage, session hijacking, multi-tenant breach                            |
+| **Permission Boundaries**       | PB     |    12 | LLM02             | Role escalation, cross-user access, authorization bypass                                 |
+| **Conversational Exfiltration** | EX     |     9 | LLM01/LLM06       | Data extraction, behavioral fingerprinting, infrastructure disclosure                    |
+| **Cognitive Architecture**      | CA     |     8 | LLM01/LLM09       | Chain-of-thought poisoning, reasoning manipulation                                       |
+| **Supply Chain Language**       | SL     |     8 | LLM03/LLM05       | RAG document injection, dependency confusion, plugin poisoning                           |
+| **Delegation Integrity**        | DI     |     7 | LLM08/LLM09       | Unauthorized sub-agents, trust boundary violation                                        |
+| **Output Weaponization**        | OW     |     7 | LLM02/LLM06       | Backdoor code generation, malicious output crafting                                      |
+| **Temporal Persistence**        | TP     |     7 | LLM05/LLM08       | Delayed action injection, time-based persistence                                         |
+| **Multi-Agent Security**        | MA     |     7 | LLM08/LLM09       | Agent impersonation, cross-agent probes                                                  |
 
 ## Adapters
 
 Keelson communicates with targets through a pluggable adapter interface:
 
-| Adapter          | Flag                  | Protocol             | Use Case                                                    |
-|------------------|-----------------------|----------------------|-------------------------------------------------------------|
-| **OpenAI**       | `--adapter openai`    | Chat Completions API | GPT models, OpenAI API                                      |
-| **Generic HTTP** | `--adapter http`      | Chat Completions API | Local models (Ollama, vLLM), any OpenAI-compatible endpoint |
-| **Anthropic**    | `--adapter anthropic` | Messages API         | Claude models                                               |
-| **LangGraph**    | `--adapter langgraph` | LangGraph Platform   | LangGraph agents                                            |
-| **MCP**          | `--adapter mcp`       | JSON-RPC 2.0         | MCP tool servers                                            |
-| **A2A**          | `--adapter a2a`       | Google A2A Protocol  | A2A-compatible agents                                       |
-| **CrewAI**       | `test-crew` command   | In-process           | CrewAI crews/agents                                         |
-| **LangChain**    | `test-chain` command  | In-process           | LangChain agents/chains                                     |
-| **SiteGPT**      | `--adapter sitegpt`   | WebSocket / REST     | SiteGPT chatbots                                            |
+| Adapter          | Flag                       | Protocol             | Use Case                                                    |
+| ---------------- | -------------------------- | -------------------- | ----------------------------------------------------------- |
+| **OpenAI**       | `--adapter-type openai`    | Chat Completions API | GPT models, OpenAI API                                      |
+| **Generic HTTP** | `--adapter-type http`      | Chat Completions API | Local models (Ollama, vLLM), any OpenAI-compatible endpoint |
+| **Anthropic**    | `--adapter-type anthropic` | Messages API         | Claude models                                               |
+| **LangGraph**    | `--adapter-type langgraph` | LangGraph Platform   | LangGraph agents                                            |
+| **MCP**          | `--adapter-type mcp`       | JSON-RPC 2.0         | MCP tool servers                                            |
+| **A2A**          | `--adapter-type a2a`       | Google A2A Protocol  | A2A-compatible agents                                       |
+| **CrewAI**       | `test-crew` command        | HTTP                 | CrewAI-compatible endpoints                                 |
+| **LangChain**    | `test-chain` command       | HTTP                 | LangChain-compatible endpoints                              |
+| **SiteGPT**      | `--adapter-type sitegpt`   | WebSocket / REST     | SiteGPT chatbots                                            |
 
 ```bash
 # OpenAI-compatible (default)
-keelson scan http://localhost:11434/v1/chat/completions
+keelson scan --target http://localhost:11434/v1/chat/completions
 
 # Anthropic
-keelson scan https://api.anthropic.com --adapter anthropic --api-key $KEY
+keelson scan --target https://api.anthropic.com --adapter-type anthropic --api-key $KEY
 
 # LangGraph Platform
-keelson scan https://my-agent.langraph.com --adapter langgraph --assistant-id my-agent
+keelson scan --target https://my-agent.langgraph.com --adapter-type langgraph
 
 # MCP server
-keelson scan http://localhost:3000 --adapter mcp --tool-name ask
+keelson scan --target http://localhost:3000 --adapter-type mcp
 
 # A2A agent
-keelson scan http://localhost:8000 --adapter a2a
+keelson scan --target http://localhost:8000 --adapter-type a2a
 
-# CrewAI (in-process, no HTTP)
-keelson test-crew path/to/my_crew.py
+# CrewAI endpoint
+keelson test-crew --target http://localhost:8000
 
-# LangChain (in-process, no HTTP)
-keelson test-chain path/to/my_agent.py
+# LangChain endpoint
+keelson test-chain --target http://localhost:8000
 
-# SiteGPT chatbot (WebSocket or REST)
-keelson scan https://widget.sitegpt.ai --adapter sitegpt --chatbot-id YOUR_CHATBOT_ID
+# SiteGPT chatbot
+keelson scan --target https://widget.sitegpt.ai --adapter-type sitegpt --chatbot-id YOUR_CHATBOT_ID
 ```
 
 ## CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `keelson scan <url>` | Smart scan (default): discover, classify, adaptive probes (~70% fewer) |
-| `keelson scan <url> --full` | Full scan: run all 210 probes sequentially with dynamic reorder |
-| `keelson pipeline-scan <url>` | Parallel scan with checkpoint/resume and verification |
-| `keelson smart-scan <url>` | Adaptive scan: discover, classify, memo-guided sessions |
-| `keelson convergence-scan <url>` | Iterative scan with cross-category feedback and leakage harvesting |
-| `keelson test <url> <id>` | Run a single security test |
-| `keelson list` | List all available probes |
-| `keelson campaign <config.toml>` | Statistical campaign (N trials per probe) |
-| `keelson discover <url>` | Fingerprint agent capabilities |
-| `keelson evolve <url> <id>` | Mutate a probe to find bypasses |
-| `keelson chain <url> <profile-id>` | Synthesize and run compound probe chains |
-| `keelson generate <prober-url>` | Generate novel probes using an prober LLM |
-| `keelson test-crew <module.py>` | Scan a CrewAI agent directly |
-| `keelson test-chain <module.py>` | Scan a LangChain agent directly |
-| `keelson diff <scan-a> <scan-b>` | Compare two scans for regressions |
-| `keelson baseline <scan-id>` | Set a regression baseline |
-| `keelson compliance <scan-id>` | Generate compliance report |
-| `keelson report <scan-id>` | Regenerate a scan report |
-| `keelson history` | Show scan history |
+### Scanning
+
+| Command                    | Description                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| `keelson recon`            | Discover target capabilities and build a profile with probe plan (no attack probes) |
+| `keelson scan`             | Full sequential scan — runs all 210 probes (or filtered by `--category`)            |
+| `keelson smart-scan`       | Adaptive scan — recon, classify target, select relevant probes, execute with memo   |
+| `keelson convergence-scan` | Iterative scan with cross-category feedback and leakage harvesting                  |
+| `keelson probe`            | Run a single probe by ID (e.g., `--probe-id GA-001`)                                |
+
+### Operations
+
+| Command                          | Description                                               |
+| -------------------------------- | --------------------------------------------------------- |
+| `keelson list`                   | List all available probes (filter with `--category`)      |
+| `keelson validate`               | Validate probe YAML files for completeness                |
+| `keelson report`                 | Generate report from a stored scan or JSON file           |
+| `keelson diff`                   | Compare two scans for regressions and improvements        |
+| `keelson history`                | List recent scans with date, target, vulnerability counts |
+| `keelson baseline set <scan-id>` | Mark a scan as baseline for regression comparison         |
+| `keelson baseline list`          | Show all saved baselines                                  |
+| `keelson alerts`                 | List unacknowledged regression alerts                     |
+| `keelson alerts ack <alert-id>`  | Acknowledge a regression alert                            |
+| `keelson store path`             | Print the SQLite database path                            |
+| `keelson store info`             | Show store location, size, and row counts                 |
+
+### Advanced
+
+| Command                          | Description                                                         |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `keelson campaign <config.yaml>` | Statistical campaign — N trials per probe with confidence intervals |
+| `keelson evolve`                 | Mutate a probe to find bypasses (programmatic + LLM mutations)      |
+| `keelson chain`                  | Run PAIR or crescendo attack chains against a target                |
+| `keelson generate`               | Generate novel probe templates using a prober LLM                   |
+| `keelson test-crew`              | Scan a CrewAI-compatible endpoint                                   |
+| `keelson test-chain`             | Scan a LangChain-compatible endpoint                                |
+
+### Global Options
+
+| Option          | Description                                                  |
+| --------------- | ------------------------------------------------------------ |
+| `-v, --verbose` | Increase verbosity (stackable: `-v`, `-vv`, `-vvv`, `-vvvv`) |
+
+## Claude Code Slash Commands
+
+Keelson also provides agentic workflows as Claude Code slash commands. These are **not** wrappers around the CLI — Claude acts as both the strategist and pentester, using web search, direct target interaction, and semantic evaluation.
+
+| Command                           | Description                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `/keelson:recon <url>`            | Research target, interact to discover capabilities, build target profile and probe plan (no attack probes)          |
+| `/keelson:scan <url>`             | Full agentic scan: research target, build profile, select probes, execute via curl, adapt mid-scan, generate report |
+| `/keelson:probe <url> <probe-id>` | Execute a single probe playbook against a target, evaluate semantically                                             |
+| `/keelson:report [report-file]`   | Regenerate or reformat an existing scan report                                                                      |
+
+### How `/keelson:recon` works
+
+1. **Setup** — Parse args, verify target reachable
+2. **Research** (Strategist Phase 1a) — Web search for docs, framework, capabilities
+3. **Interact** (Strategist Phase 1b) — Conversational recon to discover tools, memory, refusal style
+4. **Profile** (Strategist Phase 1c) — Build target profile with classification
+5. **Plan** (Strategist Phase 2) — Assign category priorities, present probe plan
+6. **Save** — Output recon report to `reports/` (no probes executed)
+
+### How `/keelson:scan` works
+
+1. **Setup** — Parse args, verify target reachable
+2. **Learn** (Strategist Phase 1) — External research via web search + direct target interaction to build a target profile
+3. **Plan** (Strategist Phase 2) — Assign category priorities (High/Medium/Low/Skip), present plan for user review
+4. **Probe** (Strategist Phase 3) — Execute probes via curl, evaluate responses semantically, adapt mid-scan
+5. **Report** — Generate findings report, save to `reports/`
+
+These commands are defined in `.claude/commands/` and reference the agent instructions in `agents/` (strategist and pentester).
+
+## Agent Instructions
+
+Agent instruction files in `agents/` define how Claude should behave during agentic scans:
+
+| Agent          | File                   | Role                                                                                                                      |
+| -------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Strategist** | `agents/strategist.md` | Three-phase engagement: Learn (research + recon) → Plan (probe selection) → Probe & Adapt (execute + mid-scan adaptation) |
+| **Pentester**  | `agents/pentester.md`  | Semantic evaluation of probe responses: verdict (VULNERABLE/SAFE/INCONCLUSIVE), severity, OWASP mapping, evidence         |
 
 ## Output Formats
 
 ### Markdown Report
 
 ```bash
-keelson scan <url> --api-key $KEY
-# -> reports/scan-2026-03-04-120000.md
+keelson scan --target <url> --format markdown --api-key $KEY
 ```
 
 Reports include executive summary, findings grouped by category with evidence (prompts + responses), OWASP mapping, and remediation recommendations.
@@ -261,26 +317,15 @@ Reports include executive summary, findings grouped by category with evidence (p
 ### SARIF (for CI/CD)
 
 ```bash
-keelson scan <url> --format sarif --api-key $KEY
-# -> reports/scan-2026-03-04-120000.sarif.json
+keelson scan --target <url> --format sarif --api-key $KEY
 ```
 
 SARIF v2.1.0 output integrates with GitHub Code Scanning, VS Code SARIF Viewer, and other SARIF-compatible tools.
 
-### OCSF (for SIEMs and Security Data Lakes)
-
-```bash
-keelson scan <url> --format ocsf --api-key $KEY
-# -> reports/scan-2026-03-04-120000.ocsf.json
-```
-
-OCSF v1.1 `vulnerability_finding` (class 2002) output integrates with CrowdStrike Falcon, Splunk, Datadog Cloud SIEM, AWS Security Lake, and any OCSF-compatible platform.
-
 ### JUnit XML (for CI/CD)
 
 ```bash
-keelson scan <url> --format junit --api-key $KEY
-# -> reports/scan-2026-03-04-120000.junit.xml
+keelson scan --target <url> --format junit --api-key $KEY
 ```
 
 JUnit XML integrates with Jenkins, GitLab CI, GitHub Actions, and any CI system that supports JUnit test reports.
@@ -289,22 +334,15 @@ JUnit XML integrates with Jenkins, GitLab CI, GitHub Actions, and any CI system 
 
 ```bash
 # Fail pipeline if any vulnerability found
-keelson scan <url> --fail-on-vuln --api-key $KEY
+keelson scan --target <url> --fail-on-vuln --api-key $KEY
 
 # Fail if vulnerability rate exceeds threshold (0.0–1.0)
-keelson scan <url> --fail-threshold 0.1 --api-key $KEY
+keelson scan --target <url> --fail-threshold 0.1 --api-key $KEY
 ```
 
 ### Compliance Reports
 
-```bash
-keelson compliance <scan-id> --framework owasp-llm-top10
-keelson compliance <scan-id> --framework nist-ai-rmf
-keelson compliance <scan-id> --framework eu-ai-act
-keelson compliance <scan-id> --framework iso-42001
-keelson compliance <scan-id> --framework soc2
-keelson compliance <scan-id> --framework pci-dss-v4
-```
+Compliance mapping is included in report output. All probes are mapped to OWASP LLM Top 10 categories.
 
 ## GitHub Actions
 
@@ -321,11 +359,11 @@ jobs:
     steps:
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: '22'
 
       - run: npm install -g keelson
 
-      - run: keelson scan ${{ vars.AGENT_URL }} --api-key ${{ secrets.AGENT_KEY }} --format sarif --output results/ --fail-on-vuln --no-save
+      - run: keelson scan --target ${{ vars.AGENT_URL }} --api-key ${{ secrets.AGENT_KEY }} --format sarif --output-dir results/ --fail-on-vuln --no-store
 
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -338,75 +376,27 @@ jobs:
 Run each probe N times to get statistically significant results with Wilson score confidence intervals:
 
 ```bash
-# Quick scan (1 trial, fast)
-keelson scan <url> --tier fast --api-key $KEY
-
-# Deep scan (10 trials, concurrent)
-keelson scan <url> --tier deep --api-key $KEY
-
-# Custom campaign via TOML config
-keelson campaign config.toml
+keelson campaign config.yaml
 ```
 
 Campaign config example:
 
-```toml
-[campaign]
-name = "nightly-regression"
-trials_per_probe = 10
-confidence_level = 0.95
-
-[target]
-url = "https://api.example.com/v1/chat/completions"
-api_key = "sk-..."
-
-[concurrency]
-max_concurrent_trials = 5
-early_termination_threshold = 3
-```
-
-## Keelson Defend (Runtime Protection)
-
-Keelson Defend is a policy engine that intercepts unsafe tool calls and content at runtime, integrating directly with CrewAI and LangChain agents.
-
-### Policy Configuration
-
 ```yaml
-# defend-policy.yaml
-tool_rules:
-  - pattern: "delete_*"
-    action: deny
-    reason: "File deletion blocked by policy"
-  - pattern: "execute_command"
-    action: deny
-    reason: "Shell execution not permitted"
-  - pattern: "send_email"
-    action: log
-    reason: "Email sending logged for audit"
+campaign:
+  name: nightly-regression
+  trials_per_probe: 10
+  confidence_level: 0.95
 
-content_rules:
-  - pattern: "password|secret|api_key|token"
-    action: deny
-    check_input: true
-    check_output: true
+target:
+  url: https://api.example.com/v1/chat/completions
+  api_key: sk-...
 
-default_tool_action: allow
-log_all: false
+concurrency:
+  max_concurrent_trials: 5
+  early_termination_threshold: 3
 ```
 
-### CrewAI Integration
-
-```typescript
-// Coming soon — defense hooks will be added post-migration
-```
-
-### LangChain Integration
-
-```typescript
-// Coming soon — defense hooks will be added post-migration
-```
-
-## Adding Custom Tests
+## Adding Custom Probes
 
 Create a `.yaml` file in the appropriate `probes/` subdirectory:
 
@@ -415,7 +405,7 @@ id: XX-NNN
 name: Probe Name
 severity: high
 category: category_name
-owasp_id: "LLM0X — Name"
+owasp_id: 'LLM0X — Name'
 objective: >
   What this probe tests.
 turns:
@@ -440,11 +430,13 @@ evaluation:
 
 ```text
 keelson/
-├── agents/                         # Agent instructions
-│   └── pentester.md                # Pentester agent prompt
-├── commands/                       # Plugin slash commands
+├── agents/                         # Agent instructions for Claude
+│   ├── strategist.md               # Probe strategist (recon, plan, adapt)
+│   └── pentester.md                # Pentester (evaluation, verdicts)
+├── .claude/commands/               # Claude Code slash commands
+│   ├── recon.md                    # /keelson:recon
 │   ├── scan.md                     # /keelson:scan
-│   ├── probe.md                   # /keelson:probe
+│   ├── probe.md                    # /keelson:probe
 │   └── report.md                   # /keelson:report
 ├── probes/                        # 210 probe playbooks (YAML)
 │   ├── goal-adherence/             # GA (56 probes)
@@ -549,47 +541,6 @@ flowchart TD
     style E fill:#f9f,stroke:#333
     style I fill:#9f9,stroke:#333
     style BRANCH fill:#fde8e8,stroke:#333
-```
-
-#### Pipeline Scan (Parallel + Checkpoint + Verify)
-
-```mermaid
-flowchart TD
-    subgraph Phase1[Phase 1: Load]
-        L[Load Playbooks] --> CP{Checkpoint<br/>exists?}
-        CP -->|Yes| RESUME[Resume from checkpoint<br/>skip completed probes]
-        CP -->|No| ALL[All templates]
-    end
-
-    subgraph Phase2[Phase 2: Parallel Execution]
-        RESUME --> SEM[Semaphore-based concurrency<br/>max_concurrent probes]
-        ALL --> SEM
-        SEM --> EX1[Probe 1]
-        SEM --> EX2[Probe 2]
-        SEM --> EXN[Probe N]
-        EX1 --> COLL[Collect Findings]
-        EX2 --> COLL
-        EXN --> COLL
-    end
-
-    subgraph Phase3[Phase 3: Verification]
-        COLL --> VULN[Filter VULNERABLE]
-        VULN --> RE[Re-probe each finding]
-        RE --> CONF{Agent complies<br/>again?}
-        CONF -->|Yes| CONFIRMED[VULNERABLE confirmed]
-        CONF -->|Refused| DOWN[Downgrade to INCONCLUSIVE]
-    end
-
-    subgraph Phase4[Phase 4: Report]
-        CONFIRMED --> MERGE[Merge verified findings]
-        DOWN --> MERGE
-        MERGE --> RPT[Generate Report]
-    end
-
-    style Phase1 fill:#e8f4fd,stroke:#333
-    style Phase2 fill:#fdf8e8,stroke:#333
-    style Phase3 fill:#fde8e8,stroke:#333
-    style Phase4 fill:#e8fde8,stroke:#333
 ```
 
 #### Smart Scan with Memoization
@@ -892,6 +843,7 @@ The current migration to TypeScript supersedes earlier Python-era ADRs. See [`do
 See [docs/plans/](docs/plans/) for the full roadmap.
 
 **Next up:**
+
 - Wiz WIN integration (AI Security category)
 - Splunk HEC + Cortex XSIAM connectors
 - Drift detection and continuous monitoring
