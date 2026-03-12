@@ -42,6 +42,7 @@ export type { FindingCallback, SequentialOptions, ParallelOptions } from './exec
 export { runPipeline, saveCheckpoint, loadCheckpoint, defaultPipelineConfig, CHECKPOINT_VERSION } from './pipeline.js';
 export type { PipelineConfig, ScanCheckpointData } from './pipeline.js';
 export {
+  runRecon,
   runSmartScan,
   groupIntoSessions,
   reorderByMemo,
@@ -49,4 +50,4 @@ export {
   selectEngagementProfile,
   SESSION_MAX_TURNS,
 } from './smart-scan.js';
-export type { SmartScanOptions, OnFinding, OnPhase } from './smart-scan.js';
+export type { ReconResult, SmartScanOptions, OnFinding, OnPhase } from './smart-scan.js';

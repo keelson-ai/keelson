@@ -17,7 +17,7 @@ import type { ExecuteProbeOptions, Observer } from './engine.js';
 import { MemoTable, inferTechniques } from './memo.js';
 import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { AgentType, adaptPlan, classifyTarget, selectProbes } from './strategist.js';
-import type { ReconResponse } from './strategist.js';
+import type { ProbePlan, ReconResponse, TargetProfile } from './strategist.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import { discoverCapabilities } from '../prober/discovery.js';
@@ -26,6 +26,17 @@ import type { AgentProfile, InfraFinding } from '../prober/types.js';
 import type { Adapter, EngagementProfile, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
 import { Technique, Verdict } from '../types/index.js';
 import { generateScanId } from '../utils/id.js';
+
+// ─── Recon result ──────────────────────────────────────
+
+export interface ReconResult {
+  targetUrl: string;
+  infraFindings: InfraFinding[];
+  agentProfile: AgentProfile;
+  targetProfile: TargetProfile;
+  probePlan: ProbePlan;
+  completedAt: string;
+}
 
 /** Maximum probes per conversational session before resetting thread. */
 export const SESSION_MAX_TURNS = 6;
@@ -248,6 +259,60 @@ async function runDiscovery(
   options.onPhase?.('discovery', `Detected capabilities: ${detectedCaps.join(', ') || 'none'}`);
 
   return { profile, reconResponses };
+}
+
+// ─── Recon only (phases 0–3) ────────────────────────────
+
+/**
+ * Run infrastructure recon, capability discovery, classification, and probe
+ * selection — without executing any attack probes.
+ *
+ * Returns a {@link ReconResult} containing the target profile and a suggested
+ * probe plan that can be fed into a subsequent scan.
+ */
+export async function runRecon(target: string, adapter: Adapter, options: SmartScanOptions = {}): Promise<ReconResult> {
+  // --- Phase 0: Infrastructure Recon ---
+  const infraFindings = await runInfraRecon(adapter, options);
+  adapter.resetSession?.();
+
+  // --- Phase 1: Capability Discovery ---
+  const { profile: agentProfile, reconResponses } = await runDiscovery(adapter, options);
+  adapter.resetSession?.();
+
+  // --- Phase 2: Target Classification ---
+  options.onPhase?.('classify', 'Classifying target agent type');
+
+  const targetProfile = classifyTarget(reconResponses);
+
+  options.onPhase?.(
+    'profile',
+    `Type: ${targetProfile.agentTypes.join(', ')} | ` +
+      `Tools: ${targetProfile.detectedTools.slice(0, 5).join(', ') || 'none detected'} | ` +
+      `Memory: ${targetProfile.hasMemory} | Refusal: ${targetProfile.refusalStyle}`,
+  );
+
+  // --- Phase 3: Probe Selection ---
+  const allTemplates = await loadProbes(options.probesDir);
+  const probePlan = selectProbes(targetProfile, allTemplates);
+
+  options.onPhase?.('plan', `Selected ${probePlan.totalProbes} probes (from ${allTemplates.length} available)`);
+  for (const cp of probePlan.categories) {
+    if (cp.probeIds.length > 0) {
+      options.onPhase?.(
+        'category',
+        `  ${cp.category}: ${cp.probeIds.length} probes (${cp.priority}) — ${cp.rationale}`,
+      );
+    }
+  }
+
+  return {
+    targetUrl: target,
+    infraFindings,
+    agentProfile,
+    targetProfile,
+    probePlan,
+    completedAt: new Date().toISOString(),
+  };
 }
 
 // ─── Engagement auto-selection ───────────────────────────

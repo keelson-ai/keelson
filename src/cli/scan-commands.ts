@@ -286,6 +286,121 @@ export function registerScanCommands(program: Command): void {
     });
 
   program
+    .command('recon')
+    .description('Discover target capabilities and build a profile (no attack probes)')
+    .requiredOption('--target <url>', 'Target endpoint URL')
+    .option('--api-key <key>', 'API key for authentication')
+    .option('--model <model>', 'Model name for requests', 'default')
+    .option('--adapter-type <type>', 'Adapter type', 'openai')
+    .option('--delay <ms>', 'Milliseconds between discovery probes', '2000')
+    .option('--output-dir <dir>', 'Output directory', DEFAULT_OUTPUT_DIR)
+    .option('--format <format>', 'Output format: json, markdown', 'json')
+    .action(async (opts: ScanCommandOpts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
+      const adapter = createAdapter(buildAdapterConfig(opts));
+
+      printHeader(logger, 'Keelson Recon', opts);
+
+      const { runRecon } = await import('../core/index.js');
+
+      let result;
+      try {
+        result = await runRecon(opts.target, adapter, {
+          delayMs: parseInt(opts.delay ?? '2000', 10),
+          onPhase: (phase, detail) => logger.info(`  [${phase}] ${detail}`),
+        });
+      } finally {
+        await adapter.close?.();
+      }
+
+      // Display results
+      const tp = result.targetProfile;
+      logger.info('\n--- Target Profile ---');
+      logger.info(`Agent types:  ${tp.agentTypes.join(', ') || 'unknown'}`);
+      logger.info(`Tools:        ${tp.detectedTools.join(', ') || 'none detected'}`);
+      logger.info(`Memory:       ${tp.hasMemory}`);
+      logger.info(`Write access: ${tp.hasWriteAccess}`);
+      logger.info(`Refusal:      ${tp.refusalStyle}`);
+
+      const detected = result.agentProfile.capabilities.filter((c) => c.detected);
+      if (detected.length > 0) {
+        logger.info('\n--- Detected Capabilities ---');
+        for (const cap of detected) {
+          logger.info(`  ${cap.name} (confidence: ${(cap.confidence * 100).toFixed(0)}%)`);
+        }
+      }
+
+      if (result.infraFindings.length > 0) {
+        logger.info('\n--- Infrastructure Findings ---');
+        for (const inf of result.infraFindings) {
+          logger.info(`  ${colorSeverity(inf.severity)} ${inf.title}`);
+        }
+      }
+
+      logger.info('\n--- Probe Plan ---');
+      logger.info(`Total probes recommended: ${result.probePlan.totalProbes}`);
+      for (const cp of result.probePlan.categories) {
+        if (cp.probeIds.length > 0) {
+          logger.info(`  ${cp.category}: ${cp.probeIds.length} probes (${cp.priority}) — ${cp.rationale}`);
+        }
+      }
+
+      // Write output
+      const { mkdir, writeFile } = await import('node:fs/promises');
+      const { join } = await import('node:path');
+      const outputDir = opts.outputDir ?? DEFAULT_OUTPUT_DIR;
+      await mkdir(outputDir, { recursive: true });
+
+      const format = opts.format ?? 'json';
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+
+      if (format === 'json') {
+        const filePath = join(outputDir, `recon-${timestamp}.json`);
+        await writeFile(filePath, JSON.stringify(result, null, 2));
+        logger.info(`\nOutput: ${filePath}`);
+      } else {
+        const lines: string[] = [
+          `# Recon Report — ${result.targetUrl}`,
+          '',
+          `**Completed**: ${result.completedAt}`,
+          '',
+          '## Target Profile',
+          '',
+          `- **Agent types**: ${tp.agentTypes.join(', ') || 'unknown'}`,
+          `- **Detected tools**: ${tp.detectedTools.join(', ') || 'none'}`,
+          `- **Memory**: ${tp.hasMemory}`,
+          `- **Write access**: ${tp.hasWriteAccess}`,
+          `- **Refusal style**: ${tp.refusalStyle}`,
+          '',
+          '## Capabilities',
+          '',
+        ];
+        for (const cap of result.agentProfile.capabilities) {
+          const status = cap.detected ? 'detected' : 'not detected';
+          lines.push(`- **${cap.name}**: ${status} (${(cap.confidence * 100).toFixed(0)}%)`);
+        }
+        if (result.infraFindings.length > 0) {
+          lines.push('', '## Infrastructure Findings', '');
+          for (const inf of result.infraFindings) {
+            lines.push(`- **${inf.severity}**: ${inf.title} — ${inf.description}`);
+          }
+        }
+        lines.push('', '## Probe Plan', '', `**Total probes**: ${result.probePlan.totalProbes}`, '');
+        lines.push('| Category | Priority | Probes | Rationale |');
+        lines.push('|----------|----------|--------|-----------|');
+        for (const cp of result.probePlan.categories) {
+          if (cp.probeIds.length > 0) {
+            lines.push(`| ${cp.category} | ${cp.priority} | ${cp.probeIds.length} | ${cp.rationale} |`);
+          }
+        }
+        lines.push('');
+        const filePath = join(outputDir, `recon-${timestamp}.md`);
+        await writeFile(filePath, lines.join('\n'));
+        logger.info(`\nOutput: ${filePath}`);
+      }
+    });
+
+  program
     .command('probe')
     .description('Run a single probe against a target')
     .requiredOption('--target <url>', 'Target endpoint URL')
