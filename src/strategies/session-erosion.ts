@@ -185,9 +185,14 @@ async function executeIntent(params: ExecuteIntentParams): Promise<IntentResult>
     intentTurns++;
     steps.push({ prompt, response: response.content });
 
-    // Evaluate
+    // Evaluate with full intent history so pattern detection can see progressive disclosure
     const template = intentAsTemplate(intent);
-    const evidence = [{ stepIndex: intentTurns - 1, prompt, response: response.content, responseTimeMs }];
+    const evidence = steps.map((s, i) => ({
+      stepIndex: i,
+      prompt: s.prompt,
+      response: s.response,
+      responseTimeMs: i === steps.length - 1 ? responseTimeMs : 0,
+    }));
     let evalResult: { verdict: Verdict; confidence: number; reasoning: string };
     try {
       evalResult = await evaluate(template, evidence);
