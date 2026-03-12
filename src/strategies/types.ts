@@ -1,4 +1,5 @@
-import type { Adapter, EvidenceItem, Finding, ProbeTemplate, Verdict } from '../types/index.js';
+import type { MemoTable } from '../core/memo.js';
+import type { Adapter, Evaluation, EvidenceItem, Finding, PhaseHint, ProbeTemplate, Verdict } from '../types/index.js';
 import { ScoringMethod, Severity, Technique } from '../types/index.js';
 
 // ─── Evaluation callback (injected from core engine, Track 2) ────
@@ -154,6 +155,155 @@ export interface MemoEntry {
   category: string;
   verdict: Verdict;
   weight: number;
+}
+
+// ─── Session Erosion types ──────────────────────────────────────
+
+export type TargetPersonalityTag =
+  | 'cooperative'
+  | 'guarded'
+  | 'scope_strict'
+  | 'scope_flexible'
+  | 'chatty'
+  | 'terse'
+  | 'inconsistent'
+  | 'tool_aware'
+  | 'prompt_protected';
+
+export type ContextBucket =
+  | 'early_session'
+  | 'mid_session'
+  | 'post_trust_building'
+  | 'post_disclosure'
+  | 'post_refusal'
+  | 'target_guarded';
+
+export type ProberDecision = 'continue' | 'reframe' | 'complete' | 'move_on';
+
+export interface RefusalEntry {
+  intent: string;
+  framing: string;
+  refusalWording: string;
+  turnNumber: number;
+}
+
+export interface KeyMoment {
+  turnNumber: number;
+  type: 'disclosure' | 'refusal' | 'reframe_success' | 'personality_signal';
+  summary: string;
+}
+
+export interface IntelEntry {
+  turnNumber: number;
+  category: 'tool' | 'endpoint' | 'framework' | 'boundary' | 'data' | 'config';
+  detail: string;
+}
+
+export interface SessionBrief {
+  disclosedInfo: string[];
+  refusalPatterns: RefusalEntry[];
+  successfulFramings: string[];
+  failedFramings: string[];
+  personalityTags: TargetPersonalityTag[];
+  turnsUsed: number;
+  intentsCompleted: number;
+  intentsRemaining: number;
+  currentPhase: PhaseHint;
+  keyMoments: KeyMoment[];
+  discoveredIntel: Map<string, IntelEntry>;
+}
+
+export interface TargetDossier {
+  company: {
+    name: string;
+    industry: string;
+    description: string;
+  };
+  regulations: string[];
+  agentRole: string;
+  techStack: string[];
+  sensitiveDataTargets: {
+    high: string[];
+    medium: string[];
+    low: string[];
+  };
+  knownAttackSurface: string[];
+  userProvidedContext: string;
+  rawIntel: string[];
+}
+
+export interface ProbeIntent {
+  id: string;
+  name: string;
+  objective: string;
+  evaluation: Evaluation;
+  owaspId: string;
+  phaseHint: PhaseHint;
+  severity: Severity;
+  category: string;
+  contextWeight: number;
+}
+
+export interface WeightEntry {
+  intentId: string;
+  contextBucket: ContextBucket;
+  attempts: number;
+  successes: number;
+  successRate: number;
+  lastUpdated: string;
+}
+
+export interface ErosionTurnInfo {
+  intentId: string;
+  turnNumber: number;
+  intentTurnNumber: number;
+  prompt: string;
+  response: string;
+  responseTimeMs: number;
+  verdict: Verdict;
+  decision: ProberDecision;
+}
+
+export interface IntentResult {
+  intent: ProbeIntent;
+  finding: Finding;
+  turnsUsed: number;
+  contextBucket: ContextBucket;
+  outcome: 'vulnerable' | 'safe' | 'inconclusive' | 'budget_exhausted';
+}
+
+export interface WeightStore {
+  load(): Promise<void>;
+  save(): Promise<void>;
+  getWeight(intentId: string, bucket: ContextBucket): number;
+  recordOutcome(intentId: string, bucket: ContextBucket, success: boolean): void;
+  flush(): Promise<void>;
+}
+
+export interface SessionErosionOptions {
+  target: Adapter;
+  prober: Adapter;
+  intents: ProbeIntent[];
+  dossier: TargetDossier;
+  evaluate: EvaluateFn;
+  memo?: MemoTable;
+  weights?: WeightStore;
+  maxTurnsPerIntent?: number;
+  maxTotalTurns?: number;
+  maxConsecutiveRefusals?: number;
+  delayMs?: number;
+  onTurnComplete?: (info: ErosionTurnInfo) => void;
+  onIntentComplete?: (info: IntentResult) => void;
+  onPhaseChange?: (phase: string) => void;
+}
+
+export interface SessionErosionResult {
+  findings: Finding[];
+  brief: SessionBrief;
+  turnsUsed: number;
+  intentsAttempted: number;
+  intentsSuccessful: number;
+  sessionNarrative: string;
 }
 
 // ─── Scheduling types ────────────────────────────────────────────

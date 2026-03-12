@@ -3,7 +3,8 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 import type { Command } from 'commander';
 
@@ -12,6 +13,7 @@ import {
   VERDICT_ICONS,
   buildAdapterConfig,
   openStore,
+  printScanSummary,
   writeReport,
   writeScanOutput,
 } from './utils.js';
@@ -23,18 +25,53 @@ import { executeProbe, loadProbes } from '../core/index.js';
 import { executeChain, synthesizeChainsLlm } from '../prober/index.js';
 import type { AgentProfile } from '../prober/index.js';
 import {
+  FileWeightStore,
   LLM_TYPES,
   PROGRAMMATIC_TYPES,
   applyLlmMutation,
   applyProgrammaticMutation,
+  buildDossier,
+  probeToIntent,
   roundRobin,
   runCrescendo,
   runPair,
+  runSessionErosion,
 } from '../strategies/index.js';
-import type { Adapter, AdapterConfig, Finding, MutatedProbe, MutationType, ProbeTemplate } from '../types/index.js';
+import type {
+  Adapter,
+  AdapterConfig,
+  Finding,
+  MutatedProbe,
+  MutationType,
+  PhaseHint,
+  ProbeTemplate,
+  ScanResult,
+} from '../types/index.js';
 import { Verdict } from '../types/index.js';
 import { generateCampaignId } from '../utils/id.js';
 import { truncate } from '../utils.js';
+
+// ─── Phase Mapping ──────────────────────────────────────
+
+const CATEGORY_PHASE_MAP: Record<string, PhaseHint> = {
+  goal_adherence: 'recon',
+  session_isolation: 'recon',
+  cognitive_architecture: 'recon',
+  conversational_exfiltration: 'extraction',
+  memory_integrity: 'extraction',
+  permission_boundaries: 'extraction',
+  tool_safety: 'exploitation',
+  execution_safety: 'exploitation',
+  output_weaponization: 'exploitation',
+  delegation_integrity: 'exploitation',
+  multi_agent_security: 'exploitation',
+  temporal_persistence: 'extraction',
+  supply_chain_language: 'exploitation',
+};
+
+function categoryToPhase(category: string): PhaseHint {
+  return CATEGORY_PHASE_MAP[category] ?? 'extraction';
+}
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -137,7 +174,6 @@ function registerTestCommand(
       await adapter.close?.();
     }
 
-    const { printScanSummary } = await import('./utils.js');
     printScanSummary(result, logger);
 
     const store = openStore(opts);
@@ -679,6 +715,184 @@ export function registerAdvancedCommands(program: Command): void {
           await writeFile(filePath, templateToMarkdown(t), 'utf-8');
           logger.info(`  Saved: ${filePath}`);
         }
+      }
+    });
+
+  // ─── erode ──────────────────────────────────────────────
+  program
+    .command('erode')
+    .description('Run session erosion: autonomous multi-turn red-team engagement')
+    .requiredOption('--target <url>', 'Target endpoint URL')
+    .requiredOption('--prober-key <key>', 'Prober LLM API key')
+    .option('--api-key <key>', 'Target API key for authentication')
+    .option('--model <model>', 'Target model name', 'default')
+    .option('--adapter-type <type>', 'Target adapter type', 'openai')
+    .option('--prober-url <url>', 'Prober LLM endpoint (defaults to OpenAI)')
+    .option('--prober-model <model>', 'Prober LLM model name')
+    .option('--company <name>', 'Company name for research phase')
+    .option('--context <text>', 'Free-text context about the target')
+    .option('--documents <paths...>', 'Document paths or URLs to ingest')
+    .option('--search-api-key <key>', 'Brave Search API key for research')
+    .option('--category <categories>', 'Comma-separated category filter')
+    .option('--max-turns <n>', 'Maximum total turns', '30')
+    .option('--max-turns-per-intent <n>', 'Maximum turns per intent', '5')
+    .option('--delay <ms>', 'Milliseconds between requests', '1500')
+    .option('--output-dir <dir>', 'Output directory', DEFAULT_OUTPUT_DIR)
+    .option('--format <format>', 'Output format: json, markdown, sarif', 'json')
+    .option('--no-store', 'Skip saving to persistent store')
+    .option('--chatbot-id <id>', 'SiteGPT chatbot ID')
+    .option('--chat-input-selector <sel>', 'Browser input selector')
+    .option('--chat-submit-selector <sel>', 'Browser submit selector')
+    .option('--chat-response-selector <sel>', 'Browser response selector')
+    .option('--browser-headless', 'Run browser headless', true)
+    .action(async (opts) => {
+      const verbosity = parseVerbosity(program.opts().verbose);
+      const logger = new Logger(verbosity);
+
+      logger.info('\nSession Erosion — Autonomous Red-Team Engagement');
+      logger.info(`Target: ${opts.target}`);
+      if (opts.company) logger.info(`Company: ${opts.company}`);
+
+      // 1. Create adapters
+      const targetAdapter = createAdapter(
+        buildAdapterConfig({
+          target: opts.target,
+          apiKey: opts.apiKey,
+          model: opts.model,
+          adapterType: opts.adapterType,
+          chatbotId: opts.chatbotId,
+          chatInputSelector: opts.chatInputSelector,
+          chatSubmitSelector: opts.chatSubmitSelector,
+          chatResponseSelector: opts.chatResponseSelector,
+          browserHeadless: opts.browserHeadless,
+        }),
+      );
+
+      const rawProber = new OpenAIAdapter({
+        type: 'openai',
+        baseUrl: opts.proberUrl ?? 'https://api.openai.com/v1/chat/completions',
+        apiKey: opts.proberKey,
+        model: opts.proberModel,
+      });
+      const proberAdapter = new ProberAdapter(rawProber);
+
+      const store = openStore(opts);
+
+      try {
+        // 2. Load probes and convert to intents
+        const allProbes = await loadProbes();
+        const categories = opts.category?.split(',').map((c: string) => c.trim());
+        const filtered = categories
+          ? allProbes.filter((p: ProbeTemplate) => categories.includes(p.category))
+          : allProbes;
+
+        if (filtered.length === 0) {
+          logger.error('No probes found matching filters');
+          process.exit(1);
+        }
+
+        const intents = filtered.map((p: ProbeTemplate) => probeToIntent(p, categoryToPhase(p.category)));
+        logger.info(
+          `Loaded ${intents.length} intents across ${new Set(filtered.map((p: ProbeTemplate) => p.category)).size} categories`,
+        );
+
+        // 3. Research phase
+        logger.info('\nResearch phase...');
+        const dossier = await buildDossier({
+          prober: proberAdapter,
+          targetUrl: opts.target,
+          companyName: opts.company,
+          userContext: opts.context,
+          documents: opts.documents,
+          searchApiKey: opts.searchApiKey,
+        });
+        logger.info(
+          `Dossier: ${dossier.company.name} (${dossier.company.industry}), ${dossier.techStack.length} tech stack items`,
+        );
+
+        // 4. Weight store
+        const weightsPath = join(homedir(), '.keelson', 'erosion-weights.json');
+        const weights = new FileWeightStore(weightsPath);
+        await weights.load();
+
+        // 5. Run session erosion
+        const maxTotalTurns = parseInt(opts.maxTurns, 10) || 30;
+        const maxTurnsPerIntent = parseInt(opts.maxTurnsPerIntent, 10) || 5;
+        const delayMs = parseInt(opts.delay, 10) || 1500;
+
+        logger.info(`\nStarting erosion loop (max ${maxTotalTurns} turns)...\n`);
+
+        const { patternDetect } = await import('../core/index.js');
+        const startedAt = new Date().toISOString();
+
+        const erosionResult = await runSessionErosion({
+          target: targetAdapter,
+          prober: proberAdapter,
+          intents,
+          dossier,
+          evaluate: async (template, evidence) => patternDetect(template, evidence),
+          weights,
+          maxTurnsPerIntent,
+          maxTotalTurns,
+          maxConsecutiveRefusals: 3,
+          delayMs,
+          onPhaseChange: (phase) => {
+            logger.info(`\n--- Phase: ${phase} ---\n`);
+          },
+          onIntentComplete: (result) => {
+            const icon =
+              result.outcome === 'vulnerable'
+                ? VERDICT_ICONS[Verdict.Vulnerable]
+                : result.outcome === 'safe'
+                  ? VERDICT_ICONS[Verdict.Safe]
+                  : VERDICT_ICONS[Verdict.Inconclusive];
+            logger.info(
+              `${icon} ${result.intent.id} (${result.intent.name}): ${result.outcome} [${result.turnsUsed} turns]`,
+            );
+          },
+          onTurnComplete: (info) => {
+            logger.step(
+              info.verdict === Verdict.Vulnerable ? '!' : '.',
+              `Turn ${info.turnNumber}: ${truncate(info.prompt, 60)} → ${info.verdict} (${info.decision})`,
+            );
+          },
+        });
+
+        // 6. Build ScanResult for output compatibility
+        const { summarize } = await import('../core/summarize.js');
+        const scanResult: ScanResult = {
+          scanId: `erosion-${Date.now()}`,
+          target: opts.target,
+          startedAt,
+          completedAt: new Date().toISOString(),
+          findings: erosionResult.findings,
+          summary: summarize(erosionResult.findings),
+        };
+
+        // 7. Output results
+        logger.info(`\n${'─'.repeat(50)}`);
+        logger.info(
+          `Session complete: ${erosionResult.turnsUsed} turns, ${erosionResult.intentsAttempted} intents, ${erosionResult.intentsSuccessful} vulnerabilities`,
+        );
+
+        if (erosionResult.sessionNarrative) {
+          logger.info('\nSession Narrative:');
+          logger.info(erosionResult.sessionNarrative);
+        }
+
+        printScanSummary(scanResult, logger);
+
+        store?.saveScan(scanResult);
+        const outputPath = await writeScanOutput(scanResult, opts.format, opts.outputDir);
+        logger.info(`\nResults saved: ${outputPath}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`Session erosion failed: ${message}`);
+        process.exit(1);
+      } finally {
+        await targetAdapter.close?.();
+        await proberAdapter.close?.();
+        store?.close();
       }
     });
 }

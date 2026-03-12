@@ -12,10 +12,10 @@ import {
 } from './utils.js';
 import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { createAdapter } from '../adapters/index.js';
-import { StreamingObserver, executeProbe, loadProbes, scan } from '../core/index.js';
+import { StreamingObserver, executeProbe, loadProbes, scan, summarize } from '../core/index.js';
 import { errorFinding, sanitizeErrorMessage } from '../core/scan-helpers.js';
 import type { Store } from '../state/index.js';
-import type { Adapter, ScanResult } from '../types/index.js';
+import type { Adapter, Finding, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
 // ─── Shared helpers ─────────────────────────────────────
@@ -253,6 +253,7 @@ export function registerScanCommands(program: Command): void {
             reorder: true,
             judge,
             maxPayloadLength,
+            engagement: opts.engagement,
             onFinding: (finding, current, total) => logger.finding(finding, current, total),
           });
 
@@ -268,7 +269,19 @@ export function registerScanCommands(program: Command): void {
         await adapter.close?.();
       }
 
-      const result = allResults[allResults.length - 1];
+      // Merge findings across all passes, keeping the latest result per probe
+      const mergedFindings = new Map<string, Finding>();
+      for (const r of allResults) {
+        for (const f of r.findings) {
+          mergedFindings.set(f.probeId, f);
+        }
+      }
+      const lastResult = allResults[allResults.length - 1];
+      const result: ScanResult = {
+        ...lastResult,
+        findings: [...mergedFindings.values()],
+      };
+      result.summary = summarize(result.findings);
       await finalizeScan(result, store, opts, logger, false);
     });
 

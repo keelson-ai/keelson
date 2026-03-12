@@ -88,6 +88,8 @@ export enum ResponseClass {
   Compliance = 'compliance',
 }
 
+export type PhaseHint = 'recon' | 'extraction' | 'exploitation';
+
 export enum ScanMode {
   Sequential = 'sequential',
   Pipeline = 'pipeline',
@@ -176,30 +178,28 @@ export interface ScanSummary {
   byCategory: Record<string, number>;
 }
 
-export interface ConversationMemoEntry {
+export interface DisclosureInventory {
+  toolNames: string[];
+  urls: string[];
+  envVars: string[];
+  paths: string[];
+}
+
+export interface CumulativeDisclosureResult {
+  severity: Severity;
+  description: string;
+  inventory: DisclosureInventory;
+  totalItems: number;
+  filledCategories: number;
+}
+
+export interface ConversationMemo {
   probeId: string;
   category: string;
-  techniques: string[];
+  techniques: Technique[];
   outcome: string;
   verdict: Verdict;
   leakedInfo: string[];
-}
-
-export interface CumulativeDisclosureEntry {
-  severity: Severity;
-  description: string;
-  totalItems: number;
-  filledCategories: number;
-  inventory: {
-    toolNames: string[];
-    toolParameters: string[];
-    pipelineSteps: string[];
-    operationalRules: string[];
-    guardrailRules: string[];
-    urls: string[];
-    envVars: string[];
-    paths: string[];
-  };
 }
 
 export interface ScanResult {
@@ -209,8 +209,8 @@ export interface ScanResult {
   completedAt: string;
   findings: Finding[];
   summary: ScanSummary;
-  memo?: ConversationMemoEntry[];
-  cumulativeDisclosure?: CumulativeDisclosureEntry;
+  memo?: ConversationMemo[];
+  cumulativeDisclosure?: CumulativeDisclosureResult;
 }
 
 // ─── Diff / Comparison Interfaces ───────────────────────

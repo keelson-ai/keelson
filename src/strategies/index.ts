@@ -17,21 +17,39 @@ export {
   shouldMutate,
   weightedByHistory,
 } from './scheduling.js';
+export { IntentQueue, probeToIntent } from './intent-queue.js';
+export { buildDossier, fetchDocuments, synthesizeDossier } from './research.js';
+export { createSessionBrief, determineContextBucket, formatBriefForPrompt, updateBrief } from './session-brief.js';
+export { runSessionErosion } from './session-erosion.js';
 export { buildStrategyFinding } from './types.js';
 export type {
   BranchingOptions,
+  ContextBucket,
   ConversationNode,
   CrescendoOptions,
   CrescendoResult,
   CrescendoStep,
+  ErosionTurnInfo,
   EvaluateFn,
+  IntentResult,
+  KeyMoment,
   MemoEntry,
   MutationHistory,
   PAIROptions,
   PAIRResult,
+  ProbeIntent,
+  ProberDecision,
   RefinementStep,
+  SessionBrief,
+  SessionErosionOptions,
+  SessionErosionResult,
   StrategyStep,
+  TargetDossier,
+  TargetPersonalityTag,
   TreeOptions,
   TreeResult,
+  WeightEntry,
+  WeightStore,
 } from './types.js';
+export { FileWeightStore } from './weight-store.js';
 export { Technique } from '../types/index.js';
