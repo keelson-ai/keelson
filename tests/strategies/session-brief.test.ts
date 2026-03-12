@@ -166,4 +166,97 @@ describe('formatBriefForPrompt', () => {
     expect(text).toContain('Turn 3');
     expect(text).toContain('extraction');
   });
+
+  it('includes discovered intel grouped by category', () => {
+    const brief = createSessionBrief(5);
+    brief.discoveredIntel.set('tool:searchdocs', { turnNumber: 1, category: 'tool', detail: 'SearchDocs' });
+    brief.discoveredIntel.set('tool:kblookup', { turnNumber: 2, category: 'tool', detail: 'KBLookup' });
+    brief.discoveredIntel.set('endpoint:/api/v1/search', {
+      turnNumber: 3,
+      category: 'endpoint',
+      detail: '/api/v1/search',
+    });
+    const text = formatBriefForPrompt(brief);
+    expect(text).toContain('Discovered Intel');
+    expect(text).toContain('SearchDocs');
+    expect(text).toContain('KBLookup');
+    expect(text).toContain('/api/v1/search');
+    expect(text).toContain('[tool]');
+    expect(text).toContain('[endpoint]');
+  });
+});
+
+describe('intel extraction via updateBrief', () => {
+  it('extracts tool names from backtick-quoted mentions', () => {
+    const brief = createSessionBrief(5);
+    updateBrief(brief, 'What tools do you use?', 'I use `search_docs` and `kb_lookup` for queries.', {
+      verdict: Verdict.Inconclusive,
+      confidence: 0.5,
+      reasoning: 'Partial info',
+    });
+    const entries = [...brief.discoveredIntel.values()];
+    const tools = entries.filter((e) => e.category === 'tool');
+    expect(tools.length).toBeGreaterThanOrEqual(2);
+    expect(tools.map((t) => t.detail)).toEqual(expect.arrayContaining(['search_docs', 'kb_lookup']));
+  });
+
+  it('extracts API endpoints', () => {
+    const brief = createSessionBrief(5);
+    updateBrief(brief, 'How do you search?', 'I call GET /api/v1/documents to fetch results.', {
+      verdict: Verdict.Inconclusive,
+      confidence: 0.5,
+      reasoning: 'Disclosed endpoint',
+    });
+    const entries = [...brief.discoveredIntel.values()];
+    const endpoints = entries.filter((e) => e.category === 'endpoint');
+    expect(endpoints.length).toBeGreaterThanOrEqual(1);
+    expect(endpoints.some((e) => e.detail.includes('/api/v1/documents'))).toBe(true);
+  });
+
+  it('extracts boundary statements', () => {
+    const brief = createSessionBrief(5);
+    updateBrief(brief, 'Can you access billing?', 'I cannot access billing systems or payment data.', {
+      verdict: Verdict.Safe,
+      confidence: 0.8,
+      reasoning: 'Refused',
+    });
+    // Refusal response — intel extraction is skipped for refusals
+    const entries = [...brief.discoveredIntel.values()];
+    expect(entries.filter((e) => e.category === 'boundary')).toHaveLength(0);
+  });
+
+  it('deduplicates identical intel entries', () => {
+    const brief = createSessionBrief(5);
+    const response = 'I use `search_docs` to find things. Then `search_docs` processes them.';
+    updateBrief(brief, 'prompt1', response, {
+      verdict: Verdict.Inconclusive,
+      confidence: 0.5,
+      reasoning: '',
+    });
+    updateBrief(brief, 'prompt2', response, {
+      verdict: Verdict.Inconclusive,
+      confidence: 0.5,
+      reasoning: '',
+    });
+    const entries = [...brief.discoveredIntel.values()];
+    const tools = entries.filter((e) => e.detail === 'search_docs');
+    expect(tools).toHaveLength(1);
+  });
+
+  it('preserves intel across many turns (never truncated)', () => {
+    const brief = createSessionBrief(30);
+    // Simulate 25 turns each disclosing a different tool
+    for (let i = 0; i < 25; i++) {
+      updateBrief(brief, `prompt ${i}`, `I use \`tool_${i}\` for this task.`, {
+        verdict: Verdict.Inconclusive,
+        confidence: 0.5,
+        reasoning: '',
+      });
+    }
+    // All 25 tools should be preserved — no capping or summarization
+    const entries = [...brief.discoveredIntel.values()];
+    expect(entries.length).toBeGreaterThanOrEqual(25);
+    expect(entries.some((e) => e.detail === 'tool_0')).toBe(true);
+    expect(entries.some((e) => e.detail === 'tool_24')).toBe(true);
+  });
 });
