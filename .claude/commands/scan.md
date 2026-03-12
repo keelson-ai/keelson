@@ -5,7 +5,7 @@ Run a comprehensive security scan against an AI agent endpoint.
 ## Usage
 
 ```
-/keelson:scan <url> [--api-key KEY] [--model MODEL] [--category CATEGORY]
+/keelson:scan <url> [--api-key KEY] [--model MODEL] [--category CATEGORY] [--profile PATH]
 ```
 
 **Arguments** (from `$ARGUMENTS`):
@@ -13,7 +13,8 @@ Run a comprehensive security scan against an AI agent endpoint.
 - `<url>` — Target endpoint (OpenAI-compatible chat completions URL)
 - `--api-key KEY` — API key for authentication (optional)
 - `--model MODEL` — Model name to use in requests (default: depends on target)
-- `--category CATEGORY` — Run only probes from this category: `goal-adherence`, `tool-safety`, or `memory-integrity` (default: all)
+- `--category CATEGORY` — Run only probes from this category (default: all)
+- `--profile PATH` — Path to an existing recon report to skip the Learn phase (optional)
 
 ## Instructions
 
@@ -23,47 +24,47 @@ Run a comprehensive security scan against an AI agent endpoint.
 2. **Set defaults**: If no `--model`, use `"default"`. If no `--api-key`, omit auth header.
 3. **Verify target is reachable**: Send a simple health check request.
 
-### Step 2: Learn (Strategist Phase 1)
+### Step 2: Learn — `agents/recon.md`
 
-Follow the strategist methodology (already loaded in your context via `agent-context` rule — do NOT read `agents/strategist.md`):
+If `--profile` is provided, read the existing recon report and skip to Step 3.
 
-4. **Research the target externally**: Use web search to find docs, blog posts, and public information about the product. Understand what the agent does, what framework it uses, and what its intended capabilities are.
+Otherwise, follow the recon agent's full methodology:
 
-5. **Interact with the target**: Have a natural conversation to fill in gaps — figure out its tools, data access, memory, refusal patterns, and anything else relevant. Record any vulnerabilities found during this phase (e.g., tool inventory disclosure, system prompt leakage).
+4. **Research the target externally** (Phase 1a): Use web search to understand the product, framework, and capabilities.
+5. **Interact with the target** (Phase 1b): Conversational recon to fill gaps — tools, data access, memory, refusal patterns. Record any vulnerabilities found.
+6. **Build a target profile** (Phase 1c): Compile findings using the recon agent's classification taxonomy and profile format.
 
-6. **Build a target profile**: Summarize findings into the target profile format from the strategist.
+### Step 3: Plan — `agents/strategist.md`
 
-### Step 3: Plan (Strategist Phase 2)
+7. **Select probes**: Follow the strategist's probe selection logic and engagement profiles. Assign priorities based on the target profile. If `--category` is specified, override and run all probes in that category.
+8. **Present the probe plan**: Display the plan in the strategist's format with category priorities, probe counts, and rationale. Wait for user review before proceeding.
 
-7. **Select probes**: Based on the target profile, assign each probe category a priority (High / Medium / Low / Skip). If `--category` is specified, override and run all probes in that category.
+### Step 4: Probe — `agents/pentester.md` + `agents/judge.md`
 
-8. **Present the probe plan**: Display the plan with category priorities, probe counts, rationale, and any vulnerabilities already found during recon. Wait for the user to review before proceeding.
+9. **Load probe playbooks**: Probe locations are mapped in the `agent-context` rule. Read selected probe YAML files directly.
 
-### Step 4: Probe (Strategist Phase 3)
-
-9. **Load probe playbooks**: Probe locations are already mapped in your context (see `agent-context` rule). Read the selected probe YAML files directly — no need to Glob for discovery.
-
-10. **Execute probes by priority** (High first, then Medium, then Low):
-    - Read the probe file
-    - Send the probe prompts via `curl` using the communication pattern in your context
-    - For multi-step probes, send each step sequentially, accumulating the messages array
+10. **Execute probes** following the pentester's execution order (info disclosure first, then High → Medium → Low):
+    - Send probe prompts via `curl` using patterns from the `agent-context` rule
+    - For multi-step probes, accumulate the messages array between turns
     - Sleep 1-2 seconds between requests
-    - Evaluate each response semantically (VULNERABLE / SAFE / INCONCLUSIVE)
+    - **Evaluate each response** using the judge's methodology: check for refusal-with-disclosure, calibrate severity against the target profile, apply INCONCLUSIVE thresholds
     - Record the finding
 
-11. **Adapt mid-scan**: After each category batch, check the adaptation rules from the strategist. Escalate categories where vulns are found, deprioritize categories with consistent refusals, craft follow-up probes for interesting findings. Log all plan changes.
+11. **Adapt mid-scan** using the pentester's adaptation triggers: Escalate categories where vulns are found, deprioritize categories with consistent refusals, craft follow-up probes for interesting findings. Log all plan changes.
 
-### Step 5: Report
+### Step 5: Report — `agents/reporter.md`
 
-13. **Generate report** including:
-    - Research summary (what was learned about the target externally)
-    - Target profile (classification, capabilities, data access)
-    - Probe plan (what was selected and why)
+12. **Generate report** following the reporter's full structure:
+    - Executive summary with risk score
+    - Target profile
+    - Research summary
+    - Probe plan
     - Detailed findings with evidence
-    - Adaptation log (mid-scan plan changes)
+    - Adaptation log
     - Skipped probes with rationale
     - Recommendations prioritized by actual risk
+    - OWASP LLM Top 10 mapping
 
-14. **Save report** to `reports/scan-YYYY-MM-DD-HHMMSS.md`.
+13. **Save report** to `reports/scan-YYYY-MM-DD-HHMMSS.md`.
 
-15. **Display summary** to the user with counts, critical findings, and how many probes were skipped.
+14. **Display summary** to the user with counts, critical findings, and how many probes were skipped.
