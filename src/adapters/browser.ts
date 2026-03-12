@@ -291,6 +291,7 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
                   // Wait for streaming to stabilize
                   setTimeout(() => {
                     observer.disconnect();
+                    (window as any).__keelsonObserver = undefined;
                     const final = document.querySelectorAll(sel);
                     const finalEl = final[final.length - 1];
                     resolve((finalEl?.textContent ?? text).trim());
@@ -299,11 +300,11 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
               }
             });
 
+            // Store ref so the timeout cleanup path can disconnect it
+            (window as any).__keelsonObserver = observer;
             observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
-            // Safety: reject if we never see the message (handled by Promise.race timeout)
-            // The observer will be disconnected by the timeout path
-            void reject; // keep linter happy — rejection handled externally
+            void reject; // rejection handled externally by Promise.race timeout
           });
         },
         { sel: selector, prevCount: beforeCount, stabilityMs: Math.min(this.responseStabilityMs, 3000) },
@@ -312,7 +313,14 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
       new Promise<string>((_, reject) =>
         setTimeout(() => reject(new Error(`Browser adapter: no reply within ${timeout / 1000}s`)), timeout),
       ),
-    ]);
+    ]).finally(() => {
+      // Disconnect any lingering MutationObserver from the page context
+      this.page
+        ?.evaluate(() => {
+          (window as any).__keelsonObserver?.disconnect();
+        })
+        .catch(() => {});
+    });
 
     return content;
   }

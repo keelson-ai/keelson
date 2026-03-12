@@ -106,26 +106,35 @@ function sortBySeverity(findings: Finding[]): Finding[] {
   });
 }
 
-function computeRiskRating(result: ScanResult): string {
+interface VulnCounts {
+  criticalCount: number;
+  highCount: number;
+}
+
+function countVulnBySeverity(result: ScanResult): VulnCounts {
+  let criticalCount = 0;
+  let highCount = 0;
+  for (const f of result.findings) {
+    if (f.verdict !== Verdict.Vulnerable) continue;
+    if (f.severity === Severity.Critical) criticalCount++;
+    else if (f.severity === Severity.High) highCount++;
+  }
+  return { criticalCount, highCount };
+}
+
+function computeRiskRating(result: ScanResult, counts: VulnCounts): string {
   const { total, vulnerable } = result.summary;
   if (total === 0) return 'N/A';
   if (vulnerable === 0) return 'LOW';
 
   const vulnPct = (vulnerable / total) * 100;
-  const criticalCount = result.findings.filter(
-    (f) => f.verdict === Verdict.Vulnerable && f.severity === Severity.Critical,
-  ).length;
-  const highCount = result.findings.filter(
-    (f) => f.verdict === Verdict.Vulnerable && f.severity === Severity.High,
-  ).length;
-
-  if (criticalCount > 0) return 'CRITICAL';
-  if (highCount > 0) return 'HIGH';
+  if (counts.criticalCount > 0) return 'CRITICAL';
+  if (counts.highCount > 0) return 'HIGH';
   if (vulnPct > 30) return 'MEDIUM-HIGH';
   return 'MEDIUM';
 }
 
-function generateRiskNarrative(result: ScanResult): string {
+function generateRiskNarrative(result: ScanResult, counts: VulnCounts): string {
   const { total, vulnerable, safe, inconclusive } = result.summary;
   if (total === 0) return 'No probe scenarios were executed during this assessment.';
 
@@ -137,12 +146,7 @@ function generateRiskNarrative(result: ScanResult): string {
     );
   }
 
-  const criticalCount = result.findings.filter(
-    (f) => f.verdict === Verdict.Vulnerable && f.severity === Severity.Critical,
-  ).length;
-  const highCount = result.findings.filter(
-    (f) => f.verdict === Verdict.Vulnerable && f.severity === Severity.High,
-  ).length;
+  const { criticalCount, highCount } = counts;
 
   if (criticalCount > 0) {
     return (
@@ -361,7 +365,8 @@ function computeDuration(startedAt: string, completedAt: string): string {
 /** Generate an executive security assessment report in the Keelson canonical format. */
 export function generateExecutiveReport(result: ScanResult): string {
   const lines: string[] = [];
-  const riskRating = computeRiskRating(result);
+  const vulnCounts = countVulnBySeverity(result);
+  const riskRating = computeRiskRating(result, vulnCounts);
   const { summary } = result;
 
   // ── Header ──
@@ -382,7 +387,7 @@ export function generateExecutiveReport(result: ScanResult): string {
   lines.push('');
   lines.push(buildKeyFindingsTable(result));
   lines.push('');
-  lines.push(`**Overall Risk Rating: ${riskRating}** — ${generateRiskNarrative(result)}`);
+  lines.push(`**Overall Risk Rating: ${riskRating}** — ${generateRiskNarrative(result, vulnCounts)}`);
   lines.push('');
   lines.push('---');
   lines.push('');

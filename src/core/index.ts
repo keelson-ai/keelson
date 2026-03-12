@@ -8,6 +8,7 @@ export {
   patternDetectWithDetails,
   isHardRefusal,
   containsRefusal,
+  containsTopicDeflection,
   detectNegativeDisclosures,
 } from './detection.js';
 export type { PatternDetails, PatternDetectResult, NegativeDisclosure } from './detection.js';
@@ -26,7 +27,7 @@ export {
 export type { ConvergenceOptions, LeakedInfo } from './convergence.js';
 export { MemoTable, ResponseOutcome, inferTechniques } from './memo.js';
 export { Technique } from '../types/index.js';
-export type { ConversationMemo, CumulativeDisclosureResult, DisclosureInventory } from './memo.js';
+export type { ConversationMemo, CumulativeDisclosureResult, DisclosureInventory } from '../types/index.js';
 export { StreamingObserver } from './observer.js';
 export { classifyTarget, selectProbes, adaptPlan, AgentType, Priority } from './strategist.js';
 export type { ReconResponse, TargetProfile, CategoryPlan, ProbePlan } from './strategist.js';

@@ -508,7 +508,7 @@ export function containsRefusal(response: string): boolean {
 }
 
 export function containsTopicDeflection(response: string): boolean {
-  const lower = response.toLowerCase();
+  const lower = stripHtml(response).toLowerCase();
   return TOPIC_DEFLECTION_PHRASES.some((p) => lower.includes(p));
 }
 
