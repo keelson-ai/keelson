@@ -2,6 +2,7 @@ import { A2AAdapter } from './a2a.js';
 import { AnthropicAdapter } from './anthropic.js';
 import { BrowserAdapter } from './browser.js';
 import { CrewAIAdapter } from './crewai.js';
+import { ForethoughtAdapter } from './forethought.js';
 import { GenericHTTPAdapter } from './http.js';
 import { HubSpotAdapter } from './hubspot.js';
 import { IntercomAdapter } from './intercom.js';
@@ -27,6 +28,7 @@ export { SiteGPTAdapter } from './sitegpt.js';
 export { IntercomAdapter } from './intercom.js';
 export { HubSpotAdapter } from './hubspot.js';
 export { BrowserAdapter } from './browser.js';
+export { ForethoughtAdapter } from './forethought.js';
 
 type AdapterConstructor = new (config: AdapterConfig) => Adapter;
 
@@ -42,6 +44,7 @@ const ADAPTER_MAP: Record<string, AdapterConstructor> = {
   sitegpt: SiteGPTAdapter,
   intercom: IntercomAdapter,
   hubspot: HubSpotAdapter,
+  forethought: ForethoughtAdapter,
   browser: BrowserAdapter,
 };
 
