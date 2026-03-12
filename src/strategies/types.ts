@@ -193,6 +193,12 @@ export interface KeyMoment {
   summary: string;
 }
 
+export interface IntelEntry {
+  turnNumber: number;
+  category: 'tool' | 'endpoint' | 'framework' | 'boundary' | 'data' | 'config';
+  detail: string;
+}
+
 export interface SessionBrief {
   disclosedInfo: string[];
   refusalPatterns: RefusalEntry[];
@@ -204,6 +210,7 @@ export interface SessionBrief {
   intentsRemaining: number;
   currentPhase: PhaseHint;
   keyMoments: KeyMoment[];
+  discoveredIntel: Map<string, IntelEntry>;
 }
 
 export interface TargetDossier {

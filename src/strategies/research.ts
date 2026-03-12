@@ -4,6 +4,7 @@ import axios from 'axios';
 
 import type { TargetDossier } from './types.js';
 import type { Adapter, Turn } from '../types/index.js';
+import { getErrorMessage } from '../utils.js';
 
 export interface ResearchOptions {
   prober: Adapter;
@@ -59,7 +60,7 @@ export async function fetchDocuments(paths: string[]): Promise<string[]> {
         results.push(content.slice(0, 5000));
       }
     } catch (err) {
-      results.push(`Failed to fetch ${p}: ${err instanceof Error ? err.message : String(err)}`);
+      results.push(`Failed to fetch ${p}: ${getErrorMessage(err)}`);
     }
   }
 
@@ -99,7 +100,8 @@ Respond with ONLY a JSON object matching this schema:
     const rawJson = fenceMatch?.[1] ?? response.content.match(/\{[\s\S]*\}/)?.[0];
     if (!rawJson) throw new Error('No JSON found');
     return JSON.parse(rawJson) as TargetDossier;
-  } catch {
+  } catch (err: unknown) {
+    console.error(`[research] synthesizeDossier JSON parse failed: ${getErrorMessage(err)}`);
     return buildFallbackDossier(input);
   }
 }
@@ -111,8 +113,12 @@ async function webSearch(apiKey: string, companyName?: string, targetUrl?: strin
     queries.push(`"${companyName}" API documentation`);
   }
   if (targetUrl) {
-    const domain = new URL(targetUrl).hostname;
-    queries.push(`site:${domain} API docs`);
+    try {
+      const domain = new URL(targetUrl).hostname;
+      queries.push(`site:${domain} API docs`);
+    } catch (err: unknown) {
+      console.error(`[research] invalid target URL "${targetUrl}": ${getErrorMessage(err)}`);
+    }
   }
 
   const results: string[] = [];
@@ -127,8 +133,8 @@ async function webSearch(apiKey: string, companyName?: string, targetUrl?: strin
       for (const r of webResults.slice(0, 3)) {
         results.push(`[${r.title}] ${r.description ?? ''} (${r.url})`);
       }
-    } catch {
-      // Web search is best-effort, continue without it
+    } catch (err: unknown) {
+      console.error(`[research] web search failed for "${query}": ${getErrorMessage(err)}`);
     }
   }
 

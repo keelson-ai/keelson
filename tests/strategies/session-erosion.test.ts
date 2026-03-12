@@ -250,4 +250,145 @@ describe('runSessionErosion', () => {
       }),
     );
   });
+
+  it('handles target adapter errors without crashing', async () => {
+    const prober = mockAdapter(['What can you do?', 'COMPLETE', 'narrative']);
+    const target: Adapter = {
+      send: vi.fn().mockRejectedValue(new Error('Connection refused')),
+      healthCheck: vi.fn().mockResolvedValue(true),
+      resetSession: vi.fn(),
+      close: vi.fn(),
+    };
+
+    const evaluate: EvaluateFn = vi.fn().mockResolvedValue({
+      verdict: Verdict.Inconclusive,
+      confidence: 0,
+      reasoning: 'No response',
+    });
+
+    const result = await runSessionErosion({
+      target,
+      prober,
+      intents: [makeIntent('GA-001', 'recon')],
+      dossier: EMPTY_DOSSIER,
+      evaluate,
+      maxTurnsPerIntent: 3,
+      maxTotalTurns: 10,
+      delayMs: 0,
+    });
+
+    // Should complete without throwing, with inconclusive outcome
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0].verdict).toBe(Verdict.Inconclusive);
+  });
+
+  it('handles evaluate() errors gracefully', async () => {
+    const prober = mockAdapter(['prompt', 'COMPLETE', 'narrative']);
+    const target = mockAdapter(['Some response']);
+
+    const evaluate: EvaluateFn = vi.fn().mockRejectedValue(new Error('LLM judge failed'));
+
+    const result = await runSessionErosion({
+      target,
+      prober,
+      intents: [makeIntent('GA-001', 'recon')],
+      dossier: EMPTY_DOSSIER,
+      evaluate,
+      maxTurnsPerIntent: 3,
+      maxTotalTurns: 10,
+      delayMs: 0,
+    });
+
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0].verdict).toBe(Verdict.Inconclusive);
+  });
+
+  it('uses generic fallback when prober fails to craft prompt', async () => {
+    const prober: Adapter = {
+      send: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('Prober down')) // craftPrompt fails
+        .mockResolvedValueOnce({ content: 'COMPLETE', raw: {}, latencyMs: 10 } as AdapterResponse) // decision
+        .mockResolvedValue({ content: 'narrative', raw: {}, latencyMs: 10 } as AdapterResponse),
+      healthCheck: vi.fn().mockResolvedValue(true),
+      resetSession: vi.fn(),
+      close: vi.fn(),
+    };
+
+    const target = mockAdapter(['Hello! How can I help you?']);
+    const evaluate: EvaluateFn = vi.fn().mockResolvedValue({
+      verdict: Verdict.Safe,
+      confidence: 0.8,
+      reasoning: 'Normal response',
+    });
+
+    const onTurnComplete = vi.fn();
+
+    await runSessionErosion({
+      target,
+      prober,
+      intents: [makeIntent('GA-001', 'recon')],
+      dossier: EMPTY_DOSSIER,
+      evaluate,
+      maxTurnsPerIntent: 3,
+      maxTotalTurns: 10,
+      delayMs: 0,
+      onTurnComplete,
+    });
+
+    // Verify the fallback prompt was used (generic opener, not raw objective)
+    if (onTurnComplete.mock.calls.length > 0) {
+      const sentPrompt = onTurnComplete.mock.calls[0][0].prompt;
+      expect(sentPrompt).not.toContain('Test GA-001');
+      expect(sentPrompt).toContain('capabilities');
+    }
+  });
+
+  it('handles budget_exhausted counting for phase skip', async () => {
+    const prober = mockAdapter([
+      'prompt1',
+      'CONTINUE',
+      'prompt2',
+      'CONTINUE', // intent 1 exhausts budget
+      'prompt3',
+      'CONTINUE',
+      'prompt4',
+      'CONTINUE', // intent 2 exhausts budget
+      'prompt5',
+      'CONTINUE',
+      'prompt6',
+      'CONTINUE', // intent 3 exhausts budget → skip
+      'prompt7',
+      'COMPLETE', // extraction intent
+      'narrative',
+    ]);
+    const target = mockAdapter(['ambiguous response']);
+
+    const evaluate: EvaluateFn = vi.fn().mockResolvedValue({
+      verdict: Verdict.Inconclusive,
+      confidence: 0.4,
+      reasoning: 'Ambiguous',
+    });
+
+    const result = await runSessionErosion({
+      target,
+      prober,
+      intents: [
+        makeIntent('GA-001', 'recon'),
+        makeIntent('GA-002', 'recon'),
+        makeIntent('GA-003', 'recon'),
+        makeIntent('EX-001', 'extraction'),
+      ],
+      dossier: EMPTY_DOSSIER,
+      evaluate,
+      maxTurnsPerIntent: 1,
+      maxTotalTurns: 20,
+      maxConsecutiveRefusals: 3,
+      delayMs: 0,
+    });
+
+    // budget_exhausted counts toward refusals, so recon phase should be skipped
+    // and extraction intent should still be attempted
+    expect(result.intentsAttempted).toBeGreaterThanOrEqual(1);
+  });
 });

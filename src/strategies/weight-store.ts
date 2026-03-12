@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import type { ContextBucket, WeightEntry, WeightStore } from './types.js';
+import { getErrorMessage } from '../utils.js';
 
 const DECAY_THRESHOLD_DAYS = 30;
 
@@ -17,8 +18,10 @@ export class FileWeightStore implements WeightStore {
     try {
       const raw = await fs.readFile(this.filePath, 'utf-8');
       this.entries = JSON.parse(raw) as WeightEntry[];
-      this.applyDecay();
-    } catch {
+      const decayed = this.applyDecay();
+      if (decayed) await this.flush();
+    } catch (err: unknown) {
+      console.error(`[weight-store] load failed from ${this.filePath}: ${getErrorMessage(err)}`);
       this.entries = [];
     }
   }
@@ -62,8 +65,9 @@ export class FileWeightStore implements WeightStore {
     return this.entries.find((e) => e.intentId === intentId && e.contextBucket === bucket);
   }
 
-  private applyDecay(): void {
+  private applyDecay(): boolean {
     const now = Date.now();
+    let changed = false;
     for (const entry of this.entries) {
       const age = now - new Date(entry.lastUpdated).getTime();
       const days = age / (24 * 60 * 60 * 1000);
@@ -72,7 +76,9 @@ export class FileWeightStore implements WeightStore {
         entry.successes = Math.max(0, Math.floor(entry.successes / 2));
         entry.successRate = entry.attempts > 0 ? entry.successes / entry.attempts : 0;
         entry.lastUpdated = new Date().toISOString();
+        changed = true;
       }
     }
+    return changed;
   }
 }

@@ -105,4 +105,65 @@ describe('FileWeightStore', () => {
 
     expect(store.getWeight('GA-001', 'early_session')).toBe(0);
   });
+
+  it('returns weight at exactly 3 attempts (threshold boundary)', async () => {
+    const store = new FileWeightStore(filePath);
+    await store.load();
+
+    store.recordOutcome('GA-001', 'early_session', true);
+    store.recordOutcome('GA-001', 'early_session', false);
+    store.recordOutcome('GA-001', 'early_session', true);
+
+    // Exactly 3 attempts — should return weight (not 0)
+    expect(store.getWeight('GA-001', 'early_session')).toBeCloseTo(0.667, 2);
+  });
+
+  it('handles corrupted JSON file gracefully', async () => {
+    await fs.writeFile(filePath, 'not valid json {{{');
+    const store = new FileWeightStore(filePath);
+    await store.load();
+    expect(store.getWeight('GA-001', 'early_session')).toBe(0);
+  });
+
+  it('persists decay on load so crash-reload does not re-decay', async () => {
+    const store = new FileWeightStore(filePath);
+    await store.load();
+
+    // Create 8 attempts
+    for (let i = 0; i < 8; i++) {
+      store.recordOutcome('GA-001', 'early_session', true);
+    }
+    await store.flush();
+
+    // Tamper with file to set lastUpdated 31 days ago
+    const data = JSON.parse(await fs.readFile(filePath, 'utf-8'));
+    const oldDate = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+    for (const entry of data) {
+      entry.lastUpdated = oldDate;
+    }
+    await fs.writeFile(filePath, JSON.stringify(data));
+
+    // First load: decay fires (8 → 4), and should flush to disk
+    const store2 = new FileWeightStore(filePath);
+    await store2.load();
+
+    // Second load: should NOT re-decay because lastUpdated was persisted
+    const store3 = new FileWeightStore(filePath);
+    await store3.load();
+
+    // If decay re-applied, attempts would be 2 (below threshold → 0).
+    // With fix, attempts stays at 4 → weight should be non-zero.
+    expect(store3.getWeight('GA-001', 'early_session')).toBe(1.0);
+  });
+
+  it('creates directory when flushing to new path', async () => {
+    const deepPath = path.join(tmpDir, 'nested', 'dir', 'weights.json');
+    const store = new FileWeightStore(deepPath);
+    await store.load();
+    store.recordOutcome('GA-001', 'early_session', true);
+    await store.flush();
+
+    const content = await fs.readFile(deepPath, 'utf-8');
+    expect(JSON.parse(content)).toHaveLength(1);
+  });
 });

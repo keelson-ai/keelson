@@ -816,9 +816,9 @@ export function registerAdvancedCommands(program: Command): void {
         await weights.load();
 
         // 5. Run session erosion
-        const maxTotalTurns = parseInt(opts.maxTurns, 10);
-        const maxTurnsPerIntent = parseInt(opts.maxTurnsPerIntent, 10);
-        const delayMs = parseInt(opts.delay, 10);
+        const maxTotalTurns = parseInt(opts.maxTurns, 10) || 30;
+        const maxTurnsPerIntent = parseInt(opts.maxTurnsPerIntent, 10) || 5;
+        const delayMs = parseInt(opts.delay, 10) || 1500;
 
         logger.info(`\nStarting erosion loop (max ${maxTotalTurns} turns)...\n`);
 

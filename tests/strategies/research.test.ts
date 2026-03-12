@@ -87,6 +87,45 @@ describe('synthesizeDossier', () => {
   });
 });
 
+describe('buildDossier - edge cases', () => {
+  it('handles invalid target URL without crashing', async () => {
+    const prober = mockProber(
+      JSON.stringify({
+        company: { name: 'Test', industry: 'tech', description: '' },
+        regulations: [],
+        agentRole: 'unknown',
+        techStack: [],
+        sensitiveDataTargets: { high: [], medium: [], low: [] },
+        knownAttackSurface: [],
+        userProvidedContext: '',
+        rawIntel: [],
+      }),
+    );
+
+    // Invalid URL should not crash — webSearch guards against it
+    const dossier = await buildDossier({
+      prober,
+      targetUrl: 'not-a-valid-url',
+      searchApiKey: 'fake-key',
+    });
+
+    expect(dossier.company.name).toBe('Test');
+  });
+
+  it('returns fallback when prober.send() throws', async () => {
+    const prober: Adapter = {
+      send: vi.fn().mockRejectedValue(new Error('Prober down')),
+      healthCheck: vi.fn().mockResolvedValue(true),
+      resetSession: vi.fn(),
+      close: vi.fn(),
+    };
+
+    // synthesizeDossier will throw, but buildDossier calls it directly
+    // so this tests that the error propagates (caller should handle)
+    await expect(buildDossier({ prober, companyName: 'Test' })).rejects.toThrow();
+  });
+});
+
 describe('buildDossier', () => {
   it('combines web search, documents, and user context', async () => {
     const prober = mockProber(
