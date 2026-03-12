@@ -54,6 +54,11 @@ describe('createAdapter factory', () => {
     expect(adapter).toBeDefined();
   });
 
+  it('creates forethought adapter', () => {
+    const adapter = createAdapter({ type: 'forethought', baseUrl: 'https://forethought.ai/' });
+    expect(adapter).toBeDefined();
+  });
+
   it('throws on unknown adapter type', () => {
     expect(() => createAdapter({ type: 'nonexistent', baseUrl: 'https://x.com' })).toThrow(
       'Unknown adapter type: "nonexistent"',

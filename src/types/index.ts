@@ -141,6 +141,8 @@ export interface EvidenceItem {
   prompt: string;
   response: string;
   responseTimeMs: number;
+  /** True when the adapter timed out waiting for a response. */
+  timedOut?: boolean;
 }
 
 export interface LeakageSignal {
@@ -185,6 +187,23 @@ export interface ConversationMemoEntry {
   leakedInfo: string[];
 }
 
+export interface CumulativeDisclosureEntry {
+  severity: Severity;
+  description: string;
+  totalItems: number;
+  filledCategories: number;
+  inventory: {
+    toolNames: string[];
+    toolParameters: string[];
+    pipelineSteps: string[];
+    operationalRules: string[];
+    guardrailRules: string[];
+    urls: string[];
+    envVars: string[];
+    paths: string[];
+  };
+}
+
 export interface ScanResult {
   scanId: string;
   target: string;
@@ -193,6 +212,7 @@ export interface ScanResult {
   findings: Finding[];
   summary: ScanSummary;
   memo?: ConversationMemoEntry[];
+  cumulativeDisclosure?: CumulativeDisclosureEntry;
 }
 
 // ─── Diff / Comparison Interfaces ───────────────────────
@@ -274,6 +294,54 @@ export interface CampaignResult {
   completedAt: string | null;
 }
 
+// ─── Engagement Profile ─────────────────────────────────
+
+export interface DelayRange {
+  minMs: number;
+  maxMs: number;
+}
+
+export interface SuspicionSignal {
+  pattern: string;
+  action: 'pivot_to_cover' | 'end_session' | 'end_session_and_cooldown';
+}
+
+export interface EngagementProfile {
+  id: string;
+  name: string;
+  description?: string;
+  warmup: {
+    minTurns: number;
+    maxTurns: number;
+    pool: string[];
+  };
+  cover: {
+    ratio: number;
+    placement: 'interleaved' | 'before_each' | 'after_each';
+    pool: string[];
+  };
+  pacing: {
+    interTurnDelay: DelayRange;
+    interProbeDelay: DelayRange;
+    interSessionCooldown: DelayRange;
+  };
+  sessions: {
+    maxProbesPerSession: number;
+    maxTurnsPerSession: number;
+    resetBetween: boolean;
+  };
+  probeOrdering: {
+    strategy: 'stealth_first' | 'random' | 'as_loaded';
+  };
+  backoff: {
+    suspicionSignals: SuspicionSignal[];
+    onSessionKill: {
+      cooldownMultiplier: number;
+      maxRetriesPerProbe: number;
+    };
+  };
+}
+
 // ─── Adapter Interfaces ──────────────────────────────────
 
 export interface AdapterConfig {
@@ -305,6 +373,12 @@ export interface AdapterConfig {
   browserResponseStabilityMs?: number;
   /** JS snippet to run in page before chat interaction (e.g. dismiss cookie banner) */
   browserPreInteraction?: string;
+  /** Create a fresh browser context (clear cookies/storage) before each send call.
+   *  Useful for targets with server-side session persistence (e.g. Forethought Solve). */
+  browserFreshContextPerSend?: boolean;
+  /** Enable adaptive timeout: on timeout, retry the send with a doubled timeout (up to 2x).
+   *  Default: false. */
+  browserAdaptiveTimeout?: boolean;
   // Payload size limit (browser widgets often have character limits)
   maxPayloadLength?: number;
 }
@@ -313,6 +387,8 @@ export interface AdapterResponse {
   content: string;
   raw: unknown;
   latencyMs: number;
+  /** True when the response was cut short by a timeout (partial or empty content). */
+  timedOut?: boolean;
 }
 
 export interface Adapter {

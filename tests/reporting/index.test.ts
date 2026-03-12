@@ -16,7 +16,7 @@ describe('generateReport', () => {
     const result = makeResult();
     const report = generateReport(result, 'executive');
 
-    expect(report).toContain('# AI Agent Security Assessment Report');
+    expect(report).toContain('# Keelson Security Scan Report');
   });
 
   it('dispatches compliance format', () => {

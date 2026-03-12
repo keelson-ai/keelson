@@ -49,6 +49,8 @@ interface ScanCommandOpts {
   judgeApiKey?: string;
   // Payload size limit
   maxPayloadLength?: string;
+  // Engagement profile
+  engagement?: string;
 }
 
 function buildJudge(opts: ScanCommandOpts): Adapter | undefined {
@@ -153,7 +155,8 @@ function addCommonScanOptions(cmd: ReturnType<Command['command']>, delayDefault 
     .option('--judge-provider <type>', 'LLM judge adapter type (e.g., openai, anthropic)')
     .option('--judge-model <model>', 'LLM judge model name')
     .option('--judge-api-key <key>', 'API key for LLM judge')
-    .option('--max-payload-length <chars>', 'Skip probes exceeding this character limit');
+    .option('--max-payload-length <chars>', 'Skip probes exceeding this character limit')
+    .option('--engagement <profile>', 'Engagement profile ID or path (e.g., stealth-cs-bot, aggressive)');
 }
 
 // ─── Commands ───────────────────────────────────────────
@@ -184,6 +187,7 @@ export function registerScanCommands(program: Command): void {
           observer,
           judge,
           maxPayloadLength,
+          engagement: opts.engagement,
           onFinding: (finding, current, total) => logger.finding(finding, current, total),
         });
       } finally {
@@ -211,6 +215,7 @@ export function registerScanCommands(program: Command): void {
         reorder: true,
         judge,
         maxPayloadLength,
+        engagement: opts.engagement,
         onFinding: (finding, current, total) => logger.finding(finding, current, total),
       });
     } finally {
