@@ -65,6 +65,7 @@ function makePatternDetails(overrides: Partial<PatternDetails> = {}): PatternDet
     hasRefusal: false,
     hasDeflection: false,
     sideEffect: undefined,
+    negativeDisclosures: [],
     ...overrides,
   };
 }

@@ -10,18 +10,20 @@
  *   5. Mid-scan adaptation
  */
 
+import { EngagementController, loadEngagementProfile } from './engagement.js';
+import type { EngagementCallbacks } from './engagement.js';
 import { executeProbe } from './engine.js';
 import type { ExecuteProbeOptions, Observer } from './engine.js';
 import { MemoTable, inferTechniques } from './memo.js';
 import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
-import { adaptPlan, classifyTarget, selectProbes } from './strategist.js';
+import { AgentType, adaptPlan, classifyTarget, selectProbes } from './strategist.js';
 import type { ProbePlan, ReconResponse, TargetProfile } from './strategist.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import { discoverCapabilities } from '../prober/discovery.js';
 import { runInfrastructureRecon } from '../prober/infrastructure.js';
 import type { AgentProfile, InfraFinding } from '../prober/types.js';
-import type { Adapter, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
+import type { Adapter, EngagementProfile, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
 import { Technique, Verdict } from '../types/index.js';
 
 // ─── Recon result ──────────────────────────────────────
@@ -54,6 +56,10 @@ export interface SmartScanOptions {
   onPhase?: OnPhase;
   verify?: boolean;
   maxResponseTokens?: number;
+  /** Engagement profile ID or path. Overrides auto-selection. */
+  engagement?: string;
+  /** Pre-loaded engagement profile (takes precedence over engagement string). */
+  engagementProfile?: EngagementProfile;
 }
 
 // ─── Effectiveness scoring ──────────────────────────────
@@ -308,6 +314,33 @@ export async function runRecon(target: string, adapter: Adapter, options: SmartS
   };
 }
 
+// ─── Engagement auto-selection ───────────────────────────
+
+const AGENT_TYPE_ENGAGEMENT_MAP: ReadonlyMap<AgentType, string> = new Map([
+  [AgentType.CustomerService, 'stealth-cs-bot'],
+  [AgentType.CodingAssistant, 'stealth-coding-agent'],
+  [AgentType.CodebaseAgent, 'stealth-coding-agent'],
+  [AgentType.GeneralChat, 'stealth-general'],
+  [AgentType.RagAgent, 'stealth-general'],
+  [AgentType.ToolRich, 'stealth-general'],
+  [AgentType.MultiAgent, 'stealth-general'],
+]);
+
+/**
+ * Select an engagement profile ID based on the classified agent types.
+ * Returns the most specific match (customer_service > coding > general).
+ */
+export function selectEngagementProfile(agentTypes: AgentType[]): string {
+  // Priority order: customer_service, coding_assistant, codebase_agent, then general
+  for (const type of agentTypes) {
+    const profile = AGENT_TYPE_ENGAGEMENT_MAP.get(type);
+    if (profile && profile !== 'stealth-general') {
+      return profile;
+    }
+  }
+  return 'stealth-general';
+}
+
 // ─── Main smart scan ────────────────────────────────────
 
 /**
@@ -379,8 +412,71 @@ export async function runSmartScan(
     };
   }
 
-  // --- Phase 4: Grouped Execution with Memoization ---
+  // --- Resolve engagement profile ---
+  let engagementProfile: EngagementProfile | undefined = options.engagementProfile;
+
+  if (!engagementProfile && options.engagement) {
+    if (options.engagement === 'auto') {
+      // Auto-select engagement profile based on target classification
+      const profileId = selectEngagementProfile(targetProfile.agentTypes);
+      try {
+        engagementProfile = await loadEngagementProfile(profileId);
+        options.onPhase?.('engagement', `Auto-selected engagement profile: ${profileId}`);
+      } catch {
+        options.onPhase?.('engagement', `Engagement profile "${profileId}" not found, using default execution`);
+      }
+    } else {
+      engagementProfile = await loadEngagementProfile(options.engagement);
+      options.onPhase?.('engagement', `Using engagement profile: ${options.engagement}`);
+    }
+  }
+
+  // --- Phase 4: Execution ---
   const memo = new MemoTable();
+  const allProbeTemplates = allProbeIds.map((id) => templatesById.get(id)).filter((t): t is ProbeTemplate => !!t);
+
+  if (engagementProfile) {
+    // Execute through engagement controller
+    const controller = new EngagementController(engagementProfile, adapter);
+    options.onPhase?.(
+      'execute',
+      `Running ${allProbeIds.length} probes with engagement profile: ${engagementProfile.id}`,
+    );
+
+    const engagementCallbacks: EngagementCallbacks = {
+      onSessionStart: (idx, total) => options.onPhase?.('session', `Session ${idx + 1}/${total}`),
+      onWarmupTurn: (msg) => options.onPhase?.('warmup', `  Warmup: ${msg.slice(0, 60)}...`),
+      onSuspicion: (pattern, action) =>
+        options.onPhase?.('suspicion', `  Suspicion detected: "${pattern}" → ${action}`),
+      onFinding: (finding, current, total) => {
+        memo.record(finding);
+        options.onFinding?.(finding, current, total);
+      },
+    };
+
+    const allFindings = await controller.run(
+      allProbeTemplates,
+      (probe) =>
+        executeProbe(probe, adapter, {
+          delayMs: options.delayMs,
+          judge: options.judge,
+          observer: options.observer,
+        }),
+      engagementCallbacks,
+    );
+
+    return {
+      scanId: crypto.randomUUID(),
+      target,
+      startedAt,
+      completedAt: new Date().toISOString(),
+      findings: allFindings,
+      summary: summarize(allFindings),
+      memo: memo.entries,
+    };
+  }
+
+  // --- Phase 4 (legacy): Grouped Execution with Memoization ---
   let sessions = groupIntoSessions(allProbeIds, templatesById, memo);
 
   options.onPhase?.('execute', `Running ${allProbeIds.length} probes in ${sessions.length} sessions`);
