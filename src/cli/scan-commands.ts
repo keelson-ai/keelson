@@ -152,6 +152,10 @@ function addCommonScanOptions(cmd: ReturnType<Command['command']>, delayDefault 
       '--browser-pre-interaction <js>',
       'JS snippet to run in page before chat interaction (e.g. dismiss cookie banner)',
     )
+    .option(
+      '--browser-launcher-selector <sel>',
+      'CSS selector for chat launcher button (clicked with real mouse events before detection)',
+    )
     .option('--judge-provider <type>', 'LLM judge adapter type (e.g., openai, anthropic)')
     .option('--judge-model <model>', 'LLM judge model name')
     .option('--judge-api-key <key>', 'API key for LLM judge')
@@ -415,6 +419,10 @@ export function registerScanCommands(program: Command): void {
     .option('--browser-headless', 'Run browser in headless mode (default: true)', true)
     .option('--no-browser-headless', 'Run browser in headed mode (visible)')
     .option('--browser-pre-interaction <js>', 'JS snippet to run in page before chat interaction')
+    .option(
+      '--browser-launcher-selector <sel>',
+      'CSS selector for chat launcher button (clicked with real mouse events)',
+    )
     .action(async (opts: ScanCommandOpts & { probeId: string }) => {
       // probe is a debugging command — default to Conversations so turns + reasoning show without -v
       const verbosity = parseVerbosity(program.opts().verbose);

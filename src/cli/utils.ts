@@ -22,6 +22,7 @@ export function buildAdapterConfig(opts: {
   chatResponseSelector?: string;
   browserHeadless?: boolean;
   browserPreInteraction?: string;
+  browserLauncherSelector?: string;
 }): AdapterConfig {
   return {
     type: opts.adapterType ?? 'openai',
@@ -36,6 +37,7 @@ export function buildAdapterConfig(opts: {
     chatResponseSelector: opts.chatResponseSelector,
     browserHeadless: opts.browserHeadless,
     browserPreInteraction: opts.browserPreInteraction,
+    browserLauncherSelector: opts.browserLauncherSelector,
   };
 }
 

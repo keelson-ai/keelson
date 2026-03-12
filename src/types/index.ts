@@ -371,6 +371,8 @@ export interface AdapterConfig {
   browserResponseStabilityMs?: number;
   /** JS snippet to run in page before chat interaction (e.g. dismiss cookie banner) */
   browserPreInteraction?: string;
+  /** CSS selector for the chat launcher button to click before auto-detection. */
+  browserLauncherSelector?: string;
   /** Create a fresh browser context (clear cookies/storage) before each send call.
    *  Useful for targets with server-side session persistence (e.g. Forethought Solve). */
   browserFreshContextPerSend?: boolean;

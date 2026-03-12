@@ -19,6 +19,7 @@ import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
  *   - chatResponseSelector: CSS selector for bot response messages (auto-detected if omitted)
  *   - browserHeadless: run headless (default: true)
  *   - browserPreInteraction: JS snippet to run in page before chat interaction
+ *   - browserLauncherSelector: CSS selector for chat launcher button (clicked before auto-detection)
  *   - browserFreshContextPerSend: fresh browser context per send (default: false)
  *   - browserAdaptiveTimeout: retry on timeout with 2x timeout (default: false)
  */
@@ -27,6 +28,7 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
   private detectedSubmitSelector: string;
   private detectedResponseSelector: string;
   private chatFrame: any = null;
+  private readonly launcherSelector: string | undefined;
 
   private static readonly RESPONSE_CANDIDATES = [
     '[data-testid="bot-message"]',
@@ -49,10 +51,20 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
     this.detectedInputSelector = config.chatInputSelector ?? '';
     this.detectedSubmitSelector = config.chatSubmitSelector ?? '';
     this.detectedResponseSelector = config.chatResponseSelector ?? '';
+    this.launcherSelector = config.browserLauncherSelector;
   }
 
   protected override async onBrowserReady(): Promise<void> {
     this.chatFrame = null;
+
+    if (this.launcherSelector) {
+      const launcher = await this.page.$(this.launcherSelector);
+      if (launcher) {
+        await launcher.click();
+        await this.page.waitForTimeout(2000);
+      }
+    }
+
     if (!this.detectedInputSelector || !this.detectedResponseSelector) {
       await this.autoDetectSelectors();
     }
@@ -322,6 +334,14 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
               const last = msgs[msgs.length - 1];
               const text = last.textContent?.trim() ?? '';
               if (!text || /^loading\.{0,3}$/i.test(text) || text === '…' || text === '...') return;
+              // Skip short thinking/progress indicators
+              if (
+                text.length < 50 &&
+                /^(analyzing|preparing|understanding|thinking|processing|searching|looking|generating|writing|selecting|reading|reviewing|checking|fetching|retrieving|consulting|gathering|compiling|organizing|summarizing|evaluating|considering|formulating|crafting|figuring|working|pulling|finding|connecting|loading)\b/i.test(
+                  text,
+                )
+              )
+                return;
 
               if (text !== lastText) {
                 lastText = text;
