@@ -25,6 +25,7 @@ import { executeProbe, loadProbes } from '../core/index.js';
 import { executeChain, synthesizeChainsLlm } from '../prober/index.js';
 import type { AgentProfile } from '../prober/index.js';
 import {
+  FileWeightStore,
   LLM_TYPES,
   PROGRAMMATIC_TYPES,
   applyLlmMutation,
@@ -173,7 +174,6 @@ function registerTestCommand(
       await adapter.close?.();
     }
 
-    const { printScanSummary } = await import('./utils.js');
     printScanSummary(result, logger);
 
     const store = openStore(opts);
@@ -768,12 +768,13 @@ export function registerAdvancedCommands(program: Command): void {
         }),
       );
 
-      const proberAdapter = createAdapter({
+      const rawProber = new OpenAIAdapter({
         type: 'openai',
         baseUrl: opts.proberUrl ?? 'https://api.openai.com/v1/chat/completions',
         apiKey: opts.proberKey,
         model: opts.proberModel,
       });
+      const proberAdapter = new ProberAdapter(rawProber);
 
       const store = openStore(opts);
 
@@ -810,7 +811,6 @@ export function registerAdvancedCommands(program: Command): void {
         );
 
         // 4. Weight store
-        const { FileWeightStore } = await import('../strategies/weight-store.js');
         const weightsPath = join(homedir(), '.keelson', 'erosion-weights.json');
         const weights = new FileWeightStore(weightsPath);
         await weights.load();

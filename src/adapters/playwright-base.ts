@@ -59,6 +59,20 @@ export abstract class PlaywrightBaseAdapter extends BaseAdapter {
     }
   }
 
+  /** Navigate to baseUrl, wait for init, run pre-interaction hook, then onBrowserReady. */
+  private async navigateAndPrepare(): Promise<void> {
+    await this.page.goto(this.config.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await this.page.waitForTimeout(5000);
+
+    if (this.preInteraction) {
+      await this.page.evaluate(this.preInteraction);
+      await this.page.waitForTimeout(3000);
+    }
+
+    await this.onBrowserReady();
+    this.initialized = true;
+  }
+
   /**
    * Launch browser, navigate to baseUrl, run pre-interaction hook,
    * then call the subclass `onBrowserReady()` hook.
@@ -71,19 +85,7 @@ export abstract class PlaywrightBaseAdapter extends BaseAdapter {
     const context = await this.browser.newContext({ userAgent: DEFAULT_USER_AGENT });
     this.page = await context.newPage();
 
-    await this.page.goto(this.config.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    // Allow page scripts and widgets to initialize
-    await this.page.waitForTimeout(5000);
-
-    // Run pre-interaction hook if provided (e.g. dismiss cookie banner)
-    if (this.preInteraction) {
-      await this.page.evaluate(this.preInteraction);
-      await this.page.waitForTimeout(3000);
-    }
-
-    await this.onBrowserReady();
-
-    this.initialized = true;
+    await this.navigateAndPrepare();
     return this.page;
   }
 
@@ -94,7 +96,6 @@ export abstract class PlaywrightBaseAdapter extends BaseAdapter {
    */
   protected async resetBrowserContext(): Promise<void> {
     if (!this.browser) return;
-    // Close all existing pages/contexts
     const contexts = this.browser.contexts?.() ?? [];
     for (const ctx of contexts) {
       await ctx.close().catch(() => {});
@@ -103,19 +104,9 @@ export abstract class PlaywrightBaseAdapter extends BaseAdapter {
     this.initialized = false;
     this.onSessionReset();
 
-    // Re-create context and page
     const context = await this.browser.newContext({ userAgent: DEFAULT_USER_AGENT });
     this.page = await context.newPage();
-    await this.page.goto(this.config.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    await this.page.waitForTimeout(5000);
-
-    if (this.preInteraction) {
-      await this.page.evaluate(this.preInteraction);
-      await this.page.waitForTimeout(3000);
-    }
-
-    await this.onBrowserReady();
-    this.initialized = true;
+    await this.navigateAndPrepare();
   }
 
   /** Subclass hook called after page load and pre-interaction, before first send. */
@@ -212,7 +203,7 @@ export abstract class PlaywrightBaseAdapter extends BaseAdapter {
     this.onSessionReset();
 
     if (oldBrowser) {
-      void (oldBrowser as { close: () => Promise<void> }).close();
+      void (oldBrowser as { close: () => Promise<void> }).close().catch(() => {});
     }
   }
 

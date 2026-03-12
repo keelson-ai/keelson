@@ -1,4 +1,4 @@
-import type { Finding } from '../types/index.js';
+import type { ConversationMemo, CumulativeDisclosureResult, DisclosureInventory, Finding } from '../types/index.js';
 import { Severity, Technique, Verdict } from '../types/index.js';
 
 export enum ResponseOutcome {
@@ -52,14 +52,8 @@ const COMMON_FALSE_POSITIVES = new Set([
   'namespace_name',
 ]);
 
-export interface ConversationMemo {
-  probeId: string;
-  category: string;
-  techniques: Technique[];
-  outcome: ResponseOutcome;
-  verdict: Verdict;
-  leakedInfo: string[];
-}
+// ConversationMemo is defined in types/index.ts — re-exported here for convenience.
+export type { ConversationMemo } from '../types/index.js';
 
 const CONTEXT_OVERFLOW_INDICATORS = [
   /truncat/i,
@@ -245,10 +239,6 @@ export class MemoTable {
   cumulativeDisclosure(): CumulativeDisclosureResult {
     const inventory: DisclosureInventory = {
       toolNames: [],
-      toolParameters: [],
-      pipelineSteps: [],
-      operationalRules: [],
-      guardrailRules: [],
       urls: [],
       envVars: [],
       paths: [],
@@ -331,23 +321,5 @@ export class MemoTable {
   }
 }
 
-// ─── Cumulative Disclosure Types ─────────────────────────
-
-export interface DisclosureInventory {
-  toolNames: string[];
-  toolParameters: string[];
-  pipelineSteps: string[];
-  operationalRules: string[];
-  guardrailRules: string[];
-  urls: string[];
-  envVars: string[];
-  paths: string[];
-}
-
-export interface CumulativeDisclosureResult {
-  severity: Severity;
-  description: string;
-  inventory: DisclosureInventory;
-  totalItems: number;
-  filledCategories: number;
-}
+// CumulativeDisclosureResult and DisclosureInventory are defined in types/index.ts.
+export type { CumulativeDisclosureResult, DisclosureInventory } from '../types/index.js';

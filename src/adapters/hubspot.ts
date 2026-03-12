@@ -6,6 +6,7 @@ import type { AdapterResponse, Turn } from '../types/index.js';
 const TIMESTAMP_RE_LINE = /^\d{1,2}:\d{2}\s*(?:AM|PM)$/i;
 const TIMESTAMP_RE_GLOBAL = /\d{1,2}:\d{2}\s*(?:AM|PM)/gi;
 const HUBSPOT_CTA_RE = /let us know your email|want updates about/i;
+const SEND_BTN_SELECTOR = 'button[aria-label="send message"], button[data-test-id="send-button"]';
 
 /**
  * HubSpot chat widget adapter using Playwright.
@@ -89,7 +90,7 @@ export class HubSpotAdapter extends PlaywrightBaseAdapter {
   private async waitForSendReady(): Promise<void> {
     const timeout = 30_000;
     const deadline = Date.now() + timeout;
-    const btnSelectors = 'button[aria-label="send message"], button[data-test-id="send-button"]';
+    const btnSelectors = SEND_BTN_SELECTOR;
 
     while (Date.now() < deadline) {
       const btn = await this.hsFrame.$(btnSelectors);
@@ -107,7 +108,7 @@ export class HubSpotAdapter extends PlaywrightBaseAdapter {
   }
 
   private async clickSend(): Promise<void> {
-    const sendBtn = await this.hsFrame.$('button[aria-label="send message"], button[data-test-id="send-button"]');
+    const sendBtn = await this.hsFrame.$(SEND_BTN_SELECTOR);
     if (sendBtn) {
       await sendBtn.click({ force: true });
     } else {

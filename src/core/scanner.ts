@@ -159,6 +159,9 @@ async function executeConcurrent(
           delayMs: options.delayMs,
           judge: options.judge,
           observer: options.observer,
+          reframeOnRefusal: options.reframeOnRefusal,
+          adaptiveFollowUp: options.adaptiveFollowUp,
+          maxAdaptiveTurns: options.maxAdaptiveTurns,
         });
       } catch (err: unknown) {
         finding = errorFinding(probe, sanitizeErrorMessage(err));

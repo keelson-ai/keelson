@@ -159,7 +159,7 @@ export class EngagementController {
     // Retry probes that were skipped due to session termination
     if (retryQueue.length > 0) {
       const maxRetries = this.profile.backoff.onSessionKill.maxRetriesPerProbe;
-      const retriable = retryQueue.slice(0, retryQueue.length); // all of them
+      const retriable = [...retryQueue];
       const retried = new Map<string, number>(); // probeId -> attempts
 
       const retrySessions = this.groupIntoSessions(retriable);

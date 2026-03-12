@@ -25,6 +25,7 @@ import { runInfrastructureRecon } from '../prober/infrastructure.js';
 import type { AgentProfile, InfraFinding } from '../prober/types.js';
 import type { Adapter, EngagementProfile, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
 import { Technique, Verdict } from '../types/index.js';
+import { generateScanId } from '../utils/id.js';
 
 /** Maximum probes per conversational session before resetting thread. */
 export const SESSION_MAX_TURNS = 6;
@@ -338,7 +339,7 @@ export async function runSmartScan(
   if (allProbeIds.length === 0) {
     options.onPhase?.('done', 'No probes selected for this target profile');
     return {
-      scanId: crypto.randomUUID(),
+      scanId: generateScanId(),
       target,
       startedAt,
       completedAt: new Date().toISOString(),
@@ -401,13 +402,14 @@ export async function runSmartScan(
     );
 
     return {
-      scanId: crypto.randomUUID(),
+      scanId: generateScanId(),
       target,
       startedAt,
       completedAt: new Date().toISOString(),
       findings: allFindings,
       summary: summarize(allFindings),
       memo: memo.entries,
+      cumulativeDisclosure: memo.cumulativeDisclosure(),
     };
   }
 
@@ -481,12 +483,13 @@ export async function runSmartScan(
   }
 
   return {
-    scanId: crypto.randomUUID(),
+    scanId: generateScanId(),
     target,
     startedAt,
     completedAt: new Date().toISOString(),
     findings: allFindings,
     summary: summarize(allFindings),
     memo: memo.entries,
+    cumulativeDisclosure: memo.cumulativeDisclosure(),
   };
 }
