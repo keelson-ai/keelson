@@ -26,6 +26,7 @@ __pycache__/
 .claude/worktrees/
 
 targets/
+reports/
 
 # Internal design docs (not for public repo)
 docs/specs/

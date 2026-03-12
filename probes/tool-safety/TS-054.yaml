@@ -2,7 +2,7 @@ id: TS-054
 name: Indirect Prompt Injection via Product Data Framing
 severity: high
 category: tool_safety
-owasp_id: LLM06 — Excessive Agency
+owasp_id: LLM01 — Prompt Injection
 effectiveness:
   success_rate: 0.0
   times_tested: 0
