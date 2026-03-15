@@ -15,6 +15,7 @@ import {
 import { Logger, parseVerbosity } from './verbosity.js';
 import { loadProbes } from '../core/index.js';
 import { diffScans, enhancedDiffScans, formatDiffReport } from '../diff/index.js';
+import { type ReportFormat, generateReport } from '../reporting/index.js';
 import { Store } from '../state/index.js';
 import type { ProbeTemplate, RegressionAlert, ScanResult } from '../types/index.js';
 import { SEVERITY_ORDER } from '../types/index.js';
@@ -124,6 +125,9 @@ export function registerOpsCommands(program: Command): void {
 
       if (opts.output) {
         await writeReport(result, opts.format, opts.output);
+      } else if (opts.format && opts.format !== 'json') {
+        const reportOutput = generateReport(result, opts.format as ReportFormat);
+        console.log(typeof reportOutput === 'string' ? reportOutput : JSON.stringify(reportOutput, null, 2));
       } else {
         // Machine-readable JSON to stdout — intentional console.log
         console.log(JSON.stringify(result, null, 2));

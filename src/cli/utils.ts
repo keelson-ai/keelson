@@ -5,6 +5,8 @@ import { dirname, join } from 'node:path';
 import chalk from 'chalk';
 
 import type { Logger } from './verbosity.js';
+import type { ReportFormat } from '../reporting/index.js';
+import { generateReport } from '../reporting/index.js';
 import { Store } from '../state/index.js';
 import type { AdapterConfig, Finding, ScanResult, ScanSummary } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
@@ -102,10 +104,10 @@ export function formatFinding(finding: Finding, index: number): string {
     lines.push(`    ${chalk.dim('Reasoning:')} ${truncate(finding.reasoning, 200)}`);
   }
 
-  if (finding.evidence.length > 0) {
-    const ev = finding.evidence[0];
-    lines.push(`    ${chalk.dim('Prompt:')} ${truncate(ev.prompt, 80)}`);
-    lines.push(`    ${chalk.dim('Response:')} ${truncate(ev.response, 80)}`);
+  for (const ev of finding.evidence) {
+    const turnLabel = finding.evidence.length > 1 ? ` (turn ${ev.stepIndex})` : '';
+    lines.push(`    ${chalk.dim(`Prompt${turnLabel}:`)} ${truncate(ev.prompt, 120)}`);
+    lines.push(`    ${chalk.dim(`Response${turnLabel}:`)} ${truncate(ev.response, 200)}`);
   }
 
   return lines.join('\n');
@@ -189,31 +191,16 @@ export function checkFailGates(
   return 0;
 }
 
-/**
- * Write a scan result to a file in the specified format.
- * Reporting modules (markdown, SARIF, JUnit) may not exist yet (Track 4 parallel work).
- * Falls back to JSON if the requested format is unavailable.
- */
+/** Write a scan result to a file in the specified format. */
 export async function writeReport(result: ScanResult, format: string, output: string): Promise<void> {
   await mkdir(dirname(output), { recursive: true });
 
-  // Try to use reporting formatters if available
   if (format !== 'json') {
-    try {
-      const reportingPath = '../reporting/index.js';
-      const reporting = (await import(/* webpackIgnore: true */ reportingPath)) as {
-        generateReport: (result: ScanResult, format: string) => string | object;
-      };
-      const reportOutput = reporting.generateReport(result, format);
-      const formatted = typeof reportOutput === 'string' ? reportOutput : JSON.stringify(reportOutput, null, 2);
-      await writeFile(output, formatted, 'utf-8');
-      return;
-    } catch {
-      // Reporting module not available — fall back to JSON
-      process.stderr.write(chalk.yellow(`Warning: '${format}' formatter not available, falling back to JSON\n`));
-    }
+    const reportOutput = generateReport(result, format as ReportFormat);
+    const formatted = typeof reportOutput === 'string' ? reportOutput : JSON.stringify(reportOutput, null, 2);
+    await writeFile(output, formatted, 'utf-8');
+    return;
   }
 
-  // Default: write JSON
   await writeFile(output, JSON.stringify(result, null, 2), 'utf-8');
 }
