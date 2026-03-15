@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { registerScanCommands } from '../../src/cli/scan-commands.js';
 
 describe('registerScanCommands', () => {
-  it('registers scan, recon, and probe commands', () => {
+  it('registers scan, recon, probe, and send commands', () => {
     const program = new Command();
     registerScanCommands(program);
 
@@ -12,6 +12,7 @@ describe('registerScanCommands', () => {
     expect(commandNames).toContain('scan');
     expect(commandNames).toContain('recon');
     expect(commandNames).toContain('probe');
+    expect(commandNames).toContain('send');
     expect(commandNames).not.toContain('smart-scan');
     expect(commandNames).not.toContain('convergence-scan');
   });
@@ -81,5 +82,39 @@ describe('registerScanCommands', () => {
     const scanCmd = program.commands.find((c) => c.name() === 'scan') as Command;
     const smartOpt = scanCmd.options.find((o) => o.long === '--smart');
     expect(smartOpt).toBeDefined();
+  });
+
+  it('send command has required --target and --message options', () => {
+    const program = new Command();
+    registerScanCommands(program);
+
+    const sendCmd = program.commands.find((c) => c.name() === 'send') as Command;
+    expect(sendCmd).toBeDefined();
+
+    const targetOpt = sendCmd.options.find((o) => o.long === '--target');
+    const messageOpt = sendCmd.options.find((o) => o.long === '--message');
+    expect(targetOpt).toBeDefined();
+    expect((targetOpt as typeof targetOpt & { required: boolean }).required).toBe(true);
+    expect(messageOpt).toBeDefined();
+    expect((messageOpt as typeof messageOpt & { required: boolean }).required).toBe(true);
+  });
+
+  it('send command has --raw flag', () => {
+    const program = new Command();
+    registerScanCommands(program);
+
+    const sendCmd = program.commands.find((c) => c.name() === 'send') as Command;
+    const rawOpt = sendCmd.options.find((o) => o.long === '--raw');
+    expect(rawOpt).toBeDefined();
+    expect(rawOpt!.defaultValue).toBe(false);
+  });
+
+  it('send command has --history option', () => {
+    const program = new Command();
+    registerScanCommands(program);
+
+    const sendCmd = program.commands.find((c) => c.name() === 'send') as Command;
+    const historyOpt = sendCmd.options.find((o) => o.long === '--history');
+    expect(historyOpt).toBeDefined();
   });
 });

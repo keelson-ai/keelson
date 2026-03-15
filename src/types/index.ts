@@ -415,11 +415,18 @@ export interface StrategyResult {
 
 // ─── Detection / Judging ─────────────────────────────────
 
+export interface TacticalLearning {
+  technique: string;
+  insight: string;
+  novelty: 'novel' | 'confirming' | 'contradicting';
+}
+
 export interface DetectionResult {
   verdict: Verdict;
   confidence: number;
   reasoning: string;
   method: ScoringMethod;
+  learning?: TacticalLearning;
 }
 
 // ─── Scan Configuration ──────────────────────────────────

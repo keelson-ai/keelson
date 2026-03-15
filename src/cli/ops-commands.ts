@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import chalk from 'chalk';
 import type { Command } from 'commander';
@@ -18,7 +18,7 @@ import { diffScans, enhancedDiffScans, formatDiffReport } from '../diff/index.js
 import { type ReportFormat, generateReport } from '../reporting/index.js';
 import { Store } from '../state/index.js';
 import type { ProbeTemplate, RegressionAlert, ScanResult } from '../types/index.js';
-import { SEVERITY_ORDER } from '../types/index.js';
+import { SEVERITY_ORDER, Severity } from '../types/index.js';
 import { getErrorMessage } from '../utils.js';
 
 function formatProbeRow(probe: ProbeTemplate): string {
@@ -504,6 +504,172 @@ export function registerOpsCommands(program: Command): void {
       logger.info(`  Cache:      ${stats.cache}`);
       logger.info(`  Alerts:     ${stats.regression_alerts}`);
       logger.info(`  Chains:     ${stats.probe_chains}`);
+      logger.info(`  Tactical:   ${stats.tactical_learnings}`);
+      logger.info(`  Strategic:  ${stats.strategic_learnings}`);
       logger.info(`  Events:     ${stats.events}`);
+    });
+
+  // ─── Recall command ─────────────────────────────────────
+
+  program
+    .command('recall')
+    .description('Query past engagement knowledge for a target or agent type')
+    .option('--target <url>', 'Target URL to recall history for')
+    .option('--agent-type <type>', 'Agent type for strategic learnings')
+    .option('--technique <name>', 'Filter by technique name')
+    .option('--limit <n>', 'Max results', '20')
+    .action((opts) => {
+      const limit = parseInt(opts.limit, 10);
+      const store = Store.open();
+      try {
+        const result: Record<string, unknown> = {};
+
+        if (opts.target) {
+          const scans = store.listScans(limit).filter((s) => s.target === opts.target);
+          const tacticalLearnings = store.listTacticalLearnings({
+            targetUrl: opts.target,
+            limit,
+          });
+          result.scans = scans;
+          result.tacticalLearnings = tacticalLearnings;
+        }
+
+        if (opts.agentType) {
+          const strategicLearnings = store.listStrategicLearnings({
+            agentType: opts.agentType,
+            limit,
+          });
+          result.strategicLearnings = strategicLearnings;
+        }
+
+        if (opts.technique) {
+          const strategicByTechnique = store.listStrategicLearnings({
+            technique: opts.technique,
+            limit,
+          });
+          // Merge with existing strategic learnings if present
+          if (result.strategicLearnings) {
+            const existing = result.strategicLearnings as Array<{ id: number }>;
+            const existingIds = new Set(existing.map((l) => l.id));
+            for (const l of strategicByTechnique) {
+              if (!existingIds.has(l.id)) {
+                existing.push(l);
+              }
+            }
+          } else {
+            result.strategicLearnings = strategicByTechnique;
+          }
+
+          // Also check tactical learnings by technique
+          const tacticalByTechnique = store.listTacticalLearnings({
+            technique: opts.technique,
+            limit,
+          });
+          if (result.tacticalLearnings) {
+            const existing = result.tacticalLearnings as Array<{ id: number }>;
+            const existingIds = new Set(existing.map((l) => l.id));
+            for (const l of tacticalByTechnique) {
+              if (!existingIds.has(l.id)) {
+                existing.push(l);
+              }
+            }
+          } else {
+            result.tacticalLearnings = tacticalByTechnique;
+          }
+        }
+
+        console.log(JSON.stringify(result, null, 2));
+      } finally {
+        store.close();
+      }
+    });
+
+  // ─── Ingest command ─────────────────────────────────────
+
+  program
+    .command('ingest')
+    .description('Persist engagement findings and tactical learnings to the store')
+    .requiredOption('--input <path>', 'Path to JSON file with findings and learnings')
+    .option('--target <url>', 'Override target URL')
+    .option('--engagement-id <id>', 'Override engagement ID')
+    .action(async (opts) => {
+      const logger = new Logger(parseVerbosity(program.opts().verbose));
+      const inputPath = resolve(opts.input);
+
+      let raw: string;
+      try {
+        raw = await readFile(inputPath, 'utf-8');
+      } catch {
+        logger.error(chalk.red(`Error: cannot read file ${inputPath}`));
+        process.exit(1);
+      }
+
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(raw) as Record<string, unknown>;
+      } catch (err) {
+        logger.error(chalk.red(`Error: invalid JSON — ${getErrorMessage(err)}`));
+        process.exit(1);
+      }
+
+      const target = (opts.target as string | undefined) ?? (data.target as string | undefined);
+      const engagementId = (opts.engagementId as string | undefined) ?? (data.engagementId as string | undefined);
+
+      const store = Store.open();
+      let findingsSaved = 0;
+      let learningsSaved = 0;
+
+      try {
+        // Save findings as a scan result
+        const findings = data.findings as unknown[] | undefined;
+        if (findings && findings.length > 0) {
+          const scanResult: ScanResult = {
+            scanId: engagementId ?? `ingest-${Date.now()}`,
+            target: target ?? 'unknown',
+            startedAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+            findings: findings as ScanResult['findings'],
+            summary: {
+              total: findings.length,
+              vulnerable: 0,
+              safe: 0,
+              inconclusive: 0,
+              bySeverity: {
+                [Severity.Critical]: 0,
+                [Severity.High]: 0,
+                [Severity.Medium]: 0,
+                [Severity.Low]: 0,
+              },
+              byCategory: {},
+            },
+          };
+          store.saveScan(scanResult);
+          findingsSaved = findings.length;
+        }
+
+        // Save tactical learnings
+        const tacticalLearnings = data.tacticalLearnings as Array<Record<string, unknown>> | undefined;
+        if (tacticalLearnings) {
+          for (const learning of tacticalLearnings) {
+            store.saveTacticalLearning({
+              engagementId: engagementId ?? (learning.engagementId as string) ?? `ingest-${Date.now()}`,
+              targetUrl: target ?? (learning.targetUrl as string) ?? 'unknown',
+              agentType: (data.agentType as string | undefined) ?? (learning.agentType as string | undefined),
+              technique: learning.technique as string,
+              category: learning.category as string | undefined,
+              outcome: learning.outcome as string,
+              insight: learning.insight as string,
+              novelty: learning.novelty as string | undefined,
+              turnNumber: learning.turnNumber as number | undefined,
+              confidence: learning.confidence as number | undefined,
+            });
+            learningsSaved++;
+          }
+        }
+
+        console.log(JSON.stringify({ findingsSaved, learningsSaved }, null, 2));
+      } finally {
+        store.close();
+      }
     });
 }

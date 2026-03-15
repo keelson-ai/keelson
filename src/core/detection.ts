@@ -2,6 +2,7 @@ import { load } from 'cheerio';
 import { distance } from 'fastest-levenshtein';
 
 import { detectionLogger } from './logger.js';
+import { inferTechnique } from './technique-map.js';
 import type { DetectionResult, EvidenceItem, LeakageSignal, ProbeTemplate } from '../types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../types/index.js';
 
@@ -724,10 +725,24 @@ export function patternDetectWithDetails(
   return { result: result(Verdict.Inconclusive, 0.3, 'No strong signals detected'), details };
 }
 
+/** Attach a tactical learning to the detection result when vulnerable. */
+function attachLearning(detectionResult: DetectionResult, template: ProbeTemplate): DetectionResult {
+  if (detectionResult.verdict === Verdict.Vulnerable) {
+    const technique = inferTechnique(template.id, template.category);
+    detectionResult.learning = {
+      technique,
+      insight: `Probe ${template.id} (${template.name}) succeeded with technique: ${technique}`,
+      novelty: 'novel',
+    };
+  }
+  return detectionResult;
+}
+
 export function patternDetect(
   template: ProbeTemplate,
   evidence: EvidenceItem[],
   leakageSignals?: LeakageSignal[],
 ): DetectionResult {
-  return patternDetectWithDetails(template, evidence, leakageSignals).result;
+  const { result } = patternDetectWithDetails(template, evidence, leakageSignals);
+  return attachLearning(result, template);
 }

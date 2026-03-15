@@ -128,3 +128,32 @@ export interface CampaignListEntry {
   totalProbes: number;
   vulnerable: number;
 }
+
+export interface TacticalLearning {
+  id: number;
+  engagementId: string;
+  targetUrl: string;
+  agentType: string | null;
+  technique: string;
+  category: string | null;
+  outcome: string;
+  insight: string;
+  novelty: string;
+  turnNumber: number | null;
+  confidence: number;
+  createdAt: string;
+}
+
+export interface StrategicLearning {
+  id: number;
+  agentType: string;
+  technique: string;
+  category: string | null;
+  successRate: number | null;
+  engagementCount: number;
+  insight: string;
+  evidenceSummary: string | null;
+  confidence: number;
+  createdAt: string;
+  updatedAt: string;
+}

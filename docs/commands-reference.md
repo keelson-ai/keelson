@@ -90,7 +90,7 @@ Compiled TypeScript, invoked via `keelson` binary or `pnpm exec keelson`. Define
 
 Agentic workflows where Claude acts as strategist + pentester. Claude reads agent instructions, sends probes via `curl`, and evaluates responses inline. These do **not** invoke the compiled CLI.
 
-Defined in `.claude/commands/` (canonical) and duplicated in `commands/`.
+Defined in `.claude/commands/`.
 
 ### `/keelson:recon <url> [--api-key KEY] [--model MODEL]`
 
@@ -178,5 +178,4 @@ Evaluation guidance for probe responses:
 
 ## Known Issues
 
-- **Duplicate command specs**: `.claude/commands/` and `commands/` contain identical files — should consolidate to one location.
 - **Probe ID mapping in `/keelson:probe`**: Only maps GA-_, TS-_, MI-_ prefixes, but 13 categories exist (SI-_, PB-_, ES-_, DI-_, OW-_, MA-_, TP-_, CA-_, EX-_, SL-\* are missing).

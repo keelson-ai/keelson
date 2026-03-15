@@ -103,6 +103,33 @@ export function harvestLeakedInfo(findings: Finding[]): LeakedInfo[] {
   return leaked;
 }
 
+/** Run leakage-pattern detection on a raw response string. */
+export function detectLeakage(response: string): LeakedInfo[] {
+  const leaked: LeakedInfo[] = [];
+  const seenContent = new Set<string>();
+
+  for (const group of LEAKAGE_PATTERNS) {
+    for (const pattern of group.patterns) {
+      const re = new RegExp(pattern.source, pattern.flags + (pattern.flags.includes('g') ? '' : 'g'));
+      let match: RegExpExecArray | null;
+      while ((match = re.exec(response)) !== null) {
+        const content = (match[1] ?? match[0]).trim().slice(0, 200);
+        if (content && !seenContent.has(content)) {
+          seenContent.add(content);
+          leaked.push({
+            infoType: group.type,
+            content,
+            sourceProbeId: 'send',
+            stepIndex: 0,
+          });
+        }
+      }
+    }
+  }
+
+  return leaked;
+}
+
 // ─── Cross-feed probe selection ─────────────────────────
 
 export function selectCrossfeedProbes(

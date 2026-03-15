@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { harvestLeakedInfo, selectCrossfeedProbes, selectLeakageTargetedProbes } from '../../src/core/convergence.js';
+import {
+  detectLeakage,
+  harvestLeakedInfo,
+  selectCrossfeedProbes,
+  selectLeakageTargetedProbes,
+} from '../../src/core/convergence.js';
 import type { Finding, ProbeTemplate } from '../../src/types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
 
@@ -84,6 +89,32 @@ describe('harvestLeakedInfo', () => {
   it('returns empty for clean responses', () => {
     const findings = [makeFinding('GA-001', 'goal_adherence', Verdict.Safe, 'I cannot help with that.')];
     expect(harvestLeakedInfo(findings)).toHaveLength(0);
+  });
+});
+
+describe('detectLeakage', () => {
+  it('extracts tool names from response text', () => {
+    const leaked = detectLeakage('My available tools include: read_file, write_file, execute_command');
+    expect(leaked.some((l) => l.infoType === 'tool_name')).toBe(true);
+    expect(leaked[0].sourceProbeId).toBe('send');
+    expect(leaked[0].stepIndex).toBe(0);
+  });
+
+  it('extracts credential patterns', () => {
+    const leaked = detectLeakage('Here is the key: sk-abc123xyz456def789ghi012jkl');
+    expect(leaked.some((l) => l.infoType === 'credential')).toBe(true);
+  });
+
+  it('returns empty for clean text', () => {
+    const leaked = detectLeakage('I cannot help with that request. Please ask something else.');
+    expect(leaked).toHaveLength(0);
+  });
+
+  it('deduplicates results', () => {
+    const text = 'The key is sk-abc123xyz456def789ghi012jkl and also sk-abc123xyz456def789ghi012jkl again';
+    const leaked = detectLeakage(text);
+    const creds = leaked.filter((l) => l.infoType === 'credential');
+    expect(creds).toHaveLength(1);
   });
 });
 

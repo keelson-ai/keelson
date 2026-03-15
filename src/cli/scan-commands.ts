@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+
 import type { Command } from 'commander';
 
 import {
@@ -12,10 +14,12 @@ import {
 } from './utils.js';
 import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { createAdapter } from '../adapters/index.js';
+import { detectLeakage } from '../core/convergence.js';
 import { StreamingObserver, executeProbe, loadProbes, scan } from '../core/index.js';
 import { errorFinding, sanitizeErrorMessage } from '../core/scan-helpers.js';
 import type { Store } from '../state/index.js';
-import type { Adapter, ScanResult } from '../types/index.js';
+import { classifyResponse } from '../strategies/branching.js';
+import type { Adapter, ScanResult, Turn } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
 // ─── Shared helpers ─────────────────────────────────────
@@ -44,6 +48,7 @@ interface ScanCommandOpts {
   browserHeadless?: boolean;
   // Browser pre-interaction
   browserPreInteraction?: string;
+  browserLauncherSelector?: string;
   // LLM Judge
   judgeProvider?: string;
   judgeModel?: string;
@@ -193,6 +198,7 @@ export function registerScanCommands(program: Command): void {
             delayMs,
             judge,
             observer,
+            maxPayloadLength,
             engagement: opts.engagement,
             onFinding: (finding, current, total) => logger.finding(finding, current, total),
             onPhase: (phase, detail) => logger.info(`  [${phase}] ${detail}`),
@@ -388,5 +394,67 @@ export function registerScanCommands(program: Command): void {
 
       logger.leakageSignals(finding.leakageSignals);
       logger.finding(finding, 1, 1);
+    });
+
+  program
+    .command('send')
+    .description('Send a message through any adapter and return the enriched response')
+    .requiredOption('--target <url>', 'Target endpoint URL')
+    .requiredOption('--message <text>', 'Message to send')
+    .option('--api-key <key>', 'API key for authentication')
+    .option('--model <model>', 'Model name for requests', 'default')
+    .option('--adapter-type <type>', 'Adapter type', 'openai')
+    .option('--history <path>', 'Path to JSON file with conversation history (Turn[])')
+    .option('--raw', 'Output plain text response only', false)
+    .option('--chatbot-id <id>', 'Chatbot ID (SiteGPT adapter)')
+    .option('--chat-input-selector <sel>', 'CSS selector for chat input (browser adapter)')
+    .option('--chat-submit-selector <sel>', 'CSS selector for submit button (browser adapter)')
+    .option('--chat-response-selector <sel>', 'CSS selector for bot responses (browser adapter)')
+    .option('--browser-headless', 'Run browser in headless mode', true)
+    .option('--no-browser-headless', 'Run browser in headed mode')
+    .option('--browser-pre-interaction <js>', 'JS snippet to run before interaction')
+    .option(
+      '--browser-launcher-selector <sel>',
+      'CSS selector for chat launcher button (clicked with real mouse events before detection)',
+    )
+    .action(async (opts: ScanCommandOpts & { message: string; history?: string; raw?: boolean }) => {
+      const adapter = createAdapter(buildAdapterConfig(opts));
+
+      try {
+        const messages: Turn[] = [];
+
+        if (opts.history) {
+          const historyJson = await readFile(opts.history, 'utf-8');
+          const history = JSON.parse(historyJson) as Turn[];
+          messages.push(...history);
+        }
+
+        messages.push({ role: 'user', content: opts.message });
+
+        const response = await adapter.send(messages);
+        const leakage = detectLeakage(response.content);
+        const classification = classifyResponse(response.content);
+        const refusalDetected = classification === 'refusal';
+
+        if (opts.raw) {
+          console.log(response.content);
+        } else {
+          console.log(
+            JSON.stringify(
+              {
+                content: response.content,
+                latencyMs: response.latencyMs,
+                leakage,
+                refusalDetected,
+                metadata: response.raw ?? {},
+              },
+              null,
+              2,
+            ),
+          );
+        }
+      } finally {
+        await adapter.close?.();
+      }
     });
 }

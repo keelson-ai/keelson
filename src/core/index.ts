@@ -13,12 +13,13 @@ export {
 } from './detection.js';
 export type { PatternDetails, PatternDetectResult, NegativeDisclosure } from './detection.js';
 export { judgeResponse, combinedDetect } from './llm-judge.js';
+export { PROBE_TECHNIQUE_MAP, inferTechnique } from './technique-map.js';
 export { sanitizeErrorMessage, errorFinding } from './scan-helpers.js';
 export { scan } from './scanner.js';
 export type { ScanOptions } from './scanner.js';
 export { loadProbes, loadProbe } from './templates.js';
 export { summarize } from './summarize.js';
-export { harvestLeakedInfo, selectCrossfeedProbes, selectLeakageTargetedProbes } from './convergence.js';
+export { harvestLeakedInfo, detectLeakage, selectCrossfeedProbes, selectLeakageTargetedProbes } from './convergence.js';
 export type { LeakedInfo } from './convergence.js';
 export { MemoTable, ResponseOutcome, inferTechniques } from './memo.js';
 export { Technique } from '../types/index.js';

@@ -20,7 +20,9 @@ import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { OpenAIAdapter, ProberAdapter, createAdapter } from '../adapters/index.js';
 import { parseCampaignConfig } from '../campaign/config.js';
 import { runCampaign } from '../campaign/runner.js';
-import { executeProbe, loadProbes } from '../core/index.js';
+import { classifyTarget, executeProbe, loadProbes, selectProbes } from '../core/index.js';
+import type { ReconResponse } from '../core/index.js';
+import { discoverCapabilities } from '../prober/discovery.js';
 import { executeChain, synthesizeChainsLlm } from '../prober/index.js';
 import type { AgentProfile } from '../prober/index.js';
 import {
@@ -677,24 +679,7 @@ export function registerAdvancedCommands(program: Command): void {
       const store = openStore(opts);
 
       try {
-        // 2. Load probes and convert to intents
-        const allProbes = await loadProbes();
-        const categories = opts.category?.split(',').map((c: string) => c.trim());
-        const filtered = categories
-          ? allProbes.filter((p: ProbeTemplate) => categories.includes(p.category))
-          : allProbes;
-
-        if (filtered.length === 0) {
-          logger.error('No probes found matching filters');
-          process.exit(1);
-        }
-
-        const intents = filtered.map((p: ProbeTemplate) => probeToIntent(p, categoryToPhase(p.category)));
-        logger.info(
-          `Loaded ${intents.length} intents across ${new Set(filtered.map((p: ProbeTemplate) => p.category)).size} categories`,
-        );
-
-        // 3. Research phase
+        // 2. Research phase — build dossier using prober LLM
         logger.info('\nResearch phase...');
         const dossier = await buildDossier({
           prober: proberAdapter,
@@ -708,15 +693,64 @@ export function registerAdvancedCommands(program: Command): void {
           `Dossier: ${dossier.company.name} (${dossier.company.industry}), ${dossier.techStack.length} tech stack items`,
         );
 
-        // 4. Weight store
+        // 3. Capability discovery — fingerprint target via 8 probes
+        logger.info('\nCapability discovery...');
+        const delayMs = parseInt(opts.delay, 10) || 1500;
+        const agentProfile = await discoverCapabilities(targetAdapter, { delayMs });
+        targetAdapter.resetSession?.();
+
+        const detectedCaps = agentProfile.capabilities.filter((c) => c.detected).map((c) => c.name);
+        logger.info(`Detected capabilities: ${detectedCaps.join(', ') || 'none'}`);
+
+        // 4. Classify target and select relevant probes
+        const reconResponses: ReconResponse[] = agentProfile.capabilities.map((cap) => ({
+          probeType: cap.name,
+          prompt: cap.probePrompt,
+          response: cap.responseExcerpt,
+        }));
+        const targetProfile = classifyTarget(reconResponses);
+        logger.info(
+          `Target profile: ${targetProfile.agentTypes.join(', ')} | Tools: ${targetProfile.detectedTools.slice(0, 5).join(', ') || 'none'} | Refusal: ${targetProfile.refusalStyle}`,
+        );
+
+        const allProbes = await loadProbes();
+        const categories = opts.category?.split(',').map((c: string) => c.trim());
+
+        let selected: ProbeTemplate[];
+        if (categories) {
+          // Manual category override — skip probe plan, use all probes in specified categories
+          selected = allProbes.filter((p: ProbeTemplate) => categories.includes(p.category));
+        } else {
+          // Use probe plan based on target profile
+          const probePlan = selectProbes(targetProfile, allProbes);
+          const selectedIds = new Set(probePlan.categories.flatMap((cp) => cp.probeIds));
+          selected = allProbes.filter((p) => selectedIds.has(p.id));
+          logger.info(`Probe plan: ${selected.length} probes selected (from ${allProbes.length} available)`);
+          for (const cp of probePlan.categories) {
+            if (cp.probeIds.length > 0) {
+              logger.info(`  ${cp.category}: ${cp.probeIds.length} probes (${cp.priority}) — ${cp.rationale}`);
+            }
+          }
+        }
+
+        if (selected.length === 0) {
+          logger.error('No probes found matching filters');
+          process.exit(1);
+        }
+
+        const intents = selected.map((p: ProbeTemplate) => probeToIntent(p, categoryToPhase(p.category)));
+        logger.info(
+          `\nLoaded ${intents.length} intents across ${new Set(selected.map((p: ProbeTemplate) => p.category)).size} categories`,
+        );
+
+        // 5. Weight store
         const weightsPath = join(homedir(), '.keelson', 'erosion-weights.json');
         const weights = new FileWeightStore(weightsPath);
         await weights.load();
 
-        // 5. Run session erosion
+        // 6. Run session erosion
         const maxTotalTurns = parseInt(opts.maxTurns, 10) || 30;
         const maxTurnsPerIntent = parseInt(opts.maxTurnsPerIntent, 10) || 5;
-        const delayMs = parseInt(opts.delay, 10) || 1500;
 
         logger.info(`\nStarting erosion loop (max ${maxTotalTurns} turns)...\n`);
 
@@ -756,7 +790,7 @@ export function registerAdvancedCommands(program: Command): void {
           },
         });
 
-        // 6. Build ScanResult for output compatibility
+        // 7. Build ScanResult for output compatibility
         const { summarize } = await import('../core/summarize.js');
         const scanResult: ScanResult = {
           scanId: `erosion-${Date.now()}`,
@@ -767,7 +801,7 @@ export function registerAdvancedCommands(program: Command): void {
           summary: summarize(erosionResult.findings),
         };
 
-        // 7. Output results
+        // 8. Output results
         logger.info(`\n${'─'.repeat(50)}`);
         logger.info(
           `Session complete: ${erosionResult.turnsUsed} turns, ${erosionResult.intentsAttempted} intents, ${erosionResult.intentsSuccessful} vulnerabilities`,
