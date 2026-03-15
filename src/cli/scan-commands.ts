@@ -12,10 +12,10 @@ import {
 } from './utils.js';
 import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { createAdapter } from '../adapters/index.js';
-import { StreamingObserver, executeProbe, loadProbes, scan, summarize } from '../core/index.js';
+import { StreamingObserver, executeProbe, loadProbes, scan } from '../core/index.js';
 import { errorFinding, sanitizeErrorMessage } from '../core/scan-helpers.js';
 import type { Store } from '../state/index.js';
-import type { Adapter, Finding, ScanResult } from '../types/index.js';
+import type { Adapter, ScanResult } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
 // ─── Shared helpers ─────────────────────────────────────
@@ -34,6 +34,7 @@ interface ScanCommandOpts {
   concurrency?: string;
   maxPasses?: string;
   noStore?: boolean;
+  smart?: boolean;
   // SiteGPT-specific
   chatbotId?: string;
   // Browser-specific
@@ -169,6 +170,8 @@ export function registerScanCommands(program: Command): void {
   addCommonScanOptions(program.command('scan').description('Run a full security scan against an AI agent endpoint'))
     .option('--category <category>', 'Filter by category')
     .option('--concurrency <n>', 'Max concurrent probes', '1')
+    .option('--max-passes <n>', 'Max convergence passes (cross-category follow-up on vulns)', '1')
+    .option('--smart', 'Adaptive scan: recon, classify, select relevant probes, execute', false)
     .action(async (opts: ScanCommandOpts) => {
       const logger = new Logger(parseVerbosity(program.opts().verbose));
       const observer = new StreamingObserver();
@@ -178,115 +181,42 @@ export function registerScanCommands(program: Command): void {
       const concurrency = parseInt(opts.concurrency ?? '1', 10);
       const judge = buildJudge(opts);
       const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
+      const maxPasses = parseInt(opts.maxPasses ?? '1', 10);
 
       printHeader(logger, 'Keelson Security Scan', opts, opts.category ? { Category: opts.category } : undefined);
 
       let result: ScanResult;
       try {
-        result = await scan(opts.target, adapter, {
-          categories,
-          delayMs,
-          concurrency,
-          reorder: concurrency <= 1,
-          observer,
-          judge,
-          maxPayloadLength,
-          engagement: opts.engagement,
-          onFinding: (finding, current, total) => logger.finding(finding, current, total),
-        });
+        if (opts.smart) {
+          const { runSmartScan } = await import('../core/index.js');
+          result = await runSmartScan(opts.target, adapter, {
+            delayMs,
+            judge,
+            observer,
+            engagement: opts.engagement,
+            onFinding: (finding, current, total) => logger.finding(finding, current, total),
+            onPhase: (phase, detail) => logger.info(`  [${phase}] ${detail}`),
+          });
+        } else {
+          result = await scan(opts.target, adapter, {
+            categories,
+            delayMs,
+            concurrency,
+            reorder: concurrency <= 1,
+            observer,
+            judge,
+            maxPayloadLength,
+            engagement: opts.engagement,
+            maxPasses,
+            onFinding: (finding, current, total) => logger.finding(finding, current, total),
+            onPass: maxPasses > 1 ? (passNum, desc) => logger.info(`  [Pass ${passNum}] ${desc}`) : undefined,
+          });
+        }
       } finally {
         await adapter.close?.();
       }
 
       await finalizeScan(result, store, opts, logger);
-    });
-
-  addCommonScanOptions(
-    program.command('smart-scan').description('Adaptive scan: recon, classify, select relevant probes, execute'),
-    '2000',
-  ).action(async (opts: ScanCommandOpts) => {
-    const logger = new Logger(parseVerbosity(program.opts().verbose));
-    const { adapter, store } = setupScan(opts);
-    const judge = buildJudge(opts);
-    const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
-
-    printHeader(logger, 'Keelson Smart Scan', opts);
-
-    let result: ScanResult;
-    try {
-      result = await scan(opts.target, adapter, {
-        delayMs: parseInt(opts.delay ?? '2000', 10),
-        reorder: true,
-        judge,
-        maxPayloadLength,
-        engagement: opts.engagement,
-        onFinding: (finding, current, total) => logger.finding(finding, current, total),
-      });
-    } finally {
-      await adapter.close?.();
-    }
-
-    await finalizeScan(result, store, opts, logger, false);
-  });
-
-  addCommonScanOptions(
-    program.command('convergence-scan').description('Cross-category feedback loop with iterative passes'),
-  )
-    .option('--category <category>', 'Initial category filter')
-    .option('--max-passes <n>', 'Maximum convergence passes', '4')
-    .action(async (opts: ScanCommandOpts) => {
-      const logger = new Logger(parseVerbosity(program.opts().verbose));
-      const { adapter, store } = setupScan(opts);
-      const judge = buildJudge(opts);
-      const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
-      const maxPasses = parseInt(opts.maxPasses ?? '4', 10);
-
-      const extra: Record<string, string> = { 'Max passes': String(maxPasses) };
-      if (opts.category) extra['Initial category'] = opts.category;
-      printHeader(logger, 'Keelson Convergence Scan', opts, extra);
-
-      const allResults: ScanResult[] = [];
-      try {
-        for (let pass = 1; pass <= maxPasses; pass++) {
-          logger.info(`  PASS ${pass}  Running probes...`);
-
-          const categories = opts.category ? [opts.category] : undefined;
-          const passResult = await scan(opts.target, adapter, {
-            categories,
-            delayMs: parseInt(opts.delay ?? '1500', 10),
-            reorder: true,
-            judge,
-            maxPayloadLength,
-            engagement: opts.engagement,
-            onFinding: (finding, current, total) => logger.finding(finding, current, total),
-          });
-
-          allResults.push(passResult);
-          logger.info(`  PASS ${pass}  Complete: ${passResult.summary.vulnerable} vulnerabilities found`);
-
-          if (passResult.summary.vulnerable === 0 && pass > 1) {
-            logger.info('  Converged: no new vulnerabilities in this pass.');
-            break;
-          }
-        }
-      } finally {
-        await adapter.close?.();
-      }
-
-      // Merge findings across all passes, keeping the latest result per probe
-      const mergedFindings = new Map<string, Finding>();
-      for (const r of allResults) {
-        for (const f of r.findings) {
-          mergedFindings.set(f.probeId, f);
-        }
-      }
-      const lastResult = allResults[allResults.length - 1];
-      const result: ScanResult = {
-        ...lastResult,
-        findings: [...mergedFindings.values()],
-      };
-      result.summary = summarize(result.findings);
-      await finalizeScan(result, store, opts, logger, false);
     });
 
   program
