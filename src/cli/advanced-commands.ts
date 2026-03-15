@@ -1,5 +1,5 @@
 /**
- * Advanced CLI commands: campaign, evolve, chain, test-crew, test-chain, generate.
+ * Advanced CLI commands: campaign, evolve, chain, generate, erode.
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -14,7 +14,6 @@ import {
   buildAdapterConfig,
   openStore,
   printScanSummary,
-  writeReport,
   writeScanOutput,
 } from './utils.js';
 import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
@@ -39,7 +38,6 @@ import {
 } from '../strategies/index.js';
 import type {
   Adapter,
-  AdapterConfig,
   Finding,
   MutatedProbe,
   MutationType,
@@ -111,83 +109,6 @@ function templateToMarkdown(t: ProbeTemplate): string {
     lines.push(`- ${inc}`);
   }
   return lines.join('\n') + '\n';
-}
-
-function registerTestCommand(
-  program: Command,
-  name: string,
-  description: string,
-  adapterType: string,
-  header: string,
-  extraOptions?: (cmd: ReturnType<Command['command']>) => void,
-  extraConfig?: (opts: Record<string, string>) => Partial<AdapterConfig>,
-): void {
-  const cmd = program
-    .command(name)
-    .description(description)
-    .requiredOption('--target <url>', 'Target endpoint URL')
-    .option('--api-key <key>', 'API key for authentication')
-    .option('--model <model>', 'Model name for requests', 'default')
-    .option('--category <category>', 'Filter by category')
-    .option('--delay <ms>', 'Milliseconds between requests', '1500')
-    .option('--output <path>', 'Report output path')
-    .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
-    .option('--adapter-type <type>', 'Adapter type', adapterType)
-    .option('--no-store', 'Disable persisting results to local Store')
-    .option('--output-dir <dir>', 'Directory for scan output files', DEFAULT_OUTPUT_DIR);
-
-  extraOptions?.(cmd);
-
-  cmd.action(async (opts) => {
-    const verbosity = parseVerbosity(program.opts().verbose);
-    const logger = new Logger(verbosity);
-
-    const adapterConfig: AdapterConfig = {
-      ...buildAdapterConfig({
-        target: opts.target,
-        apiKey: opts.apiKey,
-        model: opts.model,
-        adapterType: opts.adapterType,
-      }),
-      ...extraConfig?.(opts),
-    };
-    const adapter = createAdapter(adapterConfig);
-    const { scan } = await import('../core/index.js');
-
-    logger.info(`\n${header}`);
-    logger.info(`Target: ${opts.target}`);
-    logger.info('');
-
-    const categories = opts.category ? [opts.category] : undefined;
-    const delayMs = parseInt(opts.delay, 10);
-
-    let result;
-    try {
-      result = await scan(opts.target, adapter, {
-        categories,
-        delayMs,
-        onFinding: (finding, current, total) => {
-          logger.finding(finding, current, total);
-        },
-      });
-    } finally {
-      await adapter.close?.();
-    }
-
-    printScanSummary(result, logger);
-
-    const store = openStore(opts);
-    if (store) {
-      store.saveScan(result);
-      store.close();
-    }
-
-    await writeScanOutput(result, opts.format ?? 'json', opts.outputDir);
-
-    if (opts.output) {
-      await writeReport(result, opts.format, opts.output);
-    }
-  });
 }
 
 // ─── Command Registration ────────────────────────────────
@@ -605,29 +526,6 @@ export function registerAdvancedCommands(program: Command): void {
         await proberAdapter.close?.();
       }
     });
-
-  // ─── test-crew ─────────────────────────────────────────
-  registerTestCommand(
-    program,
-    'test-crew',
-    'Run a security scan against a CrewAI-compatible endpoint',
-    'crewai',
-    'Keelson CrewAI Security Scan',
-  );
-
-  // ─── test-chain ────────────────────────────────────────
-  registerTestCommand(
-    program,
-    'test-chain',
-    'Run a security scan against a LangChain-compatible endpoint',
-    'langchain',
-    'Keelson LangChain Security Scan',
-    (cmd) =>
-      cmd
-        .option('--input-key <key>', 'Input key for the chain', 'input')
-        .option('--output-key <key>', 'Output key for the chain', 'output'),
-    (opts) => ({ inputKey: opts.inputKey, outputKey: opts.outputKey }),
-  );
 
   // ─── generate ──────────────────────────────────────────
   program
