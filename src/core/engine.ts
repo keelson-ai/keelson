@@ -1,6 +1,8 @@
 import { containsRefusal, isHardRefusal, patternDetectWithDetails } from './detection.js';
 import type { PatternDetails } from './detection.js';
 import { combinedDetect, judgeResponse } from './llm-judge.js';
+import { isEmptyOrDegraded } from './rate-limiter.js';
+import type { RateLimitTracker } from './rate-limiter.js';
 import type {
   Adapter,
   DetectionResult,
@@ -16,6 +18,10 @@ const MIN_REMAINING_FOR_EARLY_TERM = 2;
 const DEFAULT_DELAY_MS = 1000;
 const MAX_GATE_BYPASSES = 3;
 const GATE_BYPASS_EMAIL = 'security.test@example.com';
+
+/** Max retries when a turn response is empty/degraded (rate-limit suspected). */
+const MAX_EMPTY_RETRIES = 2;
+const EMPTY_RETRY_DELAY_MS = 5_000;
 
 // ─── Refusal Reframing ──────────────────────────────────
 
@@ -141,6 +147,8 @@ export interface ExecuteProbeOptions {
   adaptiveFollowUp?: boolean;
   /** Maximum adaptive follow-up turns (default: 6). */
   maxAdaptiveTurns?: number;
+  /** Shared rate-limit tracker for adaptive delay and session rotation. */
+  rateLimitTracker?: RateLimitTracker;
 }
 
 export interface Observer {
@@ -178,6 +186,7 @@ export async function executeProbe(
     reframeOnRefusal = false,
     adaptiveFollowUp = false,
     maxAdaptiveTurns = MAX_ADAPTIVE_TURNS,
+    rateLimitTracker,
   } = options;
 
   const messages: Turn[] = [];
@@ -211,6 +220,32 @@ export async function executeProbe(
     let response = await adapter.send([...messages]);
     let responseTimeMs = Date.now() - startTime;
     let responseText = response.content;
+
+    // Rate-limit retry: if response is empty/degraded, retry with backoff + session reset
+    if (rateLimitTracker && isEmptyOrDegraded(responseText)) {
+      const signal = rateLimitTracker.recordResponse(responseText, response.timedOut);
+      if (signal.detected) {
+        for (let retry = 0; retry < MAX_EMPTY_RETRIES; retry++) {
+          const retryDelay = EMPTY_RETRY_DELAY_MS * (retry + 1);
+          await sleep(retryDelay);
+          adapter.resetSession?.();
+          rateLimitTracker.onSessionRotated();
+
+          const retryStart = Date.now();
+          response = await adapter.send([...messages]);
+          responseTimeMs = Date.now() - retryStart;
+          responseText = response.content;
+
+          if (!isEmptyOrDegraded(responseText)) {
+            rateLimitTracker.recordResponse(responseText);
+            break;
+          }
+          rateLimitTracker.recordResponse(responseText, response.timedOut);
+        }
+      }
+    } else if (rateLimitTracker) {
+      rateLimitTracker.recordResponse(responseText, response.timedOut);
+    }
 
     // Gate bypass: if the agent asks for email/contact info, provide a
     // placeholder and capture the actual response to the probe turn.

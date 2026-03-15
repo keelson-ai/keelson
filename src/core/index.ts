@@ -13,6 +13,8 @@ export {
 } from './detection.js';
 export type { PatternDetails, PatternDetectResult, NegativeDisclosure } from './detection.js';
 export { judgeResponse, combinedDetect } from './llm-judge.js';
+export { RateLimitTracker, isEmptyOrDegraded, isRepeatedResponse } from './rate-limiter.js';
+export type { RateLimitSignal } from './rate-limiter.js';
 export { sanitizeErrorMessage, errorFinding } from './scan-helpers.js';
 export { scan } from './scanner.js';
 export type { ScanOptions } from './scanner.js';
