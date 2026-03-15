@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+
 import type { Command } from 'commander';
 
 import {
@@ -12,10 +14,12 @@ import {
 } from './utils.js';
 import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { createAdapter } from '../adapters/index.js';
-import { StreamingObserver, executeProbe, loadProbes, scan, summarize } from '../core/index.js';
+import { detectLeakage } from '../core/convergence.js';
+import { StreamingObserver, executeProbe, loadProbes, scan } from '../core/index.js';
 import { errorFinding, sanitizeErrorMessage } from '../core/scan-helpers.js';
 import type { Store } from '../state/index.js';
-import type { Adapter, Finding, ScanResult } from '../types/index.js';
+import { classifyResponse } from '../strategies/branching.js';
+import type { Adapter, ScanResult, Turn } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 
 // ─── Shared helpers ─────────────────────────────────────
@@ -34,6 +38,7 @@ interface ScanCommandOpts {
   concurrency?: string;
   maxPasses?: string;
   noStore?: boolean;
+  smart?: boolean;
   // SiteGPT-specific
   chatbotId?: string;
   // Browser-specific
@@ -43,6 +48,7 @@ interface ScanCommandOpts {
   browserHeadless?: boolean;
   // Browser pre-interaction
   browserPreInteraction?: string;
+  browserLauncherSelector?: string;
   // LLM Judge
   judgeProvider?: string;
   judgeModel?: string;
@@ -152,6 +158,10 @@ function addCommonScanOptions(cmd: ReturnType<Command['command']>, delayDefault 
       '--browser-pre-interaction <js>',
       'JS snippet to run in page before chat interaction (e.g. dismiss cookie banner)',
     )
+    .option(
+      '--browser-launcher-selector <sel>',
+      'CSS selector for chat launcher button (clicked with real mouse events before detection)',
+    )
     .option('--judge-provider <type>', 'LLM judge adapter type (e.g., openai, anthropic)')
     .option('--judge-model <model>', 'LLM judge model name')
     .option('--judge-api-key <key>', 'API key for LLM judge')
@@ -165,6 +175,8 @@ export function registerScanCommands(program: Command): void {
   addCommonScanOptions(program.command('scan').description('Run a full security scan against an AI agent endpoint'))
     .option('--category <category>', 'Filter by category')
     .option('--concurrency <n>', 'Max concurrent probes', '1')
+    .option('--max-passes <n>', 'Max convergence passes (cross-category follow-up on vulns)', '1')
+    .option('--smart', 'Adaptive scan: recon, classify, select relevant probes, execute', false)
     .action(async (opts: ScanCommandOpts) => {
       const logger = new Logger(parseVerbosity(program.opts().verbose));
       const observer = new StreamingObserver();
@@ -174,115 +186,52 @@ export function registerScanCommands(program: Command): void {
       const concurrency = parseInt(opts.concurrency ?? '1', 10);
       const judge = buildJudge(opts);
       const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
+      const maxPasses = parseInt(opts.maxPasses ?? '1', 10);
 
       printHeader(logger, 'Keelson Security Scan', opts, opts.category ? { Category: opts.category } : undefined);
 
       let result: ScanResult;
       try {
-        result = await scan(opts.target, adapter, {
-          categories,
-          delayMs,
-          concurrency,
-          reorder: concurrency <= 1,
-          observer,
-          judge,
-          maxPayloadLength,
-          engagement: opts.engagement,
-          onFinding: (finding, current, total) => logger.finding(finding, current, total),
-        });
+        if (opts.smart) {
+          // Smart scan autonomously selects probes — warn about ignored flags
+          const ignored: string[] = [];
+          if (opts.category) ignored.push('--category');
+          if (maxPasses > 1) ignored.push('--max-passes');
+          if (concurrency > 1) ignored.push('--concurrency');
+          if (ignored.length > 0) {
+            logger.info(`Warning: --smart ignores ${ignored.join(', ')} (smart scan selects probes autonomously)`);
+          }
+
+          const { runSmartScan } = await import('../core/index.js');
+          result = await runSmartScan(opts.target, adapter, {
+            delayMs,
+            judge,
+            observer,
+            maxPayloadLength,
+            engagement: opts.engagement,
+            onFinding: (finding, current, total) => logger.finding(finding, current, total),
+            onPhase: (phase, detail) => logger.info(`  [${phase}] ${detail}`),
+          });
+        } else {
+          result = await scan(opts.target, adapter, {
+            categories,
+            delayMs,
+            concurrency,
+            reorder: concurrency <= 1,
+            observer,
+            judge,
+            maxPayloadLength,
+            engagement: opts.engagement,
+            maxPasses,
+            onFinding: (finding, current, total) => logger.finding(finding, current, total),
+            onPass: maxPasses > 1 ? (passNum, desc) => logger.info(`  [Pass ${passNum}] ${desc}`) : undefined,
+          });
+        }
       } finally {
         await adapter.close?.();
       }
 
       await finalizeScan(result, store, opts, logger);
-    });
-
-  addCommonScanOptions(
-    program.command('smart-scan').description('Adaptive scan: recon, classify, select relevant probes, execute'),
-    '2000',
-  ).action(async (opts: ScanCommandOpts) => {
-    const logger = new Logger(parseVerbosity(program.opts().verbose));
-    const { adapter, store } = setupScan(opts);
-    const judge = buildJudge(opts);
-    const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
-
-    printHeader(logger, 'Keelson Smart Scan', opts);
-
-    let result: ScanResult;
-    try {
-      result = await scan(opts.target, adapter, {
-        delayMs: parseInt(opts.delay ?? '2000', 10),
-        reorder: true,
-        judge,
-        maxPayloadLength,
-        engagement: opts.engagement,
-        onFinding: (finding, current, total) => logger.finding(finding, current, total),
-      });
-    } finally {
-      await adapter.close?.();
-    }
-
-    await finalizeScan(result, store, opts, logger, false);
-  });
-
-  addCommonScanOptions(
-    program.command('convergence-scan').description('Cross-category feedback loop with iterative passes'),
-  )
-    .option('--category <category>', 'Initial category filter')
-    .option('--max-passes <n>', 'Maximum convergence passes', '4')
-    .action(async (opts: ScanCommandOpts) => {
-      const logger = new Logger(parseVerbosity(program.opts().verbose));
-      const { adapter, store } = setupScan(opts);
-      const judge = buildJudge(opts);
-      const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
-      const maxPasses = parseInt(opts.maxPasses ?? '4', 10);
-
-      const extra: Record<string, string> = { 'Max passes': String(maxPasses) };
-      if (opts.category) extra['Initial category'] = opts.category;
-      printHeader(logger, 'Keelson Convergence Scan', opts, extra);
-
-      const allResults: ScanResult[] = [];
-      try {
-        for (let pass = 1; pass <= maxPasses; pass++) {
-          logger.info(`  PASS ${pass}  Running probes...`);
-
-          const categories = opts.category ? [opts.category] : undefined;
-          const passResult = await scan(opts.target, adapter, {
-            categories,
-            delayMs: parseInt(opts.delay ?? '1500', 10),
-            reorder: true,
-            judge,
-            maxPayloadLength,
-            engagement: opts.engagement,
-            onFinding: (finding, current, total) => logger.finding(finding, current, total),
-          });
-
-          allResults.push(passResult);
-          logger.info(`  PASS ${pass}  Complete: ${passResult.summary.vulnerable} vulnerabilities found`);
-
-          if (passResult.summary.vulnerable === 0 && pass > 1) {
-            logger.info('  Converged: no new vulnerabilities in this pass.');
-            break;
-          }
-        }
-      } finally {
-        await adapter.close?.();
-      }
-
-      // Merge findings across all passes, keeping the latest result per probe
-      const mergedFindings = new Map<string, Finding>();
-      for (const r of allResults) {
-        for (const f of r.findings) {
-          mergedFindings.set(f.probeId, f);
-        }
-      }
-      const lastResult = allResults[allResults.length - 1];
-      const result: ScanResult = {
-        ...lastResult,
-        findings: [...mergedFindings.values()],
-      };
-      result.summary = summarize(result.findings);
-      await finalizeScan(result, store, opts, logger, false);
     });
 
   program
@@ -415,6 +364,10 @@ export function registerScanCommands(program: Command): void {
     .option('--browser-headless', 'Run browser in headless mode (default: true)', true)
     .option('--no-browser-headless', 'Run browser in headed mode (visible)')
     .option('--browser-pre-interaction <js>', 'JS snippet to run in page before chat interaction')
+    .option(
+      '--browser-launcher-selector <sel>',
+      'CSS selector for chat launcher button (clicked with real mouse events)',
+    )
     .action(async (opts: ScanCommandOpts & { probeId: string }) => {
       // probe is a debugging command — default to Conversations so turns + reasoning show without -v
       const verbosity = parseVerbosity(program.opts().verbose);
@@ -450,5 +403,79 @@ export function registerScanCommands(program: Command): void {
 
       logger.leakageSignals(finding.leakageSignals);
       logger.finding(finding, 1, 1);
+    });
+
+  program
+    .command('send')
+    .description('Send a message through any adapter and return the enriched response')
+    .requiredOption('--target <url>', 'Target endpoint URL')
+    .requiredOption('--message <text>', 'Message to send')
+    .option('--api-key <key>', 'API key for authentication')
+    .option('--model <model>', 'Model name for requests', 'default')
+    .option('--adapter-type <type>', 'Adapter type', 'openai')
+    .option('--history <path>', 'Path to JSON file with conversation history (Turn[])')
+    .option('--raw', 'Output plain text response only', false)
+    .option('--chatbot-id <id>', 'Chatbot ID (SiteGPT adapter)')
+    .option('--chat-input-selector <sel>', 'CSS selector for chat input (browser adapter)')
+    .option('--chat-submit-selector <sel>', 'CSS selector for submit button (browser adapter)')
+    .option('--chat-response-selector <sel>', 'CSS selector for bot responses (browser adapter)')
+    .option('--browser-headless', 'Run browser in headless mode', true)
+    .option('--no-browser-headless', 'Run browser in headed mode')
+    .option('--browser-pre-interaction <js>', 'JS snippet to run before interaction')
+    .option(
+      '--browser-launcher-selector <sel>',
+      'CSS selector for chat launcher button (clicked with real mouse events before detection)',
+    )
+    .action(async (opts: ScanCommandOpts & { message: string; history?: string; raw?: boolean }) => {
+      const adapter = createAdapter(buildAdapterConfig(opts));
+
+      try {
+        const messages: Turn[] = [];
+
+        if (opts.history) {
+          let historyJson: string;
+          try {
+            historyJson = await readFile(opts.history, 'utf-8');
+          } catch {
+            console.error(`Error: cannot read history file ${opts.history}`);
+            process.exit(1);
+          }
+          let history: Turn[];
+          try {
+            history = JSON.parse(historyJson) as Turn[];
+          } catch (err) {
+            console.error(`Error: invalid JSON in history file — ${err instanceof Error ? err.message : err}`);
+            process.exit(1);
+          }
+          messages.push(...history);
+        }
+
+        messages.push({ role: 'user', content: opts.message });
+
+        const response = await adapter.send(messages);
+        const leakage = detectLeakage(response.content);
+        const classification = classifyResponse(response.content);
+        const refusalDetected = classification === 'refusal';
+
+        if (opts.raw) {
+          console.log(response.content);
+        } else {
+          console.log(
+            JSON.stringify(
+              {
+                content: response.content,
+                latencyMs: response.latencyMs,
+                leakage,
+                refusalDetected,
+                metadata: response.raw ?? {},
+              },
+              null,
+              2,
+            ),
+          );
+        }
+      } finally {
+        await adapter.close?.();
+      }
     });
 }

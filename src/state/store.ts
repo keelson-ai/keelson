@@ -23,6 +23,8 @@ import type {
   PersistedStatisticalFinding,
   PersistedTarget,
   ScanListEntry,
+  StrategicLearning,
+  TacticalLearning,
 } from './types.js';
 import type { AgentProfile } from '../prober/types.js';
 import type { ScanResult } from '../types/index.js';
@@ -44,6 +46,8 @@ export type {
   PersistedTarget,
   PersistedTrialResult,
   ScanListEntry,
+  StrategicLearning,
+  TacticalLearning,
 } from './types.js';
 
 // ─── Store Implementation ───────────────────────────────
@@ -75,6 +79,8 @@ export class Store {
   private stmtListChainsByProfile: Statement;
   private stmtInsertEvent: Statement;
   private stmtListEvents: Statement;
+  private stmtInsertTactical: Statement;
+  private stmtUpsertStrategic: Statement;
   private stmtCountTable: Map<string, Statement>;
 
   private constructor(dbPath: string, db: DatabaseType) {
@@ -134,6 +140,22 @@ export class Store {
     this.stmtInsertEvent = db.prepare(`INSERT INTO events (timestamp, event_type, data) VALUES (?, ?, ?)`);
     this.stmtListEvents = db.prepare(`SELECT * FROM events ORDER BY timestamp DESC LIMIT ?`);
 
+    this.stmtInsertTactical = db.prepare(
+      `INSERT INTO tactical_learnings (engagement_id, target_url, agent_type, technique, category, outcome, insight, novelty, turn_number, confidence, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    this.stmtUpsertStrategic = db.prepare(
+      `INSERT INTO strategic_learnings (agent_type, technique, category, success_rate, engagement_count, insight, evidence_summary, confidence, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(agent_type, technique, category) DO UPDATE SET
+         success_rate = excluded.success_rate,
+         engagement_count = excluded.engagement_count,
+         insight = excluded.insight,
+         evidence_summary = excluded.evidence_summary,
+         confidence = excluded.confidence,
+         updated_at = excluded.updated_at`,
+    );
+
     // Table count statements
     this.stmtCountTable = new Map();
     for (const table of [
@@ -145,6 +167,8 @@ export class Store {
       'regression_alerts',
       'probe_chains',
       'events',
+      'tactical_learnings',
+      'strategic_learnings',
     ]) {
       this.stmtCountTable.set(table, db.prepare(`SELECT COUNT(*) as count FROM ${table}`));
     }
@@ -411,6 +435,162 @@ export class Store {
       timestamp: row.timestamp as string,
       eventType: row.event_type as string,
       data: JSON.parse(row.data as string),
+    }));
+  }
+
+  // ─── Tactical learnings ─────────────────────────────────
+
+  saveTacticalLearning(learning: {
+    engagementId: string;
+    targetUrl: string;
+    agentType?: string;
+    technique: string;
+    category?: string;
+    outcome: string;
+    insight: string;
+    novelty?: string;
+    turnNumber?: number;
+    confidence?: number;
+  }): void {
+    const now = new Date().toISOString();
+    this.stmtInsertTactical.run(
+      learning.engagementId,
+      learning.targetUrl,
+      learning.agentType ?? null,
+      learning.technique,
+      learning.category ?? null,
+      learning.outcome,
+      learning.insight,
+      learning.novelty ?? 'novel',
+      learning.turnNumber ?? null,
+      learning.confidence ?? 0.5,
+      now,
+    );
+    this.logEvent('tactical_learning_saved', {
+      engagementId: learning.engagementId,
+      technique: learning.technique,
+    });
+  }
+
+  listTacticalLearnings(opts: {
+    targetUrl?: string;
+    engagementId?: string;
+    technique?: string;
+    limit?: number;
+  }): TacticalLearning[] {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (opts.targetUrl) {
+      conditions.push('target_url = ?');
+      params.push(opts.targetUrl);
+    }
+    if (opts.engagementId) {
+      conditions.push('engagement_id = ?');
+      params.push(opts.engagementId);
+    }
+    if (opts.technique) {
+      conditions.push('technique = ?');
+      params.push(opts.technique);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const limit = opts.limit ?? 20;
+    params.push(limit);
+
+    const rows = this.db
+      .prepare(`SELECT * FROM tactical_learnings ${where} ORDER BY created_at DESC LIMIT ?`)
+      .all(...params) as Array<Record<string, unknown>>;
+
+    return rows.map((row) => ({
+      id: row.id as number,
+      engagementId: row.engagement_id as string,
+      targetUrl: row.target_url as string,
+      agentType: (row.agent_type as string | null) ?? null,
+      technique: row.technique as string,
+      category: (row.category as string | null) ?? null,
+      outcome: row.outcome as string,
+      insight: row.insight as string,
+      novelty: row.novelty as string,
+      turnNumber: (row.turn_number as number | null) ?? null,
+      confidence: row.confidence as number,
+      createdAt: row.created_at as string,
+    }));
+  }
+
+  // ─── Strategic learnings ────────────────────────────────
+
+  upsertStrategicLearning(learning: {
+    agentType: string;
+    technique: string;
+    category?: string;
+    successRate?: number;
+    engagementCount?: number;
+    insight: string;
+    evidenceSummary?: string;
+    confidence?: number;
+  }): void {
+    const now = new Date().toISOString();
+    this.stmtUpsertStrategic.run(
+      learning.agentType,
+      learning.technique,
+      learning.category ?? null,
+      learning.successRate ?? null,
+      learning.engagementCount ?? 1,
+      learning.insight,
+      learning.evidenceSummary ?? null,
+      learning.confidence ?? 0.5,
+      now,
+      now,
+    );
+    this.logEvent('strategic_learning_upserted', {
+      agentType: learning.agentType,
+      technique: learning.technique,
+    });
+  }
+
+  listStrategicLearnings(opts: {
+    agentType?: string;
+    technique?: string;
+    category?: string;
+    limit?: number;
+  }): StrategicLearning[] {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (opts.agentType) {
+      conditions.push('agent_type = ?');
+      params.push(opts.agentType);
+    }
+    if (opts.technique) {
+      conditions.push('technique = ?');
+      params.push(opts.technique);
+    }
+    if (opts.category) {
+      conditions.push('category = ?');
+      params.push(opts.category);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const limit = opts.limit ?? 20;
+    params.push(limit);
+
+    const rows = this.db
+      .prepare(`SELECT * FROM strategic_learnings ${where} ORDER BY updated_at DESC LIMIT ?`)
+      .all(...params) as Array<Record<string, unknown>>;
+
+    return rows.map((row) => ({
+      id: row.id as number,
+      agentType: row.agent_type as string,
+      technique: row.technique as string,
+      category: (row.category as string | null) ?? null,
+      successRate: (row.success_rate as number | null) ?? null,
+      engagementCount: row.engagement_count as number,
+      insight: row.insight as string,
+      evidenceSummary: (row.evidence_summary as string | null) ?? null,
+      confidence: row.confidence as number,
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
     }));
   }
 

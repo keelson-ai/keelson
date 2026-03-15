@@ -1,5 +1,7 @@
 import PQueue from 'p-queue';
 
+import { harvestLeakedInfo, selectCrossfeedProbes, selectLeakageTargetedProbes } from './convergence.js';
+import type { LeakedInfo } from './convergence.js';
 import { EngagementController, loadEngagementProfile } from './engagement.js';
 import type { EngagementCallbacks } from './engagement.js';
 import { executeProbe } from './engine.js';
@@ -39,6 +41,11 @@ export interface ScanOptions {
   /** Maximum adaptive follow-up turns per probe (default: 6). */
   maxAdaptiveTurns?: number;
   onFinding?: (finding: Finding, current: number, total: number) => void;
+  /** Maximum convergence passes. When > 1, runs cross-category follow-up passes
+   *  based on vulnerabilities found and leaked information harvested. Default: 1. */
+  maxPasses?: number;
+  /** Callback fired at the start/end of each convergence pass. */
+  onPass?: (passNumber: number, description: string) => void;
 }
 
 function filterProbes(probes: ProbeTemplate[], categories?: string[], severities?: Severity[]): ProbeTemplate[] {
@@ -178,6 +185,79 @@ async function executeConcurrent(
   return findings;
 }
 
+const MAX_LEAKED_INFO = 200;
+
+interface FollowUpContext {
+  allProbes: ProbeTemplate[];
+  adapter: Adapter;
+  memo: MemoTable;
+  options: ScanOptions;
+  concurrency: number;
+}
+
+async function runFollowUpPasses(
+  allFindings: Finding[],
+  executedIds: Set<string>,
+  maxPasses: number,
+  ctx: FollowUpContext,
+): Promise<void> {
+  let leakedInfo: LeakedInfo[] = harvestLeakedInfo(allFindings);
+  const vulnCount = allFindings.filter((f) => f.verdict === Verdict.Vulnerable).length;
+  ctx.options.onPass?.(1, `Pass 1 complete: ${vulnCount} vulnerabilities, ${leakedInfo.length} leaked items`);
+
+  for (let passNum = 2; passNum <= maxPasses; passNum++) {
+    const vulnFindings = allFindings.filter((f) => f.verdict === Verdict.Vulnerable);
+    if (vulnFindings.length === 0 && leakedInfo.length === 0) {
+      ctx.options.onPass?.(passNum, 'Converged: no vulnerabilities or leakage to follow up');
+      break;
+    }
+
+    const crossfeed = selectCrossfeedProbes(vulnFindings, ctx.allProbes, executedIds);
+    const leakageTargeted = selectLeakageTargetedProbes(leakedInfo, ctx.allProbes, executedIds);
+
+    const nextMap = new Map<string, ProbeTemplate>();
+    for (const t of crossfeed) nextMap.set(t.id, t);
+    for (const t of leakageTargeted) nextMap.set(t.id, t);
+    const nextProbes = [...nextMap.values()];
+
+    if (nextProbes.length === 0) {
+      ctx.options.onPass?.(passNum, 'Converged: no new probes to run');
+      break;
+    }
+
+    ctx.options.onPass?.(
+      passNum,
+      `Cross-feed pass: ${crossfeed.length} category-related + ${leakageTargeted.length} leakage-targeted = ${nextProbes.length} probes`,
+    );
+
+    const passFindings =
+      ctx.concurrency <= 1
+        ? await executeSequential(nextProbes, ctx.adapter, ctx.memo, ctx.options)
+        : await executeConcurrent(nextProbes, ctx.adapter, ctx.memo, ctx.options, ctx.concurrency);
+
+    allFindings.push(...passFindings);
+    for (const f of passFindings) executedIds.add(f.probeId);
+
+    // Harvest new leaked info (capped to prevent unbounded growth)
+    const newLeaked = harvestLeakedInfo(passFindings);
+    const existingContent = new Set(leakedInfo.map((l) => l.content));
+    const genuinelyNew = newLeaked.filter((l) => !existingContent.has(l.content));
+    const remaining = MAX_LEAKED_INFO - leakedInfo.length;
+    leakedInfo = [...leakedInfo, ...genuinelyNew.slice(0, Math.max(0, remaining))];
+
+    const newVulns = passFindings.filter((f) => f.verdict === Verdict.Vulnerable).length;
+    ctx.options.onPass?.(
+      passNum,
+      `Pass ${passNum} complete: ${newVulns} new vulnerabilities, ${genuinelyNew.length} new leaked items`,
+    );
+
+    if (newVulns === 0 && genuinelyNew.length === 0) {
+      ctx.options.onPass?.(passNum, 'Converged: no new findings in this pass');
+      break;
+    }
+  }
+}
+
 export async function scan(target: string, adapter: Adapter, options: ScanOptions = {}): Promise<ScanResult> {
   const startedAt = new Date().toISOString();
   const memo = new MemoTable();
@@ -235,6 +315,18 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
     );
 
     const findings = [...executed, ...skippedFindings];
+    const executedIds = new Set(findings.map((f) => f.probeId));
+
+    const maxPasses = options.maxPasses ?? 1;
+    if (maxPasses > 1) {
+      await runFollowUpPasses(findings, executedIds, maxPasses, {
+        allProbes,
+        adapter,
+        memo,
+        options,
+        concurrency: options.concurrency ?? 1,
+      });
+    }
 
     return {
       scanId: generateScanId(),
@@ -264,15 +356,27 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
       ? await executeSequential(probes, adapter, memo, options)
       : await executeConcurrent(probes, adapter, memo, options, concurrency);
 
-  const findings = [...executed, ...skippedFindings];
+  const allFindings: Finding[] = [...executed, ...skippedFindings];
+  const executedIds = new Set(allFindings.map((f) => f.probeId));
+
+  const maxPasses = options.maxPasses ?? 1;
+  if (maxPasses > 1) {
+    await runFollowUpPasses(allFindings, executedIds, maxPasses, {
+      allProbes,
+      adapter,
+      memo,
+      options,
+      concurrency,
+    });
+  }
 
   return {
     scanId: generateScanId(),
     target,
     startedAt,
     completedAt: new Date().toISOString(),
-    findings,
-    summary: summarize(findings),
+    findings: allFindings,
+    summary: summarize(allFindings),
     memo: memo.entries,
     cumulativeDisclosure: memo.cumulativeDisclosure(),
   };

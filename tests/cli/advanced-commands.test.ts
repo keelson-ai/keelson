@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { registerAdvancedCommands } from '../../src/cli/advanced-commands.js';
 
 describe('registerAdvancedCommands', () => {
-  it('registers campaign, evolve, chain, test-crew, test-chain, generate, and erode commands', () => {
+  it('registers campaign, evolve, chain, generate, and erode commands', () => {
     const program = new Command();
     registerAdvancedCommands(program);
 
@@ -12,17 +12,15 @@ describe('registerAdvancedCommands', () => {
     expect(commandNames).toContain('campaign');
     expect(commandNames).toContain('evolve');
     expect(commandNames).toContain('chain');
-    expect(commandNames).toContain('test-crew');
-    expect(commandNames).toContain('test-chain');
     expect(commandNames).toContain('generate');
     expect(commandNames).toContain('erode');
   });
 
-  it('registers exactly 7 commands', () => {
+  it('registers exactly 5 commands', () => {
     const program = new Command();
     registerAdvancedCommands(program);
 
-    expect(program.commands).toHaveLength(7);
+    expect(program.commands).toHaveLength(5);
   });
 
   it('campaign command accepts a config-path argument', () => {
@@ -92,69 +90,6 @@ describe('registerAdvancedCommands', () => {
     const strategyOpt = chainCmd.options.find((o) => o.long === '--strategy');
     expect(strategyOpt).toBeDefined();
     expect(strategyOpt!.defaultValue).toBe('pair');
-  });
-
-  it('test-crew command has required --target option', () => {
-    const program = new Command();
-    registerAdvancedCommands(program);
-
-    const crewCmd = program.commands.find((c) => c.name() === 'test-crew') as Command;
-    expect(crewCmd).toBeDefined();
-
-    const targetOpt = crewCmd.options.find((o) => o.long === '--target');
-    expect(targetOpt).toBeDefined();
-    expect((targetOpt as typeof targetOpt & { required: boolean }).required).toBe(true);
-  });
-
-  it('test-crew command defaults adapter-type to crewai', () => {
-    const program = new Command();
-    registerAdvancedCommands(program);
-
-    const crewCmd = program.commands.find((c) => c.name() === 'test-crew') as Command;
-    expect(crewCmd).toBeDefined();
-
-    const adapterOpt = crewCmd.options.find((o) => o.long === '--adapter-type');
-    expect(adapterOpt).toBeDefined();
-    expect(adapterOpt!.defaultValue).toBe('crewai');
-  });
-
-  it('test-chain command has required --target option', () => {
-    const program = new Command();
-    registerAdvancedCommands(program);
-
-    const chainCmd = program.commands.find((c) => c.name() === 'test-chain') as Command;
-    expect(chainCmd).toBeDefined();
-
-    const targetOpt = chainCmd.options.find((o) => o.long === '--target');
-    expect(targetOpt).toBeDefined();
-    expect((targetOpt as typeof targetOpt & { required: boolean }).required).toBe(true);
-  });
-
-  it('test-chain command has input-key and output-key options', () => {
-    const program = new Command();
-    registerAdvancedCommands(program);
-
-    const chainCmd = program.commands.find((c) => c.name() === 'test-chain') as Command;
-    expect(chainCmd).toBeDefined();
-
-    const inputKeyOpt = chainCmd.options.find((o) => o.long === '--input-key');
-    const outputKeyOpt = chainCmd.options.find((o) => o.long === '--output-key');
-    expect(inputKeyOpt).toBeDefined();
-    expect(inputKeyOpt!.defaultValue).toBe('input');
-    expect(outputKeyOpt).toBeDefined();
-    expect(outputKeyOpt!.defaultValue).toBe('output');
-  });
-
-  it('test-chain command defaults adapter-type to langchain', () => {
-    const program = new Command();
-    registerAdvancedCommands(program);
-
-    const chainCmd = program.commands.find((c) => c.name() === 'test-chain') as Command;
-    expect(chainCmd).toBeDefined();
-
-    const adapterOpt = chainCmd.options.find((o) => o.long === '--adapter-type');
-    expect(adapterOpt).toBeDefined();
-    expect(adapterOpt!.defaultValue).toBe('langchain');
   });
 
   it('generate command has required --prober-url option', () => {

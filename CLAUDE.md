@@ -25,7 +25,14 @@ Keelson is a **licensed red-team and penetration testing product**. All security
 
 ```bash
 keelson scan --target <url> --api-key <KEY> --category goal_adherence
+keelson scan --target <url> --smart                    # Adaptive 6-phase scan
+keelson scan --target <url> --max-passes 3             # Cross-category convergence
 keelson probe --target <url> --probe-id GA-001
+keelson send --target <url> --message "hello"          # Raw message through any adapter
+keelson recon --target <url>                           # Capability discovery only
+keelson erode --target <url> --prober-key <KEY>        # Autonomous multi-turn red-team
+keelson recall --target <url>                          # Query past engagement knowledge
+keelson ingest --input findings.json                   # Persist engagement results
 keelson report --input scan-result.json --format markdown
 keelson list
 ```
@@ -38,16 +45,17 @@ keelson/
 │   ├── cli/              # Commander command definitions
 │   ├── components/       # Ink/React terminal UI
 │   ├── hooks/            # React hooks for Ink
-│   ├── core/             # Engine, scanner, detection, LLM judge
-│   ├── adapters/         # Target communication (9 adapters)
-│   ├── strategies/       # Mutations, PAIR, crescendo, branching
+│   ├── core/             # Engine, scanner, detection, LLM judge, technique map
+│   ├── adapters/         # Target communication (12 adapters)
+│   ├── strategies/       # Mutations, PAIR, crescendo, session erosion
+│   ├── state/            # SQLite store (scans, learnings, baselines)
 │   ├── reporting/        # Markdown, SARIF, JUnit, compliance
 │   ├── schemas/          # Zod validation schemas
 │   ├── types/            # TypeScript type definitions
 │   └── config.ts         # App config, env loading
-├── probes/               # 210 YAML probe playbooks
+├── probes/               # 222 YAML probe playbooks
 ├── agents/               # Agent methodology MDs (recon, strategist, pentester, judge, reporter)
-├── commands/             # Command spec MDs (mirrors .claude/commands/)
+├── .claude/commands/     # Claude Code slash commands (scan, probe, recon, report, erode)
 ├── tests/                # Vitest tests (mirrors src/)
 ├── _legacy/              # Python source reference (temporary)
 ├── docs/plans/           # Design & implementation plans
@@ -103,8 +111,11 @@ evaluation:
 ## Key Design Decisions
 
 - **TypeScript + strict types** — Zod schemas validate all external data at boundaries
-- **Adapter pattern** — Pluggable target communication (OpenAI, Anthropic, HTTP, MCP, etc.)
+- **Adapter pattern** — Pluggable target communication (12 adapters: OpenAI, Anthropic, HTTP, MCP, browser, Intercom, HubSpot, SiteGPT, CrewAI, LangChain, LangGraph, A2A)
 - **Three-layer detection** — Pattern matching (fast/free) + LLM judge (accurate) + combined resolution
+- **Knowledge system** — Tactical learnings (per-engagement) distill into strategic learnings (cross-engagement). Knowledge is a byproduct of evaluation, not separate bookkeeping.
+- **CLI as agent toolset** — CLI commands (`send`, `recon`, `probe`, `recall`, `ingest`) are designed to be used by LLM agents (Claude slash commands) as well as humans. Enriched JSON output with pattern detection.
 - **Multi-turn support** — Probes can have multiple turns with conversation accumulation
+- **Convergence scanning** — `scan --max-passes N` runs cross-category follow-up passes based on vulnerabilities found and leaked information
 - **Rate limiting** — Configurable delay between requests
 - **ESM-only** — All imports use `.js` extensions (NodeNext resolution)

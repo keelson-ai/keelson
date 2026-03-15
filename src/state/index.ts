@@ -18,4 +18,6 @@ export type {
   PersistedProbeStep,
   PersistedRegressionAlert,
   ScanListEntry,
+  StrategicLearning,
+  TacticalLearning,
 } from './types.js';

@@ -1,5 +1,5 @@
 /**
- * Advanced CLI commands: campaign, evolve, chain, test-crew, test-chain, generate.
+ * Advanced CLI commands: campaign, evolve, chain, generate, erode.
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -14,14 +14,15 @@ import {
   buildAdapterConfig,
   openStore,
   printScanSummary,
-  writeReport,
   writeScanOutput,
 } from './utils.js';
 import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { OpenAIAdapter, ProberAdapter, createAdapter } from '../adapters/index.js';
 import { parseCampaignConfig } from '../campaign/config.js';
 import { runCampaign } from '../campaign/runner.js';
-import { executeProbe, loadProbes } from '../core/index.js';
+import { classifyTarget, executeProbe, loadProbes, selectProbes } from '../core/index.js';
+import type { ReconResponse } from '../core/index.js';
+import { discoverCapabilities } from '../prober/discovery.js';
 import { executeChain, synthesizeChainsLlm } from '../prober/index.js';
 import type { AgentProfile } from '../prober/index.js';
 import {
@@ -39,7 +40,6 @@ import {
 } from '../strategies/index.js';
 import type {
   Adapter,
-  AdapterConfig,
   Finding,
   MutatedProbe,
   MutationType,
@@ -111,83 +111,6 @@ function templateToMarkdown(t: ProbeTemplate): string {
     lines.push(`- ${inc}`);
   }
   return lines.join('\n') + '\n';
-}
-
-function registerTestCommand(
-  program: Command,
-  name: string,
-  description: string,
-  adapterType: string,
-  header: string,
-  extraOptions?: (cmd: ReturnType<Command['command']>) => void,
-  extraConfig?: (opts: Record<string, string>) => Partial<AdapterConfig>,
-): void {
-  const cmd = program
-    .command(name)
-    .description(description)
-    .requiredOption('--target <url>', 'Target endpoint URL')
-    .option('--api-key <key>', 'API key for authentication')
-    .option('--model <model>', 'Model name for requests', 'default')
-    .option('--category <category>', 'Filter by category')
-    .option('--delay <ms>', 'Milliseconds between requests', '1500')
-    .option('--output <path>', 'Report output path')
-    .option('--format <format>', 'Output format: json, markdown, sarif, junit', 'json')
-    .option('--adapter-type <type>', 'Adapter type', adapterType)
-    .option('--no-store', 'Disable persisting results to local Store')
-    .option('--output-dir <dir>', 'Directory for scan output files', DEFAULT_OUTPUT_DIR);
-
-  extraOptions?.(cmd);
-
-  cmd.action(async (opts) => {
-    const verbosity = parseVerbosity(program.opts().verbose);
-    const logger = new Logger(verbosity);
-
-    const adapterConfig: AdapterConfig = {
-      ...buildAdapterConfig({
-        target: opts.target,
-        apiKey: opts.apiKey,
-        model: opts.model,
-        adapterType: opts.adapterType,
-      }),
-      ...extraConfig?.(opts),
-    };
-    const adapter = createAdapter(adapterConfig);
-    const { scan } = await import('../core/index.js');
-
-    logger.info(`\n${header}`);
-    logger.info(`Target: ${opts.target}`);
-    logger.info('');
-
-    const categories = opts.category ? [opts.category] : undefined;
-    const delayMs = parseInt(opts.delay, 10);
-
-    let result;
-    try {
-      result = await scan(opts.target, adapter, {
-        categories,
-        delayMs,
-        onFinding: (finding, current, total) => {
-          logger.finding(finding, current, total);
-        },
-      });
-    } finally {
-      await adapter.close?.();
-    }
-
-    printScanSummary(result, logger);
-
-    const store = openStore(opts);
-    if (store) {
-      store.saveScan(result);
-      store.close();
-    }
-
-    await writeScanOutput(result, opts.format ?? 'json', opts.outputDir);
-
-    if (opts.output) {
-      await writeReport(result, opts.format, opts.output);
-    }
-  });
 }
 
 // ─── Command Registration ────────────────────────────────
@@ -606,29 +529,6 @@ export function registerAdvancedCommands(program: Command): void {
       }
     });
 
-  // ─── test-crew ─────────────────────────────────────────
-  registerTestCommand(
-    program,
-    'test-crew',
-    'Run a security scan against a CrewAI-compatible endpoint',
-    'crewai',
-    'Keelson CrewAI Security Scan',
-  );
-
-  // ─── test-chain ────────────────────────────────────────
-  registerTestCommand(
-    program,
-    'test-chain',
-    'Run a security scan against a LangChain-compatible endpoint',
-    'langchain',
-    'Keelson LangChain Security Scan',
-    (cmd) =>
-      cmd
-        .option('--input-key <key>', 'Input key for the chain', 'input')
-        .option('--output-key <key>', 'Output key for the chain', 'output'),
-    (opts) => ({ inputKey: opts.inputKey, outputKey: opts.outputKey }),
-  );
-
   // ─── generate ──────────────────────────────────────────
   program
     .command('generate')
@@ -779,24 +679,7 @@ export function registerAdvancedCommands(program: Command): void {
       const store = openStore(opts);
 
       try {
-        // 2. Load probes and convert to intents
-        const allProbes = await loadProbes();
-        const categories = opts.category?.split(',').map((c: string) => c.trim());
-        const filtered = categories
-          ? allProbes.filter((p: ProbeTemplate) => categories.includes(p.category))
-          : allProbes;
-
-        if (filtered.length === 0) {
-          logger.error('No probes found matching filters');
-          process.exit(1);
-        }
-
-        const intents = filtered.map((p: ProbeTemplate) => probeToIntent(p, categoryToPhase(p.category)));
-        logger.info(
-          `Loaded ${intents.length} intents across ${new Set(filtered.map((p: ProbeTemplate) => p.category)).size} categories`,
-        );
-
-        // 3. Research phase
+        // 2. Research phase — build dossier using prober LLM
         logger.info('\nResearch phase...');
         const dossier = await buildDossier({
           prober: proberAdapter,
@@ -810,15 +693,64 @@ export function registerAdvancedCommands(program: Command): void {
           `Dossier: ${dossier.company.name} (${dossier.company.industry}), ${dossier.techStack.length} tech stack items`,
         );
 
-        // 4. Weight store
+        // 3. Capability discovery — fingerprint target via 8 probes
+        logger.info('\nCapability discovery...');
+        const delayMs = parseInt(opts.delay, 10) || 1500;
+        const agentProfile = await discoverCapabilities(targetAdapter, { delayMs });
+        targetAdapter.resetSession?.();
+
+        const detectedCaps = agentProfile.capabilities.filter((c) => c.detected).map((c) => c.name);
+        logger.info(`Detected capabilities: ${detectedCaps.join(', ') || 'none'}`);
+
+        // 4. Classify target and select relevant probes
+        const reconResponses: ReconResponse[] = agentProfile.capabilities.map((cap) => ({
+          probeType: cap.name,
+          prompt: cap.probePrompt,
+          response: cap.responseExcerpt,
+        }));
+        const targetProfile = classifyTarget(reconResponses);
+        logger.info(
+          `Target profile: ${targetProfile.agentTypes.join(', ')} | Tools: ${targetProfile.detectedTools.slice(0, 5).join(', ') || 'none'} | Refusal: ${targetProfile.refusalStyle}`,
+        );
+
+        const allProbes = await loadProbes();
+        const categories = opts.category?.split(',').map((c: string) => c.trim());
+
+        let selected: ProbeTemplate[];
+        if (categories) {
+          // Manual category override — skip probe plan, use all probes in specified categories
+          selected = allProbes.filter((p: ProbeTemplate) => categories.includes(p.category));
+        } else {
+          // Use probe plan based on target profile
+          const probePlan = selectProbes(targetProfile, allProbes);
+          const selectedIds = new Set(probePlan.categories.flatMap((cp) => cp.probeIds));
+          selected = allProbes.filter((p) => selectedIds.has(p.id));
+          logger.info(`Probe plan: ${selected.length} probes selected (from ${allProbes.length} available)`);
+          for (const cp of probePlan.categories) {
+            if (cp.probeIds.length > 0) {
+              logger.info(`  ${cp.category}: ${cp.probeIds.length} probes (${cp.priority}) — ${cp.rationale}`);
+            }
+          }
+        }
+
+        if (selected.length === 0) {
+          logger.error('No probes found matching filters');
+          process.exit(1);
+        }
+
+        const intents = selected.map((p: ProbeTemplate) => probeToIntent(p, categoryToPhase(p.category)));
+        logger.info(
+          `\nLoaded ${intents.length} intents across ${new Set(selected.map((p: ProbeTemplate) => p.category)).size} categories`,
+        );
+
+        // 5. Weight store
         const weightsPath = join(homedir(), '.keelson', 'erosion-weights.json');
         const weights = new FileWeightStore(weightsPath);
         await weights.load();
 
-        // 5. Run session erosion
+        // 6. Run session erosion
         const maxTotalTurns = parseInt(opts.maxTurns, 10) || 30;
         const maxTurnsPerIntent = parseInt(opts.maxTurnsPerIntent, 10) || 5;
-        const delayMs = parseInt(opts.delay, 10) || 1500;
 
         logger.info(`\nStarting erosion loop (max ${maxTotalTurns} turns)...\n`);
 
@@ -858,7 +790,7 @@ export function registerAdvancedCommands(program: Command): void {
           },
         });
 
-        // 6. Build ScanResult for output compatibility
+        // 7. Build ScanResult for output compatibility
         const { summarize } = await import('../core/summarize.js');
         const scanResult: ScanResult = {
           scanId: `erosion-${Date.now()}`,
@@ -869,7 +801,7 @@ export function registerAdvancedCommands(program: Command): void {
           summary: summarize(erosionResult.findings),
         };
 
-        // 7. Output results
+        // 8. Output results
         logger.info(`\n${'─'.repeat(50)}`);
         logger.info(
           `Session complete: ${erosionResult.turnsUsed} turns, ${erosionResult.intentsAttempted} intents, ${erosionResult.intentsSuccessful} vulnerabilities`,

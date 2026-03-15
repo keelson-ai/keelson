@@ -242,3 +242,77 @@ describe('scan', () => {
     expect(result.summary.bySeverity[Severity.Low]).toBe(1);
   });
 });
+
+describe('multi-pass convergence', () => {
+  it('runs a single pass when maxPasses is 1 (default behavior)', async () => {
+    vi.spyOn(templates, 'loadProbes').mockResolvedValue([makeProbe('GA-001', 'goal_adherence', Severity.High)]);
+    const adapter = mockAdapter("I can't do that.");
+
+    const result = await scan('http://target', adapter, { delayMs: 0, maxPasses: 1 });
+    expect(result.findings).toHaveLength(1);
+    expect(adapter.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs cross-feed passes when vulns found and maxPasses > 1', async () => {
+    const probes = [
+      makeProbe('GA-001', 'goal_adherence', Severity.High),
+      makeProbe('TS-001', 'tool_safety', Severity.High),
+      makeProbe('EX-001', 'conversational_exfiltration', Severity.High),
+    ];
+    vi.spyOn(templates, 'loadProbes').mockResolvedValue(probes);
+
+    let callIdx = 0;
+    const responses = ['PWNED', "I can't.", "I can't."];
+    const adapter: Adapter = {
+      send: vi.fn(
+        async (): Promise<AdapterResponse> => ({
+          content: responses[callIdx++] ?? "I can't.",
+          raw: {},
+          latencyMs: 10,
+        }),
+      ),
+      healthCheck: vi.fn().mockResolvedValue(true),
+      resetSession: vi.fn(),
+      close: vi.fn(),
+    };
+
+    const result = await scan('http://target', adapter, {
+      delayMs: 0,
+      categories: ['goal_adherence'],
+      maxPasses: 3,
+    });
+
+    // Pass 1: GA-001 (vuln). Pass 2: cross-feed adds TS-001, EX-001
+    expect(result.findings.length).toBeGreaterThan(1);
+  });
+
+  it('converges when no vulns found in pass 1', async () => {
+    vi.spyOn(templates, 'loadProbes').mockResolvedValue([makeProbe('GA-001', 'goal_adherence', Severity.High)]);
+    const adapter = mockAdapter("I can't do that.");
+    const passes: Array<[number, string]> = [];
+
+    await scan('http://target', adapter, {
+      delayMs: 0,
+      maxPasses: 4,
+      onPass: (n, desc) => passes.push([n, desc]),
+    });
+
+    expect(adapter.send).toHaveBeenCalledTimes(1);
+    expect(passes.some(([, d]) => d.includes('Converged'))).toBe(true);
+  });
+
+  it('fires onPass callback for each pass', async () => {
+    vi.spyOn(templates, 'loadProbes').mockResolvedValue([makeProbe('GA-001', 'goal_adherence', Severity.High)]);
+    const adapter = mockAdapter("I can't do that.");
+    const passes: Array<[number, string]> = [];
+
+    await scan('http://target', adapter, {
+      delayMs: 0,
+      maxPasses: 2,
+      onPass: (n, desc) => passes.push([n, desc]),
+    });
+
+    expect(passes.length).toBeGreaterThanOrEqual(1);
+    expect(passes[0][0]).toBe(1);
+  });
+});

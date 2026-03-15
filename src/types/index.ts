@@ -94,7 +94,6 @@ export enum ScanMode {
   Sequential = 'sequential',
   Pipeline = 'pipeline',
   Smart = 'smart',
-  Convergence = 'convergence',
 }
 
 export enum ScanTier {
@@ -167,6 +166,8 @@ export interface Finding {
   evidence: EvidenceItem[];
   leakageSignals: LeakageSignal[];
   timestamp: string;
+  /** Tactical learning extracted during detection (only present on VULNERABLE findings). */
+  learning?: DetectedLearning;
 }
 
 export interface ScanSummary {
@@ -371,6 +372,8 @@ export interface AdapterConfig {
   browserResponseStabilityMs?: number;
   /** JS snippet to run in page before chat interaction (e.g. dismiss cookie banner) */
   browserPreInteraction?: string;
+  /** CSS selector for the chat launcher button to click before auto-detection. */
+  browserLauncherSelector?: string;
   /** Create a fresh browser context (clear cookies/storage) before each send call.
    *  Useful for targets with server-side session persistence (e.g. Forethought Solve). */
   browserFreshContextPerSend?: boolean;
@@ -413,11 +416,19 @@ export interface StrategyResult {
 
 // ─── Detection / Judging ─────────────────────────────────
 
+/** Learning extracted by the judge during detection (lightweight, pre-persistence shape). */
+export interface DetectedLearning {
+  technique: string;
+  insight: string;
+  novelty: 'novel' | 'confirming' | 'contradicting';
+}
+
 export interface DetectionResult {
   verdict: Verdict;
   confidence: number;
   reasoning: string;
   method: ScoringMethod;
+  learning?: DetectedLearning;
 }
 
 // ─── Scan Configuration ──────────────────────────────────
