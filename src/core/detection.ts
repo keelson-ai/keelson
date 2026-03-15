@@ -725,9 +725,11 @@ export function patternDetectWithDetails(
   return { result: result(Verdict.Inconclusive, 0.3, 'No strong signals detected'), details };
 }
 
-/** Attach a tactical learning to the detection result when vulnerable. */
+/** Attach a tactical learning to the detection result when vulnerable.
+ *  Preserves any existing learning (e.g. from the LLM judge) — only fills in
+ *  a static-map fallback when no learning was already extracted. */
 export function attachLearning(detectionResult: DetectionResult, template: ProbeTemplate): DetectionResult {
-  if (detectionResult.verdict === Verdict.Vulnerable) {
+  if (detectionResult.verdict === Verdict.Vulnerable && !detectionResult.learning) {
     const technique = inferTechnique(template.id, template.category);
     detectionResult.learning = {
       technique,
