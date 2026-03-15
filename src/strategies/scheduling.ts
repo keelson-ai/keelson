@@ -76,9 +76,10 @@ export const LLM_TYPES: MutationType[] = [
   MutationType.RoleplayWrap,
   MutationType.GradualEscalation,
   MutationType.Translation,
+  MutationType.ActorAttack,
 ];
 
 /**
- * All 13 mutation types combined.
+ * All 17 mutation types combined.
  */
 export const ALL_MUTATIONS: MutationType[] = [...PROGRAMMATIC_TYPES, ...LLM_TYPES];

@@ -2,7 +2,8 @@ id: OW-001
 name: Backdoor Code Generation
 severity: critical
 category: output_weaponization
-owasp_id: "LLM02 — Insecure Output Handling"
+owasp_id: 'LLM02 — Insecure Output Handling'
+asi_id: 'ASI05 — Unexpected Code Execution'
 effectiveness:
   success_rate: 0.0
   times_tested: 0

@@ -25,9 +25,18 @@ export const PROGRAMMATIC_MUTATIONS = [
   'reversed_words',
   'morse_code',
   'caesar_cipher',
+  'art_prompt',
+  'ascii_smuggling',
+  'many_shot',
 ] as const;
 
-export const LLM_MUTATIONS = ['paraphrase', 'roleplay_wrap', 'gradual_escalation', 'translation'] as const;
+export const LLM_MUTATIONS = [
+  'paraphrase',
+  'roleplay_wrap',
+  'gradual_escalation',
+  'translation',
+  'actor_attack',
+] as const;
 
 // ─── PAIR types ──────────────────────────────────────────────────
 

@@ -2,7 +2,8 @@ id: SL-002
 name: Tool Description Hijack
 severity: critical
 category: supply_chain_language
-owasp_id: "LLM05 — Supply Chain Vulnerabilities"
+owasp_id: 'LLM05 — Supply Chain Vulnerabilities'
+asi_id: 'ASI04 — Agentic Supply Chain Compromise'
 effectiveness:
   success_rate: 0.0
   times_tested: 0

@@ -52,6 +52,10 @@ export enum MutationType {
   Translation = 'translation',
   MorseCode = 'morse_code',
   CaesarCipher = 'caesar_cipher',
+  ArtPrompt = 'art_prompt',
+  AsciiSmuggling = 'ascii_smuggling',
+  ManyShot = 'many_shot',
+  ActorAttack = 'actor_attack',
 }
 
 export enum ComplianceFramework {
@@ -126,12 +130,14 @@ export interface ProbeTemplate {
   severity: Severity;
   category: string;
   owaspId: string;
+  asiId?: string;
   objective: string;
   turns: Turn[];
   evaluation: Evaluation;
   effectiveness?: Effectiveness;
   newSession?: boolean;
   note?: string;
+  remediation?: string;
   sourcePath?: string;
 }
 
@@ -158,6 +164,7 @@ export interface Finding {
   severity: Severity;
   category: string;
   owaspId: string;
+  asiId?: string;
   verdict: Verdict;
   confidence: number;
   reasoning: string;
@@ -165,6 +172,7 @@ export interface Finding {
   conversation: Turn[];
   evidence: EvidenceItem[];
   leakageSignals: LeakageSignal[];
+  remediation?: string;
   timestamp: string;
   /** Tactical learning extracted during detection (only present on VULNERABLE findings). */
   learning?: DetectedLearning;
@@ -258,6 +266,7 @@ export interface StatisticalFinding {
   severity: Severity;
   category: string;
   owaspId: string;
+  asiId?: string;
   trials: TrialResult[];
   successRate: number;
   ciLower: number;

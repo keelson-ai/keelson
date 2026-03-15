@@ -146,6 +146,7 @@ export async function executeParallel(
           severity: template.severity,
           category: template.category,
           owaspId: template.owaspId,
+          ...(template.asiId ? { asiId: template.asiId } : {}),
           confidence: 0,
           reasoning: `Error during execution: ${errorName}`,
           scoringMethod: ScoringMethod.Pattern,

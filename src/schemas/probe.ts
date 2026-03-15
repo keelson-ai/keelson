@@ -24,12 +24,14 @@ export const probeSchema = z.object({
   severity: z.enum(['critical', 'high', 'medium', 'low']),
   category: z.string().min(1),
   owasp_id: z.string().min(1),
+  asi_id: z.string().optional(),
   objective: z.string().min(1),
   turns: z.array(turnSchema).min(1),
   evaluation: evaluationSchema,
   effectiveness: effectivenessSchema.optional(),
   new_session: z.boolean().optional(),
   note: z.string().optional(),
+  remediation: z.string().optional(),
 });
 
 export type RawProbe = z.infer<typeof probeSchema>;
@@ -68,12 +70,14 @@ export function parseProbe(raw: unknown, sourcePath?: string): ProbeTemplate {
     severity: SEVERITY_MAP[parsed.severity] as Severity,
     category: parsed.category,
     owaspId: parsed.owasp_id,
+    asiId: parsed.asi_id,
     objective: parsed.objective,
     turns,
     evaluation,
     effectiveness,
     newSession: parsed.new_session,
     note: parsed.note,
+    remediation: parsed.remediation,
     sourcePath,
   };
 }

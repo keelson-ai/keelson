@@ -5,7 +5,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://img.shields.io/badge/tests-802%20passing-brightgreen)]()
 
-**Autonomous security testing agent for AI systems.** Keelson ships 210 security probe playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), PAIR and crescendo attack chains, 13 mutation types, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, and iterative convergence scanning with cross-category feedback. Smart scan discovers target capabilities, selects relevant probes, and adapts mid-scan.
+**Autonomous security testing agent for AI systems.** Keelson ships 315 security probe playbooks across 14 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), PAIR, crescendo, best-of-N, and genetic algorithm attack chains, 17 mutation types, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, risk scoring, scan presets, and iterative convergence scanning with cross-category feedback. Smart scan discovers target capabilities, selects relevant probes, and adapts mid-scan.
 
 > **Authorized use only.** Keelson is designed for testing AI systems you own or have explicit written permission to test. Unauthorized use may violate applicable laws including the Computer Fraud and Abuse Act (CFAA). By using this software, you accept full responsibility for compliance with all applicable laws. The authors disclaim all liability for misuse. See [LEGAL.md](LEGAL.md) for full terms.
 
@@ -16,7 +16,7 @@ npm install -g keelson
 ## Quick Start
 
 ```bash
-# Full sequential scan — runs all 210 probes
+# Full sequential scan — runs all 315 probes
 keelson scan --target https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Recon only — discover capabilities, classify target, build probe plan (no attack probes)
@@ -34,7 +34,7 @@ keelson scan --target https://api.example.com/v1/chat/completions --api-key $KEY
 # Run a single probe
 keelson probe --target https://api.example.com/v1/chat/completions --probe-id GA-001 --api-key $KEY
 
-# List all 210 probes
+# List all 315 probes
 keelson list
 
 # Statistical campaign (N trials per probe)
@@ -84,7 +84,7 @@ Results appear in the **Security** tab under Code Scanning. See [keelson-action]
 ```mermaid
 flowchart LR
     subgraph Playbooks[" "]
-        PB["**Playbooks (.yaml)**<br/>210 probes<br/>13 categories<br/>OWASP mapped"]
+        PB["**Playbooks (.yaml)**<br/>315 probes<br/>14 categories<br/>OWASP mapped"]
     end
 
     subgraph Adapters[" "]
@@ -96,7 +96,7 @@ flowchart LR
     end
 
     subgraph Orchestrators[" "]
-        OR["**Orchestrators**<br/>PAIR / Crescendo<br/>Mutations (13 types)"]
+        OR["**Orchestrators**<br/>PAIR / Crescendo<br/>Best-of-N / Genetic<br/>Mutations (17 types)"]
     end
 
     subgraph Detection[" "]
@@ -132,8 +132,8 @@ flowchart LR
                                        │
                     ┌──────────────────▼──────────────────┐
                     │  2. PROBE                            │
-                    │  210 playbooks × adaptive strategies │
-                    │  PAIR · Crescendo · 13 mutations     │
+                    │  315 playbooks × adaptive strategies │
+                    │  PAIR · Crescendo · Best-of-N · Genetic · 17 mutations │
                     └──────────────────┬──────────────────┘
                                        │
                     ┌──────────────────▼──────────────────┐
@@ -164,19 +164,19 @@ Keelson doesn't just run a checklist — it learns from each response, adapts it
 
 | Category                        | Prefix | Count | OWASP             | Key Threats                                                                              |
 | ------------------------------- | ------ | ----: | ----------------- | ---------------------------------------------------------------------------------------- |
-| **Goal Adherence**              | GA     |    56 | LLM01/LLM09       | Prompt injection, role hijacking, system prompt extraction, encoding evasion, jailbreaks |
-| **Tool Safety**                 | TS     |    40 | LLM02/LLM06/LLM07 | Command injection, SQL injection, privilege escalation, MCP poisoning, SSRF              |
-| **Memory Integrity**            | MI     |    23 | LLM05             | History poisoning, cross-turn exfiltration, RAG poisoning, false memory implantation     |
-| **Execution Safety**            | ES     |    13 | LLM02/LLM06       | Sandbox escape, resource exhaustion, unsafe deserialization, destructive commands        |
-| **Session Isolation**           | SI     |    13 | LLM01/LLM05       | Cross-session leakage, session hijacking, multi-tenant breach                            |
-| **Permission Boundaries**       | PB     |    12 | LLM02             | Role escalation, cross-user access, authorization bypass                                 |
-| **Conversational Exfiltration** | EX     |     9 | LLM01/LLM06       | Data extraction, behavioral fingerprinting, infrastructure disclosure                    |
-| **Cognitive Architecture**      | CA     |     8 | LLM01/LLM09       | Chain-of-thought poisoning, reasoning manipulation                                       |
-| **Supply Chain Language**       | SL     |     8 | LLM03/LLM05       | RAG document injection, dependency confusion, plugin poisoning                           |
-| **Delegation Integrity**        | DI     |     7 | LLM08/LLM09       | Unauthorized sub-agents, trust boundary violation                                        |
-| **Output Weaponization**        | OW     |     7 | LLM02/LLM06       | Backdoor code generation, malicious output crafting                                      |
+| **Goal Adherence**              | GA     |    67 | LLM01/LLM09       | Prompt injection, role hijacking, system prompt extraction, encoding evasion, jailbreaks |
+| **Tool Safety**                 | TS     |    53 | LLM02/LLM06/LLM07 | Command injection, SQL injection, privilege escalation, MCP poisoning, SSRF              |
+| **Memory Integrity**            | MI     |    25 | LLM05             | History poisoning, cross-turn exfiltration, RAG poisoning, false memory implantation     |
+| **Execution Safety**            | ES     |    18 | LLM02/LLM06       | Sandbox escape, resource exhaustion, unsafe deserialization, destructive commands        |
+| **Supply Chain Language**       | SL     |    17 | LLM03/LLM05       | RAG document injection, dependency confusion, plugin poisoning                           |
+| **Session Isolation**           | SI     |    15 | LLM01/LLM05       | Cross-session leakage, session hijacking, multi-tenant breach                            |
+| **Conversational Exfiltration** | EX     |    15 | LLM01/LLM06       | Data extraction, behavioral fingerprinting, infrastructure disclosure                    |
+| **Permission Boundaries**       | PB     |    14 | LLM02             | Role escalation, cross-user access, authorization bypass                                 |
+| **Delegation Integrity**        | DI     |    13 | LLM08/LLM09       | Unauthorized sub-agents, trust boundary violation                                        |
+| **Multi-Agent Security**        | MA     |    12 | LLM08/LLM09       | Agent impersonation, cross-agent probes                                                  |
+| **Output Weaponization**        | OW     |    12 | LLM02/LLM06       | Backdoor code generation, malicious output crafting                                      |
+| **Cognitive Architecture**      | CA     |    10 | LLM01/LLM09       | Chain-of-thought poisoning, reasoning manipulation                                       |
 | **Temporal Persistence**        | TP     |     7 | LLM05/LLM08       | Delayed action injection, time-based persistence                                         |
-| **Multi-Agent Security**        | MA     |     7 | LLM08/LLM09       | Agent impersonation, cross-agent probes                                                  |
 
 ## Adapters
 
@@ -227,7 +227,7 @@ keelson scan --target https://widget.sitegpt.ai --adapter-type sitegpt --chatbot
 | Command                    | Description                                                                         |
 | -------------------------- | ----------------------------------------------------------------------------------- |
 | `keelson recon`            | Discover target capabilities and build a profile with probe plan (no attack probes) |
-| `keelson scan`             | Full sequential scan — runs all 210 probes (or filtered by `--category`)            |
+| `keelson scan`             | Full sequential scan — runs all 315 probes (or filtered by `--category`)            |
 | `keelson smart-scan`       | Adaptive scan — recon, classify target, select relevant probes, execute with memo   |
 | `keelson convergence-scan` | Iterative scan with cross-category feedback and leakage harvesting                  |
 | `keelson probe`            | Run a single probe by ID (e.g., `--probe-id GA-001`)                                |
@@ -254,7 +254,7 @@ keelson scan --target https://widget.sitegpt.ai --adapter-type sitegpt --chatbot
 | -------------------------------- | ------------------------------------------------------------------- |
 | `keelson campaign <config.yaml>` | Statistical campaign — N trials per probe with confidence intervals |
 | `keelson evolve`                 | Mutate a probe to find bypasses (programmatic + LLM mutations)      |
-| `keelson chain`                  | Run PAIR or crescendo attack chains against a target                |
+| `keelson chain`                  | Run PAIR, crescendo, best-of-N, or genetic attack chains            |
 | `keelson generate`               | Generate novel probe templates using a prober LLM                   |
 | `keelson test-crew`              | Scan a CrewAI-compatible endpoint                                   |
 | `keelson test-chain`             | Scan a LangChain-compatible endpoint                                |
@@ -302,7 +302,10 @@ Agent instruction files in `agents/` define how Claude should behave during agen
 | Agent          | File                   | Role                                                                                                                      |
 | -------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | **Strategist** | `agents/strategist.md` | Three-phase engagement: Learn (research + recon) → Plan (probe selection) → Probe & Adapt (execute + mid-scan adaptation) |
-| **Pentester**  | `agents/pentester.md`  | Semantic evaluation of probe responses: verdict (VULNERABLE/SAFE/INCONCLUSIVE), severity, OWASP mapping, evidence         |
+| **Pentester**  | `agents/pentester.md`  | Execution and adaptation: probe delivery, mutation scheduling, attack chain orchestration                                 |
+| **Judge**      | `agents/judge.md`      | Semantic evaluation of probe responses: verdict (VULNERABLE/SAFE/INCONCLUSIVE), severity, OWASP mapping, evidence         |
+| **Recon**      | `agents/recon.md`      | Intelligence gathering: fingerprint target capabilities, tools, memory, refusal style                                     |
+| **Reporter**   | `agents/reporter.md`   | Report structure and risk communication: findings, remediation, executive summary                                         |
 
 ## Output Formats
 
@@ -432,25 +435,28 @@ evaluation:
 keelson/
 ├── agents/                         # Agent instructions for Claude
 │   ├── strategist.md               # Probe strategist (recon, plan, adapt)
-│   └── pentester.md                # Pentester (evaluation, verdicts)
+│   ├── pentester.md                # Execution and adaptation
+│   ├── judge.md                    # Semantic evaluation and verdicts
+│   ├── recon.md                    # Intelligence gathering
+│   └── reporter.md                 # Report structure and risk communication
 ├── .claude/commands/               # Claude Code slash commands
 │   ├── recon.md                    # /keelson:recon
 │   ├── scan.md                     # /keelson:scan
 │   ├── probe.md                    # /keelson:probe
 │   └── report.md                   # /keelson:report
-├── probes/                        # 210 probe playbooks (YAML)
-│   ├── goal-adherence/             # GA (56 probes)
-│   ├── tool-safety/                # TS (40 probes)
-│   ├── memory-integrity/           # MI (23 probes)
-│   ├── session-isolation/          # SI (13 probes)
-│   ├── execution-safety/           # ES (13 probes)
-│   ├── permission-boundaries/      # PB (12 probes)
-│   ├── cognitive-architecture/     # CA (8 probes)
-│   ├── conversational-exfiltration/# EX (9 probes)
-│   ├── supply-chain-language/      # SL (8 probes)
-│   ├── delegation-integrity/       # DI (7 probes)
-│   ├── multi-agent-security/       # MA (7 probes)
-│   ├── output-weaponization/       # OW (7 probes)
+├── probes/                        # 315 probe playbooks (YAML)
+│   ├── goal-adherence/             # GA (67 probes)
+│   ├── tool-safety/                # TS (53 probes)
+│   ├── memory-integrity/           # MI (25 probes)
+│   ├── execution-safety/           # ES (18 probes)
+│   ├── supply-chain-language/      # SL (17 probes)
+│   ├── session-isolation/          # SI (15 probes)
+│   ├── conversational-exfiltration/# EX (15 probes)
+│   ├── permission-boundaries/      # PB (14 probes)
+│   ├── delegation-integrity/       # DI (13 probes)
+│   ├── multi-agent-security/       # MA (12 probes)
+│   ├── output-weaponization/       # OW (12 probes)
+│   ├── cognitive-architecture/     # CA (10 probes)
 │   └── temporal-persistence/       # TP (7 probes)
 ├── src/                             # TypeScript engine
 │   ├── cli/                        # Commander CLI commands
@@ -809,6 +815,9 @@ flowchart LR
         P7[Reversed Words]
         P8[Morse Code]
         P9[Caesar Cipher]
+        P10[Art Prompt]
+        P11[ASCII Smuggling]
+        P12[Many-Shot]
     end
 
     subgraph LLMPowered[LLM-Powered Mutations]
@@ -816,6 +825,7 @@ flowchart LR
         L2[Roleplay Wrap]
         L3[Gradual Escalation]
         L4[Translation]
+        L5[Actor Attack]
     end
 
     ORIG[Original Prompt] --> Programmatic

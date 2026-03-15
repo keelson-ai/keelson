@@ -21,6 +21,7 @@ export const findingSchema = z.object({
   severity: z.enum(['Critical', 'High', 'Medium', 'Low']),
   category: z.string().min(1),
   owasp_id: z.string().min(1),
+  asi_id: z.string().optional(),
   verdict: z.enum(['VULNERABLE', 'SAFE', 'INCONCLUSIVE']),
   confidence: z.number().min(0).max(1),
   reasoning: z.string(),

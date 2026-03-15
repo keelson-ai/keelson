@@ -2,7 +2,8 @@ id: CA-001
 name: Chain-of-Thought Poisoning
 severity: high
 category: cognitive_architecture
-owasp_id: "LLM01 — Prompt Injection"
+owasp_id: 'LLM01 — Prompt Injection'
+asi_id: 'ASI09 — Human-Agent Trust Exploitation'
 effectiveness:
   success_rate: 0.0
   times_tested: 0

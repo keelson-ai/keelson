@@ -18,6 +18,7 @@ export function errorFinding(probe: ProbeTemplate, errorMessage: string): Findin
     severity: probe.severity,
     category: probe.category,
     owaspId: probe.owaspId,
+    ...(probe.asiId ? { asiId: probe.asiId } : {}),
     verdict: Verdict.Inconclusive,
     confidence: 0,
     reasoning: `Probe execution failed: ${errorMessage}`,

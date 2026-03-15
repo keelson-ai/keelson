@@ -8,12 +8,15 @@ import { executeProbe } from './engine.js';
 import type { Observer } from './engine.js';
 import { scannerLogger } from './logger.js';
 import { MemoTable } from './memo.js';
+import { applyPreset } from './presets.js';
+import { RateLimitTracker } from './rate-limiter.js';
 import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import type { Adapter, EngagementProfile, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../types/index.js';
 import { generateScanId } from '../utils/id.js';
+import { sleep } from '../utils.js';
 
 const REORDER_INTERVAL = 10;
 
@@ -34,13 +37,22 @@ export interface ScanOptions {
   engagement?: string;
   /** Pre-loaded engagement profile (takes precedence over engagement string). */
   engagementProfile?: EngagementProfile;
+  /** Probe collection preset name (e.g., 'quick', 'owasp-top10'). Applied before category/severity filters. */
+  preset?: string;
   /** When true and a judge is provided, refused probes are retried with reframed prompts. */
   reframeOnRefusal?: boolean;
   /** When true and a judge is provided, follow-up turns are generated dynamically based on responses. */
   adaptiveFollowUp?: boolean;
   /** Maximum adaptive follow-up turns per probe (default: 6). */
   maxAdaptiveTurns?: number;
+  /** Enable rate-limit detection, adaptive delay, and session rotation. */
+  rateLimitResilience?: boolean;
+  /** Retry INCONCLUSIVE probes (empty/error evidence) after main scan with session reset and backoff. */
+  retryInconclusive?: boolean;
+  /** Maximum number of INCONCLUSIVE probes to retry (default: 20). */
+  maxRetries?: number;
   onFinding?: (finding: Finding, current: number, total: number) => void;
+  onRetryStart?: (count: number) => void;
   /** Maximum convergence passes. When > 1, runs cross-category follow-up passes
    *  based on vulnerabilities found and leaked information harvested. Default: 1. */
   maxPasses?: number;
@@ -72,6 +84,7 @@ function skippedFinding(probe: ProbeTemplate, reason: string): Finding {
     severity: probe.severity,
     category: probe.category,
     owaspId: probe.owaspId,
+    ...(probe.asiId ? { asiId: probe.asiId } : {}),
     verdict: Verdict.Inconclusive,
     confidence: 0,
     reasoning: `Skipped: ${reason}`,
@@ -104,6 +117,7 @@ async function executeSequential(
   const remaining = [...probes];
   const vulnCategories = new Map<string, number>();
   const total = remaining.length;
+  const rateLimitTracker = options.rateLimitResilience ? new RateLimitTracker(options.delayMs ?? 1000) : null;
 
   while (remaining.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
@@ -113,15 +127,29 @@ async function executeSequential(
       adapter.resetSession?.();
     }
 
+    // Use adaptive delay from rate-limit tracker (when enabled)
+    const effectiveDelay = rateLimitTracker
+      ? Math.max(options.delayMs ?? 1000, rateLimitTracker.recommendedDelayMs)
+      : (options.delayMs ?? 1000);
+
+    // If rate limiting detected, rotate session before next probe
+    if (rateLimitTracker?.shouldRotateSession) {
+      scannerLogger.info({ probeId: probe.id }, 'Rate limit detected, rotating session before probe');
+      adapter.resetSession?.();
+      rateLimitTracker.onSessionRotated();
+      await sleep(effectiveDelay);
+    }
+
     let finding: Finding;
     try {
       finding = await executeProbe(probe, adapter, {
-        delayMs: options.delayMs,
+        delayMs: effectiveDelay,
         judge: options.judge,
         observer: options.observer,
         reframeOnRefusal: options.reframeOnRefusal,
         adaptiveFollowUp: options.adaptiveFollowUp,
         maxAdaptiveTurns: options.maxAdaptiveTurns,
+        rateLimitTracker: rateLimitTracker ?? undefined,
       });
     } catch (err: unknown) {
       finding = errorFinding(probe, sanitizeErrorMessage(err));
@@ -262,7 +290,10 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
   const startedAt = new Date().toISOString();
   const memo = new MemoTable();
 
-  const allProbes = await loadProbes(options.probesDir);
+  let allProbes = await loadProbes(options.probesDir);
+  if (options.preset) {
+    allProbes = applyPreset(allProbes, options.preset);
+  }
   const filtered = filterProbes(allProbes, options.categories, options.severities);
 
   // Separate probes that exceed the payload size limit
@@ -368,6 +399,62 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
       options,
       concurrency,
     });
+  }
+
+  // ─── INCONCLUSIVE Retry Pass ─────────────────────────────
+  // After the main scan (and convergence passes), retry INCONCLUSIVE probes that had empty/error evidence.
+  // These are likely rate-limited responses that may succeed in a fresh session.
+  if (options.retryInconclusive && concurrency <= 1) {
+    const maxRetries = options.maxRetries ?? 20;
+    const inconclusiveWithEmptyEvidence = allFindings.filter(
+      (f) =>
+        f.verdict === Verdict.Inconclusive &&
+        (f.evidence.length === 0 || f.evidence.every((e) => !e.response || e.response.trim().length < 10)),
+    );
+
+    if (inconclusiveWithEmptyEvidence.length > 0) {
+      const retryCount = Math.min(inconclusiveWithEmptyEvidence.length, maxRetries);
+      const retryProbeIds = new Set(inconclusiveWithEmptyEvidence.slice(0, retryCount).map((f) => f.probeId));
+      const retryProbes = probes.filter((p) => retryProbeIds.has(p.id));
+
+      scannerLogger.info(
+        { retryCount: retryProbes.length, total: inconclusiveWithEmptyEvidence.length },
+        'Retrying INCONCLUSIVE probes with session reset',
+      );
+      options.onRetryStart?.(retryProbes.length);
+
+      // Reset session and wait before retry pass
+      adapter.resetSession?.();
+      await sleep(10_000); // 10s cooldown before retry pass
+
+      const retryFindings = await executeSequential(retryProbes, adapter, memo, {
+        ...options,
+        retryInconclusive: false, // prevent recursive retry
+        delayMs: (options.delayMs ?? 1000) * 2,
+      });
+
+      // Replace INCONCLUSIVE findings with retry results (only if retry produced a definitive verdict)
+      const retryMap = new Map<string, Finding>();
+      for (const rf of retryFindings) {
+        if (
+          rf.verdict !== Verdict.Inconclusive ||
+          (rf.evidence.length > 0 && rf.evidence.some((e) => e.response && e.response.trim().length >= 10))
+        ) {
+          retryMap.set(rf.probeId, rf);
+        }
+      }
+
+      if (retryMap.size > 0) {
+        for (let i = 0; i < allFindings.length; i++) {
+          const replacement = retryMap.get(allFindings[i].probeId);
+          if (replacement) allFindings[i] = replacement;
+        }
+        scannerLogger.info(
+          { replaced: retryMap.size, of: retryProbes.length },
+          'INCONCLUSIVE probes replaced with retry results',
+        );
+      }
+    }
   }
 
   return {

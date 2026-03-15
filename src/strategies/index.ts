@@ -2,6 +2,10 @@ export { applyLlmMutation, applyProgrammaticMutation } from './mutations.js';
 export { classifyResponse, executeBranchingProbe } from './branching.js';
 export { runPair } from './pair.js';
 export { runCrescendo } from './crescendo.js';
+export { runBestOfN } from './best-of-n.js';
+export type { BestOfNOptions, BestOfNResult, VariantResult } from './best-of-n.js';
+export { runGenetic } from './genetic.js';
+export type { GeneticOptions, GeneticResult, GenerationLog } from './genetic.js';
 export {
   ALL_TREES,
   executeProbeTree,

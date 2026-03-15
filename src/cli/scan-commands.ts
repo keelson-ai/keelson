@@ -14,8 +14,9 @@ import {
 } from './utils.js';
 import { Logger, Verbosity, parseVerbosity } from './verbosity.js';
 import { createAdapter } from '../adapters/index.js';
+import type { CreateAdapterOptions } from '../adapters/index.js';
 import { detectLeakage } from '../core/convergence.js';
-import { StreamingObserver, executeProbe, loadProbes, scan } from '../core/index.js';
+import { StreamingObserver, executeProbe, listPresets, loadProbes, scan } from '../core/index.js';
 import { errorFinding, sanitizeErrorMessage } from '../core/scan-helpers.js';
 import type { Store } from '../state/index.js';
 import { classifyResponse } from '../strategies/branching.js';
@@ -57,6 +58,10 @@ interface ScanCommandOpts {
   maxPayloadLength?: string;
   // Engagement profile
   engagement?: string;
+  // Caching
+  cache?: boolean;
+  // Preset
+  preset?: string;
 }
 
 function buildJudge(opts: ScanCommandOpts): Adapter | undefined {
@@ -75,7 +80,8 @@ function buildJudge(opts: ScanCommandOpts): Adapter | undefined {
 
 function setupScan(opts: ScanCommandOpts): { adapter: Adapter; store: Store | null } {
   try {
-    return { adapter: createAdapter(buildAdapterConfig(opts)), store: openStore(opts) };
+    const cacheOpts: CreateAdapterOptions | undefined = opts.cache ? { cache: true } : undefined;
+    return { adapter: createAdapter(buildAdapterConfig(opts), cacheOpts), store: openStore(opts) };
   } catch (err: unknown) {
     console.error(`Setup failed: ${sanitizeErrorMessage(err)}`);
     process.exit(1);
@@ -166,7 +172,12 @@ function addCommonScanOptions(cmd: ReturnType<Command['command']>, delayDefault 
     .option('--judge-model <model>', 'LLM judge model name')
     .option('--judge-api-key <key>', 'API key for LLM judge')
     .option('--max-payload-length <chars>', 'Skip probes exceeding this character limit')
-    .option('--engagement <profile>', 'Engagement profile ID or path (e.g., stealth-cs-bot, aggressive)');
+    .option('--engagement <profile>', 'Engagement profile ID or path (e.g., stealth-cs-bot, aggressive)')
+    .option('--cache', 'Enable response caching (skip duplicate requests)', false)
+    .option(
+      '--preset <name>',
+      'Probe collection preset (default, quick, owasp-top10, agentic, data-privacy, supply-chain, injection)',
+    );
 }
 
 // ─── Commands ───────────────────────────────────────────
@@ -188,7 +199,10 @@ export function registerScanCommands(program: Command): void {
       const maxPayloadLength = opts.maxPayloadLength ? parseInt(opts.maxPayloadLength, 10) : undefined;
       const maxPasses = parseInt(opts.maxPasses ?? '1', 10);
 
-      printHeader(logger, 'Keelson Security Scan', opts, opts.category ? { Category: opts.category } : undefined);
+      const extra: Record<string, string> = {};
+      if (opts.category) extra['Category'] = opts.category;
+      if (opts.preset) extra['Preset'] = opts.preset;
+      printHeader(logger, 'Keelson Security Scan', opts, Object.keys(extra).length > 0 ? extra : undefined);
 
       let result: ScanResult;
       try {
@@ -222,6 +236,7 @@ export function registerScanCommands(program: Command): void {
             judge,
             maxPayloadLength,
             engagement: opts.engagement,
+            preset: opts.preset,
             maxPasses,
             onFinding: (finding, current, total) => logger.finding(finding, current, total),
             onPass: maxPasses > 1 ? (passNum, desc) => logger.info(`  [Pass ${passNum}] ${desc}`) : undefined,
@@ -403,6 +418,18 @@ export function registerScanCommands(program: Command): void {
 
       logger.leakageSignals(finding.leakageSignals);
       logger.finding(finding, 1, 1);
+    });
+
+  program
+    .command('presets')
+    .description('List available probe collection presets')
+    .action(() => {
+      const presets = listPresets();
+      console.log('\nAvailable Presets:\n');
+      for (const p of presets) {
+        console.log(`  ${p.name.padEnd(16)} ${p.description}`);
+      }
+      console.log('\nUsage: keelson scan --preset <name> --target <url>\n');
     });
 
   program

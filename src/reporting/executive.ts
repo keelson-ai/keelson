@@ -10,6 +10,8 @@
  * - Conclusion and footer
  */
 
+import { scoreScan } from '../core/risk-scoring.js';
+import type { ScanRiskScore } from '../core/risk-scoring.js';
 import type { Finding, ScanResult } from '../types/index.js';
 import { SEVERITY_ORDER, Severity, Verdict } from '../types/index.js';
 import { extractDate, truncate } from '../utils.js';
@@ -208,7 +210,7 @@ function buildKeyFindingsTable(result: ScanResult): string {
 }
 
 /** Render a single detailed finding block. */
-function renderDetailedFinding(f: Finding, index: number): string {
+function renderDetailedFinding(f: Finding, index: number, riskScore?: ScanRiskScore): string {
   const lines: string[] = [];
   const verdictLabel = f.verdict === Verdict.Vulnerable ? 'VULNERABLE' : 'INCONCLUSIVE';
 
@@ -216,6 +218,12 @@ function renderDetailedFinding(f: Finding, index: number): string {
   lines.push(`**Severity: ${f.severity.toUpperCase()}**`);
   lines.push(`**Probe: ${f.probeId}**`);
   lines.push(`**OWASP: ${f.owaspId}**`);
+
+  const findingScore = riskScore?.findings.find((fs) => fs.probeId === f.probeId);
+  if (findingScore && findingScore.score > 0) {
+    lines.push(`**Risk Score: ${findingScore.score}/10 (${findingScore.level})**`);
+  }
+
   lines.push('');
 
   lines.push(`**Description:** ${f.reasoning}`);
@@ -246,6 +254,11 @@ function renderDetailedFinding(f: Finding, index: number): string {
     lines.push('');
   }
 
+  if (f.remediation) {
+    lines.push(`**Remediation:** ${f.remediation}`);
+    lines.push('');
+  }
+
   lines.push(`**Verdict: ${verdictLabel}**`);
   lines.push('');
 
@@ -271,7 +284,9 @@ function buildGroupedRecommendations(findings: Finding[]): string {
   const recsBySeverity = new Map<Severity, RecommendationItem[]>();
   for (const [category, catFindings] of vulnByCategory) {
     const worstFinding = catFindings.reduce((a, b) => (severitySortKey(a) <= severitySortKey(b) ? a : b));
-    const recommendation = CATEGORY_RECOMMENDATIONS[category] ?? `Review ${category} controls.`;
+    // Prefer probe-level remediation if any finding in this category has one
+    const probeRemediation = catFindings.find((f) => f.remediation)?.remediation;
+    const recommendation = probeRemediation ?? CATEGORY_RECOMMENDATIONS[category] ?? `Review ${category} controls.`;
     const item: RecommendationItem = {
       category,
       severity: worstFinding.severity,
@@ -387,8 +402,26 @@ export function generateExecutiveReport(result: ScanResult): string {
   lines.push('');
   lines.push(buildKeyFindingsTable(result));
   lines.push('');
+  const riskScore = scoreScan(result);
   lines.push(`**Overall Risk Rating: ${riskRating}** — ${generateRiskNarrative(result, vulnCounts)}`);
   lines.push('');
+  lines.push(`**Risk Score: ${riskScore.overall}/10 (${riskScore.level})**`);
+  lines.push('');
+
+  // Category risk breakdown
+  const scoredCategories = Object.entries(riskScore.categoryScores)
+    .filter(([, s]) => s.score > 0)
+    .sort(([, a], [, b]) => b.score - a.score);
+
+  if (scoredCategories.length > 0) {
+    lines.push('| Category | Risk Score | Level | Findings |');
+    lines.push('|----------|-----------|-------|----------|');
+    for (const [cat, s] of scoredCategories) {
+      lines.push(`| ${cat} | ${s.score}/10 | ${s.level} | ${s.count} |`);
+    }
+    lines.push('');
+  }
+
   lines.push('---');
   lines.push('');
 
@@ -406,7 +439,7 @@ export function generateExecutiveReport(result: ScanResult): string {
   } else {
     let findingIndex = 1;
     for (const f of detailedFindings) {
-      lines.push(renderDetailedFinding(f, findingIndex));
+      lines.push(renderDetailedFinding(f, findingIndex, riskScore));
       lines.push('---');
       lines.push('');
       findingIndex++;

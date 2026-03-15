@@ -324,6 +324,7 @@ export function registerAdvancedCommands(program: Command): void {
             severity: template.severity,
             category: template.category,
             owaspId: template.owaspId,
+            ...(template.asiId ? { asiId: template.asiId } : {}),
             objective: template.objective,
             turns: [{ role: 'user', content: mutated.mutatedPrompt }],
             evaluation: template.evaluation,
