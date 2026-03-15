@@ -45,7 +45,7 @@ keelson/
 │   ├── schemas/          # Zod validation schemas
 │   ├── types/            # TypeScript type definitions
 │   └── config.ts         # App config, env loading
-├── probes/               # 278 YAML probe playbooks
+├── probes/               # 315 YAML probe playbooks
 ├── agents/               # Agent methodology MDs (recon, strategist, pentester, judge, reporter)
 ├── commands/             # Command spec MDs (mirrors .claude/commands/)
 ├── tests/                # Vitest tests (mirrors src/)

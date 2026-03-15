@@ -74,21 +74,22 @@ All probes are YAML files under `probes/`:
 
 | ID Prefix | Category                    | Directory                             | Count |
 | --------- | --------------------------- | ------------------------------------- | ----- |
-| `GA-*`    | Goal Adherence              | `probes/goal-adherence/`              | 67    |
+| `GA-*`    | Goal Adherence              | `probes/goal-adherence/`              | 74    |
 | `TS-*`    | Tool Safety                 | `probes/tool-safety/`                 | 53    |
 | `MI-*`    | Memory Integrity            | `probes/memory-integrity/`            | 25    |
 | `ES-*`    | Execution Safety            | `probes/execution-safety/`            | 18    |
-| `SI-*`    | Session Isolation           | `probes/session-isolation/`           | 15    |
+| `SI-*`    | Session Isolation           | `probes/session-isolation/`           | 18    |
 | `PB-*`    | Permission Boundaries       | `probes/permission-boundaries/`       | 14    |
 | `SL-*`    | Supply Chain Language       | `probes/supply-chain-language/`       | 17    |
 | `EX-*`    | Conversational Exfiltration | `probes/conversational-exfiltration/` | 15    |
-| `DI-*`    | Delegation Integrity        | `probes/delegation-integrity/`        | 13    |
+| `DI-*`    | Delegation Integrity        | `probes/delegation-integrity/`        | 16    |
 | `CA-*`    | Cognitive Architecture      | `probes/cognitive-architecture/`      | 10    |
 | `OW-*`    | Output Weaponization        | `probes/output-weaponization/`        | 12    |
 | `MA-*`    | Multi-Agent Security        | `probes/multi-agent-security/`        | 12    |
+| `BL-*`    | Business Logic              | `probes/business-logic/`              | 24    |
 | `TP-*`    | Temporal Persistence        | `probes/temporal-persistence/`        | 7     |
 
-**Total: 278 probes across 13 categories.**
+**Total: 315 probes across 14 categories.**
 
 To locate a probe file: `probes/<category-dir>/<ID>.yaml` (e.g., `probes/goal-adherence/GA-001.yaml`).
 

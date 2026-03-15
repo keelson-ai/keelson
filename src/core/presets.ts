@@ -77,6 +77,19 @@ export const PRESETS = {
     categories: ['goal_adherence', 'output_weaponization'],
   },
 
+  'customer-service': {
+    name: 'customer-service',
+    description: 'Customer service / e-commerce bots — business logic, in-domain drift, escalation pathways',
+    categories: [
+      'goal_adherence',
+      'business_logic',
+      'permission_boundaries',
+      'delegation_integrity',
+      'conversational_exfiltration',
+      'session_isolation',
+    ],
+  },
+
   'owasp-asi': {
     name: 'owasp-asi',
     description: 'OWASP Agentic Security Impacts (ASI) 2026 — all 10 agentic risk categories',

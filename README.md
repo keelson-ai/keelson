@@ -5,7 +5,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://img.shields.io/badge/tests-802%20passing-brightgreen)]()
 
-**Autonomous security testing agent for AI systems.** Keelson ships 278 security probe playbooks across 13 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), PAIR, crescendo, best-of-N, and genetic algorithm attack chains, 17 mutation types, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, risk scoring, scan presets, and iterative convergence scanning with cross-category feedback. Smart scan discovers target capabilities, selects relevant probes, and adapts mid-scan.
+**Autonomous security testing agent for AI systems.** Keelson ships 315 security probe playbooks across 14 behavior categories mapped to the OWASP LLM Top 10. It supports 9 target adapters (OpenAI, Generic HTTP, Anthropic, LangGraph, MCP, A2A, CrewAI, LangChain, SiteGPT), PAIR, crescendo, best-of-N, and genetic algorithm attack chains, 17 mutation types, SARIF + JUnit output for CI/CD integration, a statistical campaign engine with confidence intervals, risk scoring, scan presets, and iterative convergence scanning with cross-category feedback. Smart scan discovers target capabilities, selects relevant probes, and adapts mid-scan.
 
 > **Authorized use only.** Keelson is designed for testing AI systems you own or have explicit written permission to test. Unauthorized use may violate applicable laws including the Computer Fraud and Abuse Act (CFAA). By using this software, you accept full responsibility for compliance with all applicable laws. The authors disclaim all liability for misuse. See [LEGAL.md](LEGAL.md) for full terms.
 
@@ -16,7 +16,7 @@ npm install -g keelson
 ## Quick Start
 
 ```bash
-# Full sequential scan — runs all 278 probes
+# Full sequential scan — runs all 315 probes
 keelson scan --target https://api.example.com/v1/chat/completions --api-key $KEY
 
 # Recon only — discover capabilities, classify target, build probe plan (no attack probes)
@@ -34,7 +34,7 @@ keelson scan --target https://api.example.com/v1/chat/completions --api-key $KEY
 # Run a single probe
 keelson probe --target https://api.example.com/v1/chat/completions --probe-id GA-001 --api-key $KEY
 
-# List all 278 probes
+# List all 315 probes
 keelson list
 
 # Statistical campaign (N trials per probe)
@@ -84,7 +84,7 @@ Results appear in the **Security** tab under Code Scanning. See [keelson-action]
 ```mermaid
 flowchart LR
     subgraph Playbooks[" "]
-        PB["**Playbooks (.yaml)**<br/>278 probes<br/>13 categories<br/>OWASP mapped"]
+        PB["**Playbooks (.yaml)**<br/>315 probes<br/>14 categories<br/>OWASP mapped"]
     end
 
     subgraph Adapters[" "]
@@ -132,7 +132,7 @@ flowchart LR
                                        │
                     ┌──────────────────▼──────────────────┐
                     │  2. PROBE                            │
-                    │  278 playbooks × adaptive strategies │
+                    │  315 playbooks × adaptive strategies │
                     │  PAIR · Crescendo · Best-of-N · Genetic · 17 mutations │
                     └──────────────────┬──────────────────┘
                                        │
@@ -227,7 +227,7 @@ keelson scan --target https://widget.sitegpt.ai --adapter-type sitegpt --chatbot
 | Command                    | Description                                                                         |
 | -------------------------- | ----------------------------------------------------------------------------------- |
 | `keelson recon`            | Discover target capabilities and build a profile with probe plan (no attack probes) |
-| `keelson scan`             | Full sequential scan — runs all 278 probes (or filtered by `--category`)            |
+| `keelson scan`             | Full sequential scan — runs all 315 probes (or filtered by `--category`)            |
 | `keelson smart-scan`       | Adaptive scan — recon, classify target, select relevant probes, execute with memo   |
 | `keelson convergence-scan` | Iterative scan with cross-category feedback and leakage harvesting                  |
 | `keelson probe`            | Run a single probe by ID (e.g., `--probe-id GA-001`)                                |
@@ -444,7 +444,7 @@ keelson/
 │   ├── scan.md                     # /keelson:scan
 │   ├── probe.md                    # /keelson:probe
 │   └── report.md                   # /keelson:report
-├── probes/                        # 278 probe playbooks (YAML)
+├── probes/                        # 315 probe playbooks (YAML)
 │   ├── goal-adherence/             # GA (67 probes)
 │   ├── tool-safety/                # TS (53 probes)
 │   ├── memory-integrity/           # MI (25 probes)
