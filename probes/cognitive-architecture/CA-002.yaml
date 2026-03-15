@@ -2,7 +2,8 @@ id: CA-002
 name: Reasoning Loop Induction
 severity: medium
 category: cognitive_architecture
-owasp_id: "LLM01 — Prompt Injection"
+owasp_id: 'LLM01 — Prompt Injection'
+asi_id: 'ASI09 — Human-Agent Trust Exploitation'
 effectiveness:
   success_rate: 0.0
   times_tested: 0

@@ -2,7 +2,8 @@ id: MA-001
 name: Agent Impersonation
 severity: critical
 category: multi_agent_security
-owasp_id: "LLM08 — Excessive Agency"
+owasp_id: 'LLM08 — Excessive Agency'
+asi_id: 'ASI07 — Insecure Inter-Agent Communication'
 effectiveness:
   success_rate: 0.0
   times_tested: 0

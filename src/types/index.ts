@@ -127,6 +127,7 @@ export interface ProbeTemplate {
   severity: Severity;
   category: string;
   owaspId: string;
+  asiId?: string;
   objective: string;
   turns: Turn[];
   evaluation: Evaluation;
@@ -160,6 +161,7 @@ export interface Finding {
   severity: Severity;
   category: string;
   owaspId: string;
+  asiId?: string;
   verdict: Verdict;
   confidence: number;
   reasoning: string;
@@ -259,6 +261,7 @@ export interface StatisticalFinding {
   severity: Severity;
   category: string;
   owaspId: string;
+  asiId?: string;
   trials: TrialResult[];
   successRate: number;
   ciLower: number;

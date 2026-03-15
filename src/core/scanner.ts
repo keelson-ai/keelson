@@ -68,6 +68,7 @@ function skippedFinding(probe: ProbeTemplate, reason: string): Finding {
     severity: probe.severity,
     category: probe.category,
     owaspId: probe.owaspId,
+    ...(probe.asiId ? { asiId: probe.asiId } : {}),
     verdict: Verdict.Inconclusive,
     confidence: 0,
     reasoning: `Skipped: ${reason}`,

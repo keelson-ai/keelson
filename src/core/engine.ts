@@ -381,6 +381,7 @@ export async function executeProbe(
     severity: template.severity,
     category: template.category,
     owaspId: template.owaspId,
+    ...(template.asiId ? { asiId: template.asiId } : {}),
     verdict: detection.verdict,
     confidence: detection.confidence,
     reasoning: detection.reasoning,

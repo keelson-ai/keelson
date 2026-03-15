@@ -20,6 +20,7 @@ export interface SarifRule {
   properties: {
     category: string;
     owasp: string;
+    asi?: string;
     severity: string;
   };
 }
@@ -39,6 +40,7 @@ export interface SarifResult {
     verdict: string;
     category: string;
     owasp: string;
+    asi?: string;
     evidence?: Array<{
       stepIndex: number;
       prompt: string;
@@ -118,6 +120,7 @@ function findingToRule(finding: Finding): SarifRule {
     properties: {
       category: finding.category,
       owasp: finding.owaspId,
+      ...(finding.asiId ? { asi: finding.asiId } : {}),
       severity: finding.severity,
     },
   };
@@ -136,6 +139,7 @@ function findingToResult(finding: Finding, ruleIndex: number): SarifResult {
       verdict: finding.verdict,
       category: finding.category,
       owasp: finding.owaspId,
+      ...(finding.asiId ? { asi: finding.asiId } : {}),
     },
   };
 

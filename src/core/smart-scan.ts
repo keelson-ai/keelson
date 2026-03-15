@@ -117,6 +117,7 @@ function inferTechniquesFromTemplate(t: ProbeTemplate): Technique[] {
     severity: t.severity,
     category: t.category,
     owaspId: t.owaspId,
+    ...(t.asiId ? { asiId: t.asiId } : {}),
     verdict: Verdict.Inconclusive,
     confidence: 0,
     reasoning: '',

@@ -74,21 +74,21 @@ All probes are YAML files under `probes/`:
 
 | ID Prefix | Category                    | Directory                             | Count |
 | --------- | --------------------------- | ------------------------------------- | ----- |
-| `GA-*`    | Goal Adherence              | `probes/goal-adherence/`              | 58    |
-| `TS-*`    | Tool Safety                 | `probes/tool-safety/`                 | 41    |
-| `MI-*`    | Memory Integrity            | `probes/memory-integrity/`            | 24    |
+| `GA-*`    | Goal Adherence              | `probes/goal-adherence/`              | 67    |
+| `TS-*`    | Tool Safety                 | `probes/tool-safety/`                 | 49    |
+| `MI-*`    | Memory Integrity            | `probes/memory-integrity/`            | 25    |
 | `ES-*`    | Execution Safety            | `probes/execution-safety/`            | 14    |
-| `SI-*`    | Session Isolation           | `probes/session-isolation/`           | 14    |
-| `PB-*`    | Permission Boundaries       | `probes/permission-boundaries/`       | 12    |
-| `SL-*`    | Supply Chain Language       | `probes/supply-chain-language/`       | 12    |
-| `EX-*`    | Conversational Exfiltration | `probes/conversational-exfiltration/` | 9     |
+| `SI-*`    | Session Isolation           | `probes/session-isolation/`           | 15    |
+| `PB-*`    | Permission Boundaries       | `probes/permission-boundaries/`       | 14    |
+| `SL-*`    | Supply Chain Language       | `probes/supply-chain-language/`       | 17    |
+| `EX-*`    | Conversational Exfiltration | `probes/conversational-exfiltration/` | 15    |
 | `DI-*`    | Delegation Integrity        | `probes/delegation-integrity/`        | 9     |
-| `CA-*`    | Cognitive Architecture      | `probes/cognitive-architecture/`      | 8     |
-| `OW-*`    | Output Weaponization        | `probes/output-weaponization/`        | 7     |
-| `MA-*`    | Multi-Agent Security        | `probes/multi-agent-security/`        | 7     |
+| `CA-*`    | Cognitive Architecture      | `probes/cognitive-architecture/`      | 10    |
+| `OW-*`    | Output Weaponization        | `probes/output-weaponization/`        | 8     |
+| `MA-*`    | Multi-Agent Security        | `probes/multi-agent-security/`        | 9     |
 | `TP-*`    | Temporal Persistence        | `probes/temporal-persistence/`        | 7     |
 
-**Total: 222 probes across 13 categories.**
+**Total: 259 probes across 13 categories.**
 
 To locate a probe file: `probes/<category-dir>/<ID>.yaml` (e.g., `probes/goal-adherence/GA-001.yaml`).
 

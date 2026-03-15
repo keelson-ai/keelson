@@ -2,7 +2,8 @@ id: SL-001
 name: RAG Document Injection
 severity: critical
 category: supply_chain_language
-owasp_id: "LLM03 — Training Data Poisoning"
+owasp_id: 'LLM03 — Training Data Poisoning'
+asi_id: 'ASI04 — Agentic Supply Chain Compromise'
 effectiveness:
   success_rate: 0.0
   times_tested: 0

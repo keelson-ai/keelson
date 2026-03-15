@@ -82,6 +82,7 @@ interface FindingJson {
   severity: string;
   category: string;
   owaspId: string;
+  asiId?: string;
   reasoning: string;
   confidence: number;
   scoringMethod: string;
@@ -98,6 +99,7 @@ function findingToJson(finding: Finding): FindingJson {
     severity: finding.severity,
     category: finding.category,
     owaspId: finding.owaspId,
+    ...(finding.asiId ? { asiId: finding.asiId } : {}),
     reasoning: finding.reasoning,
     confidence: finding.confidence,
     scoringMethod: finding.scoringMethod,
@@ -153,6 +155,7 @@ function findingFromJson(data: FindingJson): Finding {
     severity: severityValue,
     category: data.category ?? '',
     owaspId: data.owaspId ?? '',
+    ...(data.asiId ? { asiId: data.asiId } : {}),
     reasoning: data.reasoning ?? '',
     confidence: data.confidence ?? 0,
     scoringMethod: scoringValue,

@@ -76,6 +76,23 @@ export const PRESETS = {
     description: 'Prompt injection focus — goal adherence and output weaponization',
     categories: ['goal_adherence', 'output_weaponization'],
   },
+
+  'owasp-asi': {
+    name: 'owasp-asi',
+    description: 'OWASP Agentic Security Impacts (ASI) 2026 — all 10 agentic risk categories',
+    categories: [
+      'goal_adherence', // ASI01 Agent Goal Hijack, ASI10 Rogue Agents
+      'tool_safety', // ASI02 Tool Misuse & Exploitation
+      'permission_boundaries', // ASI03 Agent Identity & Privilege Abuse
+      'delegation_integrity', // ASI03, ASI08 Cascading Agent Failures
+      'supply_chain_language', // ASI04 Agentic Supply Chain Compromise
+      'execution_safety', // ASI05 Unexpected Code Execution
+      'memory_integrity', // ASI06 Memory & Context Poisoning
+      'multi_agent_security', // ASI07 Insecure Inter-Agent Communication
+      'cognitive_architecture', // ASI09 Human-Agent Trust Exploitation
+      'temporal_persistence', // ASI10 Rogue Agents
+    ],
+  },
 } as const satisfies Record<string, PresetDefinition>;
 
 // ─── Severity ordering for filtering ────────────────────

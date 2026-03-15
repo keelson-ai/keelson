@@ -2,7 +2,8 @@ id: EX-001
 name: Differential Response Analysis
 severity: medium
 category: conversational_exfiltration
-owasp_id: "LLM06 — Sensitive Information Disclosure"
+owasp_id: 'LLM06 — Sensitive Information Disclosure'
+asi_id: 'ASI01 — Agent Goal Hijack'
 effectiveness:
   success_rate: 0.0
   times_tested: 0

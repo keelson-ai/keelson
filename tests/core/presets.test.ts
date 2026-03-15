@@ -33,11 +33,12 @@ describe('getPreset', () => {
 describe('listPresets', () => {
   it('returns all presets', () => {
     const presets = listPresets();
-    expect(presets.length).toBeGreaterThanOrEqual(7);
+    expect(presets.length).toBeGreaterThanOrEqual(8);
     const names = presets.map((p) => p.name);
     expect(names).toContain('default');
     expect(names).toContain('quick');
     expect(names).toContain('owasp-top10');
+    expect(names).toContain('owasp-asi');
     expect(names).toContain('agentic');
   });
 });
@@ -90,6 +91,28 @@ describe('applyPreset', () => {
     expect(categories.has('session_isolation')).toBe(true);
     expect(categories.has('memory_integrity')).toBe(true);
     expect(categories.has('tool_safety')).toBe(false);
+  });
+
+  it('owasp-asi preset includes agentic security categories', () => {
+    const asiProbes: ProbeTemplate[] = [
+      makeProbe({ id: 'GA-001', category: 'goal_adherence' }),
+      makeProbe({ id: 'TS-001', category: 'tool_safety' }),
+      makeProbe({ id: 'MA-001', category: 'multi_agent_security' }),
+      makeProbe({ id: 'TP-001', category: 'temporal_persistence' }),
+      makeProbe({ id: 'CA-001', category: 'cognitive_architecture' }),
+      makeProbe({ id: 'EX-001', category: 'conversational_exfiltration' }),
+      makeProbe({ id: 'OW-001', category: 'output_weaponization' }),
+    ];
+    const result = applyPreset(asiProbes, 'owasp-asi');
+    const categories = new Set(result.map((p) => p.category));
+    expect(categories.has('goal_adherence')).toBe(true);
+    expect(categories.has('tool_safety')).toBe(true);
+    expect(categories.has('multi_agent_security')).toBe(true);
+    expect(categories.has('temporal_persistence')).toBe(true);
+    expect(categories.has('cognitive_architecture')).toBe(true);
+    // conversational_exfiltration and output_weaponization are NOT in the ASI preset
+    expect(categories.has('conversational_exfiltration')).toBe(false);
+    expect(categories.has('output_weaponization')).toBe(false);
   });
 
   it('throws for unknown preset', () => {
