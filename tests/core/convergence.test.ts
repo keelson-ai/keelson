@@ -1,13 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import {
-  harvestLeakedInfo,
-  runConvergenceScan,
-  selectCrossfeedProbes,
-  selectLeakageTargetedProbes,
-} from '../../src/core/convergence.js';
-import * as templates from '../../src/core/templates.js';
-import type { Adapter, AdapterResponse, Finding, ProbeTemplate, Turn } from '../../src/types/index.js';
+import { harvestLeakedInfo, selectCrossfeedProbes, selectLeakageTargetedProbes } from '../../src/core/convergence.js';
+import type { Finding, ProbeTemplate } from '../../src/types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
 
 function makeFinding(probeId: string, category: string, verdict: Verdict, response = 'test'): Finding {
@@ -38,21 +32,6 @@ function makeProbe(id: string, category: string): ProbeTemplate {
     objective: 'Test',
     turns: [{ role: 'user', content: `Probe ${id}` }],
     evaluation: { vulnerableIf: ['PWNED'], safeIf: ['refuses'], inconclusiveIf: [] },
-  };
-}
-
-function mockAdapter(response = 'PWNED'): Adapter {
-  return {
-    send: vi.fn(
-      async (_msgs: Turn[]): Promise<AdapterResponse> => ({
-        content: response,
-        raw: {},
-        latencyMs: 10,
-      }),
-    ),
-    healthCheck: vi.fn().mockResolvedValue(true),
-    resetSession: vi.fn(),
-    close: vi.fn(),
   };
 }
 
@@ -171,71 +150,5 @@ describe('selectLeakageTargetedProbes', () => {
 
   it('returns empty when no leaked info', () => {
     expect(selectLeakageTargetedProbes([], allTemplates, new Set())).toHaveLength(0);
-  });
-});
-
-describe('runConvergenceScan', () => {
-  it('runs initial pass and converges when no vulns', async () => {
-    const probes = [makeProbe('GA-001', 'goal_adherence'), makeProbe('GA-002', 'goal_adherence')];
-    vi.spyOn(templates, 'loadProbes').mockResolvedValue(probes);
-    const adapter = mockAdapter("I can't help with that.");
-    const passes: Array<[number, string]> = [];
-
-    const result = await runConvergenceScan('http://target', adapter, {
-      delayMs: 0,
-      onPass: (n, desc) => passes.push([n, desc]),
-    });
-
-    expect(result.findings).toHaveLength(2);
-    expect(result.summary.vulnerable).toBe(0);
-    // Should converge after pass 1 since no vulns
-    expect(passes.some(([, d]) => d.includes('Converged'))).toBe(true);
-  });
-
-  it('runs cross-feed passes when vulns found', async () => {
-    const probes = [
-      makeProbe('GA-001', 'goal_adherence'),
-      makeProbe('TS-001', 'tool_safety'),
-      makeProbe('EX-001', 'conversational_exfiltration'),
-      makeProbe('CA-001', 'cognitive_architecture'),
-    ];
-    vi.spyOn(templates, 'loadProbes').mockResolvedValue(probes);
-
-    let callIdx = 0;
-    const responses = ['PWNED', "I can't do that.", "I can't do that.", "I can't do that."];
-    const adapter: Adapter = {
-      send: vi.fn(
-        async (): Promise<AdapterResponse> => ({
-          content: responses[callIdx++] ?? "I can't do that.",
-          raw: {},
-          latencyMs: 10,
-        }),
-      ),
-      healthCheck: vi.fn().mockResolvedValue(true),
-      resetSession: vi.fn(),
-      close: vi.fn(),
-    };
-
-    const result = await runConvergenceScan('http://target', adapter, {
-      category: 'goal_adherence',
-      delayMs: 0,
-    });
-
-    // Pass 1 runs goal_adherence, pass 2 should queue cross-feed probes
-    expect(result.findings.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('fires onFinding callback', async () => {
-    vi.spyOn(templates, 'loadProbes').mockResolvedValue([makeProbe('GA-001', 'goal_adherence')]);
-    const adapter = mockAdapter("I can't do that.");
-    const calls: Array<[string, number, number]> = [];
-
-    await runConvergenceScan('http://target', adapter, {
-      delayMs: 0,
-      onFinding: (f, curr, total) => calls.push([f.probeId, curr, total]),
-    });
-
-    expect(calls).toHaveLength(1);
-    expect(calls[0]).toEqual(['GA-001', 1, 1]);
   });
 });

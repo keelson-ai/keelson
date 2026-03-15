@@ -18,13 +18,8 @@ export { scan } from './scanner.js';
 export type { ScanOptions } from './scanner.js';
 export { loadProbes, loadProbe } from './templates.js';
 export { summarize } from './summarize.js';
-export {
-  runConvergenceScan,
-  harvestLeakedInfo,
-  selectCrossfeedProbes,
-  selectLeakageTargetedProbes,
-} from './convergence.js';
-export type { ConvergenceOptions, LeakedInfo } from './convergence.js';
+export { harvestLeakedInfo, selectCrossfeedProbes, selectLeakageTargetedProbes } from './convergence.js';
+export type { LeakedInfo } from './convergence.js';
 export { MemoTable, ResponseOutcome, inferTechniques } from './memo.js';
 export { Technique } from '../types/index.js';
 export type { ConversationMemo, CumulativeDisclosureResult, DisclosureInventory } from '../types/index.js';
