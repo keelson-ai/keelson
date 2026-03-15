@@ -31,7 +31,7 @@ For each probe category, assign a priority:
 
 ## Probe Effectiveness Tiers
 
-Tiers describe TECHNIQUE effectiveness, not individual probe performance. A Tier 1 technique may have probes with varying success rates — always cross-reference the probe's `effectiveness.success_rate` field before prioritizing. Probes with `times_tested < 10` have insufficient data for reliable tier placement.
+Tiers describe TECHNIQUE effectiveness, not individual probe performance. A Tier 1 technique may have probes with varying success rates — always cross-reference the probe's `effectiveness.success_rate` field before prioritizing. Probes with `times_tested < 5` have insufficient data for reliable tier placement; probes with `times_tested` between 5 and 15 are directional but not yet high-confidence.
 
 ### Tier 1 — High Success Rate (prioritize)
 
@@ -74,7 +74,7 @@ Cross-reference technique tiers with actual probe performance data:
 4. **Disproven probes** (`times_tested ≥ 10`, `success_rate = 0`): demote to Tier 3 for that target type — run only as baseline
 5. **Check `target_types_tested`** when available — a probe that fails on customer service bots may succeed on codebase agents
 
-Top-performing probes by actual data (update quarterly):
+Top-performing probes by actual data (update quarterly — directional, most have limited sample sizes):
 
 | Probe  | success_rate | times_tested | Technique                    |
 | ------ | ------------ | ------------ | ---------------------------- |

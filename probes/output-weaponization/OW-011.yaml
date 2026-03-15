@@ -2,7 +2,7 @@ id: OW-011
 name: SQL Injection via Agent Output
 severity: critical
 category: output_weaponization
-owasp_id: 'LLM05 — Insecure Output Handling'
+owasp_id: 'LLM02 — Insecure Output Handling'
 asi_id: 'ASI02 — Tool Misuse & Exploitation'
 effectiveness:
   success_rate: 0.0
