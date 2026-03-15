@@ -1,4 +1,4 @@
-import { containsRefusal, isHardRefusal, patternDetectWithDetails } from './detection.js';
+import { attachLearning, containsRefusal, isHardRefusal, patternDetectWithDetails } from './detection.js';
 import type { PatternDetails } from './detection.js';
 import { combinedDetect, judgeResponse } from './llm-judge.js';
 import { isEmptyOrDegraded } from './rate-limiter.js';
@@ -410,6 +410,9 @@ export async function executeProbe(
     detection = patternResult;
   }
 
+  // Ensure learning is attached for vulnerable findings (covers both paths)
+  attachLearning(detection, template);
+
   return {
     probeId: template.id,
     probeName: template.name,
@@ -426,5 +429,6 @@ export async function executeProbe(
     leakageSignals,
     ...(template.remediation ? { remediation: template.remediation } : {}),
     timestamp: new Date().toISOString(),
+    learning: detection.learning,
   };
 }

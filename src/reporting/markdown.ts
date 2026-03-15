@@ -50,8 +50,8 @@ export function formatEvidence(evidence: EvidenceItem[]): string {
 
   return evidence
     .map((ev) => {
-      const promptText = truncate(ev.prompt, 200);
-      const responseText = truncate(ev.response, 300);
+      const promptText = truncate(ev.prompt, 300);
+      const responseText = truncate(ev.response, 1500);
       const lines: string[] = [];
 
       if (evidence.length > 1) {

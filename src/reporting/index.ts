@@ -44,6 +44,11 @@ export function generateReport(
   result: ScanResult,
   format: ReportFormat,
   options?: ReportOptions,
+): string | SarifLog | OcsfEvent[];
+export function generateReport(
+  result: ScanResult,
+  format: ReportFormat,
+  options?: ReportOptions,
 ): string | SarifLog | OcsfEvent[] {
   switch (format) {
     case 'markdown':

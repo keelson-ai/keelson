@@ -57,6 +57,8 @@ export interface SmartScanOptions {
   onPhase?: OnPhase;
   verify?: boolean;
   maxResponseTokens?: number;
+  /** Skip probes whose total payload exceeds this character limit. */
+  maxPayloadLength?: number;
   /** Engagement profile ID or path. Overrides auto-selection. */
   engagement?: string;
   /** Pre-loaded engagement profile (takes precedence over engagement string). */
@@ -435,7 +437,20 @@ export async function runSmartScan(
 
   // --- Phase 4: Execution ---
   const memo = new MemoTable();
-  const allProbeTemplates = allProbeIds.map((id) => templatesById.get(id)).filter((t): t is ProbeTemplate => !!t);
+  let allProbeTemplates = allProbeIds.map((id) => templatesById.get(id)).filter((t): t is ProbeTemplate => !!t);
+
+  // Filter by payload length if specified
+  if (options.maxPayloadLength) {
+    const max = options.maxPayloadLength;
+    const before = allProbeTemplates.length;
+    allProbeTemplates = allProbeTemplates.filter(
+      (t) => t.turns.reduce((sum, turn) => sum + turn.content.length, 0) <= max,
+    );
+    const skipped = before - allProbeTemplates.length;
+    if (skipped > 0) {
+      options.onPhase?.('filter', `Skipped ${skipped} probes exceeding ${max} char payload limit`);
+    }
+  }
 
   if (engagementProfile) {
     // Execute through engagement controller

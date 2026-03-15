@@ -192,13 +192,13 @@ describe('formatEvidence', () => {
   });
 
   it('truncates long prompts', () => {
-    const longPrompt = 'A'.repeat(300);
+    const longPrompt = 'A'.repeat(500);
     const evidence = [makeEvidence({ prompt: longPrompt })];
     const formatted = formatEvidence(evidence);
 
     expect(formatted).toContain('...');
-    // Should be truncated to 200 chars + "..."
-    expect(formatted).not.toContain('A'.repeat(300));
+    // Should be truncated to 300 chars + "..."
+    expect(formatted).not.toContain('A'.repeat(500));
   });
 
   it('shows turn numbers for multi-step evidence', () => {

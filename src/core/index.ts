@@ -15,6 +15,7 @@ export type { PatternDetails, PatternDetectResult, NegativeDisclosure } from './
 export { judgeResponse, combinedDetect } from './llm-judge.js';
 export { RateLimitTracker, isEmptyOrDegraded, isRepeatedResponse } from './rate-limiter.js';
 export type { RateLimitSignal } from './rate-limiter.js';
+export { PROBE_TECHNIQUE_MAP, inferTechnique } from './technique-map.js';
 export { sanitizeErrorMessage, errorFinding } from './scan-helpers.js';
 export { scan } from './scanner.js';
 export type { ScanOptions } from './scanner.js';
@@ -24,13 +25,8 @@ export { getPreset, listPresets, applyPreset } from './presets.js';
 export type { PresetDefinition, PresetName } from './presets.js';
 export { scoreScan, scoreFinding, scoreToLevel } from './risk-scoring.js';
 export type { ScanRiskScore, FindingRiskScore, RiskLevel } from './risk-scoring.js';
-export {
-  runConvergenceScan,
-  harvestLeakedInfo,
-  selectCrossfeedProbes,
-  selectLeakageTargetedProbes,
-} from './convergence.js';
-export type { ConvergenceOptions, LeakedInfo } from './convergence.js';
+export { harvestLeakedInfo, detectLeakage, selectCrossfeedProbes, selectLeakageTargetedProbes } from './convergence.js';
+export type { LeakedInfo } from './convergence.js';
 export { MemoTable, ResponseOutcome, inferTechniques } from './memo.js';
 export { Technique } from '../types/index.js';
 export type { ConversationMemo, CumulativeDisclosureResult, DisclosureInventory } from '../types/index.js';

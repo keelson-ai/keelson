@@ -91,4 +91,37 @@ CREATE TABLE IF NOT EXISTS events (
   data TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp DESC);
+
+CREATE TABLE IF NOT EXISTS tactical_learnings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  engagement_id TEXT NOT NULL,
+  target_url TEXT NOT NULL,
+  agent_type TEXT,
+  technique TEXT NOT NULL,
+  category TEXT,
+  outcome TEXT NOT NULL,
+  insight TEXT NOT NULL,
+  novelty TEXT DEFAULT 'novel',
+  turn_number INTEGER,
+  confidence REAL DEFAULT 0.5,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tactical_engagement ON tactical_learnings(engagement_id);
+CREATE INDEX IF NOT EXISTS idx_tactical_target ON tactical_learnings(target_url);
+
+CREATE TABLE IF NOT EXISTS strategic_learnings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent_type TEXT NOT NULL,
+  technique TEXT NOT NULL,
+  category TEXT,
+  success_rate REAL,
+  engagement_count INTEGER DEFAULT 1,
+  insight TEXT NOT NULL,
+  evidence_summary TEXT,
+  confidence REAL DEFAULT 0.5,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(agent_type, technique, category)
+);
+CREATE INDEX IF NOT EXISTS idx_strategic_agent_type ON strategic_learnings(agent_type);
 `;

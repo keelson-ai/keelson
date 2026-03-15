@@ -21,7 +21,7 @@ export const scanConfigSchema = z.object({
   target: adapterConfigSchema,
   categories: z.array(z.string()).optional(),
   severities: z.array(z.enum(['Critical', 'High', 'Medium', 'Low'])).optional(),
-  mode: z.enum(['sequential', 'pipeline', 'smart', 'convergence']).default('sequential'),
+  mode: z.enum(['sequential', 'pipeline', 'smart']).default('sequential'),
   concurrency: z.number().int().positive().optional(),
   delay_ms: z.number().int().min(0).optional(),
   judge: judgeConfigSchema.optional(),
