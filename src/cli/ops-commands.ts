@@ -14,11 +14,12 @@ import {
 } from './utils.js';
 import { Logger, parseVerbosity } from './verbosity.js';
 import { loadProbes } from '../core/index.js';
+import { summarize } from '../core/summarize.js';
 import { diffScans, enhancedDiffScans, formatDiffReport } from '../diff/index.js';
 import { type ReportFormat, generateReport } from '../reporting/index.js';
 import { Store } from '../state/index.js';
 import type { ProbeTemplate, RegressionAlert, ScanResult } from '../types/index.js';
-import { SEVERITY_ORDER, Severity } from '../types/index.js';
+import { SEVERITY_ORDER } from '../types/index.js';
 import { getErrorMessage } from '../utils.js';
 
 function formatProbeRow(probe: ProbeTemplate): string {
@@ -519,6 +520,11 @@ export function registerOpsCommands(program: Command): void {
     .option('--technique <name>', 'Filter by technique name')
     .option('--limit <n>', 'Max results', '20')
     .action((opts) => {
+      if (!opts.target && !opts.agentType && !opts.technique) {
+        console.error('Error: provide at least one of --target, --agent-type, or --technique');
+        process.exit(1);
+      }
+
       const limit = parseInt(opts.limit, 10);
       const store = Store.open();
       try {
@@ -623,25 +629,14 @@ export function registerOpsCommands(program: Command): void {
         // Save findings as a scan result
         const findings = data.findings as unknown[] | undefined;
         if (findings && findings.length > 0) {
+          const typedFindings = findings as ScanResult['findings'];
           const scanResult: ScanResult = {
             scanId: engagementId ?? `ingest-${Date.now()}`,
             target: target ?? 'unknown',
             startedAt: new Date().toISOString(),
             completedAt: new Date().toISOString(),
-            findings: findings as ScanResult['findings'],
-            summary: {
-              total: findings.length,
-              vulnerable: 0,
-              safe: 0,
-              inconclusive: 0,
-              bySeverity: {
-                [Severity.Critical]: 0,
-                [Severity.High]: 0,
-                [Severity.Medium]: 0,
-                [Severity.Low]: 0,
-              },
-              byCategory: {},
-            },
+            findings: typedFindings,
+            summary: summarize(typedFindings),
           };
           store.saveScan(scanResult);
           findingsSaved = findings.length;
@@ -650,9 +645,10 @@ export function registerOpsCommands(program: Command): void {
         // Save tactical learnings
         const tacticalLearnings = data.tacticalLearnings as Array<Record<string, unknown>> | undefined;
         if (tacticalLearnings) {
+          const fallbackEngagementId = engagementId ?? `ingest-${Date.now()}`;
           for (const learning of tacticalLearnings) {
             store.saveTacticalLearning({
-              engagementId: engagementId ?? (learning.engagementId as string) ?? `ingest-${Date.now()}`,
+              engagementId: (learning.engagementId as string) ?? fallbackEngagementId,
               targetUrl: target ?? (learning.targetUrl as string) ?? 'unknown',
               agentType: (data.agentType as string | undefined) ?? (learning.agentType as string | undefined),
               technique: learning.technique as string,

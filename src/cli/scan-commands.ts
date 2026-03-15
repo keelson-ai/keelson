@@ -193,6 +193,15 @@ export function registerScanCommands(program: Command): void {
       let result: ScanResult;
       try {
         if (opts.smart) {
+          // Smart scan autonomously selects probes — warn about ignored flags
+          const ignored: string[] = [];
+          if (opts.category) ignored.push('--category');
+          if (maxPasses > 1) ignored.push('--max-passes');
+          if (concurrency > 1) ignored.push('--concurrency');
+          if (ignored.length > 0) {
+            logger.info(`Warning: --smart ignores ${ignored.join(', ')} (smart scan selects probes autonomously)`);
+          }
+
           const { runSmartScan } = await import('../core/index.js');
           result = await runSmartScan(opts.target, adapter, {
             delayMs,
@@ -424,8 +433,20 @@ export function registerScanCommands(program: Command): void {
         const messages: Turn[] = [];
 
         if (opts.history) {
-          const historyJson = await readFile(opts.history, 'utf-8');
-          const history = JSON.parse(historyJson) as Turn[];
+          let historyJson: string;
+          try {
+            historyJson = await readFile(opts.history, 'utf-8');
+          } catch {
+            console.error(`Error: cannot read history file ${opts.history}`);
+            process.exit(1);
+          }
+          let history: Turn[];
+          try {
+            history = JSON.parse(historyJson) as Turn[];
+          } catch (err) {
+            console.error(`Error: invalid JSON in history file — ${err instanceof Error ? err.message : err}`);
+            process.exit(1);
+          }
           messages.push(...history);
         }
 

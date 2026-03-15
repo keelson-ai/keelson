@@ -389,5 +389,6 @@ export async function executeProbe(
     evidence: allEvidence,
     leakageSignals,
     timestamp: new Date().toISOString(),
+    learning: detection.learning,
   };
 }

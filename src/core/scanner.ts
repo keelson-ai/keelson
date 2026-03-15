@@ -324,7 +324,7 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
         adapter,
         memo,
         options,
-        concurrency: 1,
+        concurrency: options.concurrency ?? 1,
       });
     }
 

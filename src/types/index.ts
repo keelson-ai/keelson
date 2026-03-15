@@ -94,7 +94,6 @@ export enum ScanMode {
   Sequential = 'sequential',
   Pipeline = 'pipeline',
   Smart = 'smart',
-  Convergence = 'convergence',
 }
 
 export enum ScanTier {
@@ -167,6 +166,8 @@ export interface Finding {
   evidence: EvidenceItem[];
   leakageSignals: LeakageSignal[];
   timestamp: string;
+  /** Tactical learning extracted during detection (only present on VULNERABLE findings). */
+  learning?: DetectedLearning;
 }
 
 export interface ScanSummary {
@@ -415,7 +416,8 @@ export interface StrategyResult {
 
 // ─── Detection / Judging ─────────────────────────────────
 
-export interface TacticalLearning {
+/** Learning extracted by the judge during detection (lightweight, pre-persistence shape). */
+export interface DetectedLearning {
   technique: string;
   insight: string;
   novelty: 'novel' | 'confirming' | 'contradicting';
@@ -426,7 +428,7 @@ export interface DetectionResult {
   confidence: number;
   reasoning: string;
   method: ScoringMethod;
-  learning?: TacticalLearning;
+  learning?: DetectedLearning;
 }
 
 // ─── Scan Configuration ──────────────────────────────────
