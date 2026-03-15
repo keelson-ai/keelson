@@ -82,13 +82,13 @@ All probes are YAML files under `probes/`:
 | `PB-*`    | Permission Boundaries       | `probes/permission-boundaries/`       | 14    |
 | `SL-*`    | Supply Chain Language       | `probes/supply-chain-language/`       | 17    |
 | `EX-*`    | Conversational Exfiltration | `probes/conversational-exfiltration/` | 15    |
-| `DI-*`    | Delegation Integrity        | `probes/delegation-integrity/`        | 9     |
+| `DI-*`    | Delegation Integrity        | `probes/delegation-integrity/`        | 13    |
 | `CA-*`    | Cognitive Architecture      | `probes/cognitive-architecture/`      | 10    |
-| `OW-*`    | Output Weaponization        | `probes/output-weaponization/`        | 8     |
-| `MA-*`    | Multi-Agent Security        | `probes/multi-agent-security/`        | 9     |
+| `OW-*`    | Output Weaponization        | `probes/output-weaponization/`        | 12    |
+| `MA-*`    | Multi-Agent Security        | `probes/multi-agent-security/`        | 12    |
 | `TP-*`    | Temporal Persistence        | `probes/temporal-persistence/`        | 7     |
 
-**Total: 259 probes across 13 categories.**
+**Total: 270 probes across 13 categories.**
 
 To locate a probe file: `probes/<category-dir>/<ID>.yaml` (e.g., `probes/goal-adherence/GA-001.yaml`).
 

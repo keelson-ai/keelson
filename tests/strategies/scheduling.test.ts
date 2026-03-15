@@ -132,15 +132,15 @@ describe('roundRobin edge cases', () => {
 });
 
 describe('mutation type constants', () => {
-  it('PROGRAMMATIC_TYPES has 9 entries', () => {
-    expect(PROGRAMMATIC_TYPES).toHaveLength(9);
+  it('PROGRAMMATIC_TYPES has 12 entries', () => {
+    expect(PROGRAMMATIC_TYPES).toHaveLength(12);
   });
 
-  it('LLM_TYPES has 4 entries', () => {
-    expect(LLM_TYPES).toHaveLength(4);
+  it('LLM_TYPES has 5 entries', () => {
+    expect(LLM_TYPES).toHaveLength(5);
   });
 
-  it('ALL_MUTATIONS has 13 entries', () => {
-    expect(ALL_MUTATIONS).toHaveLength(13);
+  it('ALL_MUTATIONS has 17 entries', () => {
+    expect(ALL_MUTATIONS).toHaveLength(17);
   });
 });

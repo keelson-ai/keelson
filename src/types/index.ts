@@ -52,6 +52,10 @@ export enum MutationType {
   Translation = 'translation',
   MorseCode = 'morse_code',
   CaesarCipher = 'caesar_cipher',
+  ArtPrompt = 'art_prompt',
+  AsciiSmuggling = 'ascii_smuggling',
+  ManyShot = 'many_shot',
+  ActorAttack = 'actor_attack',
 }
 
 export enum ComplianceFramework {
