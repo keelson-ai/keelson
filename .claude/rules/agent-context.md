@@ -75,9 +75,9 @@ All probes are YAML files under `probes/`:
 | ID Prefix | Category                    | Directory                             | Count |
 | --------- | --------------------------- | ------------------------------------- | ----- |
 | `GA-*`    | Goal Adherence              | `probes/goal-adherence/`              | 67    |
-| `TS-*`    | Tool Safety                 | `probes/tool-safety/`                 | 49    |
+| `TS-*`    | Tool Safety                 | `probes/tool-safety/`                 | 53    |
 | `MI-*`    | Memory Integrity            | `probes/memory-integrity/`            | 25    |
-| `ES-*`    | Execution Safety            | `probes/execution-safety/`            | 14    |
+| `ES-*`    | Execution Safety            | `probes/execution-safety/`            | 18    |
 | `SI-*`    | Session Isolation           | `probes/session-isolation/`           | 15    |
 | `PB-*`    | Permission Boundaries       | `probes/permission-boundaries/`       | 14    |
 | `SL-*`    | Supply Chain Language       | `probes/supply-chain-language/`       | 17    |
@@ -88,7 +88,7 @@ All probes are YAML files under `probes/`:
 | `MA-*`    | Multi-Agent Security        | `probes/multi-agent-security/`        | 12    |
 | `TP-*`    | Temporal Persistence        | `probes/temporal-persistence/`        | 7     |
 
-**Total: 270 probes across 13 categories.**
+**Total: 278 probes across 13 categories.**
 
 To locate a probe file: `probes/<category-dir>/<ID>.yaml` (e.g., `probes/goal-adherence/GA-001.yaml`).
 
