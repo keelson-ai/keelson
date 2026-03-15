@@ -1,4 +1,4 @@
-import { containsRefusal, isHardRefusal, patternDetectWithDetails } from './detection.js';
+import { attachLearning, containsRefusal, isHardRefusal, patternDetectWithDetails } from './detection.js';
 import type { PatternDetails } from './detection.js';
 import { combinedDetect, judgeResponse } from './llm-judge.js';
 import type {
@@ -374,6 +374,9 @@ export async function executeProbe(
   } else {
     detection = patternResult;
   }
+
+  // Ensure learning is attached for vulnerable findings (covers both paths)
+  attachLearning(detection, template);
 
   return {
     probeId: template.id,

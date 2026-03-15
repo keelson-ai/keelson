@@ -726,7 +726,7 @@ export function patternDetectWithDetails(
 }
 
 /** Attach a tactical learning to the detection result when vulnerable. */
-function attachLearning(detectionResult: DetectionResult, template: ProbeTemplate): DetectionResult {
+export function attachLearning(detectionResult: DetectionResult, template: ProbeTemplate): DetectionResult {
   if (detectionResult.verdict === Verdict.Vulnerable) {
     const technique = inferTechnique(template.id, template.category);
     detectionResult.learning = {

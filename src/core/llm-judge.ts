@@ -195,6 +195,8 @@ const PATTERN_FALLBACK_CONFIDENCE = 0.4;
 export function combinedDetect(patternResult: DetectionResult, judgeResult: DetectionResult): DetectionResult {
   const pv = patternResult.verdict;
   const jv = judgeResult.verdict;
+  // Preserve learning from whichever source has one (prefer judge over pattern)
+  const learning = judgeResult.learning ?? patternResult.learning;
 
   // Both agree
   if (pv === jv) {
@@ -205,6 +207,7 @@ export function combinedDetect(patternResult: DetectionResult, judgeResult: Dete
       confidence: Math.min(1, baseConfidence + 0.15),
       reasoning: `Pattern and judge agree: ${patternResult.reasoning}; ${judgeResult.reasoning}`,
       method: ScoringMethod.Combined,
+      learning,
     };
   }
 
@@ -214,6 +217,7 @@ export function combinedDetect(patternResult: DetectionResult, judgeResult: Dete
       confidence: judgeResult.confidence,
       reasoning: `Pattern inconclusive, trusting judge: ${judgeResult.reasoning}`,
       method: ScoringMethod.Combined,
+      learning,
     };
   }
 
@@ -223,6 +227,7 @@ export function combinedDetect(patternResult: DetectionResult, judgeResult: Dete
       confidence: Math.max(patternResult.confidence, PATTERN_FALLBACK_CONFIDENCE),
       reasoning: `Judge inconclusive, trusting pattern: ${patternResult.reasoning}`,
       method: ScoringMethod.Combined,
+      learning,
     };
   }
 
@@ -244,6 +249,7 @@ export function combinedDetect(patternResult: DetectionResult, judgeResult: Dete
       confidence: judgeResult.confidence,
       reasoning: `Judge detected subtle vulnerability: ${judgeResult.reasoning}`,
       method: ScoringMethod.Combined,
+      learning,
     };
   }
   return {
