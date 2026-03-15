@@ -18,6 +18,10 @@ export { scan } from './scanner.js';
 export type { ScanOptions } from './scanner.js';
 export { loadProbes, loadProbe } from './templates.js';
 export { summarize } from './summarize.js';
+export { getPreset, listPresets, applyPreset } from './presets.js';
+export type { PresetDefinition, PresetName } from './presets.js';
+export { scoreScan, scoreFinding, scoreToLevel } from './risk-scoring.js';
+export type { ScanRiskScore, FindingRiskScore, RiskLevel } from './risk-scoring.js';
 export {
   runConvergenceScan,
   harvestLeakedInfo,

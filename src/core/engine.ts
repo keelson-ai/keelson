@@ -388,6 +388,7 @@ export async function executeProbe(
     conversation: [...messages],
     evidence: allEvidence,
     leakageSignals,
+    ...(template.remediation ? { remediation: template.remediation } : {}),
     timestamp: new Date().toISOString(),
   };
 }

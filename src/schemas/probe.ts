@@ -30,6 +30,7 @@ export const probeSchema = z.object({
   effectiveness: effectivenessSchema.optional(),
   new_session: z.boolean().optional(),
   note: z.string().optional(),
+  remediation: z.string().optional(),
 });
 
 export type RawProbe = z.infer<typeof probeSchema>;
@@ -74,6 +75,7 @@ export function parseProbe(raw: unknown, sourcePath?: string): ProbeTemplate {
     effectiveness,
     newSession: parsed.new_session,
     note: parsed.note,
+    remediation: parsed.remediation,
     sourcePath,
   };
 }

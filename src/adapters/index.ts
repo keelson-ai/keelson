@@ -1,6 +1,7 @@
 import { A2AAdapter } from './a2a.js';
 import { AnthropicAdapter } from './anthropic.js';
 import { BrowserAdapter } from './browser.js';
+import { CachingAdapter } from './cache.js';
 import { CrewAIAdapter } from './crewai.js';
 import { ForethoughtAdapter } from './forethought.js';
 import { GenericHTTPAdapter } from './http.js';
@@ -48,12 +49,27 @@ const ADAPTER_MAP: Record<string, AdapterConstructor> = {
   browser: BrowserAdapter,
 };
 
-export function createAdapter(config: AdapterConfig): Adapter {
+export interface CreateAdapterOptions {
+  /** Enable response caching (default: false). */
+  cache?: boolean;
+  /** Maximum cache entries (default: 10000). */
+  cacheMaxEntries?: number;
+  /** Cache TTL in seconds (default: 3600). */
+  cacheTtlSeconds?: number;
+}
+
+export function createAdapter(config: AdapterConfig, options?: CreateAdapterOptions): Adapter {
   const AdapterClass = ADAPTER_MAP[config.type];
   if (!AdapterClass) {
     throw new Error(`Unknown adapter type: "${config.type}". Available: ${Object.keys(ADAPTER_MAP).join(', ')}`);
   }
-  return new AdapterClass(config);
+  const adapter = new AdapterClass(config);
+
+  if (options?.cache) {
+    return new CachingAdapter(adapter, options.cacheMaxEntries, options.cacheTtlSeconds);
+  }
+
+  return adapter;
 }
 
 export function registerAdapter(type: string, constructor: AdapterConstructor): void {

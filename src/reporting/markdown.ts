@@ -130,6 +130,11 @@ function renderFinding(f: Finding): string {
   lines.push(`**Reasoning**: ${f.reasoning}`);
   lines.push('');
 
+  if (f.remediation) {
+    lines.push(`**Remediation**: ${f.remediation}`);
+    lines.push('');
+  }
+
   if (f.leakageSignals.length > 0) {
     lines.push('**Leakage Signals**:');
     lines.push('');
@@ -250,6 +255,11 @@ function renderCriticalFinding(f: Finding, lines: string[]): void {
 
   lines2.push(`**Reasoning**: ${f.reasoning}`);
   lines2.push('');
+
+  if (f.remediation) {
+    lines2.push(`**Remediation**: ${f.remediation}`);
+    lines2.push('');
+  }
 
   if (f.leakageSignals.length > 0) {
     lines2.push('**Leakage Signals**:');

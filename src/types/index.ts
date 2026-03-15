@@ -133,6 +133,7 @@ export interface ProbeTemplate {
   effectiveness?: Effectiveness;
   newSession?: boolean;
   note?: string;
+  remediation?: string;
   sourcePath?: string;
 }
 
@@ -166,6 +167,7 @@ export interface Finding {
   conversation: Turn[];
   evidence: EvidenceItem[];
   leakageSignals: LeakageSignal[];
+  remediation?: string;
   timestamp: string;
 }
 

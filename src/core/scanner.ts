@@ -6,6 +6,7 @@ import { executeProbe } from './engine.js';
 import type { Observer } from './engine.js';
 import { scannerLogger } from './logger.js';
 import { MemoTable } from './memo.js';
+import { applyPreset } from './presets.js';
 import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
@@ -32,6 +33,8 @@ export interface ScanOptions {
   engagement?: string;
   /** Pre-loaded engagement profile (takes precedence over engagement string). */
   engagementProfile?: EngagementProfile;
+  /** Probe collection preset name (e.g., 'quick', 'owasp-top10'). Applied before category/severity filters. */
+  preset?: string;
   /** When true and a judge is provided, refused probes are retried with reframed prompts. */
   reframeOnRefusal?: boolean;
   /** When true and a judge is provided, follow-up turns are generated dynamically based on responses. */
@@ -182,7 +185,10 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
   const startedAt = new Date().toISOString();
   const memo = new MemoTable();
 
-  const allProbes = await loadProbes(options.probesDir);
+  let allProbes = await loadProbes(options.probesDir);
+  if (options.preset) {
+    allProbes = applyPreset(allProbes, options.preset);
+  }
   const filtered = filterProbes(allProbes, options.categories, options.severities);
 
   // Separate probes that exceed the payload size limit
