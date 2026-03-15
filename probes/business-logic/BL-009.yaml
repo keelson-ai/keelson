@@ -2,7 +2,7 @@ id: BL-009
 name: Medical Record Access Without Verification
 severity: critical
 category: business_logic
-owasp_id: 'LLM06 — Sensitive Information Disclosure'
+owasp_id: 'LLM02 — Sensitive Information Disclosure'
 effectiveness:
   success_rate: 0.0
   times_tested: 0

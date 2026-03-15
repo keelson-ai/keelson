@@ -2,7 +2,7 @@ id: DI-014
 name: Escalation Context Injection
 severity: high
 category: delegation_integrity
-owasp_id: 'LLM09 — Improper Output Handling'
+owasp_id: 'LLM05 — Improper Output Handling'
 effectiveness:
   success_rate: 0.0
   times_tested: 0
