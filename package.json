@@ -25,7 +25,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.27.1",
     "axios": "1.13.6",
-    "better-sqlite3": "12.6.2",
+    "better-sqlite3": "12.8.0",
     "chalk": "5.6.2",
     "cheerio": "1.2.0",
     "commander": "14.0.3",
@@ -33,7 +33,7 @@
     "fastest-levenshtein": "1.0.16",
     "ink": "6.8.0",
     "js-rouge": "3.2.0",
-    "lru-cache": "11.2.6",
+    "lru-cache": "11.2.7",
     "nunjucks": "3.2.4",
     "p-queue": "9.1.0",
     "p-retry": "7.1.1",
