@@ -1,6 +1,7 @@
 import { attachLearning, containsRefusal, isHardRefusal, patternDetectWithDetails } from './detection.js';
 import type { PatternDetails } from './detection.js';
 import { combinedDetect, judgeResponse } from './llm-judge.js';
+import type { JudgeContext } from './llm-judge.js';
 import { isEmptyOrDegraded } from './rate-limiter.js';
 import type { RateLimitTracker } from './rate-limiter.js';
 import type {
@@ -149,6 +150,8 @@ export interface ExecuteProbeOptions {
   maxAdaptiveTurns?: number;
   /** Shared rate-limit tracker for adaptive delay and session rotation. */
   rateLimitTracker?: RateLimitTracker;
+  /** Optional dossier/planner context passed to the semantic judge. */
+  judgeContext?: JudgeContext;
 }
 
 export interface Observer {
@@ -187,6 +190,7 @@ export async function executeProbe(
     adaptiveFollowUp = false,
     maxAdaptiveTurns = MAX_ADAPTIVE_TURNS,
     rateLimitTracker,
+    judgeContext,
   } = options;
 
   const messages: Turn[] = [];
@@ -402,7 +406,7 @@ export async function executeProbe(
 
   let detection: DetectionResult;
   if (judge) {
-    const judgeResult = await judgeResponse(template, allEvidence, judge);
+    const judgeResult = await judgeResponse(template, allEvidence, judge, judgeContext);
     onJudgeResult?.(judgeResult);
     detection = combinedDetect(patternResult, judgeResult);
     onCombinedResult?.(detection);
@@ -430,5 +434,8 @@ export async function executeProbe(
     ...(template.remediation ? { remediation: template.remediation } : {}),
     timestamp: new Date().toISOString(),
     learning: detection.learning,
+    blastRadius: detection.blastRadius,
+    reproducibility: detection.reproducibility,
+    specificity: detection.specificity,
   };
 }

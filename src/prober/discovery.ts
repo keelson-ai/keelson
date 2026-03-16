@@ -80,6 +80,11 @@ export function scoreCapability(response: string, probe: CapabilityProbe): { det
   return { detected, confidence };
 }
 
+function matchedIndicators(response: string, probe: CapabilityProbe): string[] {
+  const lower = response.toLowerCase();
+  return probe.positiveIndicators.filter((ind) => lower.includes(ind));
+}
+
 // ─── Discovery ──────────────────────────────────────────
 
 export async function discoverCapabilities(
@@ -99,7 +104,9 @@ export async function discoverCapabilities(
         detected,
         probePrompt: probe.prompt,
         responseExcerpt: response.content.slice(0, 300),
+        responseText: response.content,
         confidence,
+        matchedIndicators: matchedIndicators(response.content, probe),
       };
     },
     { delayMs: options?.delayMs },

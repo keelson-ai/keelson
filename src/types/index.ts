@@ -23,6 +23,7 @@ export enum Verdict {
 export enum Category {
   GoalAdherence = 'Goal Adherence',
   ToolSafety = 'Tool Safety',
+  BusinessLogic = 'Business Logic',
   MemoryIntegrity = 'Memory Integrity',
   ContentSafety = 'Content Safety',
   AgenticSecurity = 'Agentic Security',
@@ -158,6 +159,98 @@ export interface LeakageSignal {
   confidence: number;
 }
 
+export type DossierItemType =
+  | 'capability'
+  | 'tool'
+  | 'entity'
+  | 'workflow'
+  | 'auth_boundary'
+  | 'escalation_path'
+  | 'public_fact'
+  | 'private_indicator';
+
+export type DossierEvidenceSource = 'capability_probe' | 'infra_probe' | 'agent_response' | 'scan_finding';
+
+export interface DossierEvidence {
+  source: DossierEvidenceSource;
+  id: string;
+  prompt: string;
+  response: string;
+  confidence: number;
+}
+
+export interface DossierItem {
+  type: DossierItemType;
+  name: string;
+  confidence: number;
+  verified: boolean;
+  public: boolean;
+  tags: string[];
+  evidence: DossierEvidence[];
+}
+
+export interface CoverageGap {
+  id: string;
+  kind: Exclude<DossierItemType, 'public_fact' | 'private_indicator'>;
+  name: string;
+  reason: string;
+  suggestedCategories: string[];
+}
+
+export interface TargetDossier {
+  target: string;
+  verifiedCapabilities: DossierItem[];
+  tools: DossierItem[];
+  entities: DossierItem[];
+  workflows: DossierItem[];
+  authBoundaries: DossierItem[];
+  escalationPaths: DossierItem[];
+  publicFacts: DossierItem[];
+  privateIndicators: DossierItem[];
+  baselineFacts: string[];
+  summary: string[];
+}
+
+export type AttackGraphNodeType =
+  | 'tool'
+  | 'entity'
+  | 'workflow'
+  | 'auth_boundary'
+  | 'escalation_path'
+  | 'leaked_artifact';
+
+export interface AttackGraphNode {
+  id: string;
+  type: AttackGraphNodeType;
+  label: string;
+  relatedCategories: string[];
+  sourceIds: string[];
+  public?: boolean;
+}
+
+export interface AttackGraphEdge {
+  from: string;
+  to: string;
+  relation: string;
+  strength: number;
+}
+
+export interface AttackChainSummary {
+  nodes: AttackGraphNode[];
+  edges: AttackGraphEdge[];
+}
+
+export interface FindingTrigger {
+  kind: 'probe' | 'finding' | 'coverage_gap' | 'attack_graph';
+  id: string;
+  reason: string;
+  pivot?: string;
+}
+
+export type FindingBlastRadius = 'single_response' | 'single_tool' | 'workflow' | 'cross_boundary' | 'systemic';
+export type FindingReproducibility = 'deterministic' | 'likely_reproducible' | 'possibly_stochastic';
+export type FindingSpecificity = 'target_specific' | 'likely_public' | 'generic_example' | 'hallucination_risk';
+
 export interface Finding {
   probeId: string;
   probeName: string;
@@ -176,6 +269,10 @@ export interface Finding {
   timestamp: string;
   /** Tactical learning extracted during detection (only present on VULNERABLE findings). */
   learning?: DetectedLearning;
+  triggeredBy?: FindingTrigger;
+  blastRadius?: FindingBlastRadius;
+  reproducibility?: FindingReproducibility;
+  specificity?: FindingSpecificity;
 }
 
 export interface ScanSummary {
@@ -220,6 +317,9 @@ export interface ScanResult {
   summary: ScanSummary;
   memo?: ConversationMemo[];
   cumulativeDisclosure?: CumulativeDisclosureResult;
+  dossier?: TargetDossier;
+  coverageGaps?: CoverageGap[];
+  attackChain?: AttackChainSummary;
 }
 
 // ─── Diff / Comparison Interfaces ───────────────────────
@@ -438,6 +538,9 @@ export interface DetectionResult {
   reasoning: string;
   method: ScoringMethod;
   learning?: DetectedLearning;
+  blastRadius?: FindingBlastRadius;
+  reproducibility?: FindingReproducibility;
+  specificity?: FindingSpecificity;
 }
 
 // ─── Scan Configuration ──────────────────────────────────

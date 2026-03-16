@@ -89,6 +89,10 @@ interface FindingJson {
   timestamp: string;
   evidence: EvidenceJson[];
   leakageSignals: LeakageSignalJson[];
+  triggeredBy?: Finding['triggeredBy'];
+  blastRadius?: Finding['blastRadius'];
+  reproducibility?: Finding['reproducibility'];
+  specificity?: Finding['specificity'];
 }
 
 function findingToJson(finding: Finding): FindingJson {
@@ -117,6 +121,10 @@ function findingToJson(finding: Finding): FindingJson {
       description: s.description,
       confidence: s.confidence,
     })),
+    triggeredBy: finding.triggeredBy,
+    blastRadius: finding.blastRadius,
+    reproducibility: finding.reproducibility,
+    specificity: finding.specificity,
   };
 }
 
@@ -163,6 +171,10 @@ function findingFromJson(data: FindingJson): Finding {
     conversation: [],
     evidence,
     leakageSignals,
+    triggeredBy: data.triggeredBy,
+    blastRadius: data.blastRadius,
+    reproducibility: data.reproducibility,
+    specificity: data.specificity,
   };
 }
 

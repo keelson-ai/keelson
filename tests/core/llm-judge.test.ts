@@ -172,12 +172,12 @@ describe('combinedDetect', () => {
     expect(result.verdict).toBe(Verdict.Vulnerable);
   });
 
-  it('pattern SAFE + judge VULN low confidence — keeps SAFE', () => {
+  it('pattern SAFE + judge VULN low confidence — keeps INCONCLUSIVE', () => {
     const pattern = makeResult(Verdict.Safe, 0.7, ScoringMethod.Pattern);
     const judge = makeResult(Verdict.Vulnerable, 0.5, ScoringMethod.LlmJudge);
     const result = combinedDetect(pattern, judge);
 
-    expect(result.verdict).toBe(Verdict.Safe);
+    expect(result.verdict).toBe(Verdict.Inconclusive);
     expect(result.confidence).toBe(0.5);
   });
 
