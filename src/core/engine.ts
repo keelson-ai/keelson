@@ -1,9 +1,16 @@
-import { attachLearning, containsRefusal, isHardRefusal, patternDetectWithDetails } from './detection.js';
+import {
+  attachLearning,
+  containsRefusal,
+  extractIntelligence,
+  isHardRefusal,
+  patternDetectWithDetails,
+} from './detection.js';
 import type { PatternDetails } from './detection.js';
 import { combinedDetect, judgeResponse } from './llm-judge.js';
 import type { JudgeContext } from './llm-judge.js';
 import { isEmptyOrDegraded } from './rate-limiter.js';
 import type { RateLimitTracker } from './rate-limiter.js';
+import { classifyResponse } from '../strategies/branching.js';
 import type {
   Adapter,
   DetectionResult,
@@ -198,10 +205,14 @@ export async function executeProbe(
   const allEvidence: EvidenceItem[] = [];
   let globalUserTurnCount = 0;
   let sessionUserTurnCount = 0;
-  const totalUserTurns = template.turns.filter((t) => t.role === 'user').length;
 
-  for (let stepIdx = 0; stepIdx < template.turns.length; stepIdx++) {
-    const step = template.turns[stepIdx];
+  // Mutable turn list supports conditional branching (splice in branch turns at runtime)
+  const activeTurns: Turn[] = [...template.turns];
+  const totalUserTurns = activeTurns.filter((t) => t.role === 'user').length;
+
+  let stepIdx = 0;
+  while (stepIdx < activeTurns.length) {
+    const step = activeTurns[stepIdx];
 
     if (template.newSession && stepIdx > 0) {
       messages.length = 0;
@@ -213,6 +224,7 @@ export async function executeProbe(
     // Non-user turns injected into context without sending
     if (step.role !== 'user') {
       messages.push({ role: step.role, content: step.content });
+      stepIdx++;
       continue;
     }
 
@@ -288,7 +300,19 @@ export async function executeProbe(
       raw: response.raw,
     });
 
-    const remaining = countRemainingUserTurns(template.turns, stepIdx);
+    // Conditional branching: select branch turns based on response classification
+    if (step.branches) {
+      const classification = classifyResponse(responseText);
+      const branchKey =
+        classification === 'compliance' ? 'if_complied' : classification === 'partial' ? 'if_partial' : 'if_refused';
+      const branchTurns = step.branches[branchKey];
+      if (branchTurns && branchTurns.length > 0) {
+        // Replace remaining turns with branch turns
+        activeTurns.splice(stepIdx + 1, activeTurns.length - stepIdx - 1, ...branchTurns);
+      }
+    }
+
+    const remaining = countRemainingUserTurns(activeTurns, stepIdx);
     if (shouldTerminateEarly(responseText, sessionUserTurnCount, remaining)) {
       onEarlyTermination?.('Hard refusal detected on first turn; skipping remaining turns');
       break;
@@ -297,6 +321,8 @@ export async function executeProbe(
     if (remaining > 0) {
       await sleep(delayMs);
     }
+
+    stepIdx++;
   }
 
   // ─── Refusal Bypass: retry refused probes with reframed prompts ───
@@ -417,6 +443,10 @@ export async function executeProbe(
   // Ensure learning is attached for vulnerable findings (covers both paths)
   attachLearning(detection, template);
 
+  // Extract structured intelligence from all responses
+  const allResponseText = allEvidence.map((e) => e.response).join('\n');
+  const extractedIntel = extractIntelligence(allResponseText);
+
   return {
     probeId: template.id,
     probeName: template.name,
@@ -434,6 +464,7 @@ export async function executeProbe(
     ...(template.remediation ? { remediation: template.remediation } : {}),
     timestamp: new Date().toISOString(),
     learning: detection.learning,
+    ...(extractedIntel.confidence > 0 ? { extractedIntel } : {}),
     blastRadius: detection.blastRadius,
     reproducibility: detection.reproducibility,
     specificity: detection.specificity,

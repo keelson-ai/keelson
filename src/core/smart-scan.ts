@@ -10,6 +10,8 @@
  *   5. Mid-scan adaptation
  */
 
+import { harvestLeakedInfo, selectIntelTargetedProbes } from './convergence.js';
+import { DefenseModel } from './defense-model.js';
 import { buildTargetDossier } from './dossier.js';
 import { EngagementController, loadEngagementProfile } from './engagement.js';
 import type { EngagementCallbacks } from './engagement.js';
@@ -25,9 +27,11 @@ import {
   selectCustomProbeTriggers,
 } from './follow-up.js';
 import { MemoTable, inferTechniques } from './memo.js';
+import { composeTargetedProbes } from './probe-composer.js';
 import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { AgentType, adaptPlan, classifyTarget, selectProbes } from './strategist.js';
 import type { ProbePlan, ReconResponse, TargetProfile } from './strategist.js';
+import { selectStrategy } from './strategy-router.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
 import { discoverCapabilities } from '../prober/discovery.js';
@@ -203,6 +207,7 @@ async function executeSession(
   adapter: Adapter,
   options: SmartScanOptions,
   memo: MemoTable,
+  defenseModel: DefenseModel,
   currentOffset: number,
   total: number,
   dossier?: TargetDossier,
@@ -231,6 +236,7 @@ async function executeSession(
 
     findings.push(finding);
     memo.record(finding);
+    defenseModel.observe(probe, finding);
     options.onFinding?.(finding, currentOffset + i + 1, total);
   }
 
@@ -518,6 +524,7 @@ export async function runSmartScan(
   }
 
   // --- Phase 4 (legacy): Grouped Execution with Memoization ---
+  const defenseModel = new DefenseModel();
   let sessions = groupIntoSessions(allProbeIds, templatesById, memo);
 
   options.onPhase?.('execute', `Running ${allProbeIds.length} probes in ${sessions.length} sessions`);
@@ -561,6 +568,7 @@ export async function runSmartScan(
       adapter,
       options,
       memo,
+      defenseModel,
       currentOffset,
       total,
       groundedDossier,
@@ -582,6 +590,49 @@ export async function runSmartScan(
 
     plan = updatedPlan;
 
+    // --- Phase 5: Intel-targeted probe injection ---
+    const executedIdsDuringAdapt = new Set(allFindings.map((f) => f.probeId));
+
+    // Select probes based on extracted intelligence from ALL findings (not just vulnerable)
+    for (const finding of allFindings) {
+      if (finding.extractedIntel && finding.extractedIntel.confidence > 0) {
+        const intelProbes = selectIntelTargetedProbes(finding.extractedIntel, allTemplates, executedIdsDuringAdapt);
+        for (const p of intelProbes) {
+          if (!executedIdsDuringAdapt.has(p.id)) {
+            executedIdsDuringAdapt.add(p.id);
+            // Add to remaining sessions
+            const adaptedProbeIds = plan.categories.flatMap((cp) => cp.probeIds);
+            if (!adaptedProbeIds.includes(p.id)) {
+              // Inject into the next session batch
+              const nextSessionIdx = sessionIdx + 1;
+              if (nextSessionIdx < sessions.length) {
+                sessions[nextSessionIdx].push(p);
+              } else {
+                sessions.push([p]);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // --- Phase 5: Strategy recommendations for failed probes ---
+    const defenseProfile = defenseModel.getDefenseProfile();
+    if (defenseProfile.triggerWords.length > 0 || defenseProfile.refusalStyle !== 'unknown') {
+      const failedProbes = sessionFindings
+        .filter((f) => f.verdict === Verdict.Safe)
+        .map((f) => templatesById.get(f.probeId))
+        .filter((t): t is ProbeTemplate => !!t);
+
+      for (const failedProbe of failedProbes.slice(0, 3)) {
+        const recommendation = selectStrategy(defenseProfile, failedProbe, memo);
+        options.onPhase?.(
+          'strategy',
+          `  ${failedProbe.id}: recommend ${recommendation.strategy} — ${recommendation.reason}`,
+        );
+      }
+    }
+
     // Re-group remaining sessions with updated memo knowledge.
     // Recompute from adapted plan so de-escalated categories are excluded.
     const adaptedProbeIds = plan.categories.flatMap((cp) => cp.probeIds);
@@ -591,6 +642,41 @@ export async function runSmartScan(
     if (remainingIds.length > 0) {
       const remainingSessions = groupIntoSessions(remainingIds, templatesById, memo);
       sessions = [...sessions.slice(0, sessionIdx + 1), ...remainingSessions];
+    }
+  }
+
+  // --- Phase 5: Compose targeted probes from leaked intel ---
+  if (options.judge) {
+    const leaked = harvestLeakedInfo(allFindings);
+    if (leaked.length > 0) {
+      options.onPhase?.('compose', `Composing targeted probes from ${leaked.length} leaked intel items`);
+      const composed = await composeTargetedProbes(leaked, memo, defenseModel.getDefenseProfile(), options.judge);
+      if (composed.length > 0) {
+        options.onPhase?.('compose', `Executing ${composed.length} composed probes`);
+        for (const probe of composed) {
+          try {
+            const finding = await executeProbe(probe, adapter, {
+              delayMs: options.delayMs,
+              judge: options.judge,
+              observer: options.observer,
+              judgeContext: {
+                dossier: groundedDossier,
+                selectedBecause: 'Composed from leaked intelligence harvested during scan.',
+              },
+            });
+            allFindings.push({
+              ...finding,
+              triggeredBy: {
+                kind: 'finding',
+                id: probe.id,
+                reason: 'Composed probe targeting leaked intelligence',
+              },
+            });
+          } catch (err: unknown) {
+            allFindings.push(errorFinding(probe, sanitizeErrorMessage(err)));
+          }
+        }
+      }
     }
   }
 

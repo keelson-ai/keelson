@@ -112,6 +112,11 @@ export enum ScanTier {
 export interface Turn {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  branches?: {
+    if_complied?: Turn[];
+    if_partial?: Turn[];
+    if_refused?: Turn[];
+  };
 }
 
 export interface Evaluation {
@@ -269,6 +274,8 @@ export interface Finding {
   timestamp: string;
   /** Tactical learning extracted during detection (only present on VULNERABLE findings). */
   learning?: DetectedLearning;
+  /** Structured intelligence extracted from response content (tool names, policies, etc.). */
+  extractedIntel?: ExtractedIntel;
   triggeredBy?: FindingTrigger;
   blastRadius?: FindingBlastRadius;
   reproducibility?: FindingReproducibility;
@@ -559,4 +566,48 @@ export interface ScanConfig {
   concurrency?: number;
   delayMs?: number;
   judge?: JudgeConfig;
+}
+
+// ─── Defense Model Types ────────────────────────────────
+
+export interface FilterPattern {
+  trigger: string;
+  confidence: number;
+  evidence: string[]; // probe IDs
+}
+
+export interface DefenseProfile {
+  triggerWords: string[];
+  safeFramings: string[];
+  undefendedTopics: string[];
+  filterPatterns: FilterPattern[];
+  defenseStrength: number; // 0-1
+  refusalStyle: 'rigid' | 'polite' | 'leaky' | 'inconsistent' | 'unknown';
+}
+
+// ─── Extracted Intelligence ─────────────────────────────
+
+export interface ExtractedIntel {
+  toolNames: string[];
+  policies: string[];
+  capabilities: string[];
+  architectureDetails: string[];
+  confidence: number;
+}
+
+// ─── Strategy Router Types ──────────────────────────────
+
+export type StrategyType =
+  | 'pair'
+  | 'genetic'
+  | 'crescendo'
+  | 'best_of_n'
+  | 'branching'
+  | 'mutations_programmatic'
+  | 'mutations_llm';
+
+export interface StrategyRecommendation {
+  strategy: StrategyType;
+  reason: string;
+  params: Record<string, unknown>;
 }
