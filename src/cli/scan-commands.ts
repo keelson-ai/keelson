@@ -286,6 +286,13 @@ export function registerScanCommands(program: Command): void {
       logger.info(`Write access: ${tp.hasWriteAccess}`);
       logger.info(`Refusal:      ${tp.refusalStyle}`);
 
+      if (result.dossier.summary.length > 0) {
+        logger.info('\n--- Grounded Dossier ---');
+        for (const line of result.dossier.summary) {
+          logger.info(`  ${line}`);
+        }
+      }
+
       const detected = result.agentProfile.capabilities.filter((c) => c.detected);
       if (detected.length > 0) {
         logger.info('\n--- Detected Capabilities ---');
@@ -306,6 +313,12 @@ export function registerScanCommands(program: Command): void {
       for (const cp of result.probePlan.categories) {
         if (cp.probeIds.length > 0) {
           logger.info(`  ${cp.category}: ${cp.probeIds.length} probes (${cp.priority}) — ${cp.rationale}`);
+        }
+      }
+      if (result.probePlan.coverageGaps.length > 0) {
+        logger.info('\n--- Coverage Gaps ---');
+        for (const gap of result.probePlan.coverageGaps) {
+          logger.info(`  ${gap.kind}: ${gap.name} — ${gap.reason}`);
         }
       }
 
@@ -355,6 +368,12 @@ export function registerScanCommands(program: Command): void {
         for (const cp of result.probePlan.categories) {
           if (cp.probeIds.length > 0) {
             lines.push(`| ${cp.category} | ${cp.priority} | ${cp.probeIds.length} | ${cp.rationale} |`);
+          }
+        }
+        if (result.probePlan.coverageGaps.length > 0) {
+          lines.push('', '## Coverage Gaps', '');
+          for (const gap of result.probePlan.coverageGaps) {
+            lines.push(`- **${gap.kind}** ${gap.name}: ${gap.reason}`);
           }
         }
         lines.push('');

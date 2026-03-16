@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { ForethoughtAdapter } from '../../src/adapters/forethought.js';
+import { pw } from '../../src/adapters/playwright-base.js';
 import type { AdapterConfig } from '../../src/types/index.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -61,8 +62,10 @@ function buildFakePw({ sendShouldTimeout = false } = {}) {
     close: vi.fn().mockResolvedValue(undefined),
   };
 
+  // Mock the exported launchBrowser function
+  vi.spyOn(pw, 'launchBrowser').mockResolvedValue(browser);
+
   return {
-    pw: { chromium: { launch: vi.fn().mockResolvedValue(browser) } },
     page,
     frame,
     inputEl,
@@ -75,15 +78,10 @@ function buildFakePw({ sendShouldTimeout = false } = {}) {
   };
 }
 
-function patchPw(adapter: ForethoughtAdapter, pw: any): void {
-  (adapter as any).loadPlaywright = vi.fn().mockResolvedValue(pw);
-}
-
 describe('PlaywrightBaseAdapter — timedOut response', () => {
   it('returns timedOut: true when sendCore throws a timeout error (no adaptive timeout)', async () => {
-    const { pw } = buildFakePw({ sendShouldTimeout: true });
+    buildFakePw({ sendShouldTimeout: true });
     const adapter = new ForethoughtAdapter(makeConfig({ timeout: 50 }));
-    patchPw(adapter, pw);
 
     const result = await adapter.send([{ role: 'user', content: 'test' }]);
 
@@ -94,9 +92,8 @@ describe('PlaywrightBaseAdapter — timedOut response', () => {
 
 describe('PlaywrightBaseAdapter — adaptive timeout', () => {
   it('retries with doubled timeout on first timeout, returns timedOut if both fail', async () => {
-    const { pw } = buildFakePw({ sendShouldTimeout: true });
+    buildFakePw({ sendShouldTimeout: true });
     const adapter = new ForethoughtAdapter(makeConfig({ timeout: 50, browserAdaptiveTimeout: true }));
-    patchPw(adapter, pw);
 
     const result = await adapter.send([{ role: 'user', content: 'test' }]);
 
@@ -107,9 +104,8 @@ describe('PlaywrightBaseAdapter — adaptive timeout', () => {
 
   it('succeeds on retry when second attempt resolves', async () => {
     let attempt = 0;
-    const { pw } = buildFakePw();
+    buildFakePw();
     const adapter = new ForethoughtAdapter(makeConfig({ timeout: 50, browserAdaptiveTimeout: true }));
-    patchPw(adapter, pw);
 
     // Patch sendCore to fail on first call, succeed on second
     const originalSendCore = (adapter as any).sendCore.bind(adapter);
@@ -130,9 +126,8 @@ describe('PlaywrightBaseAdapter — adaptive timeout', () => {
 
 describe('PlaywrightBaseAdapter — fresh context per send', () => {
   it('resets browser context on second send when freshContextPerSend is enabled', async () => {
-    const { pw, contextClose, resetBotCalls } = buildFakePw();
+    const { contextClose, resetBotCalls } = buildFakePw();
     const adapter = new ForethoughtAdapter(makeConfig({ browserFreshContextPerSend: true }));
-    patchPw(adapter, pw);
 
     // First send — normal init
     await adapter.send([{ role: 'user', content: 'first' }]);
@@ -147,9 +142,8 @@ describe('PlaywrightBaseAdapter — fresh context per send', () => {
   });
 
   it('does not reset context when freshContextPerSend is disabled (default)', async () => {
-    const { pw, contextClose, resetBotCalls } = buildFakePw();
+    const { contextClose, resetBotCalls } = buildFakePw();
     const adapter = new ForethoughtAdapter(makeConfig());
-    patchPw(adapter, pw);
 
     await adapter.send([{ role: 'user', content: 'first' }]);
     resetBotCalls();
@@ -162,9 +156,8 @@ describe('PlaywrightBaseAdapter — fresh context per send', () => {
 
 describe('AdapterResponse.timedOut type', () => {
   it('normal response does not have timedOut', async () => {
-    const { pw } = buildFakePw();
+    buildFakePw();
     const adapter = new ForethoughtAdapter(makeConfig());
-    patchPw(adapter, pw);
 
     const result = await adapter.send([{ role: 'user', content: 'hi' }]);
 

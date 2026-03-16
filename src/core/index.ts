@@ -1,6 +1,7 @@
 export { EngagementController, loadEngagementProfile } from './engagement.js';
 export type { EngagementCallbacks } from './engagement.js';
 export { logger, scannerLogger, detectionLogger, adapterLogger, judgeLogger } from './logger.js';
+export { buildTargetDossier, dossierToText, extractToolNames } from './dossier.js';
 export { executeProbe } from './engine.js';
 export type { ExecuteProbeOptions, Observer, TurnCompleteInfo } from './engine.js';
 export {
@@ -27,6 +28,13 @@ export { scoreScan, scoreFinding, scoreToLevel } from './risk-scoring.js';
 export type { ScanRiskScore, FindingRiskScore, RiskLevel } from './risk-scoring.js';
 export { harvestLeakedInfo, detectLeakage, selectCrossfeedProbes, selectLeakageTargetedProbes } from './convergence.js';
 export type { LeakedInfo } from './convergence.js';
+export {
+  buildAttackChain,
+  selectAttackGraphProbes,
+  selectCustomProbeTriggers,
+  generateCustomProbeTemplates,
+  executeCustomProbeWithBranching,
+} from './follow-up.js';
 export { MemoTable, ResponseOutcome, inferTechniques } from './memo.js';
 export { Technique } from '../types/index.js';
 export type { ConversationMemo, CumulativeDisclosureResult, DisclosureInventory } from '../types/index.js';

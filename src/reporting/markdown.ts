@@ -25,6 +25,7 @@ const VERDICT_LABELS: Record<Verdict, string> = {
 const CATEGORY_PREFIXES: Record<string, string> = {
   'Goal Adherence': 'GA',
   'Tool Safety': 'TS',
+  'Business Logic': 'BL',
   'Memory Integrity': 'MI',
   'Content Safety': 'CS',
   'Agentic Security': 'AS',

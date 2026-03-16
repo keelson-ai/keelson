@@ -1,10 +1,22 @@
+import { chromium } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+
 import { BaseAdapter } from './base.js';
 import type { AdapterConfig, AdapterResponse, Turn } from '../types/index.js';
+
+chromium.use(StealthPlugin());
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const DEFAULT_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
+/** Exported so tests can mock via `vi.mock` without touching internals. */
+export const pw = {
+  async launchBrowser(headless: boolean): Promise<any> {
+    return chromium.launch({ headless });
+  },
+};
 
 /**
  * Shared Playwright lifecycle for browser-based adapters.
@@ -19,9 +31,6 @@ const DEFAULT_USER_AGENT =
  *     send, clearing cookies/storage. Essential for targets with server-side
  *     session persistence.
  *   - `browserAdaptiveTimeout`: on timeout, retries once with doubled timeout.
- *
- * Requires `playwright` as an optional peer dependency:
- *   pnpm add playwright && npx playwright install chromium
  */
 export abstract class PlaywrightBaseAdapter extends BaseAdapter {
   protected browser: any = null;
@@ -33,7 +42,6 @@ export abstract class PlaywrightBaseAdapter extends BaseAdapter {
   private readonly preInteraction: string | undefined;
   private readonly freshContextPerSend: boolean;
   private readonly adaptiveTimeout: boolean;
-  private pw: any = null;
 
   constructor(config: AdapterConfig) {
     super({ ...config, baseUrl: config.baseUrl });
@@ -42,21 +50,6 @@ export abstract class PlaywrightBaseAdapter extends BaseAdapter {
     this.preInteraction = config.browserPreInteraction;
     this.freshContextPerSend = config.browserFreshContextPerSend === true;
     this.adaptiveTimeout = config.browserAdaptiveTimeout === true;
-  }
-
-  /** Dynamically import playwright (optional peer dependency). */
-  protected async loadPlaywright(): Promise<any> {
-    if (this.pw) return this.pw;
-    try {
-      const moduleName = 'playwright';
-      this.pw = await import(/* webpackIgnore: true */ moduleName);
-      return this.pw;
-    } catch {
-      throw new Error(
-        'Playwright adapter requires playwright. Install it:\n' +
-          '  pnpm add playwright && npx playwright install chromium',
-      );
-    }
   }
 
   /** Navigate to baseUrl, wait for init, run pre-interaction hook, then onBrowserReady. */
@@ -80,8 +73,7 @@ export abstract class PlaywrightBaseAdapter extends BaseAdapter {
   protected async ensureBrowserCore(): Promise<any> {
     if (this.initialized) return this.page;
 
-    const pw = await this.loadPlaywright();
-    this.browser = await pw.chromium.launch({ headless: this.headless });
+    this.browser = await pw.launchBrowser(this.headless);
     const context = await this.browser.newContext({ userAgent: DEFAULT_USER_AGENT });
     this.page = await context.newPage();
 

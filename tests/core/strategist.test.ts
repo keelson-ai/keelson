@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { AgentType, Priority, adaptPlan, classifyTarget, selectProbes } from '../../src/core/strategist.js';
 import type { ReconResponse, TargetProfile } from '../../src/core/strategist.js';
-import type { Finding, ProbeTemplate } from '../../src/types/index.js';
+import type { Finding, ProbeTemplate, TargetDossier } from '../../src/types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../../src/types/index.js';
 
 function makeRecon(probeType: string, response: string): ReconResponse {
@@ -48,6 +48,42 @@ function makeFinding(category: string, verdict: Verdict): Finding {
     evidence: [{ stepIndex: 0, prompt: 'test', response: 'test', responseTimeMs: 100 }],
     leakageSignals: [],
     timestamp: new Date().toISOString(),
+  };
+}
+
+function makeDossier(): TargetDossier {
+  return {
+    target: 'http://target',
+    verifiedCapabilities: [],
+    tools: [],
+    entities: [],
+    workflows: [
+      {
+        type: 'workflow',
+        name: 'refunds',
+        confidence: 0.9,
+        verified: true,
+        public: false,
+        tags: ['refund', 'billing'],
+        evidence: [],
+      },
+    ],
+    authBoundaries: [
+      {
+        type: 'auth_boundary',
+        name: 'account_verification',
+        confidence: 0.8,
+        verified: true,
+        public: false,
+        tags: ['account', 'verification'],
+        evidence: [],
+      },
+    ],
+    escalationPaths: [],
+    publicFacts: [],
+    privateIndicators: [],
+    baselineFacts: [],
+    summary: ['Workflows: refunds', 'Auth boundaries: account_verification'],
   };
 }
 
@@ -159,6 +195,13 @@ describe('selectProbes', () => {
     const plan = selectProbes(makeProfile({ agentTypes: [AgentType.ToolRich] }), templates);
     expect(plan.totalProbes).toBe(plan.categories.reduce((s, c) => s + c.probeIds.length, 0));
   });
+
+  it('promotes business_logic for grounded support workflows', () => {
+    const plan = selectProbes(makeDossier(), [...templates, makeProbe('BL-001', 'business_logic')]);
+    const bl = plan.categories.find((c) => c.category === 'business_logic');
+    expect(bl?.priority).toBe(Priority.High);
+    expect(plan.coverageGaps.length).toBeGreaterThan(0);
+  });
 });
 
 describe('adaptPlan', () => {
@@ -167,6 +210,7 @@ describe('adaptPlan', () => {
       profile: makeProfile(),
       categories: categories.map((c) => ({ ...c, rationale: 'test' })),
       totalProbes: categories.reduce((s, c) => s + c.probeIds.length, 0),
+      coverageGaps: [],
     };
   }
 

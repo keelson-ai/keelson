@@ -132,6 +132,8 @@ export function evaluateInfraProbe(response: string, probe: InfraProbe): InfraFi
       `Target disclosed information in response to infrastructure probe '${probe.name}'. ` +
       `Matched indicators: ${hits.join(', ')}`,
     evidence: response.slice(0, 500),
+    prompt: probe.prompt,
+    matchedIndicators: hits,
     remediation: probe.remediation,
     timestamp: new Date().toISOString(),
   };

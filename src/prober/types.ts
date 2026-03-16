@@ -7,7 +7,9 @@ export interface AgentCapability {
   detected: boolean;
   probePrompt: string;
   responseExcerpt: string;
+  responseText?: string;
   confidence: number;
+  matchedIndicators?: string[];
 }
 
 export interface AgentProfile {
@@ -30,6 +32,8 @@ export interface InfraFinding {
   category: string;
   description: string;
   evidence: string;
+  prompt?: string;
+  matchedIndicators?: string[];
   remediation: string;
   timestamp: string;
 }

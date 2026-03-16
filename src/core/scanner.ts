@@ -6,6 +6,15 @@ import { EngagementController, loadEngagementProfile } from './engagement.js';
 import type { EngagementCallbacks } from './engagement.js';
 import { executeProbe } from './engine.js';
 import type { Observer } from './engine.js';
+import {
+  applyTriggerMetadata,
+  buildAttackChain,
+  executeCustomProbeWithBranching,
+  generateCustomProbeTemplates,
+  harvestedPivots,
+  selectAttackGraphProbes,
+  selectCustomProbeTriggers,
+} from './follow-up.js';
 import { scannerLogger } from './logger.js';
 import { MemoTable } from './memo.js';
 import { applyPreset } from './presets.js';
@@ -13,7 +22,15 @@ import { RateLimitTracker } from './rate-limiter.js';
 import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { summarize } from './summarize.js';
 import { loadProbes } from './templates.js';
-import type { Adapter, EngagementProfile, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
+import type {
+  Adapter,
+  CoverageGap,
+  EngagementProfile,
+  Finding,
+  ProbeTemplate,
+  ScanResult,
+  TargetDossier,
+} from '../types/index.js';
 import { ScoringMethod, Severity, Verdict } from '../types/index.js';
 import { generateScanId } from '../utils/id.js';
 import { sleep } from '../utils.js';
@@ -58,6 +75,8 @@ export interface ScanOptions {
   maxPasses?: number;
   /** Callback fired at the start/end of each convergence pass. */
   onPass?: (passNumber: number, description: string) => void;
+  dossier?: TargetDossier;
+  coverageGaps?: CoverageGap[];
 }
 
 function filterProbes(probes: ProbeTemplate[], categories?: string[], severities?: Severity[]): ProbeTemplate[] {
@@ -146,6 +165,11 @@ async function executeSequential(
         delayMs: effectiveDelay,
         judge: options.judge,
         observer: options.observer,
+        judgeContext: {
+          dossier: options.dossier,
+          selectedBecause: 'Selected from the sequential scan queue.',
+          baselineFacts: options.dossier?.baselineFacts,
+        },
         reframeOnRefusal: options.reframeOnRefusal,
         adaptiveFollowUp: options.adaptiveFollowUp,
         maxAdaptiveTurns: options.maxAdaptiveTurns,
@@ -194,6 +218,11 @@ async function executeConcurrent(
           delayMs: options.delayMs,
           judge: options.judge,
           observer: options.observer,
+          judgeContext: {
+            dossier: options.dossier,
+            selectedBecause: 'Selected from the concurrent scan queue.',
+            baselineFacts: options.dossier?.baselineFacts,
+          },
           reframeOnRefusal: options.reframeOnRefusal,
           adaptiveFollowUp: options.adaptiveFollowUp,
           maxAdaptiveTurns: options.maxAdaptiveTurns,
@@ -242,10 +271,13 @@ async function runFollowUpPasses(
 
     const crossfeed = selectCrossfeedProbes(vulnFindings, ctx.allProbes, executedIds);
     const leakageTargeted = selectLeakageTargetedProbes(leakedInfo, ctx.allProbes, executedIds);
+    const attackChain = buildAttackChain(ctx.options.dossier, allFindings);
+    const graphTargeted = selectAttackGraphProbes(attackChain, ctx.allProbes, executedIds);
 
     const nextMap = new Map<string, ProbeTemplate>();
     for (const t of crossfeed) nextMap.set(t.id, t);
     for (const t of leakageTargeted) nextMap.set(t.id, t);
+    for (const t of graphTargeted) nextMap.set(t.id, t);
     const nextProbes = [...nextMap.values()];
 
     if (nextProbes.length === 0) {
@@ -255,7 +287,7 @@ async function runFollowUpPasses(
 
     ctx.options.onPass?.(
       passNum,
-      `Cross-feed pass: ${crossfeed.length} category-related + ${leakageTargeted.length} leakage-targeted = ${nextProbes.length} probes`,
+      `Cross-feed pass: ${crossfeed.length} category-related + ${leakageTargeted.length} leakage-targeted + ${graphTargeted.length} graph-targeted = ${nextProbes.length} probes`,
     );
 
     const passFindings =
@@ -282,6 +314,36 @@ async function runFollowUpPasses(
     if (newVulns === 0 && genuinelyNew.length === 0) {
       ctx.options.onPass?.(passNum, 'Converged: no new findings in this pass');
       break;
+    }
+
+    if (ctx.options.judge) {
+      const triggers = selectCustomProbeTriggers(ctx.options.dossier, ctx.options.coverageGaps ?? [], passFindings);
+      if (triggers.length > 0) {
+        const generated = await generateCustomProbeTemplates(
+          ctx.options.judge,
+          triggers.slice(0, 2),
+          passNum * 10 + 1,
+          2,
+        );
+        for (const { probe, trigger } of generated) {
+          const finding = await executeCustomProbeWithBranching(
+            probe,
+            ctx.adapter,
+            ctx.options.judge,
+            ctx.options.observer,
+            ctx.options.delayMs,
+            trigger,
+            {
+              dossier: ctx.options.dossier,
+              selectedBecause: trigger.reason,
+              baselineFacts: ctx.options.dossier?.baselineFacts,
+              priorPivots: harvestedPivots(allFindings),
+            },
+          );
+          allFindings.push(applyTriggerMetadata(finding, trigger));
+          executedIds.add(finding.probeId);
+        }
+      }
     }
   }
 }
@@ -338,6 +400,11 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
           delayMs: options.delayMs,
           judge: options.judge,
           observer: options.observer,
+          judgeContext: {
+            dossier: options.dossier,
+            selectedBecause: 'Selected from the engagement scan queue.',
+            baselineFacts: options.dossier?.baselineFacts,
+          },
           reframeOnRefusal: options.reframeOnRefusal,
           adaptiveFollowUp: options.adaptiveFollowUp,
           maxAdaptiveTurns: options.maxAdaptiveTurns,
@@ -368,6 +435,9 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
       summary: summarize(findings),
       memo: memo.entries,
       cumulativeDisclosure: memo.cumulativeDisclosure(),
+      dossier: options.dossier,
+      coverageGaps: options.coverageGaps,
+      attackChain: buildAttackChain(options.dossier, findings),
     };
   }
 
@@ -466,5 +536,8 @@ export async function scan(target: string, adapter: Adapter, options: ScanOption
     summary: summarize(allFindings),
     memo: memo.entries,
     cumulativeDisclosure: memo.cumulativeDisclosure(),
+    dossier: options.dossier,
+    coverageGaps: options.coverageGaps,
+    attackChain: buildAttackChain(options.dossier, allFindings),
   };
 }

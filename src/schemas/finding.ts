@@ -34,6 +34,17 @@ export const findingSchema = z.object({
   ),
   evidence: z.array(evidenceItemSchema).default([]),
   leakage_signals: z.array(leakageSignalSchema).default([]),
+  triggered_by: z
+    .object({
+      kind: z.enum(['probe', 'finding', 'coverage_gap', 'attack_graph']),
+      id: z.string().min(1),
+      reason: z.string().min(1),
+      pivot: z.string().optional(),
+    })
+    .optional(),
+  blast_radius: z.enum(['single_response', 'single_tool', 'workflow', 'cross_boundary', 'systemic']).optional(),
+  reproducibility: z.enum(['deterministic', 'likely_reproducible', 'possibly_stochastic']).optional(),
+  specificity: z.enum(['target_specific', 'likely_public', 'generic_example', 'hallucination_risk']).optional(),
   timestamp: z.string(),
 });
 

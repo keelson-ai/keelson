@@ -10,10 +10,20 @@
  *   5. Mid-scan adaptation
  */
 
+import { buildTargetDossier } from './dossier.js';
 import { EngagementController, loadEngagementProfile } from './engagement.js';
 import type { EngagementCallbacks } from './engagement.js';
 import { executeProbe } from './engine.js';
 import type { ExecuteProbeOptions, Observer } from './engine.js';
+import {
+  applyTriggerMetadata,
+  buildAttackChain,
+  executeCustomProbeWithBranching,
+  generateCustomProbeTemplates,
+  harvestedPivots,
+  selectAttackGraphProbes,
+  selectCustomProbeTriggers,
+} from './follow-up.js';
 import { MemoTable, inferTechniques } from './memo.js';
 import { errorFinding, sanitizeErrorMessage } from './scan-helpers.js';
 import { AgentType, adaptPlan, classifyTarget, selectProbes } from './strategist.js';
@@ -23,7 +33,7 @@ import { loadProbes } from './templates.js';
 import { discoverCapabilities } from '../prober/discovery.js';
 import { runInfrastructureRecon } from '../prober/infrastructure.js';
 import type { AgentProfile, InfraFinding } from '../prober/types.js';
-import type { Adapter, EngagementProfile, Finding, ProbeTemplate, ScanResult } from '../types/index.js';
+import type { Adapter, EngagementProfile, Finding, ProbeTemplate, ScanResult, TargetDossier } from '../types/index.js';
 import { Technique, Verdict } from '../types/index.js';
 import { generateScanId } from '../utils/id.js';
 
@@ -33,6 +43,7 @@ export interface ReconResult {
   targetUrl: string;
   infraFindings: InfraFinding[];
   agentProfile: AgentProfile;
+  dossier: TargetDossier;
   targetProfile: TargetProfile;
   probePlan: ProbePlan;
   completedAt: string;
@@ -194,6 +205,7 @@ async function executeSession(
   memo: MemoTable,
   currentOffset: number,
   total: number,
+  dossier?: TargetDossier,
 ): Promise<Finding[]> {
   adapter.resetSession?.();
 
@@ -207,6 +219,10 @@ async function executeSession(
         delayMs: options.delayMs,
         judge: options.judge,
         observer: options.observer,
+        judgeContext: {
+          dossier,
+          selectedBecause: 'Selected by dossier-driven smart-scan planner.',
+        },
       };
       finding = await executeProbe(probe, adapter, execOptions);
     } catch (err: unknown) {
@@ -279,24 +295,25 @@ export async function runRecon(target: string, adapter: Adapter, options: SmartS
   adapter.resetSession?.();
 
   // --- Phase 1: Capability Discovery ---
-  const { profile: agentProfile, reconResponses } = await runDiscovery(adapter, options);
+  const { profile: agentProfile } = await runDiscovery(adapter, options);
   adapter.resetSession?.();
 
   // --- Phase 2: Target Classification ---
   options.onPhase?.('classify', 'Classifying target agent type');
 
-  const targetProfile = classifyTarget(reconResponses);
+  const dossier = buildTargetDossier(target, agentProfile, infraFindings);
+  const dossierProfile = classifyTarget(dossier);
 
   options.onPhase?.(
     'profile',
-    `Type: ${targetProfile.agentTypes.join(', ')} | ` +
-      `Tools: ${targetProfile.detectedTools.slice(0, 5).join(', ') || 'none detected'} | ` +
-      `Memory: ${targetProfile.hasMemory} | Refusal: ${targetProfile.refusalStyle}`,
+    `Type: ${dossierProfile.agentTypes.join(', ')} | ` +
+      `Tools: ${dossierProfile.detectedTools.slice(0, 5).join(', ') || 'none detected'} | ` +
+      `Memory: ${dossierProfile.hasMemory} | Refusal: ${dossierProfile.refusalStyle}`,
   );
 
   // --- Phase 3: Probe Selection ---
   const allTemplates = await loadProbes(options.probesDir);
-  const probePlan = selectProbes(targetProfile, allTemplates);
+  const probePlan = selectProbes(dossier, allTemplates);
 
   options.onPhase?.('plan', `Selected ${probePlan.totalProbes} probes (from ${allTemplates.length} available)`);
   for (const cp of probePlan.categories) {
@@ -312,7 +329,8 @@ export async function runRecon(target: string, adapter: Adapter, options: SmartS
     targetUrl: target,
     infraFindings,
     agentProfile,
-    targetProfile,
+    dossier,
+    targetProfile: dossierProfile,
     probePlan,
     completedAt: new Date().toISOString(),
   };
@@ -365,28 +383,29 @@ export async function runSmartScan(
   const startedAt = new Date().toISOString();
 
   // --- Phase 0: Infrastructure Recon ---
-  await runInfraRecon(adapter, options);
+  const infraFindings = await runInfraRecon(adapter, options);
   adapter.resetSession?.();
 
   // --- Phase 1: Discovery ---
-  const { reconResponses } = await runDiscovery(adapter, options);
+  const { profile: discoveredProfile } = await runDiscovery(adapter, options);
   adapter.resetSession?.();
 
   // --- Phase 2: Classification ---
   options.onPhase?.('classify', 'Classifying target agent type');
 
-  const targetProfile = classifyTarget(reconResponses);
+  const groundedDossier = buildTargetDossier(target, discoveredProfile, infraFindings);
+  const groundedProfile = classifyTarget(groundedDossier);
 
   options.onPhase?.(
     'profile',
-    `Type: ${targetProfile.agentTypes.join(', ')} | ` +
-      `Tools: ${targetProfile.detectedTools.slice(0, 5).join(', ') || 'none detected'} | ` +
-      `Memory: ${targetProfile.hasMemory} | Refusal: ${targetProfile.refusalStyle}`,
+    `Type: ${groundedProfile.agentTypes.join(', ')} | ` +
+      `Tools: ${groundedProfile.detectedTools.slice(0, 5).join(', ') || 'none detected'} | ` +
+      `Memory: ${groundedProfile.hasMemory} | Refusal: ${groundedProfile.refusalStyle}`,
   );
 
   // --- Phase 3: Probe Selection ---
   const allTemplates = await loadProbes(options.probesDir);
-  let plan = selectProbes(targetProfile, allTemplates);
+  let plan = selectProbes(groundedDossier, allTemplates);
 
   options.onPhase?.('plan', `Selected ${plan.totalProbes} probes (from ${allTemplates.length} available)`);
   for (const cp of plan.categories) {
@@ -413,6 +432,8 @@ export async function runSmartScan(
       completedAt: new Date().toISOString(),
       findings: [],
       summary: summarize([]),
+      dossier: groundedDossier,
+      coverageGaps: plan.coverageGaps,
     };
   }
 
@@ -422,7 +443,7 @@ export async function runSmartScan(
   if (!engagementProfile && options.engagement) {
     if (options.engagement === 'auto') {
       // Auto-select engagement profile based on target classification
-      const profileId = selectEngagementProfile(targetProfile.agentTypes);
+      const profileId = selectEngagementProfile(groundedProfile.agentTypes);
       try {
         engagementProfile = await loadEngagementProfile(profileId);
         options.onPhase?.('engagement', `Auto-selected engagement profile: ${profileId}`);
@@ -491,6 +512,8 @@ export async function runSmartScan(
       summary: summarize(allFindings),
       memo: memo.entries,
       cumulativeDisclosure: memo.cumulativeDisclosure(),
+      dossier: groundedDossier,
+      coverageGaps: plan.coverageGaps,
     };
   }
 
@@ -533,7 +556,15 @@ export async function runSmartScan(
       }
     }
 
-    const sessionFindings = await executeSession(session, adapter, options, memo, currentOffset, total);
+    const sessionFindings = await executeSession(
+      session,
+      adapter,
+      options,
+      memo,
+      currentOffset,
+      total,
+      groundedDossier,
+    );
     allFindings.push(...sessionFindings);
     currentOffset += session.length;
 
@@ -563,6 +594,60 @@ export async function runSmartScan(
     }
   }
 
+  const attackChain = buildAttackChain(groundedDossier, allFindings);
+  const executedIds = new Set(allFindings.map((finding) => finding.probeId));
+
+  if (options.judge) {
+    const attackGraphTemplates = selectAttackGraphProbes(attackChain, allTemplates, executedIds);
+    const triggers = selectCustomProbeTriggers(groundedDossier, plan.coverageGaps, allFindings);
+
+    if (triggers.length > 0) {
+      const generated = await generateCustomProbeTemplates(options.judge, triggers.slice(0, 10), 1, 10);
+      for (const { probe, trigger } of generated) {
+        const judgeContext = {
+          dossier: groundedDossier,
+          selectedBecause: trigger.reason,
+          baselineFacts: groundedDossier.baselineFacts,
+          priorPivots: harvestedPivots(allFindings),
+        };
+        const finding = await executeCustomProbeWithBranching(
+          probe,
+          adapter,
+          options.judge,
+          options.observer,
+          options.delayMs,
+          trigger,
+          judgeContext,
+        );
+        allFindings.push(applyTriggerMetadata(finding, trigger));
+        executedIds.add(finding.probeId);
+      }
+    }
+
+    for (const probe of attackGraphTemplates.slice(0, 10)) {
+      const finding = await executeProbe(probe, adapter, {
+        delayMs: options.delayMs,
+        judge: options.judge,
+        observer: options.observer,
+        judgeContext: {
+          dossier: groundedDossier,
+          selectedBecause: 'Selected from attack-graph neighbors after dossier and finding correlation.',
+          baselineFacts: groundedDossier.baselineFacts,
+          priorPivots: harvestedPivots(allFindings),
+        },
+      });
+      allFindings.push({
+        ...finding,
+        triggeredBy: {
+          kind: 'attack_graph',
+          id: probe.id,
+          reason: 'Attack-graph follow-up',
+          pivot: probe.name,
+        },
+      });
+    }
+  }
+
   return {
     scanId: generateScanId(),
     target,
@@ -572,5 +657,8 @@ export async function runSmartScan(
     summary: summarize(allFindings),
     memo: memo.entries,
     cumulativeDisclosure: memo.cumulativeDisclosure(),
+    dossier: groundedDossier,
+    coverageGaps: plan.coverageGaps,
+    attackChain,
   };
 }
