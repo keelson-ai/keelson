@@ -10,6 +10,7 @@ import { generateReport } from '../reporting/index.js';
 import { Store } from '../state/index.js';
 import type { AdapterConfig, Finding, ScanResult, ScanSummary } from '../types/index.js';
 import { Severity, Verdict } from '../types/index.js';
+import { datePrefix } from '../utils/id.js';
 import { truncate } from '../utils.js';
 
 /** Build a standard AdapterConfig from common CLI options. */
@@ -62,11 +63,12 @@ export function withStore<T>(fn: (store: Store) => T): T {
 /** Default output directory. */
 export const DEFAULT_OUTPUT_DIR = join(homedir(), '.keelson', 'output');
 
-/** Write scan result to output directory. Returns the file path written. */
+/** Write scan result to a date-based subdirectory. Returns the file path written. */
 export async function writeScanOutput(result: ScanResult, format: string, outputDir: string): Promise<string> {
-  await mkdir(outputDir, { recursive: true });
+  const dateDir = join(outputDir, datePrefix());
+  await mkdir(dateDir, { recursive: true });
   const ext = format === 'markdown' ? 'md' : format;
-  const filePath = join(outputDir, `${result.scanId}.${ext}`);
+  const filePath = join(dateDir, `${result.scanId}.${ext}`);
   await writeReport(result, format, filePath);
   return filePath;
 }

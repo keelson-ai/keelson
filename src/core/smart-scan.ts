@@ -432,7 +432,7 @@ export async function runSmartScan(
   if (allProbeIds.length === 0) {
     options.onPhase?.('done', 'No probes selected for this target profile');
     return {
-      scanId: generateScanId(),
+      scanId: generateScanId('smart'),
       target,
       startedAt,
       completedAt: new Date().toISOString(),
@@ -510,7 +510,7 @@ export async function runSmartScan(
     );
 
     return {
-      scanId: generateScanId(),
+      scanId: generateScanId('smart'),
       target,
       startedAt,
       completedAt: new Date().toISOString(),
@@ -735,7 +735,7 @@ export async function runSmartScan(
   }
 
   return {
-    scanId: generateScanId(),
+    scanId: generateScanId('smart'),
     target,
     startedAt,
     completedAt: new Date().toISOString(),

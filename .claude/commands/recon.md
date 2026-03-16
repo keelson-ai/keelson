@@ -43,7 +43,7 @@ Discover target capabilities, classify the agent, and build a target profile wit
 
 ### Step 6: Save Output
 
-10. **Save the recon report** to `reports/recon-YYYY-MM-DD-HHMMSS.md`.
+10. **Save the recon report** to `reports/YYYY-MM-DD/recon-HHMMSS-<target-slug>.md` (create the date folder if needed).
 
 11. **Display summary** to the user with the target profile, detected capabilities, and recommended probe plan.
 

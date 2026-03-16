@@ -169,7 +169,7 @@ Guidelines for what constitutes a tactical learning worth recording:
    - **Persona effectiveness**: Which persona elements worked, which didn't
    - **Key moments timeline**: Turning points — when trust broke through, when the first leak happened, when a refusal pattern cracked
    - Standard sections: executive summary, target profile, findings, recommendations, OWASP mapping
-2. Save report to `reports/erode-YYYY-MM-DD-HHMMSS.md`.
+2. Save report to `reports/YYYY-MM-DD/erode-HHMMSS-<target-slug>.md` (create the date folder if needed).
 3. Save findings and learnings to a JSON file:
 
    ```bash

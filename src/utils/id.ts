@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-function datePrefix(): string {
+export function datePrefix(): string {
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -12,8 +12,8 @@ function hexSuffix(): string {
   return randomBytes(3).toString('hex');
 }
 
-export function generateScanId(): string {
-  return `scan-${datePrefix()}-${hexSuffix()}`;
+export function generateScanId(type: string = 'scan'): string {
+  return `${type}-${datePrefix()}-${hexSuffix()}`;
 }
 
 export function generateCampaignId(): string {
