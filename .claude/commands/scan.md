@@ -65,6 +65,6 @@ Otherwise, follow the recon agent's full methodology:
     - Recommendations prioritized by actual risk
     - OWASP LLM Top 10 mapping
 
-13. **Save report** to `reports/scan-YYYY-MM-DD-HHMMSS.md`.
+13. **Save report** to `reports/YYYY-MM-DD/scan-HHMMSS-<target-slug>.md` (create the date folder if needed).
 
 14. **Display summary** to the user with counts, critical findings, and how many probes were skipped.

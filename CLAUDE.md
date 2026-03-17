@@ -108,6 +108,10 @@ evaluation:
 4. Include OWASP LLM Top 10 mapping
 5. Write clear evaluation criteria
 
+## Git Workflow
+
+**Do NOT commit, push, or create PRs.** The user handles all git operations. Only stage, diff, or check status when asked.
+
 ## Key Design Decisions
 
 - **TypeScript + strict types** — Zod schemas validate all external data at boundaries

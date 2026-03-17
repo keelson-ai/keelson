@@ -48,7 +48,7 @@ import type {
   ScanResult,
 } from '../types/index.js';
 import { Verdict } from '../types/index.js';
-import { generateCampaignId } from '../utils/id.js';
+import { generateCampaignId, generateScanId } from '../utils/id.js';
 import { truncate } from '../utils.js';
 
 // ─── Phase Mapping ──────────────────────────────────────
@@ -794,7 +794,7 @@ export function registerAdvancedCommands(program: Command): void {
         // 7. Build ScanResult for output compatibility
         const { summarize } = await import('../core/summarize.js');
         const scanResult: ScanResult = {
-          scanId: `erosion-${Date.now()}`,
+          scanId: generateScanId('erode'),
           target: opts.target,
           startedAt,
           completedAt: new Date().toISOString(),

@@ -1,4 +1,4 @@
-import type { Finding, ProbeTemplate } from '../types/index.js';
+import type { ExtractedIntel, Finding, ProbeTemplate } from '../types/index.js';
 import { compareBySeverity } from '../utils.js';
 
 const MAX_CROSSFEED_PROBES = 20;
@@ -156,6 +156,39 @@ export function selectCrossfeedProbes(
     .sort(compareBySeverity);
 
   return candidates.slice(0, MAX_CROSSFEED_PROBES);
+}
+
+const MAX_INTEL_PROBES = 15;
+
+// Intel type → probe categories mapping
+const INTEL_CATEGORY_MAP: ReadonlyMap<keyof ExtractedIntel, readonly string[]> = new Map([
+  ['toolNames', ['tool_safety', 'permission_boundaries']],
+  ['policies', ['goal_adherence', 'cognitive_architecture']],
+  ['capabilities', ['tool_safety', 'execution_safety']],
+  ['architectureDetails', ['conversational_exfiltration']],
+]);
+
+export function selectIntelTargetedProbes(
+  intel: ExtractedIntel,
+  allTemplates: ProbeTemplate[],
+  alreadyExecuted: Set<string>,
+): ProbeTemplate[] {
+  const targetCategories = new Set<string>();
+
+  for (const [field, categories] of INTEL_CATEGORY_MAP) {
+    const values = intel[field];
+    if (Array.isArray(values) && values.length > 0) {
+      for (const cat of categories) targetCategories.add(cat);
+    }
+  }
+
+  if (targetCategories.size === 0) return [];
+
+  const candidates = allTemplates
+    .filter((t) => !alreadyExecuted.has(t.id) && targetCategories.has(t.category))
+    .sort(compareBySeverity);
+
+  return candidates.slice(0, MAX_INTEL_PROBES);
 }
 
 export function selectLeakageTargetedProbes(

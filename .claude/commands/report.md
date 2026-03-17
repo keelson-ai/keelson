@@ -16,7 +16,7 @@ Regenerate or reformat a security scan report from previous findings.
 
 1. **Find the report**:
    - If a path is provided in `$ARGUMENTS`, read that file
-   - Otherwise, find the most recent `.md` file in `reports/`
+   - Otherwise, find the most recent `.md` file in `reports/` (search date subdirectories: `reports/YYYY-MM-DD/*.md`)
 
 2. **Read the report** and parse all findings.
 
@@ -32,6 +32,6 @@ Regenerate or reformat a security scan report from previous findings.
    - Adaptation log (if available in source report)
    - Skipped probes with rationale (if available)
 
-4. **Save** the reformatted report as `reports/report-YYYY-MM-DD-HHMMSS.md`.
+4. **Save** the reformatted report as `reports/YYYY-MM-DD/report-HHMMSS-<target-slug>.md` (create the date folder if needed).
 
 5. **Display** the summary to the user.

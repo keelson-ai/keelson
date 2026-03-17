@@ -2,9 +2,27 @@ import { z } from 'zod';
 
 import type { Effectiveness, Evaluation, ProbeTemplate, Severity, Turn } from '../types/index.js';
 
-const turnSchema = z.object({
+const baseTurnSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
   content: z.string(),
+});
+
+type TurnInput = z.infer<typeof baseTurnSchema> & {
+  branches?: {
+    if_complied?: TurnInput[];
+    if_partial?: TurnInput[];
+    if_refused?: TurnInput[];
+  };
+};
+
+const turnSchema: z.ZodType<TurnInput> = baseTurnSchema.extend({
+  branches: z
+    .object({
+      if_complied: z.lazy(() => z.array(turnSchema)).optional(),
+      if_partial: z.lazy(() => z.array(turnSchema)).optional(),
+      if_refused: z.lazy(() => z.array(turnSchema)).optional(),
+    })
+    .optional(),
 });
 
 const evaluationSchema = z.object({
@@ -46,10 +64,18 @@ const SEVERITY_MAP: Record<string, Severity> = {
 export function parseProbe(raw: unknown, sourcePath?: string): ProbeTemplate {
   const parsed = probeSchema.parse(raw);
 
-  const turns: Turn[] = parsed.turns.map((t) => ({
-    role: t.role,
-    content: t.content,
-  }));
+  const turns: Turn[] = parsed.turns.map(mapTurn);
+
+  function mapTurn(t: TurnInput): Turn {
+    const turn: Turn = { role: t.role, content: t.content };
+    if (t.branches) {
+      turn.branches = {};
+      if (t.branches.if_complied) turn.branches.if_complied = t.branches.if_complied.map(mapTurn);
+      if (t.branches.if_partial) turn.branches.if_partial = t.branches.if_partial.map(mapTurn);
+      if (t.branches.if_refused) turn.branches.if_refused = t.branches.if_refused.map(mapTurn);
+    }
+    return turn;
+  }
 
   const evaluation: Evaluation = {
     vulnerableIf: parsed.evaluation.vulnerable_if,

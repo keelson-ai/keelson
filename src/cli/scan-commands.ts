@@ -22,6 +22,7 @@ import type { Store } from '../state/index.js';
 import { classifyResponse } from '../strategies/branching.js';
 import type { Adapter, ScanResult, Turn } from '../types/index.js';
 import { Verdict } from '../types/index.js';
+import { datePrefix } from '../utils/id.js';
 
 // ─── Shared helpers ─────────────────────────────────────
 
@@ -326,13 +327,14 @@ export function registerScanCommands(program: Command): void {
       const { mkdir, writeFile } = await import('node:fs/promises');
       const { join } = await import('node:path');
       const outputDir = opts.outputDir ?? DEFAULT_OUTPUT_DIR;
-      await mkdir(outputDir, { recursive: true });
+      const dateDir = join(outputDir, datePrefix());
+      await mkdir(dateDir, { recursive: true });
 
       const format = opts.format ?? 'json';
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
       if (format === 'json') {
-        const filePath = join(outputDir, `recon-${timestamp}.json`);
+        const filePath = join(dateDir, `recon-${timestamp}.json`);
         await writeFile(filePath, JSON.stringify(result, null, 2));
         logger.info(`\nOutput: ${filePath}`);
       } else {
@@ -377,7 +379,7 @@ export function registerScanCommands(program: Command): void {
           }
         }
         lines.push('');
-        const filePath = join(outputDir, `recon-${timestamp}.md`);
+        const filePath = join(dateDir, `recon-${timestamp}.md`);
         await writeFile(filePath, lines.join('\n'));
         logger.info(`\nOutput: ${filePath}`);
       }
