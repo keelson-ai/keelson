@@ -303,6 +303,7 @@ export function combinedDetect(patternResult: DetectionResult, judgeResult: Dete
       confidence: judgeResult.confidence,
       reasoning: `Pattern flagged vulnerable but judge overrides to safe: ${judgeResult.reasoning}`,
       method: ScoringMethod.Combined,
+      ...merged,
     };
   }
 

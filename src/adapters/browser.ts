@@ -120,7 +120,7 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
   }
 
   /** Click a launcher element, handling iframes (e.g. Gorgias chat-button is an iframe). */
-  private async clickLauncher(launcher: any): Promise<void> {
+  private async clickLauncher(launcher: any /* ElementHandle */): Promise<void> {
     const tag = await launcher.evaluate((el: Element) => el.tagName);
     if (tag === 'IFRAME') {
       // Click inside the iframe (some launchers like Gorgias are iframes)
@@ -403,7 +403,11 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
    * Compares page innerText before/after sending and extracts new content,
    * filtering out the user's own message.
    */
-  private async waitForTextDiff(ctx: any, beforeText: string, sentMessage: string): Promise<string> {
+  private async waitForTextDiff(
+    ctx: any /* Page | FrameLocator */,
+    beforeText: string,
+    sentMessage: string,
+  ): Promise<string> {
     const timeout = this.config.timeout ?? 60_000;
     const deadline = Date.now() + timeout;
     const stabilityMs = Math.min(this.responseStabilityMs, 3000);
@@ -415,8 +419,24 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
       const currentText: string = await ctx.evaluate(() => document.body.innerText?.trim() ?? '').catch(() => '');
       if (currentText === beforeText) continue;
 
-      // Extract new text that wasn't there before
-      const newText = currentText.length > beforeText.length ? currentText.substring(beforeText.length).trim() : '';
+      let newText: string;
+      if (currentText.length > beforeText.length) {
+        newText = currentText.substring(beforeText.length).trim();
+      } else {
+        // Text changed but didn't grow — find content not present in beforeText
+        const beforeLines = new Set(
+          beforeText
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean),
+        );
+        newText = currentText
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l && !beforeLines.has(l))
+          .join('\n')
+          .trim();
+      }
       if (!newText) continue;
 
       // Remove the user's sent message from the new text

@@ -169,10 +169,10 @@ function dossierArtifactTriggers(
   if (!dossier) return [];
 
   const text = responseText.toLowerCase();
-  const candidates: Array<{ name: string; categories: string[] }> = [];
-  for (const { key, categories } of DOSSIER_CATEGORY_MAP) {
+  const candidates: Array<{ name: string; nodeType: string; categories: string[] }> = [];
+  for (const { key, nodeType, categories } of DOSSIER_CATEGORY_MAP) {
     for (const item of dossier[key]) {
-      candidates.push({ name: item.name, categories });
+      candidates.push({ name: item.name, nodeType, categories });
     }
   }
 
@@ -184,20 +184,23 @@ function dossierArtifactTriggers(
       const normalized = literal.replace(/_/g, ' ');
       return text.includes(literal) || text.includes(normalized);
     })
-    .map((candidate) => ({
-      id: `finding-${finding.probeId}-artifact-${candidate.name}`,
-      name: candidate.name,
-      categories: candidate.categories,
-      reason: `Finding ${finding.probeId} referenced ${candidate.name}`,
-      pivot: candidate.name,
-      specificity,
-      source: {
-        kind: 'finding' as const,
-        id: finding.probeId,
-        reason: `Finding ${finding.probeId} referenced ${candidate.name}`,
+    .map((candidate) => {
+      const reason = `Finding ${finding.probeId} referenced ${candidate.nodeType} ${candidate.name}`;
+      return {
+        id: `finding-${finding.probeId}-artifact-${candidate.name}`,
+        name: candidate.name,
+        categories: candidate.categories,
+        reason,
         pivot: candidate.name,
-      },
-    }));
+        specificity,
+        source: {
+          kind: 'finding' as const,
+          id: finding.probeId,
+          reason,
+          pivot: candidate.name,
+        },
+      };
+    });
 }
 
 function findingTriggers(dossier: TargetDossier | undefined, findings: Finding[]): FollowUpTrigger[] {
