@@ -40,6 +40,7 @@
     "pino": "10.3.1",
     "playwright-extra": "4.3.6",
     "proxy-agent": "7.0.0",
+    "puppeteer-extra-plugin-stealth": "2.11.2",
     "react": "19.2.4",
     "yaml": "2.8.2",
     "zod": "4.3.6"

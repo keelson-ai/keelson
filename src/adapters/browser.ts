@@ -43,6 +43,29 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
     '.prose',
     '.markdown',
     '[class*="markdown"]',
+    // Gorgias
+    '[class*="message-window-iframe"]',
+    '[data-testid="message-bubble"]',
+    // Zendesk
+    '[data-garden-id="chat.message"]',
+    '[class*="StyledMessage"]',
+    '.zd-chat-message',
+    // Drift
+    '[class*="drift-widget-message"]',
+    // Tidio
+    '[class*="message-visitor"]',
+    '[class*="message-operator"]',
+    // Ada
+    '[class*="ada-chat-message"]',
+    // LivePerson / generic
+    '[class*="lp_message"]',
+    '[class*="chat-message"]',
+    '[class*="chatMessage"]',
+    '[class*="bot-response"]',
+    '[class*="botResponse"]',
+    // Microsoft Bot Framework / WebChat
+    '[class*="webchat__bubble"]',
+    '[class*="ac-textBlock"]',
   ];
 
   constructor(config: AdapterConfig) {
@@ -54,15 +77,41 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
     this.launcherSelector = config.browserLauncherSelector;
   }
 
+  /** Common launcher selectors tried when no explicit launcher is configured. */
+  private static readonly LAUNCHER_CANDIDATES = [
+    // Gorgias
+    'iframe#chat-button',
+    // Intercom
+    '.intercom-lightweight-app-launcher',
+    'div[class*="intercom-launcher"]',
+    // Zendesk
+    'iframe[title*="chat" i]',
+    '[data-testid="launcher"]',
+    // Drift
+    '#drift-widget-container iframe',
+    // Tidio
+    '#tidio-chat-iframe',
+    // Ada
+    '#ada-chat-button',
+    // Generic
+    '[class*="chat-launcher"]',
+    '[class*="chat-button"]',
+    '[class*="chatLauncher"]',
+    '[aria-label*="chat" i][role="button"]',
+    'button[aria-label*="chat" i]',
+  ];
+
   protected override async onBrowserReady(): Promise<void> {
     this.chatFrame = null;
 
+    // Click explicit launcher or try auto-detecting one
     if (this.launcherSelector) {
       const launcher = await this.page.$(this.launcherSelector);
       if (launcher) {
-        await launcher.click();
-        await this.page.waitForTimeout(2000);
+        await this.clickLauncher(launcher);
       }
+    } else {
+      await this.tryAutoLauncher();
     }
 
     if (!this.detectedInputSelector || !this.detectedResponseSelector) {
@@ -70,36 +119,85 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
     }
   }
 
+  /** Click a launcher element, handling iframes (e.g. Gorgias chat-button is an iframe). */
+  private async clickLauncher(launcher: any /* ElementHandle */): Promise<void> {
+    const tag = await launcher.evaluate((el: Element) => el.tagName);
+    if (tag === 'IFRAME') {
+      // Click inside the iframe (some launchers like Gorgias are iframes)
+      const box = await launcher.boundingBox();
+      if (box) {
+        await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      }
+    } else {
+      await launcher.click();
+    }
+    await this.page.waitForTimeout(3000);
+  }
+
+  /** Try common launcher selectors to open hidden chat widgets. */
+  private async tryAutoLauncher(): Promise<void> {
+    for (const sel of BrowserAdapter.LAUNCHER_CANDIDATES) {
+      const el = await this.page.$(sel).catch(() => null);
+      if (el) {
+        const visible = await el.isVisible().catch(() => false);
+        if (visible) {
+          await this.clickLauncher(el);
+          return;
+        }
+      }
+    }
+  }
+
   private async autoDetectSelectors(): Promise<void> {
     const inputCandidates = [
       'iframe[name="intercom-messenger-frame"]',
       '[data-testid="chat-input"]',
-      'textarea[placeholder*="message"]',
-      'textarea[placeholder*="Message"]',
-      'textarea[placeholder*="type"]',
-      'textarea[placeholder*="Type"]',
-      'textarea[placeholder*="Ask"]',
-      'textarea[placeholder*="ask"]',
-      'input[placeholder*="message"]',
-      'input[placeholder*="Message"]',
-      'input[placeholder*="type"]',
-      'input[placeholder*="Ask"]',
+      // Gorgias
+      '#chat-message-input',
+      'textarea[aria-label*="live chat" i]',
+      // Zendesk
+      'textarea[aria-label*="Type a message" i]',
+      '[data-garden-id="chat.textInput"]',
+      // Drift
+      'textarea[data-testid="chat-input"]',
+      // Generic textarea patterns
+      'textarea[placeholder*="message" i]',
+      'textarea[placeholder*="type" i]',
+      'textarea[placeholder*="ask" i]',
+      'textarea[placeholder*="question" i]',
+      'textarea[placeholder*="chat" i]',
+      'input[placeholder*="message" i]',
+      'input[placeholder*="type" i]',
+      'input[placeholder*="ask" i]',
+      'input[placeholder*="question" i]',
+      // Aria label patterns
+      '[aria-label*="message input" i]',
+      '[aria-label*="chat input" i]',
+      '[aria-label*="Message input" i]',
+      '[aria-label*="message" i][role="textbox"]',
       '[contenteditable="true"][role="textbox"]',
+      '[contenteditable="true"][aria-label*="message" i]',
+      // Structural patterns
       '.chat-input textarea',
       '.chat-input input',
       '#chat-input',
       '[aria-label*="chat" i] textarea',
       '[aria-label*="chat" i] input',
       '[aria-label*="message" i]',
+      // Microsoft Bot Framework / WebChat
+      'input[class*="webchat__send-box"]',
+      '[class*="webchat__send-box"] input',
     ];
 
     const submitCandidates = [
       'button[type="submit"]',
       'button[aria-label*="send" i]',
-      'button[aria-label*="Send" i]',
       '[data-testid="send-button"]',
+      '#chat-message-input-send-button',
+      '[class*="send-button"]',
       '.chat-submit',
       '#chat-submit',
+      'button[class*="submit"]',
     ];
 
     // Check for Intercom iframe first — only set selectors not already provided by user
@@ -114,15 +212,14 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
     const searchContexts: { ctx: any; isFrame: boolean }[] = [{ ctx: this.page, isFrame: false }];
 
     // Collect candidate iframes (skip non-chat iframes)
-    const skipPatterns = ['stripe.com', 'google', 'analytics', 'recaptcha'];
+    const skipPatterns = ['stripe.com', 'google.com', 'analytics', 'recaptcha', 'optimizely', 'adsrvr', 'flashtalking'];
     for (const frame of this.page.frames()) {
       const url = frame.url();
-      if (
-        url &&
-        url !== 'about:blank' &&
-        !skipPatterns.some((p) => url.includes(p)) &&
-        frame !== this.page.mainFrame()
-      ) {
+      if (frame === this.page.mainFrame()) continue;
+      // Include about:srcdoc frames (used by Gorgias, Ada, and other inline widget renderers)
+      const isSrcdoc = url === 'about:srcdoc';
+      const isCandidate = isSrcdoc || (url && url !== 'about:blank' && !skipPatterns.some((p) => url.includes(p)));
+      if (isCandidate) {
         searchContexts.push({ ctx: frame, isFrame: true });
       }
     }
@@ -258,6 +355,9 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
   private async sendGenericWidget(message: string): Promise<string> {
     const ctx = this.widgetContext;
 
+    // Snapshot text before sending for text-diff fallback
+    const beforeText = await ctx.evaluate(() => document.body.innerText?.trim() ?? '').catch(() => '');
+
     let beforeCount = 0;
     if (this.detectedResponseSelector) {
       const beforeMsgs = await ctx.$$(this.detectedResponseSelector);
@@ -294,7 +394,96 @@ export class BrowserAdapter extends PlaywrightBaseAdapter {
       return this.waitForNewMessage(0);
     }
 
-    return '[Browser adapter: response selector not configured — check page manually]';
+    // Fallback: text-diff detection — compare page text before/after and extract new content
+    return this.waitForTextDiff(ctx, beforeText, message);
+  }
+
+  /**
+   * Fallback response detection via text diffing.
+   * Compares page innerText before/after sending and extracts new content,
+   * filtering out the user's own message.
+   */
+  private async waitForTextDiff(
+    ctx: any /* Page | FrameLocator */,
+    beforeText: string,
+    sentMessage: string,
+  ): Promise<string> {
+    const timeout = this.config.timeout ?? 60_000;
+    const deadline = Date.now() + timeout;
+    const stabilityMs = Math.min(this.responseStabilityMs, 3000);
+    let lastNewText = '';
+
+    while (Date.now() < deadline) {
+      await this.page.waitForTimeout(2000);
+
+      const currentText: string = await ctx.evaluate(() => document.body.innerText?.trim() ?? '').catch(() => '');
+      if (currentText === beforeText) continue;
+
+      let newText: string;
+      if (currentText.length > beforeText.length) {
+        newText = currentText.substring(beforeText.length).trim();
+      } else {
+        // Text changed but didn't grow — find content not present in beforeText
+        const beforeLines = new Set(
+          beforeText
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean),
+        );
+        newText = currentText
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l && !beforeLines.has(l))
+          .join('\n')
+          .trim();
+      }
+      if (!newText) continue;
+
+      // Remove the user's sent message from the new text
+      const cleaned = this.extractBotReplyFromDiff(newText, sentMessage);
+      if (!cleaned) continue;
+
+      // Skip loading/thinking indicators
+      if (/^(loading|thinking|gathering|typing|processing)\.{0,3}$/i.test(cleaned)) continue;
+
+      // Check stability
+      if (cleaned === lastNewText) {
+        // Stable — wait one more cycle to be sure
+        await this.page.waitForTimeout(stabilityMs);
+        const finalText: string = await ctx.evaluate(() => document.body.innerText?.trim() ?? '').catch(() => '');
+        const finalNew = finalText.length > beforeText.length ? finalText.substring(beforeText.length).trim() : '';
+        const finalCleaned = this.extractBotReplyFromDiff(finalNew, sentMessage);
+        return finalCleaned || cleaned;
+      }
+      lastNewText = cleaned;
+    }
+
+    return '[No response — timed out]';
+  }
+
+  /** Extract bot reply from a text diff, removing the user's sent message and noise. */
+  private extractBotReplyFromDiff(newText: string, sentMessage: string): string {
+    const lines = newText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    // Remove lines that match the user's message
+    const sentNorm = sentMessage.replace(/\s+/g, ' ').trim().toLowerCase();
+    const filtered = lines.filter((line) => {
+      const lineNorm = line.replace(/\s+/g, ' ').trim().toLowerCase();
+      return !lineNorm.includes(sentNorm) && !sentNorm.includes(lineNorm);
+    });
+
+    // Remove common noise patterns (timestamps, UI labels)
+    const cleaned = filtered.filter(
+      (line) =>
+        !/^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(line) &&
+        !/^(you said|bot said|sent|delivered)$/i.test(line) &&
+        line.length > 1,
+    );
+
+    return cleaned.join('\n').trim();
   }
 
   /** Detect response selector post-interaction (some UIs only render it after the first message). */

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { ForethoughtAdapter } from '../../src/adapters/forethought.js';
+import { pw } from '../../src/adapters/playwright-base.js';
 import type { AdapterConfig } from '../../src/types/index.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -53,8 +54,9 @@ function buildFakePw() {
     close: vi.fn().mockResolvedValue(undefined),
   };
 
+  vi.spyOn(pw, 'launchBrowser').mockResolvedValue(browser);
+
   return {
-    pw: { chromium: { launch: vi.fn().mockResolvedValue(browser) } },
     page,
     frame,
     inputEl,
@@ -65,19 +67,14 @@ function buildFakePw() {
   };
 }
 
-function patchPw(adapter: ForethoughtAdapter, pw: any): void {
-  (adapter as any).loadPlaywright = vi.fn().mockResolvedValue(pw);
-}
-
 describe('ForethoughtAdapter', () => {
   it('constructs without error', () => {
     expect(new ForethoughtAdapter(makeConfig())).toBeDefined();
   });
 
   it('sends a message and extracts bot response', async () => {
-    const { pw, inputEl } = buildFakePw();
+    const { inputEl } = buildFakePw();
     const adapter = new ForethoughtAdapter(makeConfig());
-    patchPw(adapter, pw);
 
     const result = await adapter.send([{ role: 'user', content: 'What integrations?' }]);
 
@@ -90,9 +87,8 @@ describe('ForethoughtAdapter', () => {
   });
 
   it('navigates to baseUrl and opens widget', async () => {
-    const { pw, page } = buildFakePw();
+    const { page } = buildFakePw();
     const adapter = new ForethoughtAdapter(makeConfig({ baseUrl: 'https://forethought.ai/' }));
-    patchPw(adapter, pw);
 
     await adapter.send([{ role: 'user', content: 'hi' }]);
 
@@ -106,9 +102,8 @@ describe('ForethoughtAdapter', () => {
   });
 
   it('extracts last user message from multi-turn', async () => {
-    const { pw, inputEl } = buildFakePw();
+    const { inputEl } = buildFakePw();
     const adapter = new ForethoughtAdapter(makeConfig());
-    patchPw(adapter, pw);
 
     await adapter.send([
       { role: 'user', content: 'first' },
@@ -120,48 +115,43 @@ describe('ForethoughtAdapter', () => {
   });
 
   it('throws when iframe not found', async () => {
-    const { pw, page } = buildFakePw();
+    const { page } = buildFakePw();
     page.frame = vi.fn().mockReturnValue(null);
     page.$ = vi.fn().mockResolvedValue(null);
 
     const adapter = new ForethoughtAdapter(makeConfig());
-    patchPw(adapter, pw);
 
     await expect(adapter.send([{ role: 'user', content: 'hi' }])).rejects.toThrow('widget iframe not found');
   });
 
   it('throws when input not found', async () => {
-    const { pw, frame } = buildFakePw();
+    const { frame } = buildFakePw();
     frame.$ = vi.fn().mockResolvedValue(null);
 
     const adapter = new ForethoughtAdapter(makeConfig());
-    patchPw(adapter, pw);
 
     await expect(adapter.send([{ role: 'user', content: 'hi' }])).rejects.toThrow('chat input not found');
   });
 
   it('healthCheck returns true on success', async () => {
-    const { pw } = buildFakePw();
+    buildFakePw();
     const adapter = new ForethoughtAdapter(makeConfig());
-    patchPw(adapter, pw);
 
     expect(await adapter.healthCheck()).toBe(true);
   });
 
   it('healthCheck returns false on error', async () => {
-    const { pw } = buildFakePw();
-    pw.chromium.launch = vi.fn().mockRejectedValue(new Error('fail'));
+    buildFakePw();
+    vi.spyOn(pw, 'launchBrowser').mockRejectedValue(new Error('fail'));
 
     const adapter = new ForethoughtAdapter(makeConfig());
-    patchPw(adapter, pw);
 
     expect(await adapter.healthCheck()).toBe(false);
   });
 
   it('close shuts down browser', async () => {
-    const { pw, browser } = buildFakePw();
+    const { browser } = buildFakePw();
     const adapter = new ForethoughtAdapter(makeConfig());
-    patchPw(adapter, pw);
 
     await adapter.send([{ role: 'user', content: 'hi' }]);
     await adapter.close();
@@ -170,14 +160,12 @@ describe('ForethoughtAdapter', () => {
   });
 
   it('resetSession re-initializes on next send', async () => {
-    const { pw, page, resetBotCalls } = buildFakePw();
+    const { page, resetBotCalls } = buildFakePw();
     const adapter = new ForethoughtAdapter(makeConfig());
-    patchPw(adapter, pw);
 
     await adapter.send([{ role: 'user', content: 'hi' }]);
     adapter.resetSession();
 
-    patchPw(adapter, pw);
     resetBotCalls();
 
     await adapter.send([{ role: 'user', content: 'hello' }]);

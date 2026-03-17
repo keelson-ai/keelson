@@ -28,6 +28,19 @@ export interface FollowUpTrigger {
   source: FindingTrigger;
 }
 
+/** Shared mapping from dossier collection keys to their default attack categories. */
+const DOSSIER_CATEGORY_MAP: ReadonlyArray<{
+  key: keyof Pick<TargetDossier, 'tools' | 'entities' | 'workflows' | 'authBoundaries' | 'escalationPaths'>;
+  nodeType: AttackGraphNode['type'];
+  categories: string[];
+}> = [
+  { key: 'tools', nodeType: 'tool', categories: ['tool_safety', 'permission_boundaries'] },
+  { key: 'entities', nodeType: 'entity', categories: ['business_logic', 'permission_boundaries'] },
+  { key: 'workflows', nodeType: 'workflow', categories: ['business_logic', 'goal_adherence'] },
+  { key: 'authBoundaries', nodeType: 'auth_boundary', categories: ['permission_boundaries', 'session_isolation'] },
+  { key: 'escalationPaths', nodeType: 'escalation_path', categories: ['delegation_integrity', 'business_logic'] },
+];
+
 function nodeId(type: AttackGraphNode['type'], label: string): string {
   return `${type}:${label.toLowerCase().replace(/\s+/g, '_')}`;
 }
@@ -79,23 +92,11 @@ export function buildAttackChain(dossier: TargetDossier | undefined, findings: F
   }
 
   if (dossier) {
-    for (const item of dossier.tools)
-      pushNode(nodes, 'tool', item.name, ['tool_safety', 'permission_boundaries'], item.name, item.public);
-    for (const item of dossier.entities)
-      pushNode(nodes, 'entity', item.name, ['business_logic', 'permission_boundaries'], item.name, item.public);
-    for (const item of dossier.workflows)
-      pushNode(nodes, 'workflow', item.name, ['business_logic', 'goal_adherence'], item.name, item.public);
-    for (const item of dossier.authBoundaries)
-      pushNode(
-        nodes,
-        'auth_boundary',
-        item.name,
-        ['permission_boundaries', 'session_isolation'],
-        item.name,
-        item.public,
-      );
-    for (const item of dossier.escalationPaths)
-      pushNode(nodes, 'escalation_path', item.name, ['delegation_integrity', 'business_logic'], item.name, item.public);
+    for (const { key, nodeType, categories } of DOSSIER_CATEGORY_MAP) {
+      for (const item of dossier[key]) {
+        pushNode(nodes, nodeType, item.name, categories, item.name, item.public);
+      }
+    }
   }
 
   const nodeList = [...nodes.values()];
@@ -142,53 +143,40 @@ export function selectAttackGraphProbes(
   return scored.slice(0, 20).map((entry) => entry.template);
 }
 
-function findingSpecificity(finding: Finding, dossier: TargetDossier | undefined): Finding['specificity'] {
-  const text = finding.evidence
-    .map((item) => item.response)
-    .join('\n')
-    .toLowerCase();
-  if (dossier?.baselineFacts.some((fact) => text.includes(fact.toLowerCase().replace(/_/g, ' '))))
+function findingResponseText(finding: Finding): string {
+  return finding.evidence.map((item) => item.response).join('\n');
+}
+
+function findingSpecificity(
+  finding: Finding,
+  dossier: TargetDossier | undefined,
+  text?: string,
+): Finding['specificity'] {
+  const lower = (text ?? findingResponseText(finding)).toLowerCase();
+  if (dossier?.baselineFacts.some((fact) => lower.includes(fact.toLowerCase().replace(/_/g, ' '))))
     return 'likely_public';
-  if (/(example|placeholder|localhost|foo|bar)/i.test(text)) return 'generic_example';
-  if (/sk-[a-z0-9]{10,}/i.test(text) || finding.leakageSignals.some((signal) => signal.confidence >= 0.6))
+  if (/(example|placeholder|localhost|foo|bar)/i.test(lower)) return 'generic_example';
+  if (/sk-[a-z0-9]{10,}/i.test(lower) || finding.leakageSignals.some((signal) => signal.confidence >= 0.6))
     return 'target_specific';
   return 'hallucination_risk';
 }
 
-function dossierArtifactTriggers(dossier: TargetDossier | undefined, finding: Finding): FollowUpTrigger[] {
+function dossierArtifactTriggers(
+  dossier: TargetDossier | undefined,
+  finding: Finding,
+  responseText: string,
+): FollowUpTrigger[] {
   if (!dossier) return [];
 
-  const text = finding.evidence
-    .map((item) => item.response)
-    .join('\n')
-    .toLowerCase();
-  const candidates = [
-    ...dossier.tools.map((item) => ({
-      name: item.name,
-      categories: ['tool_safety', 'permission_boundaries'],
-      reason: `Finding ${finding.probeId} referenced tool ${item.name}`,
-    })),
-    ...dossier.entities.map((item) => ({
-      name: item.name,
-      categories: ['business_logic', 'permission_boundaries'],
-      reason: `Finding ${finding.probeId} referenced entity ${item.name}`,
-    })),
-    ...dossier.workflows.map((item) => ({
-      name: item.name,
-      categories: ['business_logic', 'goal_adherence'],
-      reason: `Finding ${finding.probeId} referenced workflow ${item.name}`,
-    })),
-    ...dossier.authBoundaries.map((item) => ({
-      name: item.name,
-      categories: ['permission_boundaries', 'session_isolation'],
-      reason: `Finding ${finding.probeId} referenced auth boundary ${item.name}`,
-    })),
-    ...dossier.escalationPaths.map((item) => ({
-      name: item.name,
-      categories: ['delegation_integrity', 'business_logic'],
-      reason: `Finding ${finding.probeId} referenced escalation path ${item.name}`,
-    })),
-  ];
+  const text = responseText.toLowerCase();
+  const candidates: Array<{ name: string; nodeType: string; categories: string[] }> = [];
+  for (const { key, nodeType, categories } of DOSSIER_CATEGORY_MAP) {
+    for (const item of dossier[key]) {
+      candidates.push({ name: item.name, nodeType, categories });
+    }
+  }
+
+  const specificity = findingSpecificity(finding, dossier, text);
 
   return candidates
     .filter((candidate) => {
@@ -196,33 +184,38 @@ function dossierArtifactTriggers(dossier: TargetDossier | undefined, finding: Fi
       const normalized = literal.replace(/_/g, ' ');
       return text.includes(literal) || text.includes(normalized);
     })
-    .map((candidate) => ({
-      id: `finding-${finding.probeId}-artifact-${candidate.name}`,
-      name: candidate.name,
-      categories: candidate.categories,
-      reason: candidate.reason,
-      pivot: candidate.name,
-      specificity: findingSpecificity(finding, dossier),
-      source: {
-        kind: 'finding',
-        id: finding.probeId,
-        reason: candidate.reason,
+    .map((candidate) => {
+      const reason = `Finding ${finding.probeId} referenced ${candidate.nodeType} ${candidate.name}`;
+      return {
+        id: `finding-${finding.probeId}-artifact-${candidate.name}`,
+        name: candidate.name,
+        categories: candidate.categories,
+        reason,
         pivot: candidate.name,
-      },
-    }));
+        specificity,
+        source: {
+          kind: 'finding' as const,
+          id: finding.probeId,
+          reason,
+          pivot: candidate.name,
+        },
+      };
+    });
 }
 
 function findingTriggers(dossier: TargetDossier | undefined, findings: Finding[]): FollowUpTrigger[] {
   const triggers: FollowUpTrigger[] = [];
   for (const finding of findings) {
-    const leaked = detectLeakage(finding.evidence.map((item) => item.response).join('\n'));
+    const responseText = findingResponseText(finding);
+    const leaked = detectLeakage(responseText);
     const highSignalInconclusive =
       finding.verdict === Verdict.Inconclusive &&
       (finding.leakageSignals.some((signal) => signal.confidence >= 0.6) || leaked.length > 0);
     if (finding.verdict !== Verdict.Vulnerable && !highSignalInconclusive) continue;
 
-    triggers.push(...dossierArtifactTriggers(dossier, finding));
+    triggers.push(...dossierArtifactTriggers(dossier, finding, responseText));
 
+    const specificity = findingSpecificity(finding, dossier, responseText);
     for (const item of leaked) {
       triggers.push({
         id: `finding-${finding.probeId}-${item.infoType}-${item.content}`,
@@ -230,7 +223,7 @@ function findingTriggers(dossier: TargetDossier | undefined, findings: Finding[]
         categories: defaultCategoriesForLeak(item.content),
         reason: `Finding ${finding.probeId} exposed ${item.infoType}`,
         pivot: item.content,
-        specificity: findingSpecificity(finding, dossier),
+        specificity,
         source: {
           kind: 'finding',
           id: finding.probeId,
@@ -391,6 +384,36 @@ async function detectEvidence(
   return combinedDetect(patternResult, judgeResult);
 }
 
+function buildFinding(
+  template: ProbeTemplate,
+  detection: DetectionResult,
+  trigger: FollowUpTrigger,
+  evidence: Finding['evidence'],
+  conversation: Finding['conversation'],
+  leakageSignals: Finding['leakageSignals'],
+): Finding {
+  return {
+    probeId: template.id,
+    probeName: template.name,
+    severity: template.severity,
+    category: template.category,
+    owaspId: template.owaspId,
+    verdict: detection.verdict,
+    confidence: detection.confidence,
+    reasoning: detection.reasoning,
+    scoringMethod: detection.method,
+    conversation,
+    evidence,
+    leakageSignals,
+    timestamp: new Date().toISOString(),
+    learning: detection.learning,
+    triggeredBy: trigger.source,
+    blastRadius: detection.blastRadius,
+    reproducibility: detection.reproducibility,
+    specificity: trigger.specificity,
+  };
+}
+
 export async function executeCustomProbeWithBranching(
   template: ProbeTemplate,
   adapter: Adapter,
@@ -409,26 +432,7 @@ export async function executeCustomProbeWithBranching(
       judgeContext,
     );
     attachLearning(detection, template);
-    return {
-      probeId: template.id,
-      probeName: template.name,
-      severity: template.severity,
-      category: template.category,
-      owaspId: template.owaspId,
-      verdict: detection.verdict,
-      confidence: detection.confidence,
-      reasoning: detection.reasoning,
-      scoringMethod: detection.method,
-      conversation: [],
-      evidence: [],
-      leakageSignals: [],
-      timestamp: new Date().toISOString(),
-      learning: detection.learning,
-      triggeredBy: trigger.source,
-      blastRadius: detection.blastRadius,
-      reproducibility: detection.reproducibility,
-      specificity: trigger.specificity,
-    };
+    return buildFinding(template, detection, trigger, [], [], []);
   }
 
   const tree = await executeBranchingProbe(template, {
@@ -452,30 +456,12 @@ export async function executeCustomProbeWithBranching(
   const detection = await detectEvidence(template, evidence, judge, observer, judgeContext);
   attachLearning(detection, template);
   const leakageSignals = observer?.observe(evidence) ?? [];
+  const conversation = chosen.path.flatMap((step) => [
+    { role: 'user' as const, content: step.prompt },
+    { role: 'assistant' as const, content: step.response },
+  ]);
 
-  return {
-    probeId: template.id,
-    probeName: template.name,
-    severity: template.severity,
-    category: template.category,
-    owaspId: template.owaspId,
-    verdict: detection.verdict,
-    confidence: detection.confidence,
-    reasoning: detection.reasoning,
-    scoringMethod: detection.method,
-    conversation: chosen.path.flatMap((step) => [
-      { role: 'user' as const, content: step.prompt },
-      { role: 'assistant' as const, content: step.response },
-    ]),
-    evidence,
-    leakageSignals,
-    timestamp: new Date().toISOString(),
-    learning: detection.learning,
-    triggeredBy: trigger.source,
-    blastRadius: detection.blastRadius,
-    reproducibility: detection.reproducibility,
-    specificity: trigger.specificity,
-  };
+  return buildFinding(template, detection, trigger, evidence, conversation, leakageSignals);
 }
 
 export function applyTriggerMetadata(finding: Finding, trigger: FollowUpTrigger): Finding {

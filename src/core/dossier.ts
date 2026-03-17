@@ -1,7 +1,8 @@
 import type { AgentProfile, InfraFinding } from '../prober/types.js';
 import type { DossierEvidence, DossierItem, DossierItemType, TargetDossier } from '../types/index.js';
 
-const TOOL_NAME_RE = /`([a-z_][a-z0-9_]{2,})`/gi;
+/** Matches backtick-quoted tool names (min 2 chars after the leading letter/underscore). */
+export const TOOL_NAME_RE = /`([a-z_][a-z0-9_]{2,})`/gi;
 
 const WORKFLOW_PATTERNS: Array<{ name: string; tags: string[]; pattern: RegExp }> = [
   { name: 'order_lookup', tags: ['order', 'lookup'], pattern: /\b(order|shipment|tracking)\b/i },
@@ -100,7 +101,7 @@ function mergeItems(items: DossierItem[]): DossierItem[] {
   return [...merged.values()].sort((a, b) => b.confidence - a.confidence || a.name.localeCompare(b.name));
 }
 
-function extractToolNames(text: string): string[] {
+export function extractToolNames(text: string): string[] {
   const matches = text.matchAll(TOOL_NAME_RE);
   return [...new Set([...matches].map((match) => match[1]))];
 }
@@ -171,6 +172,35 @@ function toolItems(profile: AgentProfile): DossierItem[] {
   return items;
 }
 
+/** Shared inference patterns applied to every text source (capabilities + infra findings). */
+const INFERRED_PATTERNS: ReadonlyArray<{
+  key: 'entities' | 'workflows' | 'authBoundaries' | 'escalationPaths';
+  type: DossierItemType;
+  patterns: Array<{ name: string; tags: string[]; pattern: RegExp }>;
+}> = [
+  { key: 'entities', type: 'entity', patterns: ENTITY_PATTERNS },
+  { key: 'workflows', type: 'workflow', patterns: WORKFLOW_PATTERNS },
+  { key: 'authBoundaries', type: 'auth_boundary', patterns: AUTH_PATTERNS },
+  { key: 'escalationPaths', type: 'escalation_path', patterns: ESCALATION_PATTERNS },
+];
+
+function collectInferred(
+  text: string,
+  evidence: DossierEvidence,
+  verified: boolean,
+): Record<'entities' | 'workflows' | 'authBoundaries' | 'escalationPaths', DossierItem[]> {
+  const result = {
+    entities: [] as DossierItem[],
+    workflows: [] as DossierItem[],
+    authBoundaries: [] as DossierItem[],
+    escalationPaths: [] as DossierItem[],
+  };
+  for (const { key, type, patterns } of INFERRED_PATTERNS) {
+    result[key].push(...collectPatternMatches(type, text, evidence, patterns, verified, false));
+  }
+  return result;
+}
+
 function inferredItems(
   profile: AgentProfile,
   infraFindings: InfraFinding[],
@@ -188,12 +218,11 @@ function inferredItems(
   for (const cap of profile.capabilities) {
     const response = cap.responseText ?? cap.responseExcerpt;
     const evidence = makeEvidence('capability_probe', cap.name, cap.probePrompt, response, cap.confidence);
-    entities.push(...collectPatternMatches('entity', response, evidence, ENTITY_PATTERNS, cap.detected, false));
-    workflows.push(...collectPatternMatches('workflow', response, evidence, WORKFLOW_PATTERNS, cap.detected, false));
-    authBoundaries.push(...collectPatternMatches('auth_boundary', response, evidence, AUTH_PATTERNS, true, false));
-    escalationPaths.push(
-      ...collectPatternMatches('escalation_path', response, evidence, ESCALATION_PATTERNS, true, false),
-    );
+    const inferred = collectInferred(response, evidence, cap.detected);
+    entities.push(...inferred.entities);
+    workflows.push(...inferred.workflows);
+    authBoundaries.push(...inferred.authBoundaries);
+    escalationPaths.push(...inferred.escalationPaths);
   }
 
   for (const finding of infraFindings) {
@@ -210,12 +239,11 @@ function inferredItems(
       evidence: [evidence],
     });
 
-    entities.push(...collectPatternMatches('entity', response, evidence, ENTITY_PATTERNS, true, false));
-    workflows.push(...collectPatternMatches('workflow', response, evidence, WORKFLOW_PATTERNS, true, false));
-    authBoundaries.push(...collectPatternMatches('auth_boundary', response, evidence, AUTH_PATTERNS, true, false));
-    escalationPaths.push(
-      ...collectPatternMatches('escalation_path', response, evidence, ESCALATION_PATTERNS, true, false),
-    );
+    const inferred = collectInferred(response, evidence, true);
+    entities.push(...inferred.entities);
+    workflows.push(...inferred.workflows);
+    authBoundaries.push(...inferred.authBoundaries);
+    escalationPaths.push(...inferred.escalationPaths);
   }
 
   return {
@@ -228,43 +256,27 @@ function inferredItems(
   };
 }
 
-function dossierSummary(dossier: TargetDossier): string[] {
-  const summary: string[] = [];
+const SUMMARY_SECTIONS: Array<{ key: keyof TargetDossier; label: string; limit: number }> = [
+  { key: 'tools', label: 'Tools', limit: 5 },
+  { key: 'workflows', label: 'Workflows', limit: 4 },
+  { key: 'authBoundaries', label: 'Auth boundaries', limit: 4 },
+  { key: 'escalationPaths', label: 'Escalation paths', limit: 3 },
+];
 
-  if (dossier.tools.length > 0) {
-    summary.push(
-      `Tools: ${dossier.tools
-        .slice(0, 5)
-        .map((item) => item.name)
-        .join(', ')}`,
-    );
+function summarizeItems(collections: Record<string, DossierItem[]>): string[] {
+  const lines: string[] = [];
+  for (const { key, label, limit } of SUMMARY_SECTIONS) {
+    const items = collections[key];
+    if (items && items.length > 0) {
+      lines.push(
+        `${label}: ${items
+          .slice(0, limit)
+          .map((item) => item.name)
+          .join(', ')}`,
+      );
+    }
   }
-  if (dossier.workflows.length > 0) {
-    summary.push(
-      `Workflows: ${dossier.workflows
-        .slice(0, 4)
-        .map((item) => item.name)
-        .join(', ')}`,
-    );
-  }
-  if (dossier.authBoundaries.length > 0) {
-    summary.push(
-      `Auth boundaries: ${dossier.authBoundaries
-        .slice(0, 4)
-        .map((item) => item.name)
-        .join(', ')}`,
-    );
-  }
-  if (dossier.escalationPaths.length > 0) {
-    summary.push(
-      `Escalation paths: ${dossier.escalationPaths
-        .slice(0, 3)
-        .map((item) => item.name)
-        .join(', ')}`,
-    );
-  }
-
-  return summary;
+  return lines;
 }
 
 export function buildTargetDossier(
@@ -277,6 +289,13 @@ export function buildTargetDossier(
   const inferred = inferredItems(profile, infraFindings);
   const publicFacts = inferred.publicFacts;
 
+  const collections = {
+    tools,
+    workflows: inferred.workflows,
+    authBoundaries: inferred.authBoundaries,
+    escalationPaths: inferred.escalationPaths,
+  };
+
   return {
     target,
     verifiedCapabilities,
@@ -288,19 +307,7 @@ export function buildTargetDossier(
     publicFacts,
     privateIndicators: inferred.privateIndicators,
     baselineFacts: publicFacts.map((item) => item.name),
-    summary: dossierSummary({
-      target,
-      verifiedCapabilities,
-      tools,
-      entities: inferred.entities,
-      workflows: inferred.workflows,
-      authBoundaries: inferred.authBoundaries,
-      escalationPaths: inferred.escalationPaths,
-      publicFacts,
-      privateIndicators: inferred.privateIndicators,
-      baselineFacts: publicFacts.map((item) => item.name),
-      summary: [],
-    }),
+    summary: summarizeItems(collections),
   };
 }
 

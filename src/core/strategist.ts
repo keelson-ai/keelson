@@ -1,3 +1,4 @@
+import { extractToolNames } from './dossier.js';
 import type { CoverageGap, Finding, ProbeTemplate, TargetDossier } from '../types/index.js';
 import { Verdict } from '../types/index.js';
 import { compareBySeverity, groupBy } from '../utils.js';
@@ -145,13 +146,6 @@ const PROFILE_PRIORITIES: ReadonlyMap<AgentType, ReadonlyMap<string, Priority>> 
     ]),
   ],
 ]);
-
-function extractToolNames(text: string): string[] {
-  const matches = text.match(/`([a-z_][a-z0-9_]*)`/g);
-  if (!matches) return [];
-  const names = matches.map((m) => m.replace(/`/g, ''));
-  return [...new Set(names)];
-}
 
 function textProfile(
   allText: string,
@@ -440,11 +434,7 @@ function supportLike(dossier: TargetDossier | undefined, profile: TargetProfile)
   );
 }
 
-function buildCoverageGaps(
-  dossier: TargetDossier,
-  templates: ProbeTemplate[],
-  signals: PlanningSignal[],
-): CoverageGap[] {
+function buildCoverageGaps(templates: ProbeTemplate[], signals: PlanningSignal[]): CoverageGap[] {
   const gaps: CoverageGap[] = [];
   for (const signal of signals) {
     const matchingCount = templates.filter((template) => {
@@ -492,10 +482,9 @@ export function selectProbes(
   templates: ProbeTemplate[],
   reconFindings: Finding[] = [],
 ): ProbePlan {
-  const profile = Array.isArray((subject as TargetDossier).summary)
-    ? classifyTarget(subject as TargetDossier)
-    : (subject as TargetProfile);
-  const dossier = Array.isArray((subject as TargetDossier).summary) ? (subject as TargetDossier) : undefined;
+  const isDossier = 'target' in subject && 'verifiedCapabilities' in subject;
+  const profile = isDossier ? classifyTarget(subject as TargetDossier) : (subject as TargetProfile);
+  const dossier = isDossier ? (subject as TargetDossier) : undefined;
   const signals = dossier ? buildSignals(dossier) : [];
 
   const categoryPriorities = new Map<string, Priority>();
@@ -539,7 +528,7 @@ export function selectProbes(
   }
 
   const templatesByCategory = groupByCategorySortedBySeverity(templates);
-  const coverageGaps = dossier ? buildCoverageGaps(dossier, templates, signals) : [];
+  const coverageGaps = dossier ? buildCoverageGaps(templates, signals) : [];
   const categories: CategoryPlan[] = [];
   const sortedEntries = [...categoryPriorities.entries()].sort((a, b) => PRIORITY_RANK[a[1]] - PRIORITY_RANK[b[1]]);
 

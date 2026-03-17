@@ -1,7 +1,7 @@
 export { EngagementController, loadEngagementProfile } from './engagement.js';
 export type { EngagementCallbacks } from './engagement.js';
 export { logger, scannerLogger, detectionLogger, adapterLogger, judgeLogger } from './logger.js';
-export { buildTargetDossier, dossierToText } from './dossier.js';
+export { buildTargetDossier, dossierToText, extractToolNames } from './dossier.js';
 export { executeProbe } from './engine.js';
 export type { ExecuteProbeOptions, Observer, TurnCompleteInfo } from './engine.js';
 export {
